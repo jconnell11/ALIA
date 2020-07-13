@@ -1,0 +1,179 @@
+// respond to person identification and proximity events
+// ================================================
+
+// OP 1: "If someone is visible then greet them."
+  trig:   
+    NOTE[  hq-1 -lex-  visible 
+                -hq--> agt-1 
+          ako-1 -lex-  person 
+                -ako-> agt-1 ]
+  ---------------
+      DO[ act-1 -lex-  greet 
+                -obj-> agt-1 ]
+
+
+// OP 2: "To greet someone say to them hello there whoever."
+  trig:   
+      DO[ act-1 -lex-  greet 
+                -obj-> agt-1 ]
+  ---------------
+      DO[ act-2 -lex-   say 
+                -dest-> agt-1
+                -obj--> txt-1
+          txt-1 -str-   hello there ?0 ]
+
+
+// OP 3: "To greet someone say to them hey whoever, how are you doing."
+  trig:   
+      DO[ act-1 -lex-  greet 
+                -obj-> agt-1 ]
+  ---------------
+      DO[ act-2 -lex-   say 
+                -dest-> agt-1
+                -obj--> txt-1
+          txt-1 -str-   hey ?0, how're you doing? ]
+
+
+// --------------------------------------
+
+// OP 4: "If a person a person is close offer to serve them"
+  trig:   
+    NOTE[  hq-1 -lex-  close 
+                -hq--> agt-1
+          ako-1 -lex-  person
+                -ako-> agt-1 ]
+  ---------------
+      DO[ act-1 -lex-  offer 
+                -obj-> act-2 
+          act-2 -lex-  serve
+                -obj-> agt-1 ]
+
+
+// OP 5: "To offer to serve someone say to them how may I help you, whoever"
+  trig:
+      DO[ act-1 -lex-  offer 
+                -obj-> act-2 
+          act-2 -lex-  serve
+                -obj-> agt-1 ]
+  ---------------
+      DO[ act-3 -lex-   say
+                -dest-> agt-1
+                -obj--> txt-1
+          txt-1 -str-   how may I help you ?0?]
+
+
+// OP 6: "To offer to serve someone say to them can I do something for you"
+  trig:
+      DO[ act-1 -lex-  offer 
+                -obj-> act-2 
+          act-2 -lex-  serve
+                -obj-> agt-1 ]
+  ---------------
+      DO[ act-3 -lex-   say
+                -dest-> agt-1
+                -obj--> txt-1
+          txt-1 -str-   can I do something for you? ]
+
+
+// --------------------------------------
+
+// OP 7: "If someone is not visible then say where did you go whoever"
+  trig:   
+    NOTE[  hq-1 -lex-  visible 
+                -neg-  1
+                -hq--> agt-1 
+          ako-1 -lex-  person 
+                -ako-> agt-1 ]
+  ---------------
+      DO[ act-1 -lex-   say 
+                -dest-> agt-1
+                -obj--> txt-1
+          txt-1 -str-   where did you go ?0? ]
+
+
+// OP 8: "If someone is not visible then say whoever please come back"
+  trig:   
+    NOTE[  hq-1 -lex-  visible 
+                -neg-  1
+                -hq--> agt-1 
+          ako-1 -lex-  person 
+                -ako-> agt-1 ]
+  ---------------
+      DO[ act-1 -lex-   say 
+                -dest-> agt-1
+                -obj--> txt-1
+          txt-1 -str-   ?0 please come back ]
+
+
+// --------------------------------------
+
+// OP 9: "Before saying something to someone look at them"
+  trig:   
+    ANTE[ act-1 -lex-   say
+                -obj--> txt-1
+                -dest-> dude-1
+          ako-1 -lex-   person 
+                -ako--> dude-1 ]
+  ---------------
+      DO[ act-2 -lex-  look
+          loc-1 -lex-  at
+                -loc-> act-2
+                -wrt-> dude-1 ]
+
+
+// --------------------------------------
+
+// OP 10: "To come here approach me"
+  trig:   
+      DO[  act-1 -lex-  come
+           loc-1 -lex-  here 
+                 -loc-> act-1 
+          self-1 -lex-  me ]
+  ---------------
+      DO[ act-2 -lex-  approach
+                -obj-> self-1 ]         
+
+
+// --------------------------------------
+
+// OP 11: "If someone is far away then ask them to wait"
+  trig:   
+    NOTE[  hq-1 -lex-  far away
+                -hq--> dude-1
+          ako-1 -lex-  person
+                -ako-> dude-1 ]
+  ---------------
+      DO[ act-2 -lex-   ask
+                -dest-> dude-1
+                -obj--> act-3 
+          act-3 -lex-   wait 
+                -agt->  dude-1 ]
+
+
+// OP 12: "To ask someone to wait say please slow down"
+  trig:
+      DO[ act-1 -lex-   ask
+                -dest-> dude-1
+                -obj--> act-2 
+          act-2 -lex-   wait 
+                -agt->  dude-1 ]
+  ---------------
+      DO[ act-3 -lex-   say
+                -dest-> dude-1
+                -obj--> txt-1
+          txt-1 -str-   please slow down ]
+
+
+// OP 13: "To ask someone to wait say wait for me"
+  trig:
+      DO[ act-1 -lex-   ask
+                -dest-> dude-1
+                -obj--> act-2 
+          act-2 -lex-   wait 
+                -agt->  dude-1 ]
+  ---------------
+      DO[ act-3 -lex-   say
+                -dest-> dude-1
+                -obj--> txt-1
+          txt-1 -str-   wait for me ]
+

@@ -1,0 +1,24 @@
+// OP 1 - "If someone tells you to do something say right away"
+trig:
+  NOTE[ act-1 -lex-   tell
+              -agt--> obj-3
+              -dest-> obj-4
+              -cmd--> act-6
+        obj-4 -lex-   you ]
+-----------------
+    DO[ act-7 -lex-  say
+              -obj-> txt-9
+        txt-9 -str-  right away ]
+
+
+// OP 2 - "If someone tells you to do something say okey dokey"
+trig:
+  NOTE[ act-1 -lex-   tell
+              -agt--> obj-3
+              -dest-> obj-4
+              -cmd--> act-6
+        obj-4 -lex-   you ]
+-----------------
+    DO[ act-7 -lex-  say
+              -obj-> txt-9
+        txt-9 -str-  okey dokey ]

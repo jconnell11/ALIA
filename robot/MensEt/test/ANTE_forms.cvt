@@ -1,0 +1,127 @@
+.................................................
+
+"before driving warble"
+
+// OPERATOR
+trig:
+  ANTE[ act-1 -lex-  drive
+              -tag-  vprog ]
+-----------------
+    DO[ act-3 -lex-  warble
+              -tag-  vimp ]
+
+.................................................
+
+"before you start to drive honk"
+
+// OPERATOR
+trig:
+  ANTE[ act-1 -lex-  drive
+              -tag-  vimp ]
+-----------------
+    DO[ act-3 -lex-  honk
+              -tag-  vimp ]
+
+.................................................
+
+"before driving if you are tired honk"
+
+// OPERATOR
+trig:
+  ANTE[ act-1 -lex-  drive
+              -tag-  vprog
+        obj-3 -lex-  you
+         hq-5 -lex-  tired
+              -hq--> obj-3 ]
+-----------------
+    DO[ act-7 -lex-  honk
+              -tag-  vimp ]
+
+.................................................
+
+"after you spin left turn right then turn left"
+
+// OPERATOR
+trig:
+  POST[ act-1 -lex-  spin
+              -tag-  vimp
+        dir-3 -lex-  left
+              -dir-> act-1 ]
+-----------------
+    DO[ act-5 -lex-  turn
+              -tag-  vimp
+        dir-7 -lex-  right
+              -dir-> act-5 ]
+    DO[  act-9 -lex-  turn
+               -tag-  vimp
+        dir-11 -lex-  left
+               -dir-> act-9  ]
+
+.................................................
+
+"if you are tired then before spinning step forward"
+
+// OPERATOR
+trig:
+  ANTE[ act-5 -lex-  spin
+              -tag-  vprog
+         hq-3 -lex-  tired
+              -hq--> obj-1
+        obj-1 -lex-  you ]
+-----------------
+    DO[ act-7 -lex-  step
+              -tag-  vimp
+        dir-9 -lex-  forward
+              -dir-> act-7 ]
+
+.................................................
+
+"if you are red then after you drive turn left"
+
+// OPERATOR
+trig:
+  POST[ act-5 -lex-  drive
+              -tag-  vimp
+         hq-3 -lex-  red
+              -hq--> obj-1
+        obj-1 -lex-  you ]
+-----------------
+    DO[ act-7 -lex-  turn
+              -tag-  vimp
+        dir-9 -lex-  left
+              -dir-> act-7 ]
+
+.................................................
+
+"if you are a dog then before you start driving turn left"
+
+// OPERATOR
+trig:
+  ANTE[ act-5 -lex-  drive
+              -tag-  vprog
+        ako-3 -lex-  dog
+              -ako-> obj-1
+        obj-1 -lex-  you ]
+-----------------
+    DO[ act-7 -lex-  turn
+              -tag-  vimp
+        dir-9 -lex-  left
+              -dir-> act-7 ]
+
+.................................................
+
+"before driving forward bloop if you are tired"
+
+// OPERATOR
+trig:
+  ANTE[ act-1 -lex-  drive
+              -tag-  vprog
+        dir-3 -lex-  forward
+              -dir-> act-1
+        obj-7 -lex-  you
+         hq-9 -lex-  tired
+              -hq--> obj-7 ]
+-----------------
+    DO[ act-5 -lex-  bloop
+              -tag-  vimp ]
+

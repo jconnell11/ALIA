@@ -1,0 +1,82 @@
+// standard inferences for the visual object characterization system
+// ================================================
+
+// RULE 1 - red is a color
+    if:  hq-2 -lex-  red
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 2 - orange is a color
+    if:  hq-2 -lex-  orange
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 3 - yellow is a color
+    if:  hq-2 -lex-  yellow
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 4 - green is a color
+    if:  hq-2 -lex-  green
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 5 - blue is a color
+    if:  hq-2 -lex-  blue
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 6 - purple is a color
+    if:  hq-2 -lex-  purple
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 7 - black is a color
+    if:  hq-2 -lex-  black
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 8 - gray is a color
+    if:  hq-2 -lex-  gray
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 9 - white is a color
+    if:  hq-2 -lex-  white
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+
+// RULE 10 - big is a size
+    if:  hq-2 -lex-  big
+              -hq--> obj-1
+  then: ako-4 -lex-  size
+              -ako-> hq-2
+
+// RULE 11 - small is a size
+    if:  hq-2 -lex-  small
+              -hq--> obj-1
+  then: ako-4 -lex-  size
+              -ako-> hq-2  
+
+// RULE 12 - wide is a width
+    if:  hq-2 -lex-  wide
+              -hq--> obj-1
+  then: ako-4 -lex-  width
+              -ako-> hq-2 
+
+// RULE 13 - narrow is a width
+    if:  hq-2 -lex-  narrow
+              -hq--> obj-1
+  then: ako-4 -lex-  width
+              -ako-> hq-2 
+
+

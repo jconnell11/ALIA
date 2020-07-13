@@ -1,0 +1,127 @@
+//{{NO_DEPENDENCIES}}
+// Microsoft Visual C++ generated include file.
+// Used by MensEt.rc
+//
+#define IDD_ABOUTBOX                    100
+#define IDD_JHCITERATOR                 103
+#define IDD_JHCARGS                     104
+#define IDR_MAINFRAME                   128
+#define IDR_MensEtTYPE                  129
+#define IDD_JHCNAME                     130
+#define IDD_JHCCHATBOX                  131
+#define IDC_JHC_TXT1                    1000
+#define IDC_JHC_START                   1000
+#define IDC_JHC_NAME1                   1000
+#define IDC_JHC_CHAT                    1000
+#define IDC_JHC_ARG1                    1001
+#define IDC_JHC_RATE                    1001
+#define IDC_JHC_TPROMPT1                1001
+#define IDC_JHC_TXT2                    1002
+#define IDC_JHC_PAUSE                   1002
+#define IDC_JHC_CHECK1                  1002
+#define IDC_JHC_HIST                    1002
+#define IDC_JHC_ARG2                    1003
+#define IDC_JHC_BPROMPT1                1003
+#define IDC_JHC_TXT3                    1004
+#define IDC_JHC_ARG3                    1005
+#define IDC_JHC_TXT7                    1006
+#define IDC_JHC_ARG7                    1007
+#define IDC_BUTTON2                     1007
+#define IDC_JHC_TXT4                    1008
+#define IDC_JHC_ARG4                    1009
+#define IDC_JHC_TXT5                    1010
+#define IDC_JHC_ARG5                    1011
+#define IDC_JHC_TXT6                    1012
+#define IDC_JHC_ARG6                    1013
+#define IDC_JHC_TXT8                    1014
+#define IDC_JHC_ARG8                    1015
+#define IDC_JHC_ARGDEFAULT              1016
+#define IDC_JHC_STOP                    1028
+#define IDC_JHC_PSTART                  1029
+#define IDC_JHC_STEP                    1032
+#define IDC_JHC_DEFAULT                 1036
+#define IDC_JHC_WHERE                   1037
+#define IDC_JHC_FINAL                   1038
+#define IDC_JHC_KEY                     1040
+#define ID_TEST_PLAYVIDEO               32771
+#define ID_PARAMETERS_VIDEOCONTROL      32772
+#define ID_PARAMETERS_IMAGESIZE         32773
+#define ID_FILE_OPENEXPLICIT            32774
+#define ID_FILE_CAMERA                  32775
+#define ID_FILE_CAMERAADJUST            32776
+#define ID_FILE_OPENVIDEO               32777
+#define ID_PARAMETERS_SAVEDEFAULTS      32778
+#define ID_PARAMETERS_LOADDEFAULTS      32779
+#define ID_PARAMETERS_MensEtPARAMS      32780
+#define ID_PROCESSING                   32781
+#define ID_ENVIRONMENT_LOADGEOM         32782
+#define ID_ENVIRONMENT_SAVEGEOM         32783
+#define ID_DEMO_TEXT                    32784
+#define ID_DEMO_VOICE                   32785
+#define ID_UTILITIES_TEST               32786
+#define ID_DEMO_REMOTETEXT              32787
+#define ID_DEMO_REMOTEVOICE             32788
+#define ID_MANUS_RANGEPARAMS            32789
+#define ID_MANUS_DRIVEPARAMS            32790
+#define ID_MANUS_LIFTPARAMS             32791
+#define ID_MANUS_GRIPPARAMS             32792
+#define ID_MANUS_FORCEPARAMS            32793
+#define ID_DEMO_TEXTNOBOT               32794
+#define ID_DEMO_TEXT32797               32797
+#define ID_DEMO_TEXTNOVID               32798
+#define ID_DEMO_INTERACT                32799
+#define ID_DEMO_OPTIONS                 32800
+#define ID_DEMO_REMOTE                  32801
+#define ID_PARAMETERS_REMOTEPARAMS      32802
+#define ID_MANUS_CAMERAPARAMS           32803
+#define ID_CAMERAPARAMS_DEWARP          32804
+#define ID_PROCESSING_GROUNDPLANE       32805
+#define ID_PROCESSING_CLEANUP           32806
+#define ID_PARAMETERS_PATCHAREA         32807
+#define ID_PARAMETERS_FLOORPARAMS       32808
+#define ID_VISION_BOUNDS                32809
+#define ID_VISION_OBJECTS               32810
+#define ID_VISION_BOUNDARY              32811
+#define ID_REFLEXES                     32812
+#define ID_REFLEXES_STANDOFF            32813
+#define ID_REFLEXES_ENGULF              32814
+#define ID_REFLEXES_ACQUIRE             32815
+#define ID_REFLEXES_DEPOSIT             32816
+#define ID_REFLEXES_STACK               32817
+#define ID_REFLEXES_COZYUP              32818
+#define ID_REFLEXES_OPEN                32819
+#define ID_REFLEXES_CLOSE               32820
+#define ID_MANUS_WIDTHPARAMS            32821
+#define ID_VISION_STACKGROW             32822
+#define ID_PARAMETERS_SHAPEPARAMS       32823
+#define ID_VISION_COLORDIFFS            32826
+#define ID_VISION_SIMILARREGIONS        32827
+#define ID_FILE_SAVEINPUT               32828
+#define ID_PARAMETERS_CLEANPARAMS       32829
+#define ID_VISION_FEATURES              32830
+#define ID_PARAMETERS_QUANTPARAMS       32831
+#define ID_PARAMETERS_EXTRACTPARAMS     32832
+#define ID_PARAMETERS_PICKPARAMS        32833
+#define ID_PARAMETERS_STRIPEDPARAMS     32834
+#define ID_DEMO_FILELOCAL               32835
+#define ID_PARAMETERS_SIZEPARAMS        32836
+#define ID_MOTION_DISTANCE              32837
+#define ID_MOTION_TRANSLATION           32838
+#define ID_MOTION_ROTATION              32839
+#define ID_MOTION_LIFT                  32840
+#define ID_REFLEXES_INITPOSE            32841
+#define ID_DEMO_TIMING                  32842
+#define ID_UTILITIES_EXTVOCAB           32843
+#define ID_UTILITIES_TESTVOCAB          32844
+
+// Next default values for new objects
+// 
+#ifdef APSTUDIO_INVOKED
+#ifndef APSTUDIO_READONLY_SYMBOLS
+#define _APS_3D_CONTROLS                     1
+#define _APS_NEXT_RESOURCE_VALUE        136
+#define _APS_NEXT_COMMAND_VALUE         32845
+#define _APS_NEXT_CONTROL_VALUE         1009
+#define _APS_NEXT_SYMED_VALUE           101
+#endif
+#endif

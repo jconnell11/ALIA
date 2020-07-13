@@ -1,0 +1,43 @@
+// terms associated with jhcGraphizer speech acts
+// ================================================
+
+// singular noun
+
+=[AKO]
+  person
+  user
+  rule 
+  operator
+
+
+// adjective
+
+=[HQ]
+  awake
+
+
+// -----------------------------------------
+
+// imperative verb
+
+=[ACT]
+  understand
+  hail
+  dismiss
+  give
+  ask
+  tell
+
+
+// ================================================
+
+// irregular morphologies (np, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  person * npl = people
+  awake	* acomp = more awake
+  awake	* asup  = most awake
+  give * vpast = gave
+  tell * vpast = told
+  understand * vpast = understood
+

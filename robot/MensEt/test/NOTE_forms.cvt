@@ -1,0 +1,136 @@
+.................................................
+
+"if something is close drive backward"
+
+// OPERATOR
+trig:
+  NOTE[  hq-2 -lex-  close
+              -hq--> obj-1 ]
+-----------------
+    DO[ act-4 -lex-  drive
+              -tag-  vimp
+        dir-6 -lex-  backward
+              -dir-> act-4 ]
+
+.................................................
+
+"unless you are tired if something is close spin left"
+
+// OPERATOR
+trig:
+  NOTE[  hq-6 -lex-  close
+              -hq--> obj-5 ]
+unless:  hq-3 -lex-  tired
+              -hq--> obj-1
+        obj-1 -lex-  you
+-----------------
+    DO[  act-8 -lex-  spin
+               -tag-  vimp
+        dir-10 -lex-  left
+               -dir-> act-8  ]
+
+.................................................
+
+"if something is close but it is not red then toot"
+
+// OPERATOR
+trig:
+  NOTE[  hq-2 -lex-  close
+              -hq--> obj-1 ]
+unless:  hq-4 -lex-  red
+              -hq--> obj-1
+-----------------
+    DO[ act-6 -lex-  toot
+              -tag-  vimp ]
+
+.................................................
+
+"if something red is close then step forward"
+
+// OPERATOR
+trig:
+  NOTE[  hq-2 -lex-  red
+              -hq--> obj-1
+        obj-1 -tag-  aprop
+         hq-4 -lex-  close
+              -hq--> obj-1 ]
+-----------------
+    DO[ act-6 -lex-  step
+              -tag-  vimp
+        dir-8 -lex-  forward
+              -dir-> act-6 ]
+
+.................................................
+
+"if something is orange and it is striped squawk"
+
+// OPERATOR
+trig:
+  NOTE[  hq-2 -lex-  orange
+              -hq--> obj-1
+         hq-4 -lex-  striped
+              -hq--> obj-1 ]
+-----------------
+    DO[ act-6 -lex-  squawk
+              -tag-  vimp ]
+
+.................................................
+
+"if something is close drive backward then step forward"
+
+// OPERATOR
+trig:
+  NOTE[  hq-2 -lex-  close
+              -hq--> obj-1 ]
+-----------------
+    DO[ act-4 -lex-  drive
+              -tag-  vimp
+        dir-6 -lex-  backward
+              -dir-> act-4 ]
+    DO[  act-8 -lex-  step
+               -tag-  vimp
+        dir-10 -lex-  forward
+               -dir-> act-8  ]
+
+.................................................
+
+"if something is close bleep and turn left"
+
+// OPERATOR
+trig:
+  NOTE[  hq-2 -lex-  close
+              -hq--> obj-1 ]
+-----------------
+   >>>
+      DO[ act-4 -lex-  bleep
+                -tag-  vimp ]
+   +++
+      DO[ act-6 -lex-  turn
+                -tag-  vimp
+          dir-8 -lex-  left
+                -dir-> act-6 ]
+   <<<
+
+.................................................
+
+"if something is close drive backward then bleep and turn left"
+
+// OPERATOR
+trig:
+  NOTE[  hq-2 -lex-  close
+              -hq--> obj-1 ]
+-----------------
+    DO[ act-4 -lex-  drive
+              -tag-  vimp
+        dir-6 -lex-  backward
+              -dir-> act-4 ]
+   >>>
+      DO[ act-8 -lex-  bleep
+                -tag-  vimp ]
+   +++
+      DO[ act-10 -lex-  turn
+                 -tag-  vimp
+          dir-12 -lex-  left
+                 -dir-> act-10 ]
+   <<<
+

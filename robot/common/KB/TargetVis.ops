@@ -1,0 +1,40 @@
+// basic commands understood by the visual object characterization system
+// ================================================
+
+// FIND - OPERATOR 1: To find out what color something is ...
+trig:
+  FIND[  hq-3 -hq--> obj-1
+        ako-4 -lex-  color
+              -ako-> hq-3  ]
+-----------------
+   FCN[ fcn-1 -lex-  class_color
+              -arg-> obj-1 ]
+
+
+// FIND - OPERATOR 2: To find out what size something is ...
+trig:
+  FIND[  hq-3 -hq--> obj-1
+        ako-4 -lex-  size
+              -ako-> hq-3  ]
+-----------------
+   FCN[ fcn-1 -lex-  class_size
+              -arg-> obj-1 ]
+
+
+// FIND - OPERATOR 3: To find out what width something is ...
+trig:
+  FIND[  hq-3 -hq--> obj-1
+        ako-4 -lex-  width
+              -ako-> hq-3  ]
+-----------------
+   FCN[ fcn-1 -lex-  class_width
+              -arg-> obj-1 ]
+
+
+// CHK - OPERATOR 4: To check if something is striped ...
+trig:
+   CHK[  hq-3 -lex-  striped
+              -hq--> obj-1 ]
+-----------------
+   FCN[ fcn-1 -lex-  det_texture
+              -arg-> obj-1 ]

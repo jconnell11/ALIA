@@ -1,0 +1,667 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#endif //_WIN32\r\n"
+    "#include ""res\\Banzai.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""         // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON                    "res\\Banzai.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MAINFRAME MENU
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Camera ...",                 ID_FILE_CAMERA
+        MENUITEM "Camera &Adjust ...",          ID_FILE_CAMERAADJUST
+        MENUITEM "Kinect Sensor",               ID_FILE_KINECTSENSOR
+        MENUITEM "Kinect Hi-Res",               ID_FILE_KINECTHIRES
+        MENUITEM SEPARATOR
+        MENUITEM "&Open...",                    ID_FILE_OPEN
+        MENUITEM "Open &Video ...",             ID_FILE_OPENVIDEO
+        MENUITEM "&Explicit / URL ...",         ID_FILE_OPENEXPLICIT
+        MENUITEM SEPARATOR
+        MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
+        MENUITEM SEPARATOR
+        MENUITEM "Save &Result ...",            ID_FILE_SAVE_AS
+        MENUITEM "Save &Source ...",            ID_FILE_SAVESOURCE
+        MENUITEM SEPARATOR
+        MENUITEM "&About Banzai...",            ID_APP_ABOUT
+        MENUITEM "E&xit",                       ID_APP_EXIT
+    END
+    MENUITEM "|",                           0
+    POPUP "&People"
+    BEGIN
+        MENUITEM "&Watching",                   ID_PARAMETERS_WATCHING
+        MENUITEM "&Orienting",                  ID_PARAMETERS_ORIENTING
+        MENUITEM "&Idle Timing",                ID_PARAMETERS_TARGETTIME
+        MENUITEM "&Visibility",                 ID_PEOPLE_VISIBILITY
+        MENUITEM SEPARATOR
+        MENUITEM "&Social Attn",                ID_PEOPLE_SOCIALEVENTS
+        MENUITEM "Social &Move",                ID_PEOPLE_SOCIALMOVE
+        MENUITEM SEPARATOR
+        MENUITEM "Enroll &Photo",               ID_ATTENTION_ENROLLPHOTO
+        MENUITEM "&Enroll Live",                ID_ATTENTION_ENROLLLIVE
+    END
+    POPUP "&Nav"
+    BEGIN
+        MENUITEM "&Map Size",                   ID_NAVIGATION_UPDATING
+        MENUITEM "FOV + &Dims",                 ID_NAV_FOVLIMITS
+        MENUITEM "Con&fidence",                 ID_NAV_CONFIDENCE
+        MENUITEM "&Guidance",                   ID_NAV_GUIDANCE
+        MENUITEM SEPARATOR
+        MENUITEM "&Cam Calib",                  ID_NAV_CAMCALIB
+    END
+    POPUP "&Ballistic"
+    BEGIN
+        MENUITEM "Body &Events",                ID_PARAMETERS_BATTERYLEVEL
+        MENUITEM SEPARATOR
+        MENUITEM "&Neck Cmd",                   ID_GROUNDING_NECKCMD
+        MENUITEM "&Lift Cmd",                   ID_PARAMETERS_LIFTCMD
+        MENUITEM SEPARATOR
+        MENUITEM "&Arm Home",                   ID_PARAMETERS_ARMHOME
+        MENUITEM "&Hand Cmd",                   ID_GROUNDING_HANDCMD
+        MENUITEM "&Wrist Cmd",                  ID_GROUNDING_WRISTCMD
+        MENUITEM "&Grab Cmd",                   ID_PARAMETERS_GRABCMD
+        MENUITEM SEPARATOR
+        MENUITEM "&Move Cmd",                   ID_PARAMETERS_MOVECMD
+        MENUITEM "&Turn Cmd",                   ID_PARAMETERS_TURNCMD
+        MENUITEM "Base &Progress",              ID_PARAMETERS_BASEPROGRESS
+    END
+    POPUP "&Ramps"
+    BEGIN
+        MENUITEM "&Neck Ramp",                  ID_RAMP_NECKRAMP
+        MENUITEM "&Lift Ramp",                  ID_PARAMETERS_LIFTRAMP
+        MENUITEM SEPARATOR
+        MENUITEM "&Arm Ramp",                   ID_PROFILING_ARMRAMP
+        MENUITEM "&Grab Ramp",                  ID_PARAMETERS_GRABRAMP
+        MENUITEM SEPARATOR
+        MENUITEM "&Base Ramp",                  ID_PARAMETERS_BASERAMP
+        MENUITEM SEPARATOR
+        MENUITEM "&Save Defaults",              ID_PARAMETERS_SAVEDEFAULTS
+        MENUITEM "Load &Defaults",              ID_PARAMETERS_LOADDEFAULTS
+    END
+    MENUITEM "|",                           ID_32839
+    POPUP "&Innate"
+    BEGIN
+        MENUITEM "&Limp",                       ID_ARM_LIMP
+        MENUITEM "&Neutral",                    ID_ANIMATION_NEUTRAL
+        MENUITEM "&Breathe",                    ID_ANIMATION_IDLE
+        MENUITEM SEPARATOR
+        MENUITEM "&Track Head",                 ID_DEPTH_TRACKHEAD
+        MENUITEM "&Head Gaze",                  ID_DEPTH_PERSONMAP
+        MENUITEM "&Speaking",                   ID_PEOPLE_SPEAKING
+    END
+    POPUP "&Environ"
+    BEGIN
+        MENUITEM "&Height Map",                 ID_ENVIRON_FLOORMAP
+        MENUITEM "&Integrated",                 ID_ENVIRON_INTEGRATED
+        MENUITEM "Local &Paths",                ID_ENVIRON_LOCALPATHS
+        MENUITEM "&Dist Sensors",               ID_ENVIRON_DISTANCES
+        MENUITEM SEPARATOR
+        MENUITEM "&Seek Loc",                   ID_ENVIRON_GOTO
+    END
+    POPUP "&Arm"
+    BEGIN
+        MENUITEM "Swing &Params",               ID_ARM_SWINGPARAMS
+        MENUITEM "&Swing Joint",                ID_ARM_SWINGJOINT
+        MENUITEM "&Goto Pose",                  ID_ARM_GOTOPOSE
+        MENUITEM SEPARATOR
+        MENUITEM "Hand &Force",                 ID_ARM_HANDFORCE
+        MENUITEM "Drag &Hand",                  ID_FORCE_DRAGHAND
+        MENUITEM "Drag &Robot",                 ID_FORCE_DRAGROBOT
+        MENUITEM SEPARATOR
+        MENUITEM "Push &Down",                  ID_ARM_PUSHDOWN
+        MENUITEM "&Push Forward",               ID_ARM_PUSHFORWARD
+    END
+    MENUITEM "|",                           ID_
+    POPUP "&Demo"
+    BEGIN
+        MENUITEM "Demo &Options",               ID_DEMO_DEMOOPTIONS
+        MENUITEM "Attn + Time",                 ID_DEMO_ATTN
+        MENUITEM "&Reset Robot",                ID_DEMO_RESETROBOT
+        MENUITEM SEPARATOR
+        MENUITEM "&Text File",                  ID_DEMO_TEXTFILE
+        MENUITEM "> &Interactive",              ID_DEMO_INTERACTIVE
+    END
+    POPUP "&Utilities"
+    BEGIN
+        MENUITEM "&Video Control",              ID_PARAMETERS_VIDEOCONTROL
+        MENUITEM "&Image Size",                 ID_PARAMETERS_IMAGESIZE
+        MENUITEM SEPARATOR
+        MENUITEM "Play &Color",                 ID_TEST_PLAYVIDEO
+        MENUITEM "Play &Depth",                 ID_UTILITIES_PLAYDEPTH
+        MENUITEM "&Play Both",                  ID_UTILITIES_PLAYBOTH
+        MENUITEM SEPARATOR
+        MENUITEM "&Extract Words",              ID_UTILITIES_EXTRACTWORDS
+        MENUITEM "Chk &Grammar",                ID_UTILITIES_CHKGRAMMAR
+        MENUITEM SEPARATOR
+        MENUITEM "Vivid View",                  ID_INTEREST_VIVIDVIEW
+        MENUITEM "Test",                        ID_UTILITIES_TEST
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_MAINFRAME ACCELERATORS
+BEGIN
+    "N",            ID_FILE_NEW,            VIRTKEY, CONTROL
+    "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL
+    "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL
+    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL
+    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT
+    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT
+    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL
+    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT
+    VK_F6,          ID_NEXT_PANE,           VIRTKEY 
+    VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 233, 58
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About Banzai"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
+    LTEXT           "Banzai Version 3.30",IDC_STATIC,47,11,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2015-2020, IBM Corporation",IDC_STATIC,47,36,171,8
+    DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
+    LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
+END
+
+IDD_JHCARGS DIALOGEX 0, 0, 218, 170
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Parameter Selection"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_JHC_ARG1,106,7,40,15,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG2,106,25,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG3,106,45,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG4,106,64,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG5,106,83,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG6,106,102,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG7,105,130,54,15,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG8,105,148,54,15,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_TXT1,7,7,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT2,7,26,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT3,7,45,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT4,7,64,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT5,7,83,91,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT6,7,102,91,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT7,7,129,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT8,7,148,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    PUSHBUTTON      "Cancel",IDCANCEL,161,45,50,14
+    DEFPUSHBUTTON   "OK",IDOK,161,7,50,14
+    PUSHBUTTON      "Defaults",IDC_JHC_ARGDEFAULT,161,25,50,14
+    LTEXT           "___________________________________________________",IDC_STATIC,7,115,204,11
+END
+
+IDD_JHCNAME DIALOGEX 0, 0, 262, 46
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Enter specification"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_JHC_NAME1,7,24,188,13,ES_AUTOHSCROLL
+    CONTROL         "",IDC_JHC_CHECK1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,177,7,16,11
+    EDITTEXT        IDC_JHC_TPROMPT1,7,7,97,12,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER
+    EDITTEXT        IDC_JHC_BPROMPT1,124,7,46,12,ES_RIGHT | ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    DEFPUSHBUTTON   "OK",IDOK,205,7,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,205,24,50,14
+END
+
+IDD_JHCITERATOR DIALOG 0, 0, 200, 98
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Video Parameters"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Pause",IDC_STATIC,7,7,21,8
+    EDITTEXT        IDC_JHC_PAUSE,7,17,32,15,ES_AUTOHSCROLL
+    LTEXT           "Start Selection",IDC_STATIC,7,66,50,8
+    EDITTEXT        IDC_JHC_START,7,76,54,14,ES_AUTOHSCROLL
+    LTEXT           "Stop Selection",IDC_STATIC,73,66,47,8
+    EDITTEXT        IDC_JHC_STOP,73,76,54,14,ES_AUTOHSCROLL
+    LTEXT           "Start Pause",IDC_STATIC,140,67,40,8
+    EDITTEXT        IDC_JHC_PSTART,139,77,54,14,ES_AUTOHSCROLL
+    LTEXT           "Step",IDC_STATIC,95,7,16,8
+    EDITTEXT        IDC_JHC_STEP,95,17,32,15,ES_AUTOHSCROLL
+    LTEXT           "FPS",IDC_STATIC,51,7,35,8
+    EDITTEXT        IDC_JHC_RATE,51,17,32,15,ES_AUTOHSCROLL
+    LTEXT           "Last Shown",IDC_STATIC,7,37,38,8
+    EDITTEXT        IDC_JHC_WHERE,7,48,54,14,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "End of Video",IDC_STATIC,73,37,42,8
+    EDITTEXT        IDC_JHC_FINAL,73,48,54,14,ES_AUTOHSCROLL | ES_READONLY
+    DEFPUSHBUTTON   "OK",IDOK,139,7,54,14
+    PUSHBUTTON      "Cancel",IDCANCEL,139,26,54,14
+    PUSHBUTTON      "Defaults",IDC_JHC_DEFAULT,139,47,54,14
+END
+
+IDD_JHCCHATBOX DIALOGEX 0, 0, 250, 287
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Conversation"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Quit",IDOK,213,251,30,29
+    EDITTEXT        IDC_JHC_CHAT,7,251,201,29,ES_MULTILINE
+    LTEXT           "Input:",IDC_STATIC,7,239,68,12
+    LISTBOX         IDC_JHC_HIST,7,7,236,230,NOT LBS_NOTIFY | LBS_SORT | LBS_OWNERDRAWVARIABLE | LBS_HASSTRINGS | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "Banzai MFC Application"
+            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "InternalName", "Banzai"
+            VALUE "LegalCopyright", "Copyright (C) 2002"
+            VALUE "OriginalFilename", "Banzai.EXE"
+            VALUE "ProductName", "Banzai Application"
+            VALUE "ProductVersion", "1, 0, 0, 1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 226
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 51
+    END
+
+    IDD_JHCARGS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 211
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 163
+    END
+
+    IDD_JHCNAME, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 256
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 39
+    END
+
+    IDD_JHCITERATOR, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 193
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 91
+    END
+
+    IDD_JHCCHATBOX, DIALOG
+    BEGIN
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDR_MAINFRAME           "Banzai\n\nBanzai\n\n\nBanzai.Document\nBanzai Document"
+END
+
+STRINGTABLE
+BEGIN
+    AFX_IDS_APP_TITLE       "Banzai"
+    AFX_IDS_IDLEMESSAGE     "Ready"
+END
+
+STRINGTABLE
+BEGIN
+    ID_INDICATOR_EXT        "EXT"
+    ID_INDICATOR_CAPS       "CAP"
+    ID_INDICATOR_NUM        "NUM"
+    ID_INDICATOR_SCRL       "SCRL"
+    ID_INDICATOR_OVR        "OVR"
+    ID_INDICATOR_REC        "REC"
+END
+
+STRINGTABLE
+BEGIN
+    ID_FILE_NEW             "Create a new document\nNew"
+    ID_FILE_OPEN            "Open an existing video file"
+    ID_FILE_CLOSE           "Close the active document\nClose"
+    ID_FILE_SAVE            "Save the active document\nSave"
+    ID_FILE_SAVE_AS         "Save the most recent result image"
+END
+
+STRINGTABLE
+BEGIN
+    ID_APP_ABOUT            "Display program information, version number and copyright"
+    ID_APP_EXIT             "Quit the application"
+END
+
+STRINGTABLE
+BEGIN
+    ID_FILE_MRU_FILE1       "Open this document"
+    ID_FILE_MRU_FILE2       "Open this document"
+    ID_FILE_MRU_FILE3       "Open this document"
+    ID_FILE_MRU_FILE4       "Open this document"
+    ID_FILE_MRU_FILE5       "Open this document"
+    ID_FILE_MRU_FILE6       "Open this document"
+    ID_FILE_MRU_FILE7       "Open this document"
+    ID_FILE_MRU_FILE8       "Open this document"
+    ID_FILE_MRU_FILE9       "Open this document"
+    ID_FILE_MRU_FILE10      "Open this document"
+    ID_FILE_MRU_FILE11      "Open this document"
+    ID_FILE_MRU_FILE12      "Open this document"
+    ID_FILE_MRU_FILE13      "Open this document"
+    ID_FILE_MRU_FILE14      "Open this document"
+    ID_FILE_MRU_FILE15      "Open this document"
+    ID_FILE_MRU_FILE16      "Open this document"
+END
+
+STRINGTABLE
+BEGIN
+    ID_NEXT_PANE            "Switch to the next window pane\nNext Pane"
+    ID_PREV_PANE            "Switch back to the previous window pane\nPrevious Pane"
+END
+
+STRINGTABLE
+BEGIN
+    ID_WINDOW_SPLIT         "Split the active window into panes\nSplit"
+END
+
+STRINGTABLE
+BEGIN
+    ID_EDIT_CLEAR           "Erase the selection\nErase"
+    ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
+    ID_EDIT_COPY            "Copy the selection and put it on the Clipboard\nCopy"
+    ID_EDIT_CUT             "Cut the selection and put it on the Clipboard\nCut"
+    ID_EDIT_FIND            "Find the specified text\nFind"
+    ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
+    ID_EDIT_REPEAT          "Repeat the last action\nRepeat"
+    ID_EDIT_REPLACE         "Replace specific text with different text\nReplace"
+    ID_EDIT_SELECT_ALL      "Select the entire document\nSelect All"
+    ID_EDIT_UNDO            "Undo the last action\nUndo"
+    ID_EDIT_REDO            "Redo the previously undone action\nRedo"
+END
+
+STRINGTABLE
+BEGIN
+    ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
+END
+
+STRINGTABLE
+BEGIN
+    AFX_IDS_SCSIZE          "Change the window size"
+    AFX_IDS_SCMOVE          "Change the window position"
+    AFX_IDS_SCMINIMIZE      "Reduce the window to an icon"
+    AFX_IDS_SCMAXIMIZE      "Enlarge the window to full size"
+    AFX_IDS_SCNEXTWINDOW    "Switch to the next document window"
+    AFX_IDS_SCPREVWINDOW    "Switch to the previous document window"
+    AFX_IDS_SCCLOSE         "Close the active window and prompts to save the documents"
+END
+
+STRINGTABLE
+BEGIN
+    AFX_IDS_SCRESTORE       "Restore the window to normal size"
+    AFX_IDS_SCTASKLIST      "Activate Task List"
+END
+
+STRINGTABLE
+BEGIN
+    ID_TEST_PLAYVIDEO       "Play from selected video source using current parameters"
+    ID_PARAMETERS_VIDEOCONTROL "Change playback speed, start frame, etc."
+    ID_PARAMETERS_IMAGESIZE "Change or restrict image size, set for black and white"
+    ID_FILE_OPENEXPLICIT    "Directly open a file, URL, or wildcard image list"
+    ID_FILE_CAMERA          "Connect to some VFW video capture device"
+    ID_FILE_CAMERAADJUST    "Change compression, size, speed etc. of framegrabber"
+    ID_FILE_OPENVIDEO       "Open a video of a known type (filters listing)"
+    ID_PARAMETERS_SAVEDEFAULTS "Save current processing parameters to a file"
+    ID_PARAMETERS_LOADDEFAULTS "Load processing parameters from a file"
+    ID_PARAMETERS_BanzaiPARAMS 
+                            "Load geometric calibration parameters for robot body"
+    ID_UTILITIES_PLAYDEPTH  "Play just the depth images a dual source"
+    ID_UTILITIES_PLAYBOTH   "Play both color and depth from current source"
+END
+
+STRINGTABLE
+BEGIN
+    ID_FILE_KINECTSENSOR    "Connect to combined color and depth sensor"
+    ID_FILE_KINECTHIRES     "Get slow high-resolution color and fast depth "
+    ID_FILE_SAVESOURCE      "Save most recent sensor inputs"
+    ID_INTEREST_VIVIDVIEW   "Show color and texture enhanced image"
+    ID_ANIMATION_IDLE       "Show simple evidence of power on status"
+    ID_ANIMATION_TWITCH     "Periodically make some small motion in a joint"
+    ID_ANIMATION_FIDGET     "Combine all idle animations"
+    ID_ANIMATION_WHISTLE    "Play a short melody from time to time"
+    ID_ANIMATION_NEUTRAL    "Assume default pose for all actuators"
+    ID_ATTENTION_FLESHTONE  "Look for roughly flesh colored regions"
+    ID_ATTENTION_FACES      "Look at any faces found"
+    ID_ATTENTION_HANDS      "Look at hands based on depth"
+    ID_ATTENTION_BOREDOM    "Ignore current object of interest after a while"
+END
+
+STRINGTABLE
+BEGIN
+    ID_ATTENTION_BODYROT    "Turn body when head is far off center"
+    ID_ATTENTION_SOUND      "Turn toward sudden sounds"
+    ID_ATTENTION_MOTION     "&Gaze at fast moving things"
+    ID_ANIMATION_REFLEX     "Do all things not controlled by central cognition (incl. attention)"
+    ID_ARM_GOTOPOSE         "Establish target pose then achieve it form various starting points"
+    ID_ARM_HANDFORCE        "Show direction and magnitude of endpoint force"
+    ID_ARM_SWINGJOINT       "Move some joint back and forth to set acceleration"
+    ID_ARM_SWINGPARAMS      "Pick joint and rate as well as start and end angles for swing test "
+    ID_ARM_LIMP             "Set all arm servos to passive"
+    ID_FORCE_DRAGHAND       "Pose arm by pushing on hand"
+    ID_FORCE_DRAGROBOT      "Steer base by pulling on hand"
+    ID_ARM_PUSHDOWN         "Move hand to push down on a button"
+    ID_ARM_PUSHFORWARD      "Move hand to push forward at a button"
+    ID_DEMO_DEMOOPTIONS     "Configure for voice, camera, etc."
+END
+
+STRINGTABLE
+BEGIN
+    ID_DEMO_TEXTFILE        "Read successive inputs from a text file"
+    ID_DEMO_INTERACTIVE     "Send commands and provide advice using dialog"
+    ID_PARAMETERS_MOVECMD   "How to interpret words in translation commands"
+    ID_PARAMETERS_TURNCMD   "How to interpret words in rotation commands"
+    ID_PARAMETERS_BASEPROGRESS 
+                            "How to determine if a translation or rotation has failed"
+    ID_PARAMETERS_BASERAMP  "Trapezoidal profiling for translation and rotation"
+    ID_DEMO_RESETROBOT      "Force a robot hardware reset"
+    ID_PARAMETERS_LIFTCMD   "How to interpret words in fork lift stage commands"
+    ID_PARAMETERS_LIFTRAMP  "Trapezoidal profiling for lift stage"
+    ID_PARAMETERS_BATTERYLEVEL 
+                            "Set battery notification level, drop detection, etc. "
+    ID_PARAMETERS_GRABCMD   "Parameters for holding and releasing objects"
+    ID_PARAMETERS_GRABRAMP  "Speed of finger motion and force adjustment step"
+    ID_PARAMETERS_ARMHOME   "Set pose for extended arm and hand"
+    ID_GROUNDING_HANDCMD    "Parameters for changing position of hand"
+END
+
+STRINGTABLE
+BEGIN
+    ID_GROUNDING_WRISTCMD   "Parameters for changing orientation of hand"
+    ID_GROUNDING_NECKCMD    "Parameters for changing gaze direction of head"
+    ID_RAMP_NECKRAMP        "Motion profiling for change of gaze direction"
+    ID_PROFILING_ARMRAMP    "Trapezoidal profiling for arm positioning"
+    ID_DEPTH_PERSONMAP      "Beeps if user is gazing at robot"
+    ID_DEPTH_TRACKHEAD      "Continuously aim Kinect at closest detected head"
+    ID_PEOPLE_SPEAKING      "Determine which person is talking"
+    ID_PARAMETERS_WATCHING  "What human activities to innately watch"
+    ID_PARAMETERS_ORIENTING "Parameters controlling details of watching behaviors"
+    ID_PARAMETERS_SOUNDSRC  "Parameters for setting up a sound source location"
+    ID_PARAMETERS_TARGETTIME "Adjust timing of innate attention behaviors"
+END
+
+STRINGTABLE
+BEGIN
+    ID_ATTENTION_ENROLLPHOTO "Supply an external mugshot for some person"
+    ID_ATTENTION_ENROLLLIVE "Take a picture of some particular person"
+    ID_PEOPLE_SOCIALEVENTS  "Parameters for detecting and selecting people"
+    ID_PEOPLE_SOCIALMOVE    "Parameters controlling approach and following of people"
+    ID_UTILITIES_EXTRACTWORDS 
+                            "Get preliminary grammar terms from operators and rules"
+    ID_UTILITIES_CHKGRAMMAR "Refine grammar terms for consistent morphology"
+    ID_ENVIRON_FLOORMAP     "Show instantaneous Kinect height map with neck limp"
+    ID_NAVIGATION_MAOSIZE   "Parameters governing range of map around robot"
+    ID_NAVIGATION_UPDATING  "Parameters for ground obstacle map around robot"
+    ID_ENVIRON_INTEGRATED   "Show floor map integrated over time including base movement"
+    ID_NAV_MAPCLEAR         "Parameters to find floor and clear areas"
+    ID_ENVIRON_AIRCONF      "Show maximum height imaged for obstacles"
+    ID_ENVIRON_FLATAREA     "Show how far the robot can drive forward in the current environment"
+    ID_NAV_CAMCALIB         "Refine sensor tilt, roll, and height based on floor"
+    ID_NAV_GUIDANCE         "Parameters for determining where the robot can move based on the map"
+    ID_ENVIRON_AVOIDANCE    "Show reachable areas and collision avoidance detours"
+END
+
+STRINGTABLE
+BEGIN
+    ID_ENVIRON_WANDER       "Keep moving forward trying to swerve around obstacles"
+    ID_ENVIRON_COZYUP       "Move straight ahead until blocked by obstacle"
+    ID_ENVIRON_LOCALPATHS   "Show distances robot can go in various orientations"
+    ID_ENVIRON_DISTANCES    "Show valid forward and backward motions on large maps"
+    ID_NAV_FOVLIMITS        "Define active part of Kinect sensing cone and size of robot"
+    ID_ENVIRON_GOTO         "Pick fixed map location for robot to travel toward"
+    ID_NAV_CONFIDENCE       "Parameters governing minimal area and map fading"
+    ID_PEOPLE_VISIBILITY    "Angular range where heads are likely to be detected"
+    ID_DEMO_ATTN            "Adjust attention timing and thought rate"
+END
+
+#endif    // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE 9, 1
+#pragma code_page(1252)
+#endif //_WIN32
+#include "res\Banzai.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"         // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

@@ -1,0 +1,69 @@
+// OPEN CLASS WORDS
+// ================================================
+
+// singular noun
+
+=[AKO]
+  tiger
+
+
+// mass nouns (do not take "the" or "a")
+
+=[AKO-M]
+
+
+// adjective
+
+=[HQ]
+  orange
+  striped
+
+
+// proper noun
+
+=[NAME]
+
+
+// robot name
+
+=[ATTN]
+  robot
+
+
+// -----------------------------------------
+
+// modifier
+
+=[MOD]
+
+
+// direction
+
+=[DIR]
+
+
+// imperative verb
+
+=[ACT]
+  do something
+  do anything
+  sleep
+  stop
+
+
+// ================================================
+
+// irregular morphologies (np, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  do something * vpres = does something
+  do something * vprog = doing something
+  do something * vpast = did something
+  do anything * vpres = does anything
+  do anything * vprog = doing anything
+  do anything * vpast = did anything
+  orange * acomp = oranger
+  orange * asup  = orangest
+  striped * acomp = more striped
+  striped * asup  = most striped
+  sleep * vpast = slept

@@ -1,0 +1,1003 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{8d54b274-dac5-40dc-9252-04e89e0d577a}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Afx-Standard">
+      <UniqueIdentifier>{31ef496e-2d1b-4279-b2af-cd564e5248f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Program">
+      <UniqueIdentifier>{2313f50f-9401-4c89-a9cb-41569fc9811d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video">
+      <UniqueIdentifier>{d9003f5d-d704-425e-84d4-94f3ce9683b5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\Data">
+      <UniqueIdentifier>{f7d242e4-93e8-4699-8c58-d5ea7cfc8e7f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\Interface">
+      <UniqueIdentifier>{a72c5be3-8780-4923-8f8d-d7930a033d84}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\Processing">
+      <UniqueIdentifier>{9bd8459d-9f5b-4979-a71b-b7399e519cc2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\Video">
+      <UniqueIdentifier>{9cf0088a-e6f2-42cd-a90a-0042cf7a502f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common audio">
+      <UniqueIdentifier>{cf03769b-6cc9-45b8-8c28-b68ead32ce44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common audio\Acoustic">
+      <UniqueIdentifier>{c8bc5a7b-2531-480c-9ac3-e7dc78ca5d35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common audio\Semantic">
+      <UniqueIdentifier>{583f7403-b075-4faf-9c5e-fa97c2fc30ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common audio\Parse">
+      <UniqueIdentifier>{b3a8d028-3fae-4f26-ad70-bb34646195d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot">
+      <UniqueIdentifier>{2d7bc977-515b-40a7-9ecc-2483ac319f79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Action">
+      <UniqueIdentifier>{e0b1350b-b5d4-42de-ad66-484cba30924c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Body">
+      <UniqueIdentifier>{5f21d5ba-7df3-46e3-b68a-9d7a8a42bb94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Depth">
+      <UniqueIdentifier>{fddc1d46-0da4-4ead-a07a-9a30fcd5e33d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Eli">
+      <UniqueIdentifier>{ee14e610-5663-4256-a285-e6e342c41e05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Peripheral">
+      <UniqueIdentifier>{28569628-029b-433a-b17b-256e1d274eb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Geometry">
+      <UniqueIdentifier>{0e916211-80ef-4a0d-ad8b-5105b1d05859}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{9c7cc6d9-e5a7-4c63-ba37-38c024e20500}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Afx-Standard">
+      <UniqueIdentifier>{dac01a41-a33d-4c54-8929-bcb9467fb35d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Program">
+      <UniqueIdentifier>{b75d305d-da7e-4458-b546-c8b8e8d3b805}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video">
+      <UniqueIdentifier>{6b7c8a86-b065-4182-92aa-c2828216ea2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\Data">
+      <UniqueIdentifier>{403b3419-76e8-487b-81de-aad6c91a3877}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\Interface">
+      <UniqueIdentifier>{3647eea3-2d91-4551-9f3c-9aae8bda1353}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\Processing">
+      <UniqueIdentifier>{f771e0cf-16b4-4807-9ce8-6f7f35d6c564}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\Video">
+      <UniqueIdentifier>{3d118d33-4f63-401b-8990-c70796fa1ceb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio">
+      <UniqueIdentifier>{72d41556-08a7-49d5-9cbc-348c23a532d1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio\Acoustic">
+      <UniqueIdentifier>{b26c0dec-96cc-4290-8414-41c0ce953c15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio\Semantic">
+      <UniqueIdentifier>{60ae58cf-1b8f-48ce-bd21-f92a3178729d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio\Parse">
+      <UniqueIdentifier>{2c97c29a-f6a2-4f40-8454-b9487be49dd5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot">
+      <UniqueIdentifier>{23d2acb6-8f9a-4426-a619-f7d4b937d39f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Body">
+      <UniqueIdentifier>{987f668c-be31-438b-a48d-6e83195bd144}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Eli">
+      <UniqueIdentifier>{39b9aac9-cd75-4e4e-ba32-57d5b192bb2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Peripheral">
+      <UniqueIdentifier>{3917ce5a-9916-4728-969d-f4aa04a3aee3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Action">
+      <UniqueIdentifier>{1838580b-5e5d-4375-ac5a-5b5a52a3dee1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Depth">
+      <UniqueIdentifier>{745094f7-0b32-470c-a1e7-c35e86a9bb38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Geometry">
+      <UniqueIdentifier>{06cffcc6-6124-4d8d-82b5-9d55642ea891}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{8e905317-992b-4de2-a0ed-614910270029}</UniqueIdentifier>
+      <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
+    </Filter>
+    <Filter Include="Header Files\common audio\Language">
+      <UniqueIdentifier>{d06c954b-14be-4436-942c-315755a0f789}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common audio\Language">
+      <UniqueIdentifier>{54e7c4f5-818c-4536-bdbd-105d95c6dc5c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common audio\Reasoning">
+      <UniqueIdentifier>{e03ec165-7638-4f54-847a-0cb820defda1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio\Reasoning">
+      <UniqueIdentifier>{8a5f2084-9e42-4cc9-ad0a-23ee6a713f93}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Grounding">
+      <UniqueIdentifier>{5be7d156-00d3-4f8a-b6af-771169b920a1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Grounding">
+      <UniqueIdentifier>{abb3637f-04c8-403b-a87c-fb6b6d3e418f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\People">
+      <UniqueIdentifier>{54c1acc0-94d5-4916-85a9-ce600f04509f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Objects">
+      <UniqueIdentifier>{c4409c8d-5c09-474d-a17f-03f6de7deeec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\People">
+      <UniqueIdentifier>{ce091bb0-b699-4a4b-b6f7-25b62d5696eb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Objects">
+      <UniqueIdentifier>{746be9bc-5c94-44bd-ae97-7d55136d5579}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\System">
+      <UniqueIdentifier>{ebc6bc64-fde9-4d79-9eed-c88ff48e6475}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\System">
+      <UniqueIdentifier>{cf11c7b8-4344-487d-8da8-ba57b14ad6cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\Face">
+      <UniqueIdentifier>{23be1a2a-69a4-4e8c-896f-babc3dd694f4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\Face">
+      <UniqueIdentifier>{480acc64-1033-4426-83dd-f3bd9f38c88f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Environ">
+      <UniqueIdentifier>{7f75513a-1ae7-4627-8a4a-70c3ad0237cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Environ">
+      <UniqueIdentifier>{f158a761-e4db-4bdd-b17b-00923fbbefcb}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="BanzaiDoc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Banzai.cpp">
+      <Filter>Source Files\Afx-Standard</Filter>
+    </ClCompile>
+    <ClCompile Include="BanzaiView.cpp">
+      <Filter>Source Files\Afx-Standard</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcArr.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcImg.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcImgIO.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcImgMS.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcName.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcParam.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcRoi.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcConsole.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcDisplay.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcPickStep.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcPickString.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcPickVals.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcSerial.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcString.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jprintf.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jrand.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jtimer.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcALU.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcArea.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcColor.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcDist.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcDraw.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcEdge.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcFilter.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcGray.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcGroup.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcHist.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcLUT.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcResize.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcRuns.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcStats.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcThresh.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcVect.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcAviVSink.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcDxVSrc.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcExpVSrc.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcGenVSrc.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcKinVSrc.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcListVSrc.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcVideoSink.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcVideoSrc.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcVidReg.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Video\jhcWmVSrc.cpp">
+      <Filter>Source Files\common video\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcSpeechX.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcSpRecoMS.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcSpTextMS.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcTxtSrc.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliArm.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliBase.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliBody.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliLift.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliNeck.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Peripheral\jhcAccelXY.cpp">
+      <Filter>Source Files\common robot\Peripheral</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Peripheral\jhcDirMic.cpp">
+      <Filter>Source Files\common robot\Peripheral</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Peripheral\jhcDynamixel.cpp">
+      <Filter>Source Files\common robot\Peripheral</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Peripheral\jhcSerialFTDI.cpp">
+      <Filter>Source Files\common robot\Peripheral</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Geometry\jhcJoint.cpp">
+      <Filter>Source Files\common robot\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Geometry\jhcMatrix.cpp">
+      <Filter>Source Files\common robot\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Geometry\jhcMotRamp.cpp">
+      <Filter>Source Files\common robot\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jms_x.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcChatBox.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcChatHist.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcGenParse.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcTxtLine.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcGramExec.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcGramRule.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcSlotVal.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Language\jhcDegrapher.cpp">
+      <Filter>Source Files\common audio\Language</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Language\jhcNetRef.cpp">
+      <Filter>Source Files\common audio\Language</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Language\jhcGraphizer.cpp">
+      <Filter>Source Files\common audio\Language</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Semantic\jhcBindings.cpp">
+      <Filter>Source Files\common audio\Semantic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Semantic\jhcSituation.cpp">
+      <Filter>Source Files\common audio\Semantic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Semantic\jhcGraphlet.cpp">
+      <Filter>Source Files\common audio\Semantic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Semantic\jhcNetNode.cpp">
+      <Filter>Source Files\common audio\Semantic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Semantic\jhcNodePool.cpp">
+      <Filter>Source Files\common audio\Semantic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaAttn.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcWorkMem.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaOp.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaRule.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAssocMem.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcProcMem.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaChain.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcTimedFcns.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaCore.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaDir.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaDLL.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaPlay.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcEchoFcn.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcTalkFcn.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
+    </ClCompile>
+    <ClCompile Include="jhcEliCoord.cpp">
+      <Filter>Source Files\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Eli\jhcManipFSM.cpp">
+      <Filter>Source Files\common robot\Eli</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcBallistic.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
+    </ClCompile>
+    <ClCompile Include="BanzaiFrm.cpp">
+      <Filter>Source Files\Afx-Standard</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcBackgRWI.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\People\jhcParse3D.cpp">
+      <Filter>Source Files\common robot\People</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\People\jhcTrack3D.cpp">
+      <Filter>Source Files\common robot\People</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\People\jhcStare3D.cpp">
+      <Filter>Source Files\common robot\People</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\People\jhcBodyData.cpp">
+      <Filter>Source Files\common robot\People</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Depth\jhcOverhead3D.cpp">
+      <Filter>Source Files\common robot\Depth</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Depth\jhcSurface3D.cpp">
+      <Filter>Source Files\common robot\Depth</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Geometry\jhcPlaneEst.cpp">
+      <Filter>Source Files\common robot\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\System\jhcFill.cpp">
+      <Filter>Source Files\common video\System</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcBBox.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcBlob.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcLabel.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Geometry\jhcKalVec.cpp">
+      <Filter>Source Files\common robot\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\People\jhcHeadGaze.cpp">
+      <Filter>Source Files\common robot\People</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Face\jhcFrontal.cpp">
+      <Filter>Source Files\common video\Face</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Face\jhcFFind.cpp">
+      <Filter>Source Files\common video\Face</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\People\jhcSpeaker.cpp">
+      <Filter>Source Files\common robot\People</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Face\jhcFRecoDLL.cpp">
+      <Filter>Source Files\common video\Face</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Face\jhcFaceOwner.cpp">
+      <Filter>Source Files\common video\Face</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Face\jhcFaceVect.cpp">
+      <Filter>Source Files\common video\Face</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\People\jhcFaceName.cpp">
+      <Filter>Source Files\common robot\People</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcNameList.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Eli\jhcEliGrok.cpp">
+      <Filter>Source Files\common robot\Eli</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcSocial.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Language\jhcMorphFcns.cpp">
+      <Filter>Source Files\common audio\Language</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Language\jhcNetBuild.cpp">
+      <Filter>Source Files\common audio\Language</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Environ\jhcLocalOcc.cpp">
+      <Filter>Source Files\common robot\Environ</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcSpeechWeb.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Semantic\jhcTxtAssoc.cpp">
+      <Filter>Source Files\common audio\Semantic</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BanzaiDoc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Banzai.h">
+      <Filter>Header Files\Afx-Standard</Filter>
+    </ClInclude>
+    <ClInclude Include="BanzaiView.h">
+      <Filter>Header Files\Afx-Standard</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files\Afx-Standard</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\stdafx.h">
+      <Filter>Header Files\Afx-Standard</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\jhcGlobal.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcArr.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcBitMacros.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcImg.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcImgIO.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcImgMS.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcName.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcParam.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcRoi.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcConsole.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcDisplay.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcMessage.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcPickStep.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcPickString.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcPickVals.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcSerial.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcString.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jprintf.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jrand.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jtimer.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcALU.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcArea.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcColor.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcDist.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcDraw.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcEdge.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcFilter.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcGray.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcGroup.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcHist.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcLUT.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcResize.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcRuns.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcStats.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcThresh.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcTools.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcVect.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcAviVSink.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcDxVSrc.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcExpVSrc.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcGenVSrc.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcKinVSrc.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcListVSrc.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcVideoSink.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcVideoSrc.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcVidReg.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Video\jhcWmVSrc.h">
+      <Filter>Header Files\common video\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcSpeechX.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcSpRecoMS.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcSpTextMS.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcTxtSrc.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliArm.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliBase.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliBody.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliLift.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliNeck.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Peripheral\jhcAccelXY.h">
+      <Filter>Header Files\common robot\Peripheral</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Peripheral\jhcDirMic.h">
+      <Filter>Header Files\common robot\Peripheral</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Peripheral\jhcDynamixel.h">
+      <Filter>Header Files\common robot\Peripheral</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Peripheral\jhcSerialFTDI.h">
+      <Filter>Header Files\common robot\Peripheral</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Geometry\jhcJoint.h">
+      <Filter>Header Files\common robot\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Geometry\jhcMatrix.h">
+      <Filter>Header Files\common robot\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Geometry\jhcMotRamp.h">
+      <Filter>Header Files\common robot\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jms_x.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcChatBox.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcChatHist.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcGenIO.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcGenParse.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcTxtLine.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramExec.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramRule.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramStep.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcSlotVal.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Language\jhcDegrapher.h">
+      <Filter>Header Files\common audio\Language</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Language\jhcNetRef.h">
+      <Filter>Header Files\common audio\Language</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Language\jhcGraphizer.h">
+      <Filter>Header Files\common audio\Language</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Language\jhcMorphTags.h">
+      <Filter>Header Files\common audio\Language</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcAliaDesc.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcSituation.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcBindings.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcGraphlet.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNetNode.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNodeList.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNodePool.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaAttn.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcWorkMem.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaNote.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaOp.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaRule.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAssocMem.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcProcMem.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaChain.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcTimedFcns.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaCore.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaDir.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaDLL.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaKernel.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaPlay.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcEchoFcn.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcTalkFcn.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
+    </ClInclude>
+    <ClInclude Include="jhcEliCoord.h">
+      <Filter>Header Files\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Eli\jhcManipFSM.h">
+      <Filter>Header Files\common robot\Eli</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcBallistic.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
+    </ClInclude>
+    <ClInclude Include="BanzaiFrm.h">
+      <Filter>Header Files\Afx-Standard</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcBackgRWI.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\People\jhcParse3D.h">
+      <Filter>Header Files\common robot\People</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\People\jhcTrack3D.h">
+      <Filter>Header Files\common robot\People</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\People\jhcStare3D.h">
+      <Filter>Header Files\common robot\People</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\People\jhcBodyData.h">
+      <Filter>Header Files\common robot\People</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Depth\jhcOverhead3D.h">
+      <Filter>Header Files\common robot\Depth</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Depth\jhcSurface3D.h">
+      <Filter>Header Files\common robot\Depth</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Geometry\jhcPlaneEst.h">
+      <Filter>Header Files\common robot\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\System\jhcFill.h">
+      <Filter>Header Files\common video\System</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcBBox.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcBlob.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcLabel.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Geometry\jhcKalVec.h">
+      <Filter>Header Files\common robot\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\People\jhcHeadGaze.h">
+      <Filter>Header Files\common robot\People</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\jhcFrontal.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\jhcFFind.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\People\jhcSpeaker.h">
+      <Filter>Header Files\common robot\People</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\jhcFRecoDLL.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\jhcFaceOwner.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\jhcFaceVect.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\freco_nkr.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\People\jhcFaceName.h">
+      <Filter>Header Files\common robot\People</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcNameList.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Eli\jhcEliGrok.h">
+      <Filter>Header Files\common robot\Eli</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcSocial.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\jhcFFindDLL.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\ffind_ocv.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Language\jhcMorphFcns.h">
+      <Filter>Header Files\common audio\Language</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Language\jhcNetBuild.h">
+      <Filter>Header Files\common audio\Language</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Environ\jhcLocalOcc.h">
+      <Filter>Header Files\common robot\Environ</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\sp_reco_web.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcSpeechWeb.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcTxtAssoc.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Semantic\jhcTxtList.h">
+      <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\Banzai.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="res\Banzai.rc2">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Banzai.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

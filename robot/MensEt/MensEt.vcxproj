@@ -1,0 +1,541 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Template|Win32">
+      <Configuration>Template</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Template|x64">
+      <Configuration>Template</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{89FD4080-E249-42D1-B32A-D7981DEF7D28}</ProjectGuid>
+    <RootNamespace>MensEt</RootNamespace>
+    <Keyword>MFCProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Template|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\Release32\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    </OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\Release\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\Debug32\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    </OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\Debug\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MensEt_d</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <TypeLibraryName>./MensEt.tlb</TypeLibraryName>
+      <HeaderFileName>
+      </HeaderFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>JHC_GVID;JHC_MSIO;WINVER=0x0501;_CRT_SECURE_NO_DEPRECATE;_CRT_NON_CONFORMING_SWPRINTFS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeaderOutputFile>..\..\Release8_mmx/MensEt.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>..\..\Release32/</AssemblerListingLocation>
+      <ObjectFileName>..\..\Release32/</ObjectFileName>
+      <ProgramDataBaseFileName>..\..\Release32/</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DisableSpecificWarnings>4995;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <OutputFile>MensEt.exe</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalLibraryDirectories>.;../../video/common/Video;../../robot/common/Peripheral;../../audio/common/Acoustic;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <SubSystem>Windows</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>./MensEt.bsc</OutputFile>
+    </Bscmake>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>X64</TargetEnvironment>
+      <TypeLibraryName>./MensEt.tlb</TypeLibraryName>
+      <HeaderFileName>
+      </HeaderFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN64;JHC_GVID;JHC_MSIO;WINVER=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeaderOutputFile>
+      </PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>..\..\Release/</AssemblerListingLocation>
+      <ObjectFileName>..\..\Release/</ObjectFileName>
+      <ProgramDataBaseFileName>..\..\Release/</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DisableSpecificWarnings>%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>..\..\video\common\Interface\rdrand64.obj;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>MensEt.exe</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalLibraryDirectories>.;../../video/common/Video;../../robot/common/Peripheral;../../audio/common/Acoustic;../../audio/common/Comm;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <SubSystem>Windows</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>./MensEt.bsc</OutputFile>
+    </Bscmake>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Midl>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <TypeLibraryName>./MensEt.tlb</TypeLibraryName>
+      <HeaderFileName>
+      </HeaderFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>JHC_GVID;JHC_MSIO;WINVER=0x0501;_CRT_SECURE_NO_DEPRECATE;_CRT_NON_CONFORMING_SWPRINTFS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeaderOutputFile>..\..\Debug8/MensEt.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>..\..\Debug32/</AssemblerListingLocation>
+      <ObjectFileName>..\..\Debug32/</ObjectFileName>
+      <ProgramDataBaseFileName>..\..\Debug32/</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4995;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <AdditionalOptions>/fixed:no %(AdditionalOptions)</AdditionalOptions>
+      <OutputFile>MensEt_d.exe</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalLibraryDirectories>.;../../video/common/Video;../../robot/common/Peripheral;../../audio/common/Acoustic;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>./MensEt_d.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>./MensEt.bsc</OutputFile>
+    </Bscmake>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>X64</TargetEnvironment>
+      <TypeLibraryName>./MensEt.tlb</TypeLibraryName>
+      <HeaderFileName>
+      </HeaderFileName>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN64;JHC_GVID;JHC_MSIO;JHC_MEM_LEAK;WINVER=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeaderOutputFile>
+      </PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>..\..\Debug\</AssemblerListingLocation>
+      <ObjectFileName>..\..\Debug\</ObjectFileName>
+      <ProgramDataBaseFileName>..\..\Debug\</ProgramDataBaseFileName>
+      <WarningLevel>Level4</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4100;4127;4701;4702;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <AdditionalOptions>/fixed:no %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>..\..\video\common\Interface\rdrand64.obj;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>MensEt_d.exe</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalLibraryDirectories>.;../../video/common/Video;../../robot/common/Peripheral;../../audio/common/Acoustic;../../audio/common/Comm;C:\Program Files (x86)\Visual Leak Detector\bin\Win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>./MensEt_d.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>./MensEt.bsc</OutputFile>
+    </Bscmake>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="MensEt.cpp" />
+    <!-- JHC: this should come first -->
+    <ClCompile Include="MensEtDoc.cpp" />
+    <ClCompile Include="MensEtFrm.cpp" />
+    <ClCompile Include="MensEtView.cpp" />
+    <ClCompile Include="jhcMensCoord.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcSpeechWeb.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcTxtAssoc.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcNetBuild.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcMorphFcns.cpp" />
+    <ClCompile Include="..\common\Body\jhcBackgRWI.cpp" />
+    <ClCompile Include="..\common\Geometry\jhcMatrix.cpp" />
+    <ClCompile Include="..\common\Grounding\jhcBasicAct.cpp" />
+    <ClCompile Include="..\common\Grounding\jhcLocalSeq.cpp" />
+    <ClCompile Include="..\common\Grounding\jhcTargetVis.cpp" />
+    <ClCompile Include="..\common\Manus\jhcManusRWI.cpp" />
+    <ClCompile Include="..\common\Grounding\jhcSoundFcn.cpp" />
+    <ClCompile Include="..\common\Grounding\jhcTalkFcn.cpp" />
+    <ClCompile Include="..\common\Action\jhcTimedFcns.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcDist.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcVect.cpp" />
+    <ClCompile Include="..\..\robot\common\Objects\jhcPatchProps.cpp" />
+    <ClCompile Include="..\..\robot\common\Manus\jhcInteractFSM.cpp" />
+    <ClCompile Include="..\..\robot\common\Objects\jhcStackSeg.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcBBox.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcBlob.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcRuns.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcDraw.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcLUT.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcStats.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcFilter.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcALU.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcArea.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcColor.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcHist.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcThresh.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcEdge.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcGroup.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcWarp.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcChatBox.cpp" />
+    <ClCompile Include="..\..\audio\common\Comm\jhcRcvZMQ.cpp" />
+    <ClCompile Include="..\..\audio\common\Comm\jhcReportZMQ.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcDegrapher.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcOcv3VSrc.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaDLL.cpp" />
+    <ClCompile Include="..\..\robot\common\Body\jhcTaisRemote.cpp" />
+    <ClCompile Include="..\..\robot\common\Body\jhcManusX.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcChatHist.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcSerial.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcSpeechX.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcSpRecoMS.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcSpTextMS.cpp" />
+    <ClCompile Include="..\..\robot\common\Body\jhcManusBody.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jrand.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcGraphizer.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcNetRef.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcGenParse.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcGramExec.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcGramRule.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcSlotVal.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcTxtLine.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcTxtSrc.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaAttn.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaOp.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaRule.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAssocMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcProcMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcWorkMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcBindings.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcGraphlet.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcNetNode.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcNodePool.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcSituation.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcConsole.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaChain.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaCore.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaDir.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaPlay.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcEchoFcn.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcArr.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcImg.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcImgIO.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcImgMS.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcName.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcParam.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcRoi.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcDisplay.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcPickStep.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcPickString.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcPickVals.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcString.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jprintf.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jtimer.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jms_x.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcGray.cpp" />
+    <ClCompile Include="..\..\video\common\Processing\jhcResize.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcAviVSink.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcDxVSrc.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcExpVSrc.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcGenVSrc.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcListVSrc.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcVideoSink.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcVideoSrc.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcVidReg.cpp" />
+    <ClCompile Include="..\..\video\common\Video\jhcWmVSrc.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="MensEt.rc">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcSpeechWeb.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\sp_reco_web.h" />
+    <ClInclude Include="..\..\audio\common\Comm\zmq.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcMorphFcns.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcNetBuild.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaNote.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcAliaDesc.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcTxtAssoc.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcTxtList.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcBBox.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcBlob.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcALU.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcArea.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcColor.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcDist.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcDraw.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcEdge.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcFilter.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcGroup.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcHist.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcLUT.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcRuns.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcStats.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcThresh.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcTools.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcVect.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcWarp.h" />
+    <ClInclude Include="..\common\Action\jhcTimedFcns.h" />
+    <ClInclude Include="..\common\Body\jhcBackgRWI.h" />
+    <ClInclude Include="..\common\Geometry\jhcMatrix.h" />
+    <ClInclude Include="..\common\Grounding\jhcBasicAct.h" />
+    <ClInclude Include="..\common\Grounding\jhcLocalSeq.h" />
+    <ClInclude Include="..\common\Grounding\jhcSoundFcn.h" />
+    <ClInclude Include="..\common\Grounding\jhcTalkFcn.h" />
+    <ClInclude Include="..\common\Grounding\jhcTargetVis.h" />
+    <ClInclude Include="..\common\Manus\jhcInteractFSM.h" />
+    <ClInclude Include="..\common\Manus\jhcManusRWI.h" />
+    <ClInclude Include="..\common\Objects\jhcPatchProps.h" />
+    <ClInclude Include="..\common\Objects\jhcStackSeg.h" />
+    <ClInclude Include="MensEtDoc.h" />
+    <ClInclude Include="MensEt.h" />
+    <ClInclude Include="MensEtFrm.h" />
+    <ClInclude Include="MensEtView.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="jhcMensCoord.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcChatBox.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcChatHist.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcGenIO.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcSpeechX.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcSpRecoMS.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcSpTextMS.h" />
+    <ClInclude Include="..\..\audio\common\Comm\jhcRcvZMQ.h" />
+    <ClInclude Include="..\..\audio\common\Comm\jhcReportZMQ.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcDegrapher.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcGraphizer.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcMorphTags.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcNetRef.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcGenParse.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramExec.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramRule.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramStep.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcSlotVal.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcTxtLine.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcTxtSrc.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaAttn.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaOp.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaRule.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAssocMem.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcProcMem.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcWorkMem.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcBindings.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcGraphlet.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNetNode.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNodeList.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNodePool.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcSituation.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcConsole.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcSerial.h" />
+    <ClInclude Include="..\..\video\common\Interface\jms_x.h" />
+    <ClInclude Include="..\..\video\common\Interface\jrand.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaChain.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaCore.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaDir.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaKernel.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaPlay.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcEchoFcn.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcManusBody.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcOcv3VSrc.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaDLL.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcManusX.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcTaisRemote.h" />
+    <ClInclude Include="..\..\video\common\stdafx.h" />
+    <ClInclude Include="..\..\video\common\jhcGlobal.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcArr.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcBitMacros.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcImg.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcImgIO.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcImgMS.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcName.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcParam.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcRoi.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcDisplay.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcMessage.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcPickStep.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcPickString.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcPickVals.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcString.h" />
+    <ClInclude Include="..\..\video\common\Interface\jprintf.h" />
+    <ClInclude Include="..\..\video\common\Interface\jtimer.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcGray.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcResize.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcAviVSink.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcDxVSrc.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcExpVSrc.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcGenVSrc.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcListVSrc.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcVideoSink.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcVideoSrc.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcVidReg.h" />
+    <ClInclude Include="..\..\video\common\Video\jhcWmVSrc.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\MensEt.ico" />
+    <None Include="res\MensEt.rc2" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties RESOURCE_FILE="MensEt.rc" />
+    </VisualStudio>
+  </ProjectExtensions>
+</Project>

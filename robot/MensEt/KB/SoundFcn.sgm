@@ -1,0 +1,35 @@
+// terms associated with "SoundFcn" ops and rules
+// ================================================
+
+// imperative verbs
+
+=[ACT]
+  pause
+  bleep
+  bloop
+  ching
+  chong
+  bing
+  bong
+  plink
+  plunk
+  toot
+  honk
+  tweet
+  squawk
+  warble
+  chirp
+  crash
+  thump
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  warble * vprog = warbling
+  warble * vpast = warbled
+
+
+

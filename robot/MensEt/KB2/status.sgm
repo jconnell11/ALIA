@@ -1,0 +1,29 @@
+// terms associated with "status" ops and rules
+// ================================================
+
+// adjectives
+
+=[HQ]
+  awake
+  tired
+
+
+// -----------------------------------------
+
+// imperative verbs
+
+=[ACT]
+  announce
+  say
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  say * vpast = said
+  awake * acomp = more awake
+  awake * asup  = most awake
+  tired * acomp = more tired
+  tired * asup  = most tired

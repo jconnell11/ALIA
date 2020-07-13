@@ -1,0 +1,24 @@
+// respond to person identification and proximity events
+// ================================================
+
+// RULE 1 - "If someone is visible then you see them"
+    if:   hq-1 -lex-  visible
+               -hq--> dude-1
+         ako-1 -lex-  person
+               -hq--> dude-1
+  then:  act-1 -lex-  see
+               -agt-> self-1
+               -obj-> dude-1
+        self-1 -lex-  you 
+
+
+// RULE 2 - "If someone is visible then they are here"
+    if:  hq-1 -lex-  visible
+              -hq--> dude-1
+        ako-1 -lex-  person
+              -hq--> dude-1
+  then: loc-1 -lex-  here
+              -loc-> dude-1
+
+
+

@@ -1,0 +1,37 @@
+// terms associated with "Social" ops and rules
+// ================================================
+
+// singular nouns - mass nouns like "a rice" belong in =[AKO-M] instead
+
+=[AKO]
+  person
+
+
+// adjective
+
+=[HQ]
+  close
+  visible
+  far away
+
+
+// -----------------------------------------
+
+// imperative verbs
+
+=[ACT]
+  look
+  approach
+  follow
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  person * npl = people
+  visible * acomp = more visible
+  visible * asup  = most visible
+  far away * acomp = farther away
+  far away * asup  = farthest away

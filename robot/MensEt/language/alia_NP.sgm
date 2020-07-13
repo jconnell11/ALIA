@@ -1,0 +1,126 @@
+// NOUN PHRASES
+// ================================================
+
+// noun phrase (but not plural indefinite)
+
+=[np]
+  <%obj-i0>
+  <%obj-i>
+  <%obj>
+
+
+// noun phrase including plural indefinites
+
+=[np-s]
+  <%obj-s>
+
+
+// possessive noun phrase
+
+=[np-poss]
+  [WRT]
+
+
+// vague indefinite noun phrase ("something red on the table")
+
+=[%obj-i0]
+  <n-ind> (<desc>) (<comp>)
+
+
+// indefinite noun phrase
+
+=[%obj-i]
+  <ind> (<desc>) <AKO>
+  <ind> (<desc>) thing
+  <AKO-M>
+
+
+// indefinite plural noun phrase
+
+=[%obj-s]
+  (<desc>) <AKO-S>
+  (<desc>) things
+
+
+// definite noun phrase
+
+=[%obj]
+  <def> (<desc>) <n> (<comp>)
+  <WRT> (<desc>) <n> (<comp>)
+  (<desc>) <NAME> (<comp>)
+  <REF-D>
+  <REF>
+
+
+// noun
+
+=[n]
+  <AKO>
+  <AKO-S>
+
+
+// --------------------------------------------------
+
+// description
+
+=[desc]
+  (<nmod> (and)) <nmod>
+
+
+// one modifiying term
+
+=[nmod]
+  (<DEG>) <HQ>
+  <ACT-G>
+
+
+// complementing term (usually PP)
+
+=[comp]
+  <HAS> <np>
+  that <be> <HQ>
+  <place>
+ 
+
+// types of location phrases
+
+=[place]
+  (<DEG>) <LOC> <np>
+  <LOC-2> <np> and <np>
+  <LOC-0>
+
+
+// --------------------------------------------------
+
+// copula verb phrase
+
+=[$add]
+  <cop> <NAME>
+  <cop> <desc> 
+  <cop> <comp>
+  <cop> <%obj-i>
+  <cop-p> <%obj-s>
+
+
+// copula core
+ 
+=[cop]
+  <cop-p>
+  <cop-n>
+
+
+// positive copula
+
+=[cop-p]
+  <be> (<BLF>) 
+  <BLF> <be>
+
+
+// negated copula
+
+=[cop-n]
+  <be> (<BLF>) <NEG>
+  <BLF> <NEG> <be>
+
+
+

@@ -1,0 +1,65 @@
+// terms associated with "BasicAct" ops and rules
+// ================================================
+
+// singular noun - Mass nouns like "a sand" belong in =[AKO-M] instead
+
+=[AKO]
+  gripper
+  hand
+
+
+// adjective
+
+=[HQ]
+  close
+
+
+// -----------------------------------------
+
+// modifier
+
+=[MOD]
+  quickly
+  slowly
+
+
+// direction
+
+=[DIR]
+  forward
+  forwards
+  backward
+  backwards
+  clockwise
+  counterclockwise
+  right
+  left
+
+
+// imperative verb
+
+=[ACT]
+  freeze
+  step
+  move
+  drive
+  turn
+  rotate
+  spin
+  raise
+  lower
+  lift
+  open
+  close
+  grab
+  release
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  open * vprog = opening
+  open * vpast = opened
+

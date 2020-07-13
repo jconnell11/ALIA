@@ -1,0 +1,243 @@
+// TOP LEVEL PATTERNS
+// ================================================
+
+#include "alia_NP.sgm"
+#include "alia_VP.sgm"
+#include "alia_lex.sgm"
+
+
+// valid utterances once attention established
+
+=[toplevel]
+ (hey) <ATTN>
+ ((hey) <ATTN>) <main>
+ <main> <ATTN>
+
+
+// main categories of utterances
+
+=[main]
+  <HELLO>
+  <BYE>
+  <%Attn>
+  <%Rule>
+  <%Operator>
+
+
+// --------------------------------------------------
+
+// something to do or note
+
+=[%Attn]
+  (<POLITE>) <chain> (<POLITE>)
+  <%fact>
+
+
+// --------------------------------------------------
+
+// halo deductive rule
+
+=[%Rule]
+  <$cond> (<then>) <$res>
+  <$res> <$cond>
+  <$cond-i> <$res-i>
+  <$cond-s> <$res-s>
+  <$macro>
+
+
+// rule precondition
+
+=[$cond]
+  <situation>
+
+
+// rule result
+
+=[$res]
+  <%fact>
+
+
+// rule precondition (indefinite)
+
+=[$cond-i]
+  <%obj-i>
+  <HQ>
+
+
+// rule result (for indefinite)
+
+=[$res-i]
+  <$add>
+
+
+// rule precondition (plural indefinite)
+
+=[$cond-s]
+  <%obj-s>
+
+
+// rule result (for plural indefinite)
+
+=[$res-s]
+  <vp> ((<np-s>) <np-s>)
+  <vp> (<np-s>) to <cmd>
+  <$add>
+
+
+// term redefinition (for verb related elements)
+
+=[$macro]
+  <ACT> <equiv> <ACT>
+  <DIR> <equiv> <DIR>
+  <MOD> <equiv> <MOD>
+
+
+// directional equivalence relation 
+
+=[equiv]
+  means
+
+
+// --------------------------------------------------
+
+// procedural memory operator
+
+=[%Operator]
+  <$trig> (<then>) <$proc> (<$trig>)
+  <$proc> <$trig>
+  <$trig-n> ((<conj>) instead (<PREF>) <$proc> (<$trig>))
+ 
+
+// operator trigger goal
+
+=[$trig]
+  <inf> <cmd> (<situation>)
+  <BEFORE> <cmd-g> (<situation>) 
+  <AFTER> <cmd-g> (<situation>)
+  <situation> then <BEFORE> <cmd-g> 
+  <situation> then <AFTER> <cmd-g>
+  <situation> then <inf> <cmd>
+  <situation>
+
+
+// contemplated action
+
+=[cmd-g]
+  you (start to) <cmd>
+  you begin to <cmd>
+  starting to <cmd>
+  you start <!do-g>
+  (you stop) <!do-g>
+  you finish <!do-g>
+
+
+// a conjunction of aspects (up to 5 parts)
+
+=[situation]
+  (<UNLESS> <asp>) <if> <asp>
+  (<UNLESS> <asp>) <if> <asp> ((<plus>) <asp> ((<plus>) <asp> ((<plus>) <asp>))) <plus> <asp>
+  <UNLESS> <asp>
+
+
+// an aspect of a situation
+
+=[asp]
+  <%fact>
+  <%fact-i>
+ 
+
+// conjunction specification for situation
+
+=[plus]
+  <conj> (<if>)
+  <UNLESS>
+
+
+// operator procedure to follow
+
+=[$proc]
+ <chain>
+
+
+// sequence of activites
+
+=[chain]
+  <step>
+  <step> (<mid-step> (<mid-step> (<mid-step> (<mid-step>)))) <seq> <step>
+
+
+// middle of sequence of activities
+
+=[mid-step]
+  (<seq>) <step>
+
+
+// sequential continuation
+
+=[seq]
+  then
+
+
+// sequential step in chain
+
+=[step]
+  <cmd>
+  <%play>
+
+
+// parallel set of activities
+
+=[%play]
+  <cmd> ((<par>) <cmd> ((<par>) <cmd>)) <par> <cmd>
+
+
+// parallel addition
+ 
+=[par]
+  and (also)
+
+
+// advice not to do something
+
+=[$trig-n]
+  <dont> <cmd> (<situation>)
+  <dont> <cmd-s> (<situation>)
+  <situation> <dont> <cmd>
+  <situation> <dont> <cmd-s>
+  <situation> (<then>) <punt>
+  <punt> <situation>
+
+
+// prohibition phrases
+
+=[dont]
+  do not
+  don't
+  you should not
+  you shouldn't
+  (you should) never
+
+
+// probibition actions
+
+=[punt]
+  do not (comply)
+  don't (comply)
+  refuse (to (<ref-v>))
+  do not <ref-v>
+  don't <ref-v>
+  do nothing
+
+
+// reference to an action
+
+=[ref-v]
+  do it
+  do that
+
+
+
+
+
+
+

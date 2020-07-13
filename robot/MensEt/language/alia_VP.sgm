@@ -1,0 +1,202 @@
+// VERB PHRASES
+// ================================================
+ 
+// declarative sentence
+
+=[%fact]
+  <np> <vp> ((<np>) <np>)
+  you <ACT> ((<np>) <np>)
+  <np> <vp> (<np>) to <cmd>
+  <np> <vp> (<np>) <%fact-g>
+  <%obj-i0> <$add>
+  <%obj> <$add>
+  there is <%obj-i>
+
+
+// fact about some indeterminate object
+
+=[%fact-i]
+  <%obj-i> <$add>
+
+
+// abstract action by some agent
+
+=[%fact-g]
+  <ACT-G> (<np> (<np>))
+
+
+// action to take
+
+=[cmd]
+  <!do>
+  <find>
+  <!chk>
+
+
+// hypothetical action (not a command)
+
+=[cmd-s]
+  <!do-s>
+  <find-s>
+  <!chk-s>
+
+
+// --------------------------------------------------
+
+// verb phrase
+
+=[vp]
+  <ACT-S>
+  <ACT-D>
+  <AUX-D> (<NEG>) <ACT>
+  <aux> (<NEG>) <ACT-G>
+
+
+// negated verb
+
+=[NEG-V]
+  don't 
+  do not
+
+
+// set of adverbs that appear before verb
+
+=[adv3]
+  <manner> (<manner> (<manner>))
+
+
+// set of modifiers that appear after verb
+
+=[vmod3]
+  <vmod> (<vmod> (<vmod>))
+
+
+// generic verb phrase modifier
+
+=[vmod]
+  <AMT>
+  <dir3>
+  <manner>
+  <$rel>
+
+
+// possibly compound direction
+
+=[dir3]
+  <DIR> ((<DIR>) and <DIR>)
+
+
+// manner of acting
+
+=[manner]
+  (<DEG>) <MOD> 
+
+
+// verb adjunct (prepositional phrase) 
+
+=[$rel]
+  <place>
+
+
+// ==================================================
+
+// DO directive ("you" or missing subject, 0 to 2 objects)
+
+=[!do]
+  (you <PREF>) (<adv3>) <ACT> (<np> (<np>)) (<vmod3>)
+  (you <PREF>) (<adv3>) <ACT> <ACT-G> (<np> (<np>)) (<vmod3>)
+  (you <PREF>) (<adv3>) <SAY> (to <np>) <QUOTE>
+
+
+// hypothetical DO directive for prohibition
+
+=[!do-s]
+  (you <PREF>) (<adv3>) <ACT> <np-s> (<np-s>) (<vmod3>)
+  (you <PREF>) (<adv3>) <ACT> <np-s> <np> (<vmod3>)
+  (you <PREF>) (<adv3>) <ACT> <ACT-G> <np-s> (<np-s>) (<vmod3>)
+  (you <PREF>) (<adv3>) <ACT> <ACT-G> <np-s> <np> (<vmod3>)
+  (you <PREF>) (<adv3>) <SAY> to <np-s> <QUOTE>
+
+
+// DO directive phrased as a progressive
+
+=[!do-g]
+  <ACT-G> (<np> (<np>)) (<vmod3>)
+
+
+// request to echo something
+
+=[SAY]
+  say
+
+
+// from 1 to 16 words
+
+=[QUOTE]
+ # (# (# (# (# (# (# (# (# (# (# (# (# (# (# (#)))))))))))))))
+
+
+// --------------------------------------------------
+
+// FIND directive
+
+=[find]
+ <find-v> <!find-ako>
+ <find-v> <!find-hq>
+
+
+// hypothetical FIND for prohibitions
+
+=[find-s]
+ <find-v> <!find-ako-s>
+ <find-v> <!find-hq-s>
+
+
+// find verb phrase
+
+=[find-v]
+  find (out) 
+
+
+// embedded question about type
+
+=[!find-ako]
+  what <np> is
+  what kind of <AKO> <np> is
+
+
+// hypothetical embedded question about type
+
+=[!find-ako-s]
+  what <np-s> are
+  what kind of <AKO> <np-s> is
+
+
+// embedded question about property
+
+=[!find-hq]
+  what <AKO> <np> is
+  what <np-poss> <AKO> is
+
+
+// hypothetical embedded question about property
+
+=[!find-hq-s]
+  what <AKO> <np-s> are
+
+
+// --------------------------------------------------
+
+// CHECK directive
+
+=[!chk]
+  <check-v> <%fact>
+
+
+// check verb phrase
+
+=[check-v]
+  check (if) 
+
+
+

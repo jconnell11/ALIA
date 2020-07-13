@@ -1,0 +1,56 @@
+// terms associated with "TargetVis" ops and rules
+// ================================================
+
+// singular nouns - mass nouns like "a rice" belong in =[AKO-M] instead
+
+=[AKO]
+  color
+  size
+  width
+
+
+// adjectives
+
+=[HQ]
+  striped
+  red
+  orange
+  yellow
+  green
+  blue
+  purple
+  black
+  gray
+  white
+  big
+  small
+  wide
+  narrow
+
+
+// -----------------------------------------
+
+// imperative verb
+
+=[ACT]
+  see
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  orange * acomp = oranger
+  orange * asup  = orangest
+  purple * acomp = purpler
+  purple * asup  = purplest
+  striped * acomp = more striped
+  striped * asup  = most striped
+  yellow * acomp = yellower
+  yellow * asup  = yellowest
+  blue * acomp = bluer
+  blue * asup  = bluest
+  see * vpast = saw
+
+

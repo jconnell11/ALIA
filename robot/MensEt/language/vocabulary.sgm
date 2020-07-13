@@ -1,0 +1,210 @@
+// OPEN CLASS WORDS
+// ================================================
+
+// singular noun
+
+=[AKO]
+  dog
+  animal
+  cat
+  tiger
+  maid
+  tantrum
+  force
+  motion
+  parameter
+  accomplishment
+  finder
+  routine
+  head
+  sponge
+  Advil
+  collar
+  house
+  door
+  bottle 
+  can
+  table
+  block
+  object
+  wall
+  person
+  man
+  woman
+  boy
+  girl
+  finger
+  step
+  example
+  vegetable
+  zebra
+  ducky
+  car
+  
+
+// mass nouns (do not take "the" or "a")
+
+=[AKO-M]
+  danger
+  surprise
+
+
+// adjective
+
+=[HQ]
+  furry
+  alive
+  new
+  violent
+  present
+  big
+  close
+  male
+  female
+  slippery
+  far
+  angry
+  sad
+  happy
+  scared
+  orange
+  striped
+
+
+// proper noun
+
+=[NAME]
+  Cyril
+  Tommy
+  Jon
+  Ivan
+  Groot
+  Rachel
+  Mary
+  Rick
+
+
+// robot name
+
+=[ATTN]
+  robot
+  Robby
+
+
+// -----------------------------------------
+
+// modifier
+
+=[MOD]
+  hard
+  fast
+  briskly
+  slow
+
+
+// direction
+
+=[DIR]
+  away
+  widdershins
+
+
+// imperative verb
+
+=[ACT]
+  do something
+  do anything
+  appear
+  wash
+  sleep
+  hit
+  throw
+  set
+  swing
+  retract
+  begin
+  whack
+  adjust
+  tuck
+  rejoice
+  figure
+  determine
+  run
+  put
+  pat
+  use
+  cha-cha
+  shimmy
+  dance
+  run
+  drop
+  hold
+  deny
+  demur
+  complain
+  apologize
+  describe
+  excuse
+  reach
+  teach
+  know
+  express
+  sass
+  flee
+  sing
+  yack
+  twerk
+  waltz
+  tango
+  swing
+  riff
+  pirouette
+  proclaim
+  follow
+  stop
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  do something * vpres = does something
+  do something * vprog = doing something
+  do something * vpast = did something
+  do anything * vpres = does anything
+  do anything * vprog = doing anything
+  do anything * vpast = did anything
+  man * npl = men
+  woman * npl = women
+  alive * acomp = more alive
+  alive * asup  = most alive
+  violent * acomp = more violent
+  violent * asup  = most violent
+  present * acomp = more present
+  present * asup  = most present
+  far * acomp = farther
+  far * asup  = farthest
+  scared * acomp = more scared
+  scared * asup  = most scared
+  pirouette * vprog = pirouetting
+  pirouette * vpast = pirouetted
+  throw * vpast = threw
+  know * vpast = knew
+  flee * vpast = fled
+  figure * vprog = figuring
+  figure * vpast = figured
+  orange * acomp = oranger
+  orange * asup  = orangest
+  striped * acomp = more striped
+  striped * asup  = most striped
+
+
+
+
+
+  
+
+
+
+ 
