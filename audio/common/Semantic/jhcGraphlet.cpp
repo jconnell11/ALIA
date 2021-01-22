@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,10 +56,20 @@ void jhcGraphlet::Copy (const jhcGraphlet& ref)
 {
   int i;
 
-  // copy items
   ni = ref.ni;
   for (i = 0; i < ni; i++)
     desc[i] = ref.desc[i];
+}
+
+
+//= Add some other description to this one (but no duplicates).
+
+void jhcGraphlet::Append (const jhcGraphlet& ref)
+{
+  int i;
+
+  for (i = 0; i < ref.ni; i++)
+    AddItem(ref.desc[i]);
 }
 
 
@@ -81,6 +92,19 @@ int jhcGraphlet::CopyBind (const jhcGraphlet& ref, const jhcBindings& sub)
 }
 
 
+//= Remove final items from description and save in given graphlet.
+
+void jhcGraphlet::CutTail (jhcGraphlet& tail, int start)
+{
+  int i;
+
+  tail.Clear();
+  for (i = start; i < ni; i++)
+    tail.AddItem(desc[i]);
+  ni = __min(start, ni);  
+}
+
+
 //= Add some node (local or remote) to description.
 // returns item if successful, NULL for problem
 
@@ -93,9 +117,39 @@ jhcNetNode *jhcGraphlet::AddItem (jhcNetNode *item)
     jprintf(">>> More than %d items in jhcGraphlet::Add !\n", gmax);
     return NULL;
   }
-  if (!InList(item))
+  if (!InDesc(item))
     desc[ni++] = item;
   return item;
+}
+
+
+//= Remove selected item from list and move all others down to fill gap.
+// returns 1 if removed, 0 for bad index
+
+int jhcGraphlet::RemItem (int i)
+{
+  int j;
+
+  if ((i < 0) || (i >= ni))
+    return 0;
+  for (j = i + 1; j < ni; j++)
+    desc[j - 1] = desc[j];
+  desc[--ni] = NULL;
+  return 1;
+}
+
+
+//= Remove given item from description (if present).
+// returns 1 if removed, 0 if not found
+
+int jhcGraphlet::RemItem (const jhcNetNode *item)
+{
+  int i;
+
+  for (i = 0; i < ni; i++)
+    if (desc[i] == item)
+      return RemItem(i);
+  return 0;
 }
 
 
@@ -167,6 +221,46 @@ jhcNetNode *jhcGraphlet::MainProp ()
 }
 
 
+//= Whether the node itself is part of this description.
+// for some reason virtual does not work if definition is in header file
+
+bool jhcGraphlet::InDesc (const jhcNetNode *item) const
+{
+  int i;
+
+  for (i = 0; i < ni; i++)
+    if (desc[i] == item)
+      return true;
+  return false; 
+}
+
+
+//= Check if any argument of given node falls outside description.
+
+bool jhcGraphlet::ArgOut (const jhcNetNode& item) const
+{
+  int anum, na = item.NumArgs();
+
+  for (anum = 0; anum < na; anum++)
+    if (!InDesc(item.Arg(anum)))
+      return true;
+  return false;
+}
+
+
+//= Check if any property of given node falls outside description.
+
+bool jhcGraphlet::PropOut (const jhcNetNode& item) const
+{
+  int pnum, np = item.NumProps();
+
+  for (pnum = 0; pnum < np; pnum++)
+    if (!InDesc(item.Prop(pnum)))
+      return true;
+  return false;
+}
+
+
 //= Set belief of all nodes to their pending values (blf0).
 // returns number of changes made
 
@@ -177,6 +271,17 @@ int jhcGraphlet::ActualizeAll (int ver) const
   for (i = 0; i < ni; i++)
     chg += desc[i]->Actualize(ver);
   return chg;
+}
+
+
+//= Set belief of all nodes to some specific value.
+
+void jhcGraphlet::Believe (double blf) const
+{
+  int i;
+
+  for (i = 0; i < ni; i++)
+    desc[i]->SetBelief(blf);
 }
 
 
@@ -205,19 +310,6 @@ jhcNetNode *jhcGraphlet::NextNode (const jhcNetNode *prev) const
 }
 
 
-//= Determine whether a given node is already in the description list.
-
-bool jhcGraphlet::InList (const jhcNetNode *n) const
-{
-  int i;
-
-  for (i = 0; i < ni; i++)
-    if (desc[i] == n)
-      return true;
-  return false; 
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //                           Writing Functions                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -242,11 +334,55 @@ int jhcGraphlet::Save (FILE *out, int lvl, int detail) const
   for (i = 0; i < ni; i++)
   {
     n = desc[i];
-    if ((i == 0) || (n->NumArgs() > 0) || !n->Blank() ||             
-        (n->Literal() != NULL) || ((n->tags != 0) && (detail >= 2)))
-      lvl2 = n->Save(out, lvl2, kmax, nmax, rmax, this, detail);
+    if ((i == 0) || (n->Literal() != NULL) || (n->NumArgs() > 0) ||
+        has_lex_in(n) || ((n->tags != 0) && (detail >= 2)))
+      lvl2 = n->Save(out, lvl2, kmax, nmax, rmax, this, detail);   
   }
   return((ferror(out) != 0) ? -1 : 1);
 }
 
 
+//= Check if any of a node's words are part of this graphlet.
+
+bool jhcGraphlet::has_lex_in (const jhcNetNode *n) const
+{
+  jhcNetNode *p;
+  int i, np = n->NumProps();
+
+  for (i = 0; i < np; i++)
+  {
+    p = n->Prop(i);
+    if (p->LexNode() && InDesc(p))
+      return true;
+  }
+  return false;
+}
+
+
+//= Print the graphlet with some header line preceeding it.
+// largely for debugging
+
+void jhcGraphlet::Print (int lvl, const char *tag, int detail) const
+{
+  if ((tag == NULL) || (*tag == '\0'))
+    jprintf("%*sdescription:", lvl, "");
+  else
+    jprintf("%*s%s:", lvl, "", tag);
+  Print(lvl + 2);
+  jprintf("\n");
+}
+
+
+//= Just print out the names of all the nodes in the graphlet.
+
+void jhcGraphlet::ListAll (int lvl, int blf) const
+{
+  int i;
+
+  if (blf > 0)
+    for (i = 0; i < ni; i++)
+      jprintf("%*s%s = %4.2f\n", lvl, "", desc[i]->Nick(), desc[i]->Belief());
+  else
+    for (i = 0; i < ni; i++)
+      jprintf("%*s%s\n", lvl, "", desc[i]->Nick());
+}

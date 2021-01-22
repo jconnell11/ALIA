@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,6 +113,7 @@ void jhcDisplay::init_vals ()
   imgw = 0;
   imgh = 0;
   gcnt = 0;
+  gmax = 0;
 
   cw   = 0;
   rh   = 0;
@@ -430,6 +432,7 @@ void jhcDisplay::ResetGrid (int across, int w, int h)
   imgw = 0;
   imgh = 0;
   gcnt = 0;
+  gmax = 0;
   n = 0;
   cw = 0;
   rh = 0;
@@ -783,6 +786,7 @@ int jhcDisplay::Graph (const jhcArr& h, int x, int y, int maxval,
   imgw = gwid;
   imgh = ght;
   gcnt = n;
+  gmax = ((maxval == 0) ? top : maxval);
   return 1;
 }
 
@@ -863,6 +867,7 @@ int jhcDisplay::GraphV (const jhcArr& h, int x, int y, int maxval,
   imgw = gwid;
   imgh = ght;
   gcnt = n;
+  gmax = ((maxval == 0) ? rt : maxval);
   return 1;
 }
 
@@ -1110,6 +1115,7 @@ int jhcDisplay::GraphMarkV (double bin, int col, double ht)
 
 
 //= Draw a horizontal line at some value given range(s) of last graph.
+// negative maxval signals a graph that is symmetric around zero
 
 int jhcDisplay::GraphVal (int lvl, int maxval, int col)
 {
@@ -1117,12 +1123,12 @@ int jhcDisplay::GraphVal (int lvl, int maxval, int col)
   CPen *old_pen;
   CDC *cdc;
   double ht;
-  int y, minval = ((maxval < 0) ? maxval : 0);
+  int y, top = ((maxval == 0) ? gmax : maxval), bot = ((top < 0) ? top : 0);
 
   // determine height to draw line
-  if ((maxval == 0) || (lvl > abs(maxval)) || (lvl < minval))
+  if ((top == 0) || (lvl > abs(top)) || (lvl < bot))
     return 0;
-  ht = ght * (lvl - minval) / (double)(abs(maxval) - minval);
+  ht = ght * (lvl - bot) / (double)(abs(top) - bot);
 
   // select new colored pen 
   cdc = win->GetDC();
@@ -1144,6 +1150,7 @@ int jhcDisplay::GraphVal (int lvl, int maxval, int col)
 
 
 //= Draw a vertical line at some value given range(s) of last graph.
+// negative maxval signals a graph that is symmetric around zero
 
 int jhcDisplay::GraphValV (int lvl, int maxval, int col)
 {
@@ -1151,12 +1158,12 @@ int jhcDisplay::GraphValV (int lvl, int maxval, int col)
   CPen *old_pen;
   CDC *cdc;
   double ht;
-  int x, minval = ((maxval < 0) ? maxval : 0);
+  int x, top = ((maxval == 0) ? gmax : maxval), bot = ((top < 0) ? top : 0);
 
   // determine height to draw line
-  if ((maxval == 0) || (lvl > maxval) || (lvl < minval))
+  if ((top == 0) || (lvl > abs(top)) || (lvl < bot))
     return 0; 
-  ht = ght * (lvl - minval) / (double)(abs(maxval) - minval);
+  ht = gwid * (lvl - bot) / (double)(abs(top) - bot);
 
   // select new colored pen 
   cdc = win->GetDC();

@@ -47,7 +47,7 @@ void jhcGenParse::PrintResult (int lvl, int close)
     return;
 
   // LVL 2: show only chosen tree
-  jprintf("%d parse states\n\n", NumStates());
+//  jprintf("%d parse states\n\n", NumStates());
   jprintf("Tree %d:    <== CHOSEN out of %d\n", t, n);
   PrintTree();
   if (lvl <= 2)

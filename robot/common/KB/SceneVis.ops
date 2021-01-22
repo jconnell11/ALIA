@@ -1,0 +1,176 @@
+// basic interface to ELI's object finder
+// ================================================
+
+// OP 000 - "Check if a thing is located relative to another thing.
+trig:
+   CHK[ loc-1 -loc-> obj-1
+              -wrt-> obj-2 ]
+----------
+   FCN[ fcn-1 -lex-  vis_layout 
+              -arg-> loc-1 ]
+
+
+// OP 00 - "Find all visible things"
+//trig:
+//  FIND[ obj-1
+//         hq-1 -lex-  visible
+//              -hq--> obj-1 ]
+//pref: 0.5
+//----------
+//   FCN[ fcn-1 -lex-  vis_dummy ]
+
+
+// OP 0 - "Find all visible things"
+trig:
+  FIND[ obj-1
+         hq-1 -lex-  visible
+              -hq--> obj-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_enum ]
+
+
+// --------------------------------------
+
+
+// OP 1 - "To find something visible ..."
+trig:
+  FIND[  hq-1 -lex-  visible
+              -obj-> obj-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_enum 
+              -arg-> obj-1 ]         
+
+
+// OP 2 - "To check if something is visible ..."
+trig:
+   CHK[  hq-1 -lex-  visible
+              -obj-> obj-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_look         
+              -arg-> obj-1 ]
+
+
+// --------------------------------------
+
+// OP 3 - "To find the color of something ..."
+trig:
+  FIND[  hq-1 -hq--> obj-1
+        ako-1 -lex-  color
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_color        
+              -arg-> hq-1 ]
+
+
+// OP 4 - "To see if something is some color ..."
+trig:
+   CHK[  hq-1 -hq--> obj-1
+        ako-1 -lex-  color
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_col_ok        
+              -arg-> hq-1 ] 
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// OP 4B - "To see if something is red ..."
+//trig:
+//   CHK[  hq-1 -lex-  red
+//              -hq--> obj-1 ]
+//----------
+//   FCN[ fcn-1 -lex-  vis_col_ok        
+//              -arg-> hq-1 ] 
+
+
+// OP 4C - "To see if something is red ..."
+//trig:
+//   CHK[  hq-1 -lex-  red
+//              -hq--> obj-1 ]
+//----------
+//   FCN[ fcn-1 -lex-  vis_enum 
+//              -arg-> obj-1 ]      
+
+
+// OP 4D - "To see if something is a box ..."
+trig:
+   CHK[ ako-1 -lex-  box
+              -ako-> obj-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_shp_ok        
+              -arg-> ako-1 ] 
+
+
+// OP 4E - "To see if something is some shape ..."
+//trig:
+//   CHK[ ako-1 -ako-> obj-1
+//        ako-2 -lex-  shape
+//              -ako-> ako-1 ]
+//----------
+//   FCN[ fcn-1 -lex-  vis_shp_ok        
+//              -arg-> ako-1 ] 
+
+// --------------------------------------
+
+// OP 5 - "To find the size of something ..."
+trig:
+  FIND[  hq-1 -hq--> obj-1
+        ako-1 -lex-  size
+              -ako-> hq-1 ] 
+----------
+   FCN[ fcn-1 -lex-  vis_size        
+              -arg-> hq-1 ]
+
+
+// OP 6 - "To see if something is some size ..."
+trig:
+   CHK[  hq-1 -hq--> obj-1
+        ako-1 -lex-  size
+              -ako-> hq-1 ] 
+----------
+   FCN[ fcn-1 -lex-  vis_sz_ok        
+              -arg-> hq-1 ]
+
+
+// --------------------------------------
+
+// OP 7 - "To find the width of something ..."
+trig:
+  FIND[  hq-1 -hq--> obj-1
+        ako-1 -lex-  width
+              -ako-> hq-1 ] 
+----------
+   FCN[ fcn-1 -lex-  vis_width        
+              -arg-> hq-1 ]
+
+
+// OP 8 - "To see if something has some width ..."
+trig:
+   CHK[  hq-1 -hq--> obj-1
+        ako-1 -lex-  width
+              -ako-> hq-1 ] 
+----------
+   FCN[ fcn-1 -lex-  vis_wid_ok        
+              -arg-> hq-1 ]
+
+
+// --------------------------------------
+
+// OP 9 - "To find the height of something ..."
+trig:
+  FIND[  hq-1 -hq--> obj-1
+        ako-1 -lex-  height
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_height        
+              -arg-> hq-1 ]
+
+
+// OP 10 - "To see if something has some height ..."
+trig:
+   CHK[  hq-1 -hq--> obj-1
+        ako-1 -lex-  height
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_ht_ok        
+              -arg-> hq-1 ]

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -432,7 +433,7 @@ const jhcImg *jhcFRecoDLL::Mugshot (int i)
 jhcFaceVect *jhcFRecoDLL::mark_rank (const char **name, int i)
 {
   jhcFaceOwner *dude;
-  jhcFaceVect *top, *v;
+  jhcFaceVect *v, *top = NULL;
   double low;
 
   // see if ranking already done

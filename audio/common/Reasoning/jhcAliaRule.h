@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,28 +44,36 @@ friend class jhcGraphizer;             // creation
 
 // PRIVATE MEMBER VARIABLES
 private:
+  static const int hmax = 20;          /** Max halo instantiations. */
+
+  // core information
   jhcGraphlet result;
   jhcAliaRule *next;
+  int id, lvl;
+
+  // run-time status
+  jhcBindings hinst[hmax];
   jhcWorkMem *wmem;
-  double conf;
-  int id, lvl, src0, src1, show;
+  int nh, show;
 
 
 // PUBLIC MEMBER FUNCTIONS
 public:
   // read only access
   int RuleNum () const {return id;}
-  double Confidence () const {return conf;}
-
-  // source attribution
-  bool Asserted (const jhcNetNode *n) const;
 
   // main functions
-  int AssertMatches (jhcWorkMem& f, double mth, int dbg =0);
+  int AssertMatches (jhcWorkMem& f, double mth, int add =0, int noisy =0);
+  void Inferred (jhcGraphlet& key, const jhcBindings& b) const;
+
+  // halo consolidation
+  void AddCombo (jhcBindings& m2c, const jhcAliaRule& step1, const jhcBindings& b1);
+  void LinkCombo (jhcBindings& m2c, const jhcAliaRule& step2, const jhcBindings& b2);
+  bool Identical (const jhcAliaRule& ref) const;
 
   // file functions
   int Load (jhcTxtLine& in);
-  int Save (FILE *out, int detail =2) const;
+  int Save (FILE *out, int detail =0) const;
   int Print (int detail =0) const {return Save(stdout, detail);}
 
 
@@ -74,8 +83,14 @@ private:
   ~jhcAliaRule ();
   jhcAliaRule ();
 
-  // main functions (virtual override)
-  int match_found (jhcBindings *m, int& mc);
+  // main functions (incl. virtual override)
+  int match_found (jhcBindings *m, int& mc); 
+  bool same_result (const jhcBindings *m, int mc) const;
+
+  // halo consolidation
+  void insert_args (jhcBindings& m2c, jhcGraphlet& desc);
+  jhcNetNode *add_equiv (jhcBindings& m2c, jhcGraphlet& desc, const jhcNetNode *probe);
+  bool same_struct (const jhcNetNode *focus, const jhcNetNode *mate) const;
 
   // file functions
   int load_clauses (jhcTxtLine& in);

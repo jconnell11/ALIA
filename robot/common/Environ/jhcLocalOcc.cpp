@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +20,8 @@
 // limitations under the License.
 // 
 ///////////////////////////////////////////////////////////////////////////
+
+#include <string.h>
 
 #include "Interface/jhcMessage.h"      // common video
 
@@ -40,6 +43,7 @@ jhcLocalOcc::~jhcLocalOcc ()
 
 jhcLocalOcc::jhcLocalOcc ()
 {
+  strcpy_s(name, "occ");
   dbg = 0;
   Defaults();
   Reset();
@@ -74,7 +78,7 @@ int jhcLocalOcc::env_params (const char *fname)
 }
 
 
-//= Parameters used for retricting Kinect sensing cone FOV.
+//= Parameters used for restricting Kinect sensing cone FOV.
 
 int jhcLocalOcc::geom_params (const char *fname)
 {
@@ -82,13 +86,7 @@ int jhcLocalOcc::geom_params (const char *fname)
   int ok;
 
   ps->SetTag("occ_geom", 0);
-  ps->NextSpecF( &dlf,    3.0, "Trim beam left (deg)");
-  ps->NextSpecF( &drt,    5.5, "Trim beam right (deg)");
-  ps->NextSpecF( &dtop,   4.5, "Trim beam top (deg)");
-  ps->NextSpecF( &dbot,   1.0, "Trim beam bot (deg)");
-  ps->Skip();
   ps->NextSpecF( &rside,  8.0, "Robot half width (in)");
-
   ps->NextSpecF( &rfwd,  15.0, "Fwd robot protrusion (in)");
   ps->NextSpecF( &rback, 14.0, "Rear robot extension (in)");
   ok = ps->LoadDefs(fname);
@@ -154,9 +152,11 @@ int jhcLocalOcc::Defaults (const char *fname)
   int ok = 1;
 
   ok &= env_params(fname);
+  ok &= plane_params(fname);
   ok &= geom_params(fname);
   ok &= conf_params(fname);
   ok &= nav_params(fname);
+  ok &= beam_params(fname);            // from jhcOverhead3D
   return ok;
 }
 
@@ -168,9 +168,11 @@ int jhcLocalOcc::SaveVals (const char *fname) const
   int ok = 1;
 
   ok &= eps.SaveVals(fname);
+  ok &= pps.SaveVals(fname);
   ok &= gps.SaveVals(fname);
   ok &= kps.SaveVals(fname);
   ok &= nps.SaveVals(fname);
+  ok &= kps.SaveVals(fname);           // from jhcOverhead3D
   return ok;
 }
 
@@ -311,7 +313,8 @@ int jhcLocalOcc::RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcM
 
   // get actual heights above surface and mark missing floor area
   map.FillArr(0);
-  expect_floor(map);
+  BeamFill(map, ztab, 1);
+//  expect_floor(map);
   Reproject(map, d16, 0, 0, pos.Z() + hat, 0);
 
   // find deviations from planar floor fit to get obstructions
@@ -340,7 +343,7 @@ int jhcLocalOcc::RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcM
   return 1;
 }
 
-
+/*
 //= Find expected floor area and set height to lowest value (i.e. missing floor).
 // finds corners of sensing area at floor height, assumes roll = 0
 // similar to jhcOverhead3D::Footprint but more accurate
@@ -400,7 +403,7 @@ void jhcLocalOcc::expect_floor (jhcImg& dest) const
   // mark area inside corners
   FillPoly4(dest, nwx, nwy, nex, ney, sex, sey, swx, swy, 1);
 }
-
+*/
 
 //= Add non-floor things as permanent obstacles to unknown areas, else mark as temporary.
 // <pre>

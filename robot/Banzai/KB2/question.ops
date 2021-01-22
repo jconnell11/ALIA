@@ -1,0 +1,160 @@
+// Responses to yes/no and wh- questions 
+// ================================================
+
+// OP 1 - "To affirm say yes indeed"
+trig:
+    DO[ act-1 -lex-  affirm ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  yes indeed ]
+
+
+// OP 2 - "To affirm say yup"
+trig:
+    DO[ act-1 -lex-  affirm ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  yup ]
+
+
+// OP 3 - "To affirm say I believe so whoever"
+trig:
+    DO[ act-1 -lex-  affirm ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  I believe so ?0 ]
+
+
+// ----------------------------------------
+
+// OP 4 - "To deny say no"
+trig:
+    DO[ act-1 -lex-  deny ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  no ]
+
+
+// OP 5 - "To deny say nope"
+trig:
+    DO[ act-1 -lex-  deny ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  nope ]
+
+
+// OP 6 - "To deny say I don't think so"
+trig:
+    DO[ act-1 -lex-  deny ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  I don't think so ]
+
+
+// ----------------------------------------
+
+// OP 7 - "To pass say no clue"
+trig:
+    DO[ act-1 -lex-  pass ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  no clue ]
+
+
+// OP 8 - "To pass say I don't know"
+trig:
+    DO[ act-1 -lex-  pass ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  I don't know ]
+
+
+// OP 9 - "To pass say beats me whoever"
+trig:
+    DO[ act-1 -lex-  pass ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  beats me ?0 ]
+
+// ================================================
+
+// OP 10 - "To tell what something is say whatever"
+trig:
+    DO[ act-1 -lex-   tell 
+              -dest-> dude-1
+              -obj--> hq-1 
+         hq-1 -hq---> obj-1 ]
+-----------------
+    DO[ act-2 -lex-   say
+              -obj--> hq-1 ]
+
+
+// OP 11 - "To tell what something is say the something is whatever"
+trig:
+    DO[ act-1 -lex-   tell 
+              -dest-> dude-1
+              -obj--> hq-1 
+         hq-1 -hq---> obj-1 ]
+-----------------
+    DO[ act-2 -lex-   say
+              -obj--> txt-1
+        txt-1 -str-   ?1 is ?2
+              -arg1-> obj-1 
+              -arg2-> hq-1 ]
+
+
+// ----------------------------------------
+
+// OP 12 - "To tell what kind of thing something is say a whatever"
+trig:
+    DO[ act-1 -lex-   tell 
+              -dest-> dude-1
+              -obj--> ako-1 
+        ako-1 -ako--> obj-1 ]
+-----------------
+    DO[ act-2 -lex-   say
+              -obj--> txt-1 
+        txt-1 -str-   a ?1
+              -arg1-> ako-1 ]
+
+
+// OP 13 - "To tell what kind of thing something is say the something is a whatever"
+trig:
+    DO[ act-1 -lex-   tell 
+              -dest-> dude-1
+              -obj--> ako-1 
+        ako-1 -ako--> obj-1 ]
+-----------------
+    DO[ act-2 -lex-   say
+              -obj--> txt-1
+        txt-1 -str-   ?1 is a ?2
+              -arg1-> obj-1 
+              -arg2-> ako-1 ]
+
+
+// ----------------------------------------
+
+// OP 12 - "To tell what something is say the something"
+trig:
+    DO[ act-1 -lex-   tell 
+              -dest-> dude-1
+              -obj--> obj-1 ]
+-----------------
+    DO[ act-2 -lex-   say
+              -obj--> obj-1 ]
+
+
+
+
+
+
+

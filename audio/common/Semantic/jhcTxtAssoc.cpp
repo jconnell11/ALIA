@@ -358,6 +358,10 @@ jhcTxtList *jhcTxtAssoc::rand_choice ()
   jhcTxtList *v = vals;
   double th, sum = 0.0, acc = 0.0;
 
+  // sanity check
+  if (v == NULL)
+    return NULL;
+
   // generate threshold as some fraction of total weight sum
   while (v != NULL)
   {

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +43,7 @@ public:
   virtual jhcNetNode *NextNode (const jhcNetNode *prev =NULL) const =0;
   virtual int Length () const =0;
   virtual bool InList (const jhcNetNode *n) const =0;
+  virtual bool Prohibited (const jhcNetNode *n) const {return(n == NULL);}
 
 
 };

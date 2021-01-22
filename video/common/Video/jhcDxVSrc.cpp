@@ -33,7 +33,6 @@
 
 
 #include <comdef.h>                   // needed for _bstr_t
-#include <dshow.h>
 #include <ks.h>                       // for camera control
 #include <ksmedia.h>        
 #include <stdio.h>

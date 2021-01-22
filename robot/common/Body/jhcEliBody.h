@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,6 +85,10 @@ public:
   jhcParam ips;
   int nbid, lbid, abid, gbid, tbid, mbid;
 
+  // static pose parameters
+  jhcParam sps;
+  double pdef, tdef, hdef;
+
 
 // PUBLIC MEMBER FUNCTIONS
 public:
@@ -107,6 +112,8 @@ public:
   int BodyNum () const {return __max(0, bnum);}
   const char *Problems ();
   double MegaReport ();
+  void StaticPose () 
+    {neck.Inject(pdef, tdef); lift.Inject(hdef);}
 
   // configuration - convenience
   template <size_t ssz>
@@ -180,6 +187,7 @@ private:
   // processing parameters
   int body_params (const char *fname);
   int idle_params (const char *fname);
+  int static_params (const char *fname);
 
   // configuration
   void chk_vid (int start);

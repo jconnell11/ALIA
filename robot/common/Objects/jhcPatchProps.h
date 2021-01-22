@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,9 +89,9 @@ public:
   double tfill;
   int ejth, elen, nej;
 
-  // size and width parameters
+  // size, width, and height parameters
   jhcParam zps;
-  double big, sm, wth, nth;
+  double big, sm, wth, nth, tall, petite;
 
   // results of size and width
   double dim, wrel;
@@ -132,7 +133,9 @@ public:
 
   // size and shape functions
   int SizeClass (int area, double ppi);
+  int SizeClass (double dmax) const;
   int WidthClass (double wx, double hy);
+  int HeightClass (double zdim) const;
 
 
 // PRIVATE MEMBER FUNCTIONS

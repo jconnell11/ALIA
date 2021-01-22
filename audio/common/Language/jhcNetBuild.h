@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,12 +45,19 @@ private:
   char verb[wmax][40], mod[wmax][40], dir[wmax][40];
   int nn, na, nt, nv, nm, nd;
 
+  // last ADD directive assembled
+  jhcAliaDir *add;
+
 
 // PUBLIC MEMBER FUNCTIONS
 public:
+  // creation and initialization
+  jhcNetBuild () {add = NULL;}
+
   // main functions
   int NameSaid (const char *alist, int mode =2) const;
   int Convert (const char *alist);
+  void Summarize (FILE *log, const char *sent, int nt, int spact) const;
 
   // utilities
   int HarvestLex (const char *kern);
@@ -62,10 +70,9 @@ private:
   int hail_tag () const;
   int greet_tag () const;
   int farewell_tag () const;
-  int add_tag (int rule, const char *alist) const;
-  int attn_tag (const char *alist) const;
+  int add_tag (int rule, const char *alist);
+  int attn_tag (int spact, const char *alist) const;
   jhcAliaChain *build_tag (jhcNetNode **node, const char *alist) const;
-  void attn_args (jhcNetNode *input, const jhcAliaChain *bulk) const;
 
   // utilities
   int scan_lex (const char *fname);

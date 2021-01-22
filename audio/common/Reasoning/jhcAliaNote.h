@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +30,7 @@
 
 
 //= Interface for asserting facts in ALIA architecture.
-// basically watered down version of jhcAliaAttn class
+// basically watered down version of jhcActionTree class
 
 class jhcAliaNote
 {
@@ -42,7 +43,7 @@ public:
 
   //= Add a new node of some type to current note.
   // returns a pointer to the new node or NULL if error
-  virtual jhcAliaDesc *NewNode (const char *kind, const char *word =NULL, int neg =0, double blf =1.0) =0;
+  virtual jhcAliaDesc *NewNode (const char *kind, const char *word =NULL, int neg =0, double blf =1.0, int done =0) =0;
 
   //= Create a new node to represent a property of this node.
   // returns a pointer to the new node or NULL if error

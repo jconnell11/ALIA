@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +60,8 @@ public:
   double CoefY () const  {return b;}
   double Offset () const {return c;}
   double RMS () const    {return err;}
+  double MidX () const   {return(Sx / num);}
+  double MidY () const   {return(Sy / num);}
   double StdX () const   {return sqrt((Sxx - Sx * Sx) / (num * num));}
   double StdY () const   {return sqrt((Sxx - Sx * Sx) / (num * num));}
   int Pts () const       {return((int) num);}

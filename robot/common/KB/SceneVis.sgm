@@ -1,0 +1,57 @@
+// terms associated with "SceneVis" ops and rules
+// ================================================
+
+// singular nouns - mass nouns like "a rice" belong in =[AKO-M] instead
+
+=[AKO]
+  color
+  size
+  width
+  height
+
+
+// adjective
+
+=[HQ]
+  visible
+  red
+  orange
+  yellow
+  green
+  blue 
+  purple
+  black
+  gray
+  white
+  small
+  medium sized
+  big
+  narrow
+  medium width
+  wide
+  short
+  medium height
+  tall
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  visible * acomp = more visible
+  visible * asup  = most visible
+  yellow * acomp = yellower
+  yellow * asup  = yellowest
+  orange * acomp = oranger
+  orange * asup  = orangest
+  blue * acomp = bluer
+  blue * asup  = bluest
+  purple * acomp = purpler
+  purple * asup  = purplest
+  medium sized * acomp = more medium sized
+  medium sized * asup  = most medium sized
+  medium width * acomp = more medium width
+  medium width * asup  = most medium width
+  medium height * acomp = more medium height
+  medium height * asup  = most medium height

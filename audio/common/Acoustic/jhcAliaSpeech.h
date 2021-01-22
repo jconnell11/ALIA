@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -96,10 +97,6 @@ public:
   int Attending () const {return((awake != 0) ? 1 : 0);}
   int SpeechIn () const {return spin;}
   int SpeechRC () const;
-
-  // processing parameter bundles 
-  int Defaults (const char *fname =NULL);
-  int SaveVals (const char *fname) const;
 
   // main functions
   int Reset (const char *rname =NULL, const char *vname =NULL);

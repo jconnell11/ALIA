@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +23,6 @@
 
 #include <ctype.h>
 #include <math.h>
-
-#include "Interface/jhcMessage.h"      // common video
 
 #include "Language/jhcMorphTags.h"     // common audio
 #include "Semantic/jhcGraphlet.h"      // since only spec'd as class in header
@@ -48,11 +47,8 @@ jhcNodePool::~jhcNodePool ()
 
 jhcNodePool::jhcNodePool ()
 {
-  // list structure and changes
+  // direction of numbering
   dn = 0;
-  add = 0;
-  arg = 0;
-  del = 0;
 
   // initial values
   init_pool();
@@ -78,6 +74,12 @@ void jhcNodePool::init_pool ()
   acc = NULL;
   ver = 1;
   rnum = 0;
+
+  // changes to members
+  add = 0;
+  arg = 0;
+  del = 0;
+  mod = 0;
 }
 
 
@@ -103,16 +105,36 @@ void jhcNodePool::PurgeAll ()
 }
 
 
-//= Tell if anything about collection of nodes has changed since last call.
+//= Determine how many actual nodes are in the pool.
+// "psz" tells how many nodes have been created -- but some may already be deleted
 
-bool jhcNodePool::Changed ()
+int jhcNodePool::NodeCnt () const
 {
-  bool ans = ((add > 0) || (arg > 0) || (del > 0));
+  const jhcNetNode *n = pool;
+  int cnt = 0;
+
+  n = pool;
+  while (n != NULL)
+  {
+    n = n->next;
+    cnt++;
+  }
+  return cnt;
+}
+
+
+//= Tell if anything about collection of nodes has changed since last call.
+// returns number of changes (irrespective of type)
+
+int jhcNodePool::Changes ()
+{
+  int sum = add + del + arg + mod;
 
   add = 0;
   arg = 0;
   del = 0;
-  return ans;
+  mod = 0;
+  return sum;
 }
 
 
@@ -121,14 +143,14 @@ bool jhcNodePool::Changed ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Instantiate some pattern in memory using the given bindings.
-// can take a unique index tying together all the parts of the assertion
 // bindings are augmented to include new nodes built during graphlet copy
-// belief is set to zero unless conf negative, must call Actualize to get blf0 or conf
-// returns src value if successful, negative for problem
+// if conf = 0 belief remains the same (either lookup old or copied new)
+// if conf < 0 belief is immediately set to value (as opposed to setting default)
+// returns 1 if successful, negative for problem
 
-int jhcNodePool::Assert (const jhcGraphlet& pat, jhcBindings& b, double conf, int src, int tval)
+int jhcNodePool::Assert (const jhcGraphlet& pat, jhcBindings& b, double conf, int tval, const jhcNodeList *univ)
 {
-  jhcNetNode *focus, *mate, *arg;
+  jhcNetNode *focus, *mate, *probe, *arg;
   int i, j, na, n = pat.NumItems();
 
   // go through all nodes in the pattern
@@ -136,14 +158,12 @@ int jhcNodePool::Assert (const jhcGraphlet& pat, jhcBindings& b, double conf, in
   {
     // get main or halo node related to this item
     focus = pat.Item(i);
-    if ((mate = lookup_make(focus, b, src)) == NULL)
+    if ((mate = lookup_make(focus, b, univ)) == NULL)
       return -1;
-    if (focus->LexNode())
+    if (focus->LexNode() && !mate->Halo())       // halo hack for provenance
       mate->SetBelief(1.0);
     else if (conf < 0.0)
       mate->SetBelief(-conf);
-    else
-      mate->SetBelief(0.0);
     mate->TopMax(tval);
     mate->gen = ver;                             // re-check fluents
 
@@ -151,37 +171,64 @@ int jhcNodePool::Assert (const jhcGraphlet& pat, jhcBindings& b, double conf, in
     na = focus->NumArgs();
     for (j = 0; j < na; j++)
     {
-      // add argument if missing (e.g. extra "wrt")
-      if ((arg = lookup_make(focus->Arg(j), b, src)) == NULL)
+      // add argument if missing (e.g. extra "wrt" or node outside pattern)
+      probe = focus->Arg(j);
+      if ((arg = lookup_make(probe, b, univ)) == NULL)
         return -2;
+//      if (probe->LexNode())
+//        arg->SetBelief(1.0);
+//      else if (conf < 0.0)
+//        arg->SetBelief(-conf);
       arg->TopMax(tval);
       arg->gen = ver;                            // re-check fluents
       if (!mate->HasVal(focus->Slot(j), arg))
         mate->AddArg(focus->Slot(j), arg); 
     }
   }
-  return src;
+  return 1;
 }
 
 
 //= Get equivalent node from bindings else make new node in this pool.
-// "src" field is used to group halo assertions from same rule
 // NOTE: generally lexical terms will have their own nodes in the bindings
 
-jhcNetNode *jhcNodePool::lookup_make (const jhcNetNode *n, jhcBindings& b, int src) 
+jhcNetNode *jhcNodePool::lookup_make (jhcNetNode *n, jhcBindings& b, const jhcNodeList *univ) 
 {
-  jhcNetNode *focus = NULL;
+  jhcNetNode *focus = b.LookUp(n);
 
-  if ((focus = b.LookUp(n)) == NULL)
+  if ((focus == NULL) && ((univ == NULL) || !univ->InList(n)))
   {
-    focus = MakeNode(n->Kind(), NULL, n->Neg(), n->Default());
+    // make a new node similar to reference (adds to acc)
+    focus = MakeNode(n->Kind(), NULL, n->Neg(), n->Default());  
     focus->SetDone(n->Done());
     focus->tags = n->tags;
     focus->SetString(n->Literal());
-    focus->pod = src;
-    b.Bind(n, focus);
+    b.Bind(n, focus);                  // might be used later
+    if (focus->Halo())
+      focus->SetDefault(0.0);          // default blf = 0 in halo
+  }
+  else 
+  {
+    // node already exists in pool or external universe
+    if (focus == NULL)
+      focus = n;
+    if (acc != NULL)
+      acc->AddItem(focus);
   }
   return focus;
+}
+
+
+//= If pre-exsiting item re-used, update its recency and make sure it is in any graphlet.
+
+jhcNetNode *jhcNodePool::MarkRef (jhcNetNode *n)
+{
+  if (n == NULL) 
+    return NULL; 
+  n->ref = ++rnum; 
+  if (acc != NULL) 
+    acc->AddItem(n); 
+  return n;
 }
 
 
@@ -194,7 +241,7 @@ jhcNetNode *jhcNodePool::lookup_make (const jhcNetNode *n, jhcBindings& b, int s
 // but if "def" is negative, then "blf" is immediately set also
 // returns a new node if successful else NULL
 
-jhcNetNode *jhcNodePool::MakeNode (const char *kind, const char *word, int neg, double def)
+jhcNetNode *jhcNodePool::MakeNode (const char *kind, const char *word, int neg, double def, int done)
 {
   jhcNetNode *item;
   int id0 = label + 1, id = ((dn <= 0) ? id0 : -id0);
@@ -206,11 +253,12 @@ jhcNetNode *jhcNodePool::MakeNode (const char *kind, const char *word, int neg, 
   // bind some other fields
   item->gen = ver;                  // useful for CHK directive and fluents
   item->SetNeg(neg);
+  item->SetDone(done);
   item->SetDefault(fabs(def));      // usually needs to be actualized
   if (def < 0.0)
     item->SetBelief(fabs(def));     // force belief right now
   if (word != NULL)
-    AddLex(item, word, 0, fabs(def));
+    AddLex(item, word);             // was fabs(def)
   return item;
 }
 
@@ -257,7 +305,7 @@ jhcNetNode *jhcNodePool::create_node (const char *kind, int id)
 
   // possibly add to current accumulator graphlet
   if (acc != NULL)
-    acc->AddItem(n2);         
+    acc->AddItem(n2);
   add++;
   return n2;
 }
@@ -302,6 +350,10 @@ jhcNetNode *jhcNodePool::AddLex (jhcNetNode *head, const char *word, int neg, do
 int jhcNodePool::RemNode (jhcNetNode *n)
 {
   jhcNetNode *last = NULL, *now = pool;
+
+  // sanity check
+  if (n == NULL)
+    return 0;
 
   // find preceding node in list
   while (now != NULL)
@@ -398,7 +450,8 @@ jhcNetNode *jhcNodePool::FindNode (const char *desc, int make)
       // make sure ID not used by some different kind of node (common mistake)
       if (strcmp(n->Kind(), kind) == 0)
         return n;
-      jprintf(">>> Cannot make %s because %s%+d exists in jhcNodePool::FindNode !\n", desc, n->Kind(), -(n->Inst()));
+      if (make > 0)
+        jprintf(">>> Cannot make %s because %s%+d exists in jhcNodePool::FindNode !\n", desc, n->Kind(), -(n->Inst()));
       return NULL;
     }
     n = n->next;
@@ -464,6 +517,21 @@ const char *jhcNodePool::extract_kind (char *kind, const char *desc, int ssz)
 }
 
 
+//= Get a mutable pointer to some element in pool based on an immutable pointer.
+// used by jhcActionTree to retrieve rule result fact given a binding key
+
+jhcNetNode *jhcNodePool::Wash (const jhcNetNode *ref) const
+{
+  jhcNetNode *n = NULL;
+
+  if (ref != NULL)
+    while ((n = Next(n)) != NULL)
+      if (n == ref)
+        return n;
+  return NULL;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                           Virtual Overrides                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -521,7 +589,6 @@ int jhcNodePool::save_nodes (FILE *out, int lvl) const
   while (n != NULL)
   {
     n->TxtSizes(kmax, nmax, rmax);
-//    n->mark = 0;
     n = n->next;
   }
 
@@ -601,9 +668,10 @@ int jhcNodePool::Load (const char *fname, int add)
 
 //= Read at current location in a file to fill in details of self.
 // stops after first syntax error, some nodes may be only partially filled
+// can optionally set default belief to 1.0 if "tru" > 0
 // returns: 2 = ok + delimiter, 1 = success, 0 = bad format, -1 = file problem
 
-int jhcNodePool::Load (jhcTxtLine& in)
+int jhcNodePool::Load (jhcTxtLine& in, int tru)
 {
   char arrow[40];
   const char *desc, *link;
@@ -624,7 +692,7 @@ int jhcNodePool::Load (jhcTxtLine& in)
       in.Flush();
       continue;
     }
-    if ((topic = chk_topic(topic, in)) == NULL)
+    if ((topic = chk_topic(topic, in, tru)) == NULL)
       return 0;
     if (acc != NULL)
       acc->AddItem(topic);
@@ -637,7 +705,7 @@ int jhcNodePool::Load (jhcTxtLine& in)
     {
       strcpy_s(arrow, desc); 
       link = link_name(arrow);
-      ans = parse_arg(topic, link, in);
+      ans = parse_arg(topic, link, in, tru);
     }
 
     // line finished, check for bad format or bracket terminator
@@ -651,9 +719,10 @@ int jhcNodePool::Load (jhcTxtLine& in)
 
 //= Parse and bind a new topic node (if any) at front of line.
 // advances string pointer to portion after node found
+// can optionally set default belief to 1.0 if "tru" > 0
 // return topic unaltered if nothing there, NULL if present but not resolved
 
-jhcNetNode *jhcNodePool::chk_topic (jhcNetNode *topic, jhcTxtLine& in)
+jhcNetNode *jhcNodePool::chk_topic (jhcNetNode *topic, jhcTxtLine& in, int tru)
 {
   const char *desc;
 
@@ -663,7 +732,7 @@ jhcNetNode *jhcNodePool::chk_topic (jhcNetNode *topic, jhcTxtLine& in)
     return topic;
   if ((desc = in.Token()) == NULL)
     return topic;
-  return find_trans(desc);
+  return find_trans(desc, tru);
 }
 
 
@@ -688,9 +757,10 @@ const char *jhcNodePool::link_name (char *arrow) const
 
 //= Interpret line as node -link-> arg possibly with tags.
 // "-lex-" link actually results in a new property being added
+// can optionally set default belief to 1.0 if "tru" > 0
 // return: 2 = ok + delimiter, 1 = success, 0 = bad format
 
-int jhcNodePool::parse_arg (jhcNetNode *n, const char *slot, jhcTxtLine& in)
+int jhcNodePool::parse_arg (jhcNetNode *n, const char *slot, jhcTxtLine& in, int tru)
 {
   const char *arg;
   jhcNetNode *n2;
@@ -727,7 +797,7 @@ int jhcNodePool::parse_arg (jhcNetNode *n, const char *slot, jhcTxtLine& in)
   else
   {
     // otherwise add specified node as an argument
-    if ((n2 = find_trans(arg)) == NULL)
+    if ((n2 = find_trans(arg, tru)) == NULL)
       return 0;
     n->AddArg(slot, n2);
     arg++;
@@ -796,7 +866,7 @@ int jhcNodePool::get_lex (jhcNetNode *item, jhcTxtLine& in)
   lex[i + 1] = '\0';
 
   // associate the word or phrase with this item 
-  AddLex(item, lex, 0, 1.0);                             // should be zero?
+  AddLex(item, lex);                               // blf should be zero?
   return ans;
 }
 
@@ -830,8 +900,9 @@ int jhcNodePool::get_tags (UL32& tags, jhcTxtLine& in) const
 
 
 //= Find or make node for given surface string.
+// can optionally set default belief to 1.0 if "tru" > 0
 
-jhcNetNode *jhcNodePool::find_trans (const char *desc)
+jhcNetNode *jhcNodePool::find_trans (const char *desc, int tru)
 {
   char kind[40];
   jhcNetNode *n;
@@ -853,6 +924,8 @@ jhcNetNode *jhcNodePool::find_trans (const char *desc)
   if (extract_kind(kind, desc, 40) == NULL)
     return NULL;
   n = create_node(kind, ++label);
+  if (tru > 0)
+    n->SetBelief(1.0);
   
   // add pair to translation table
   trans[nt] = n;
@@ -863,14 +936,15 @@ jhcNetNode *jhcNodePool::find_trans (const char *desc)
 
 
 //= Load a network description and accumulate it in some graphlet.
+// can optionally set default belief to 1.0 if "tru" > 0
 // returns number of nodes added, -1 = format problem, -2 = file problem
 
-int jhcNodePool::LoadGraph (jhcGraphlet *g, jhcTxtLine& in)
+int jhcNodePool::LoadGraph (jhcGraphlet *g, jhcTxtLine& in, int tru)
 {
   int ans;
 
   BuildIn(g); 
-  ans = Load(in);
+  ans = Load(in, tru);
   BuildIn(NULL);
   return ans;
 }

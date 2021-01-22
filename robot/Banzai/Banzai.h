@@ -27,12 +27,14 @@ public:
   // JHC override
   void AddToRecentFileList(LPCTSTR lpszPathName);
 
+
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CBanzaiApp)
 	public:
 	virtual BOOL InitInstance();
 	//}}AFX_VIRTUAL
+
 
 // Implementation
 	//{{AFX_MSG(CBanzaiApp)

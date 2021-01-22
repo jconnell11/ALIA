@@ -4,7 +4,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 1999-2018 IBM Corporation
+// Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1424,6 +1425,7 @@ int jhcArr::LastValley (int th, double tol) const
 
 //= Starting at the given position climb and mark nearest peak.
 // respects subrange specifications
+// NOTE: returns the LARGER of the two adjacent peaks found
 
 int jhcArr::NearestPeak (int pos) const
 {
@@ -1447,10 +1449,44 @@ int jhcArr::NearestPeak (int pos) const
       last = arr[lf];
   lf++;
 
-  // choose bigger of two
+  // choose BIGGER of two
   if (arr[rt] > arr[lf])
     return rt;
   return lf;
+}
+
+
+//= Divide array into regions above th and find maximum in each.
+// respects subrange specifications
+// returns position of closest max or original reference position if no regions
+
+int jhcArr::NearMassPeak (int pos, int th) const
+{
+  int i, top, dist, best, pk = -1, win = -1;
+
+  // scan for contiguous regions over th
+  for (i = i0; i <= i1; i++)
+    if ((i < i1) && (arr[i] > th))
+    {
+      // possibly new region or better peak
+      if ((pk < 0) || (arr[i] > top))
+      {
+        top = arr[i];
+        pk = i;
+      }
+    }
+    else if (pk >= 0) 
+    {
+      // possibly finished region so check if closest
+      dist = abs(pk - pos);
+      if ((win < 0) || (dist < best))
+      {
+        best = dist;
+        win = pk;
+      }
+      pk = -1;
+    }
+  return((win < 0) ? pos : win);
 }
 
 
@@ -2166,6 +2202,22 @@ int jhcArr::OffsetN (const jhcArr& src, int inc)
 
   for (i = 0; i < n; i++)
     arr[i] = s[i] + inc;
+  return 1;
+}
+
+
+//= Make all values under threshold be zero.
+
+int jhcArr::Squelch (const jhcArr& src, int sub)
+{
+  int i, n = __min(sz, src.sz);
+  int *s = src.arr;
+
+  for (i = 0; i < n; i++)
+    if (s[i] < sub)
+      arr[i] = 0;
+    else
+      arr[i] = s[i];
   return 1;
 }
 

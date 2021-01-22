@@ -37,9 +37,22 @@ trig:
         txt-1 -str-  finally, someone to play with]
 
 
+// OP 4 - "To announce that you are awake say that was a nice nap, but now I'm wide awake"
+trig:
+    DO[ act-1 -lex-  announce
+              -obj-> hq-1 
+         hq-1 -lex-  awake
+              -hq--> obj-1
+        obj-1 -lex-  you ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  that was a nice nap, but now I'm wide awake]
+
+
 // ----------------------------------------
 
-// OP 4 - "If you are tired then announce that"
+// OP 5 - "If you are tired then announce that"
 trig:
   NOTE[  hq-1 -lex-  tired
               -hq--> obj-1
@@ -49,7 +62,7 @@ trig:
               -obj-> hq-1 ]
 
 
-// OP 5 - "To announce that you are tired say Aww, come on, I'm so tired"
+// OP 6 - "To announce that you are tired say Aww, come on, I'm so tired"
 trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1 
@@ -62,7 +75,7 @@ trig:
         txt-1 -str-  Aww, come on, I'm so tired]
 
 
-// OP 6 - "To announce that you are tired say I'm pretty low on juice"
+// OP 7 - "To announce that you are tired say I'm pretty low on juice"
 trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1 

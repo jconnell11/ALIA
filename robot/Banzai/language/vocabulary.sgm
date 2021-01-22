@@ -5,6 +5,19 @@
 
 =[AKO]
   tiger
+  object
+  bottle
+  box
+  color
+  size
+  shape
+  dog
+  cat
+  yard
+  table
+  hammer
+  girl
+  animal
 
 
 // mass nouns (do not take "the" or "a")
@@ -17,11 +30,23 @@
 =[HQ]
   orange
   striped
+  blue
+  red
+  green
+  round
+  square
+  clear
+  alive
+  dead
+  tawny
+  streaked
 
 
 // proper noun
 
 =[NAME]
+  Rick
+  Mary
 
 
 // robot name
@@ -49,6 +74,13 @@
   do anything
   sleep
   stop
+  tell
+  see
+  catch
+  grab
+  hit
+  vet
+  complain
 
 
 // ================================================
@@ -67,3 +99,6 @@
   striped * acomp = more striped
   striped * asup  = most striped
   sleep * vpast = slept
+  see * vpast = saw
+  catch * vpast = caught
+  hit * vpast = hit

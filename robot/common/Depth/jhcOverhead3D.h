@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +36,7 @@
 #include "Processing/jhcALU.h"
 #include "Processing/jhcArea.h"
 #include "Processing/jhcDraw.h"
+#include "Processing/jhcHist.h"
 #include "Processing/jhcResize.h"
 #include "Processing/jhcThresh.h"
 
@@ -53,14 +55,19 @@
 // </pre>
 
 class jhcOverhead3D : public jhcSurface3D, 
-                      protected jhcALU, protected jhcArea, protected jhcResize,
-                      virtual protected jhcDraw, virtual protected jhcThresh
+                      protected jhcALU, protected jhcArea, protected jhcHist, protected jhcResize, protected jhcThresh,
+                      virtual protected jhcDraw
 {
 // PRIVATE MEMBER VARIABLES
 private:
   jhcFill fill;
   jhcImg ctmp, dmsk, mask;
   int smax;
+
+  // plane fitting results
+  double efit, tfit, rfit, hfit;
+  double tavg, ravg, havg;
+  int fit, nfit;
 
 
 // PROTECTED MEMBER VARIABLES
@@ -71,6 +78,7 @@ protected:
 // PUBLIC MEMBER VARIABLES
 public:
   jhcImg map, map2;  /** Fused sensor map.  */
+  jhcArr hhist;      /** Height histogram.  */
   char name[40];     /** Configuration tag. */
   double ztab;       /** Table height now.  */
   int rasa;          /** New ingest flag.   */
@@ -92,7 +100,11 @@ public:
   // parameters for surface fitting
   jhcParam pps;
   double srng, rough, dt, dr, dh;
-  int npts;
+  int npts, wfit;
+
+  // Kinect beam parameters 
+  jhcParam kps;
+  double dlf, drt, dtop, dbot;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -119,7 +131,7 @@ public:
   // parameter utilities
   void SetMap (double w, double h, double x, double y, 
                double lo, double hi, double pel, double ht);
-  void SetFit (double d, int n, double e, double t, double r, double h);
+  void SetFit (double d, int n, double e, double t, double r, double h, int w =100);
   void SetCam (int n, double x, double y, double z, double pan, double tilt, 
                double roll =0.0, double rng =180.0, int dnum =0); 
   void SetCam (int n, const jhcMatrix& pos, const jhcMatrix& dir, double rng =180.0, int dnum =0)
@@ -164,6 +176,11 @@ public:
   int Reproject (jhcImg& dest, const jhcImg& d16, double bot, double top, int cam =0, int zst =0, double zlim =0.0, int clr =1);
   void Interpolate (int sc =9, int pmin =3);
 
+  // pose correction from plane fitting
+  double TiltDev () const {return((fit > 0) ? tfit : tavg);}
+  double RollDev () const {return((fit > 0) ? rfit : ravg);}
+  double HtDev () const   {return((fit > 0) ? hfit : havg);}
+
   // position and size conversion routines
   double W2X (double wx) const {return((wx + x0) / ipp);}
   double W2Y (double wy) const {return((wy + y0) / ipp);}
@@ -182,13 +199,21 @@ public:
   int I2Z (double ht) const     {return DI2Z(ht - ztab);}   
   double DZ2I (double dz) const {return(zlo + (dz - 1.0) * (zhi - zlo) / 253.0);} 
   int DI2Z (double dht) const   {return(ROUND(253.0 * (dht - zlo) / (zhi - zlo)) + 1);}
+  int ZDEV (double dht) const   {return ROUND(253.0 * dht / (zhi - zlo));}
 
   // plane fitting
   int Restricted (int cam =0) const;
   double EstPose (double& t, double& r, double& h, const jhcImg& d16, 
                   int cam =0, double ztol =4.0);
   int EstDev (jhcImg& devs, double dmax =2.0, double ztol =4.0);
-  int PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax =2.0, double search =0.0);
+  int PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax =2.0, double search =0.0, const jhcRoi *area =NULL);
+  void PlaneVals () const;
+  double PickPlane (double hpref, int amin =200, int bin =4);
+
+  // surface intersection
+  int BeamFill (jhcImg& dest, double z =0.0, int r =255, int g =255, int b =255) const; 
+  int BeamEmpty (jhcImg& dest, double z =0.0, int t =1, int r =255, int g =255, int b =255) const; 
+  int BeamCorners (double *x, double *y, double z =0.0) const;
 
   // debugging graphics
   void AdjGeometry (int cam =0);
@@ -208,6 +233,7 @@ protected:
   int flat_params (int n, const char *fname);
   int map_params (const char *fname);
   int plane_params (const char *fname);
+  int beam_params (const char *fname);
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -217,7 +243,7 @@ private:
   void std_cams ();
 
   // plane fitting
-  int surf_err (jhcImg& devs, const jhcImg& hts, double dmax, double lo, double hi) const;
+  int z_err (jhcImg& devs, const jhcImg& hts, double dmax, double lo, double hi) const;
 
 
 };

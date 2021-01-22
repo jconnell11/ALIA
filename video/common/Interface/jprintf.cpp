@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -164,6 +165,7 @@ int jprintf (const char *msg, ...)
 // can also use with local member variable jprintf(1, noisy, "foo")
 // if open_log has not been called then just prints
 // always returns 0 for convenience (used to return 1)
+// NOTE: always evals arguments so better not to do anything complicated
 
 int jprintf (int th, int lvl, const char *msg, ...)
 {
@@ -171,7 +173,7 @@ int jprintf (int th, int lvl, const char *msg, ...)
   char val[1000];
 
   if (lvl < th)
-    return 1;
+    return 0;
   va_start(args, msg); 
   vsprintf_s(val, msg, args);
   return jprint(val);
@@ -191,17 +193,6 @@ int jprint (const char *txt)
   if (log_file != NULL)
     fwrite(txt, sizeof(char), n, log_file);
   return 0;
-}
-
-
-//= Print literal text string if detail level okay.
-// always returns 0 for convenience (used to return 1)
-
-int jprint (int th, int lvl, const char *txt)
-{
-  if (lvl < th)
-    return 1;
-  return jprint(txt);
 }
 
 

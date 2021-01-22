@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,14 +45,14 @@ public:
   // returns NULL if invalid index
   virtual jhcAliaDesc *Fact (const char *role, int i =0) const =0;
 
-  //= Checks if particular word is one of the tags associated with this item.
-  // can alternatively check if the node is definitely NOT associated with some word
-  virtual bool HasWord (const char *word, int tru_only =0) const =0;
-
   //= Get a specific tag out of all the words associated with this item.
   // if "bth" > 0.0 then only returns non-negated words with belief over threshold
   // most recently added terms returned first
   virtual const char *Word (int i =0, double bth =0.0) const =0;
+
+  //= Checks if particular word is one of the tags associated with this item.
+  // can alternatively check if the node is definitely NOT associated with some word
+  virtual bool HasWord (const char *word, int tru_only =0) const =0;
 
   //= Checks if lexical tag is one of several items.
   // largely for convenience in grounding commands
@@ -60,6 +61,16 @@ public:
 
   //= Get any literal text string associated with the item.
   virtual const char *Literal () const =0;
+
+  //= Check if the node is negated.
+  virtual int Neg () const =0;
+
+  //= Check if the node has no arguments.
+  virtual bool ObjNode () const =0;
+
+  //= Give pretty name for node (mostly for debugging).
+  virtual const char *Nick () const =0;
+
 
 };
 

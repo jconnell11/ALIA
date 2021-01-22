@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -106,6 +107,7 @@ public:
 protected:
   int Thresh16 (jhcImg& dest, const jhcImg& src, int th, int mark =255) const;
   int OverGateBW (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int th, int def) const;
+  int OverGate16 (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int th, int def) const;
   int UnderGateBW (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int th, int def) const;
   int BandGateBW (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int lo, int hi, int def) const;
   int AlphaGateBW (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int def) const;

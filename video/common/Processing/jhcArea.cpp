@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -198,6 +199,7 @@ int jhcArea::BoxAvg (jhcImg &dest, const jhcImg& src, int wid, int ht,
   // source pixel from lower line and subtracting source pixel at top
   // nyp incremented since sum is updated BEFORE writing out, not after
   nyp++;
+  alo  = a0;
   bsum = b0;
   b    = b0 + line4;
   for (y = 1; y < nyp; y++)
@@ -352,6 +354,7 @@ int jhcArea::box_avg0 (jhcImg &dest, const jhcImg& src, int dx, int dy,
   // source pixel from lower line and subtracting source pixel at top
   // nyp incremented since sum is updated BEFORE writing out, not after
   nyp++;
+  alo  = a0;
   bsum = b0;
   b    = b0 + line4;
   for (y = 1; y < nyp; y++)
@@ -1748,6 +1751,7 @@ int jhcArea::BoxStd (jhcImg &dest, const jhcImg& src, int wid, int ht, double sc
   // source pixel from lower line and subtracting source pixel at top
   // nyp incremented since sum is updated BEFORE writing out, not after
   nyp++;
+  alo  = a0;
   csum = c0;
   c    = c0 + line4;
   bsum = b0;
@@ -1988,6 +1992,7 @@ int jhcArea::BoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
   // source pixel from lower line and subtracting source pixel at top
   // nyp incremented since sum is updated BEFORE writing out, not after
   nyp++;
+  alo  = a0;
   csum = c0;
   c    = c0 + line4;
   bsum = b0;
@@ -2224,6 +2229,7 @@ int jhcArea::BoxAvgInv (jhcImg &avg, jhcImg& isd, const jhcImg& src,
   // source pixel from lower line and subtracting source pixel at top
   // nyp incremented since sum is updated BEFORE writing out, not after
   nyp++;
+  alo  = a0;
   csum = c0;
   c    = c0 + line4;
   bsum = b0;
@@ -3953,6 +3959,7 @@ int jhcArea::BoxAvg16 (jhcImg &dest, const jhcImg& src, int wid, int ht, double 
   // source pixel from lower line and subtracting source pixel at top
   // nyp incremented since sum is updated BEFORE writing out, not after
   nyp++;
+  alo  = a0;
   bsum = b0;
   b    = b0 + line4;
   for (y = 1; y < nyp; y++)

@@ -4,7 +4,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2017-2018 IBM Corporation
+// Copyright 2017-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,23 +46,32 @@ class jhcAliaChain
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  // deletion and serialization flags
-  int cut, idx; 
+  // calling environment
+  class jhcAliaCore *core;
+  int level;
+
+  // variables from earlier FINDs
+  jhcBindings scoping;
+  jhcAliaChain *backstop;
 
   // payload is one of two types
   class jhcAliaDir *d;
   class jhcAliaPlay *p;
 
+  // deletion and serialization flags
+  int cut, idx; 
+
+  // linking via numbered steps
+  int fnum, cnum, anum;
+
   // run status on last few cycles
-  class jhcAliaCore *core;
   int prev, done;
 
 
 // PUBLIC MEMBER VARIABLES
 public:
   // next step in chain (public for jhcGraphizer)
-  jhcAliaChain *cont;
-  jhcAliaChain *alt;
+  jhcAliaChain *fail, *cont, *alt;
   int alt_fail;
 
 
@@ -70,17 +80,26 @@ public:
   // creation and initialization
   ~jhcAliaChain ();
   jhcAliaChain ();
+  int Verdict () const  {return done;}
+  int Level () const    {return level;}
+  jhcBindings *Scope () {return &scoping;}
+  class jhcAliaCore *Core () {return core;}
+  bool Fallback () const {return(backstop != NULL);}
 
   // configuration
-  void BindDir (class jhcAliaDir *dir)
-    {if ((p == NULL) && (d == NULL)) d = dir;}
-  void BindPlay (class jhcAliaPlay *play)
-    {if ((p == NULL) && (d == NULL)) p = play;}
+  jhcAliaChain *BindDir (class jhcAliaDir *dir)
+    {if ((p == NULL) && (d == NULL)) d = dir; return this;}
+  jhcAliaChain *BindPlay (class jhcAliaPlay *play)
+    {if ((p == NULL) && (d == NULL)) p = play; return this;}
   class jhcAliaDir *GetDir () const {return d;}
   class jhcAliaPlay *GetPlay () const {return p;}
   bool Empty () const 
     {return((d == NULL) && (p == NULL));}
+  bool StepDir (int kind) const;
   jhcAliaChain *StepN (int n);
+  jhcAliaChain *Penult ();
+  jhcAliaChain *Last ();
+  jhcAliaChain *Append (jhcAliaChain *tackon);
 
   // building
   jhcAliaChain *Instantiate (jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx =NULL);
@@ -88,13 +107,15 @@ public:
   void MarkSeeds (int head =1);
 
   // main functions
-  int Start (class jhcAliaCore& core);
+  int Start (class jhcAliaCore *all, int lvl);
+  int Start (jhcAliaChain *last);
   int Status ();
   int Stop ();
+  int FindActive (const jhcGraphlet& desc, int halt);
 
   // file functions
   int Load (jhcNodePool& pool, jhcTxtLine& in, int play =0); 
-  int Save (FILE *out, int lvl =0, int *step =NULL, int detail =2);
+  int Save (FILE *out, int lvl =0, int *step =NULL, int detail =0);
   int Print (int lvl =0, int detail =0)
     {return Save(stdout, lvl, NULL, detail);}
   int PrintStep (int lvl =0)
@@ -110,6 +131,9 @@ private:
   jhcAliaChain *dup_self (int& node, jhcAliaChain *seen[], jhcNodePool& mem, 
                           jhcBindings& b, const jhcGraphlet *ctx);
   void clr_labels (int head);
+
+  // main functions
+  int start_payload ();
 
   // file reading
   int build_chain (jhcNodePool& pool, jhcAliaChain *label[], jhcAliaChain *fix[], int& n, jhcTxtLine& in);

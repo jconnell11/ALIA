@@ -258,9 +258,6 @@
     <ClCompile Include="..\..\audio\common\Parse\jhcTxtLine.cpp">
       <Filter>Source Files\common audio\Parse</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaAttn.cpp">
-      <Filter>Source Files\common audio\Reasoning</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaOp.cpp">
       <Filter>Source Files\common audio\Reasoning</Filter>
     </ClCompile>
@@ -459,6 +456,9 @@
     <ClCompile Include="..\..\audio\common\Acoustic\jhcSpeechWeb.cpp">
       <Filter>Source Files\common audio\Acoustic</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MensEtDoc.h">
@@ -595,9 +595,6 @@
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Parse\jhcTxtLine.h">
       <Filter>Header Files\common audio\Parse</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaAttn.h">
-      <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaOp.h">
       <Filter>Header Files\common audio\Reasoning</Filter>
@@ -823,6 +820,9 @@
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Acoustic\sp_reco_web.h">
       <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcActionTree.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

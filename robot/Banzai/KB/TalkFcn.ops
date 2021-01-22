@@ -17,7 +17,5 @@ trig:
               -obj--> txt-1 ]
 -----------
    FCN[ fcn-1 -lex-   echo_wds 
-              -pat--> txt-1 
-              -arg0-> agt-1 ]
-
-
+              -dest-> agt-1
+              -pat--> txt-1 ]

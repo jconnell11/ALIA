@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,8 +44,18 @@ class jhcWorkMem : public jhcNodePool
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  jhcNodePool halo;
-  int src, mode;
+  // main vs halo separation
+  int nimbus, mode;
+  jhcNetNode *self;          // fixed node representing the robot
+  jhcNetNode *user;          // node for current person communicating
+
+  // mood variables
+  double skep;               // global condition belief threshold (skepticism)
+
+
+// PROTECTED MEMBER VARIABLES
+protected:
+  jhcNodePool halo;          // expectations
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -52,27 +63,61 @@ public:
   // creation and initialization
   ~jhcWorkMem ();
   jhcWorkMem ();
-  void SetMode (int exp =1) {mode = exp;}
-  int HaloMark () const {return src;} 
+  void Horizon () {nimbus = halo.LastLabel();}
+  void SetMode (int exp =2) {mode = exp;}
+  int WmemSize () const {return NodeCnt();}
+  int HaloSize () const {return halo.NodeCnt();}
+
+  // belief threshold
+  double MinBlf () const {return skep;}
+  void InitSkep (double v) {skep = v;}
+
+  // conversation participants
+  jhcNetNode *Robot () const {return self;}
+  jhcNetNode *Human () const {return user;}
+  jhcNetNode *ShiftUser (const char *name =NULL);
+  jhcNetNode *SetUser (jhcNetNode *n);
 
   // list access (overrides virtual)
   jhcNetNode *NextNode (const jhcNetNode *prev =NULL) const;
   int Length () const {return NodeCnt();}
+  bool Prohibited (const jhcNetNode *n) const;
 
   // halo functions
-  void ClearHalo () {halo.PurgeAll(); src = 0;}
-  int NumHalo () const {return src;}
-  int AssertHalo (const jhcGraphlet& pat, jhcBindings& b, double conf, int tval =0);
-  void PromoteHalo (jhcBindings& h2m, int s);
-  void PrintHalo (int s =0, int lvl =0) const;
+  void ClearHalo () {halo.PurgeAll();}
+  void AssertHalo (const jhcGraphlet& pat, jhcBindings& b, jhcAliaRule *r =NULL);
+  void MaxHalo (jhcNetNode *n);
+
+  // truth maintenance
+  void Endorse (const jhcGraphlet& key, int dbg =0);
+
+  // debugging
+  void PrintMain () const 
+    {jprintf("\nWMEM (%d nodes) =", Length()); Print(2); jprintf("\n");}
+  void PrintHalo () const 
+    {jprintf("\nHALO (%d nodes) =", HaloSize()); halo.Print(2); jprintf("\n");}
+
+
+// PROTECTED MEMBER FUNCTIONS
+protected:
+  // conversation participants
+  void InitPeople (const char *rname);
+
+  // halo functions
+  void PromoteHalo (jhcBindings& h2m, const jhcBindings& b);
+
+  // garbage collection
+  int CleanMem (int dbg =0);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  // halo functions
-  const jhcNetNode *args_bound (const jhcGraphlet& pat, const jhcBindings& b) const;
-  jhcNetNode *main_equiv (const jhcNetNode *pn, const jhcBindings& b, double conf) const;
-  void actualize_halo (int src) const;
+  // conversation participants
+  void set_prons (int tru);
+
+  // garbage collection
+  void keep_from (jhcNetNode *anchor, int dbg);
+  int rem_unmarked (int dbg);
 
 
 };

@@ -1,0 +1,136 @@
+// standard inferences for "SceneVis" visual properties
+// ================================================
+
+// RULE 1 - red is a color
+    if:  hq-2 -lex-  red
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 2 - orange is a color
+    if:  hq-2 -lex-  orange
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -blf-  0.9
+              -ako-> hq-2 
+
+// RULE 3 - yellow is a color
+    if:  hq-2 -lex-  yellow
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 4 - green is a color
+    if:  hq-2 -lex-  green
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 5 - blue is a color
+    if:  hq-2 -lex-  blue
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 6 - purple is a color
+    if:  hq-2 -lex-  purple
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 7 - black is a color
+    if:  hq-2 -lex-  black
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 8 - gray is a color
+    if:  hq-2 -lex-  gray
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 9 - white is a color
+    if:  hq-2 -lex-  white
+              -hq--> obj-1
+  then: ako-4 -lex-  color
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+
+// --------------------------------------
+
+// RULE 10 - small is a size
+    if:  hq-2 -lex-  small
+              -hq--> obj-1
+  then: ako-4 -lex-  size
+              -ako-> hq-2
+         hq-2 -hq--> obj-1
+
+// RULE 10 - medium sized is a size
+    if:  hq-2 -lex-  medium sized
+              -hq--> obj-1
+  then: ako-4 -lex-  size
+              -ako-> hq-2
+         hq-2 -hq--> obj-1
+
+// RULE 12 - big is a size
+    if:  hq-2 -lex-  big
+              -hq--> obj-1
+  then: ako-4 -lex-  size
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1 
+
+
+// --------------------------------------
+
+// RULE 13 - narrow is a width
+    if:  hq-2 -lex-  narrow
+              -hq--> obj-1
+  then: ako-4 -lex-  width
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 14 - medium wide is a width
+    if:  hq-2 -lex-  medium wide
+              -hq--> obj-1
+  then: ako-4 -lex-  width
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 15 - wide is a width
+    if:  hq-2 -lex-  wide
+              -hq--> obj-1
+  then: ako-4 -lex-  width
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// --------------------------------------
+
+// RULE 16 - short is a height
+    if:  hq-2 -lex-  short
+              -hq--> obj-1
+  then: ako-4 -lex-  height
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 17 - medium height is a height
+    if:  hq-2 -lex-  medium height
+              -hq--> obj-1
+  then: ako-4 -lex-  height
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1
+
+// RULE 18 - tall is a height
+    if:  hq-2 -lex-  tall
+              -hq--> obj-1
+  then: ako-4 -lex-  height
+              -ako-> hq-2 
+         hq-2 -hq--> obj-1

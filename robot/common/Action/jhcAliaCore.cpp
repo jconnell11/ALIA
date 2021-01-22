@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@
 #include <conio.h>
 #include <stdarg.h>
 
-#include "Interface/jms_x.h"
+#include "Interface/jms_x.h"           // common video
 
 #include "Action/jhcAliaCore.h"
 
@@ -46,7 +47,7 @@ jhcAliaCore::~jhcAliaCore ()
 jhcAliaCore::jhcAliaCore ()
 {
   // global variables
-  ver = 1.60;
+  ver = 2.30;
   noisy = 1;
 
   // add literal text output to function repertoire
@@ -57,6 +58,7 @@ jhcAliaCore::jhcAliaCore ()
   net.Bind(this);
                       
   // clear state
+  *cfile = '\0';
   log = NULL;
   Reset();
 }
@@ -266,23 +268,20 @@ int jhcAliaCore::AddOn (const char *fname, void *body, int rpt)
 
 //= Add in new rule or operator suggested by user.
 // two step process allows rejection if user disliked for some reason
+// should NULL pointers in caller afterward (amem or pmem will delete)
 // returns 1 if successful, -2 for problem
 
-int jhcAliaCore::Accept ()
+int jhcAliaCore::Accept (jhcAliaRule *r, jhcAliaOp *p)
 {
-  if (net.rule != NULL)
-  {
-    amem.AddRule(net.rule, 1);
-    net.rule = NULL;
-    return 1;
-  }
-  if (net.oper != NULL)
-  {
-    pmem.AddOperator(net.oper, 1);
-    net.oper = NULL;
-    return 1;
-  }
-  return -2;                 // for jhcAliaDir::Status
+  if ((r == NULL) && (p == NULL))
+    return -2;
+  if (r != NULL)
+    if (amem.AddRule(r, 1) <= 0)
+      return -2;
+  if (p != NULL)
+    if (pmem.AddOperator(p, 1) <= 0)
+      return -2;
+  return 1;
 }
 
 
@@ -304,16 +303,16 @@ int jhcAliaCore::MainGrammar (const char *gfile, const char *top, const char *rn
   if ((rname != NULL) && (*rname != '\0'))   
   {
     // add robot full name as attention word ("Eli Banzai")
-    gr.ExtendRule("ATTN", rname); 
-    attn.AddLex(attn.self, rname, 0, -1.0);
+    gr.ExtendRule("atree", rname); 
+    atree.AddLex(atree.Robot(), rname, 0, -1.0);
 
     // possibly add just first name also ("Eli")
     strcpy_s(first, rname);
     if ((sep = strchr(first, ' ')) != NULL)
     {
       *sep = '\0';
-      gr.ExtendRule("ATTN", first); 
-      attn.AddLex(attn.self, first, 0, -1.0);
+      gr.ExtendRule("atree", first); 
+      atree.AddLex(atree.Robot(), first, 0, -1.0);
     }
   }
   gr.MarkRule(top);
@@ -324,14 +323,14 @@ int jhcAliaCore::MainGrammar (const char *gfile, const char *top, const char *rn
 //= Clear out all focal items.
 // possibly starts up input conversion log file also
 
-void jhcAliaCore::Reset (int forget, const char *rname, int cvt)
+void jhcAliaCore::Reset (int forget, const char *rname, int spact)
 {
   char date[80], fname[80];
 
   // clear action tree
   StopAll();
-  attn.ClrFoci(1, rname);
-  kern.Reset(&attn);
+  atree.ClrFoci(1, rname);
+  kern.Reset(&atree);
   topval = 0;
 
   // possibly forget all rules and operators
@@ -342,20 +341,23 @@ void jhcAliaCore::Reset (int forget, const char *rname, int cvt)
   }
 
   // reset affective modulation
-  bth = 0.5;
+  atree.InitSkep(0.5);
   pth = 0.5;
   wild = 0.0;
 
   // communicate debugging level
-  attn.noisy = noisy;
+  atree.noisy = noisy;
   pmem.noisy = noisy;
 
-  // record starting time and make log file
+  // record starting time and make conversion log file
   t0 = jms_now();
-  if (cvt > 0)
+  if (spact > 0)
   {
     CloseCvt();
-    sprintf_s(fname, "log/cvt_%s.txt", jms_date(date));
+    if (*cfile != '\0')
+      strcpy_s(fname, cfile);
+    else
+      sprintf_s(fname, "log/log_%s.cvt", jms_date(date));
     if (fopen_s(&log, fname, "w") != 0)
       log = NULL;
   }
@@ -370,7 +372,7 @@ int jhcAliaCore::Interpret (const char *input, int awake, int amode)
 {
   char alist[1000] = "";
   const char *sent = ((input != NULL) ? input : alist);
-  int nt, cvt, attn = 0;
+  int nt, spact, attn = 0;
 
   // check if name mentioned and get parse results
   attn = gr.NameSaid(sent, amode);
@@ -379,82 +381,46 @@ int jhcAliaCore::Interpret (const char *input, int awake, int amode)
   if ((awake == 0) && (attn <= 0))
     return 0;
 
-  // show parsing steps then generate semantic nets
+  // show parsing steps then generate semantic nets 
+  gr.PrintInput();
   if (nt > 0)
-  {
-    gr.PrintInput();
     gr.PrintResult(3, 1);
-  }
-  cvt = net.Convert(alist);            // if nt = 0 then gives huh? response
-
-  // possibly log conversion of user input
-  if (log != NULL)
-    log_conversion(sent, nt, cvt);
+  spact = net.Convert(alist);            // nt = 0 gives huh? response
+  net.Summarize(log, sent, nt, spact);
   return((attn > 0) ? 2 : 1);
-}
-
-
-//= Create a log entry for debugging grammar and graphizer.
-
-void jhcAliaCore::log_conversion (const char *sent, int nt, int cvt) 
-{
-  // record input and parsing exceptions
-  fprintf(log, ".................................................\n\n");
-  fprintf(log, "\"%s\"\n\n", sent);
-  if (nt == 0)
-    fprintf(log, "*** NO PARSE ***\n\n");
-  else if (nt > 1)
-    fprintf(log, "*** %d parses ***\n\n", nt);
-
-  // record interpretation result
-  if (cvt == 7)
-    fprintf(log, "-- farewell --\n\n");
-  else if (cvt == 6)
-    fprintf(log, "-- greeting --\n\n");
-  else if (cvt == 5)
-    fprintf(log, "-- hail --\n\n");
-  else if ((cvt == 4) && (net.oper != NULL))
-    (net.oper)->Save(log);
-  else if ((cvt == 3) && (net.rule != NULL))
-    (net.rule)->Save(log);
-  else if (((cvt == 2) || (cvt == 1)) && (net.bulk != NULL))
-  {
-    (net.bulk)->Save(log);
-    fprintf(log, "\n");
-  }
-  else if (nt > 0)
-    fprintf(log, "-- nothing --\n\n");
 }
 
 
 //= Run all focal elements in priority order.
 // must mark all seed nodes to retain before calling with gc > 0
+// member variable "svc" set to current focus and "bid" to appropriate value
 // tells how many foci were processed on this cycle
 
 int jhcAliaCore::RunAll (int gc)
 {
   char time[40];
   jhcAliaChain *s;
-  int win, res, cnt = 0;
+  int res, cnt = 0;
 
   // get any observations, check expired attentional foci, and recompute halo
-  jprintf(3, noisy, "\nSTEP %d ----------------------------------------------------\n\n", attn.Version());
+  jprintf(3, noisy, "\nSTEP %d ----------------------------------------------------\n\n", atree.Version());
   kern.Volunteer();
-  attn.Update(gc);
-  if (attn.Active() > 0)
+  if (atree.Update(gc) > 0)
+    RecomputeHalo();                   // might also be needed if bth or node blfs change
+  if (atree.Active() > 0)
     jprintf(2, noisy, "============================= %s =============================\n\n", jms_elapsed(time, t0));
 
   // go through the foci from newest to oldest
-  while ((win = attn.NextFocus()) >= 0)
+  while ((svc = atree.NextFocus()) >= 0)
   {
-    jprintf(2, noisy, "-- servicing focus %d\n\n", win);
-    s = attn.FocusN(win);
-    bid = attn.BaseBid(win);
-    if (attn.NeverRun(win))
-      res = s->Start(*this);
+    jprintf(2, noisy, "-- servicing focus %d\n\n", svc);
+    s = atree.FocusN(svc);
+    bid = atree.BaseBid(svc);
+    if (atree.NeverRun(svc))
+      res = s->Start(this, 0);
     else
       res = s->Status();
-    attn.SetActive(win, ((res == 0) ? 1 : 0));
+    atree.SetActive(svc, ((res == 0) ? 1 : 0));
     cnt++;
   }
 
@@ -474,11 +440,11 @@ int jhcAliaCore::RunAll (int gc)
 void jhcAliaCore::StopAll ()
 {
   jhcAliaChain *s;
-  int i, nf = attn.NumFoci();
+  int i, nf = atree.NumFoci();
 
   for (i = 0; i < nf; i++)
   {
-    s = attn.FocusN(i);
+    s = atree.FocusN(i);
     s->Stop();
   }
 }
@@ -495,6 +461,56 @@ void jhcAliaCore::CloseCvt ()
 
 
 ///////////////////////////////////////////////////////////////////////////
+//                         Directive Functions                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Converts any halo facts into wmem facts and posts NOTEs about them.
+// updates bindings "b" to point to equivalent wmem nodes instead of halo
+// generates new rule if a two step inference was used for some halo fact
+// returns number of NOTEs generated
+
+int jhcAliaCore::MainMemOnly (jhcBindings& b) 
+{
+  jhcBindings b2;
+  int n;
+
+  b2.Copy(b);
+  n = atree.ReifyRules(b);             // NOTEs come first in log
+  amem.Consolidate(b2);                // new rules come last in log
+  return n;
+}
+
+
+//= Look for all in-progress activities matching graph and cause them to fail.
+// return 1 if no match or all stopped, -2 if cannot stop some
+
+int jhcAliaCore::HaltActive (jhcGraphlet& desc)
+{
+  jhcNetNode *main = desc.Main();
+  jhcAliaChain *ch;
+  int i, n = atree.NumFoci(), ans = 1;
+
+  // scan through each focus (excluding the curent one)
+  main->SetNeg(0);
+  for (i = 0; i < n; i++)
+    if (i != svc)
+      if ((ch = atree.FocusN(i)) != NULL)
+      {
+        // stop if current focus has high enough priority
+        if (bid >= atree.BaseBid(i))
+          ch->FindActive(desc, 1);
+        else if (ch->FindActive(desc, 0) > 0)
+          ans = -2;
+      }
+
+  // restore negative and mark as done
+  main->SetNeg(1);
+  main->SetBelief(1.0);
+  return ans;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
 //                             Halo Control                              //
 ///////////////////////////////////////////////////////////////////////////
 
@@ -502,18 +518,18 @@ void jhcAliaCore::CloseCvt ()
 
 void jhcAliaCore::RecomputeHalo () 
 {
-  amem.RefreshHalo(attn, bth, noisy - 1);
+  amem.RefreshHalo(atree, atree.MinBlf(), noisy - 1);
+//atree.PrintHalo();
 }
 
 
-//= Derive inferences from newly active NOTE directive.
-// each inferred node is marked by a unique identifier
+//= Assign all nodes from this NOTE a unique source marker.
 
 int jhcAliaCore::Percolate (const jhcAliaDir& dir) 
 {
   jhcNetNode *n;
   const jhcGraphlet *key = &(dir.key);
-  int i, tval, ni = key->NumItems(), chg = 0;
+  int i, tval, ni = key->NumItems();
 
   // only assign new id if needed
   if (dir.own > 0)
@@ -521,17 +537,14 @@ int jhcAliaCore::Percolate (const jhcAliaDir& dir)
   tval = ++topval;
 
   // mark all nodes in graphlet with special NOTE id
+  // ignore objects and names which are re-used a lot
   for (i = 0; i < ni; i++)
     if ((n = key->Item(i)) != NULL)
-      if (!n->ObjNode() && (n->top < tval))
+      if (!n->ObjNode() && !n->LexNode() && (n->top < tval))   
       {
         n->top = tval;
-        chg++;
+        atree.Dirty();        // queue recomputation of halo
       }
-
-  // recompute relevance of halo facts to NOTEs
-  if (chg > 0)
-    RecomputeHalo();
   return tval;
 }
 
@@ -558,6 +571,7 @@ int jhcAliaCore::ZeroTop (const jhcAliaDir& dir)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Start up some kernel function given by lex of fcn node.
+// "bid" member variable set automatically when servicing related focus
 // returns instance number (zero okay), negative for problem
 
 int jhcAliaCore::FcnStart (const jhcNetNode *fcn)
@@ -581,7 +595,7 @@ int jhcAliaCore::FcnStatus (const jhcNetNode *fcn, int inst)
   jprintf(2, noisy, "\nF-STATUS %s \"%s\"\n", fcn->Nick(), fname);
   if (inst >= 0)
     res = kern.Status(fcn, inst);
-  jprintf(2, noisy, "  -> %s\n\n", ((res > 0) ? "success !" : ((res < 0) ? "FAIL" : "continue ...")));
+  jprintf(2, noisy, "  -> FCN %s\n\n", ((res > 0) ? "success !" : ((res < 0) ? "FAIL" : "continue ...")));
   return((res < 0) ? -2 : res);
 }
 
@@ -593,7 +607,7 @@ int jhcAliaCore::FcnStop (const jhcNetNode *fcn, int inst)
 {
   const char *fname = fcn->Word();
 
-  jprintf(2, noisy, "F-STOP %s \"%s\"\n\n", fcn->Nick(), fname);
+  jprintf(2, noisy, "\nF-STOP %s \"%s\"\n\n", fcn->Nick(), fname);
   kern.Stop(fcn, inst);
   return -1;
 }
@@ -609,7 +623,7 @@ int jhcAliaCore::FcnStop (const jhcNetNode *fcn, int inst)
 
 int jhcAliaCore::SayStart (const jhcGraphlet& g)
 {
-  dg.Generate(g, attn);
+//  dg.Generate(g, atree);
 /*
 bid is available as member var
 
@@ -640,16 +654,6 @@ int jhcAliaCore::SayStop (const jhcGraphlet& g, int inst)
 //                              Debugging                                //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Print out contents of working memory.
-
-void jhcAliaCore::PrintMem () const 
-{
-  jprintf("\nWMEM =");
-  attn.Print(2);
-  jprintf("\n");
-}
-
-
 //= Load all rules and operators beyond baseline and kernels.
 
 void jhcAliaCore::LoadLearned ()
@@ -679,7 +683,7 @@ void jhcAliaCore::DumpSession () const
 {
   amem.Save("session.rules", 3);
   pmem.Save("session.ops", 3);
-//  attn.Save("session.wmem");
+//  atree.Save("session.wmem");
 }
 
 

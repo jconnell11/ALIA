@@ -30,30 +30,39 @@
     <ProjectGuid>{89FD4080-E249-42D1-B32A-D7981DEF7D28}</ProjectGuid>
     <RootNamespace>MensEt</RootNamespace>
     <Keyword>MFCProj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -83,16 +92,14 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\Release32\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    </OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\Release\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\Debug32\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkIncremental>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    </OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\Debug\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MensEt_d</TargetName>
   </PropertyGroup>
@@ -161,12 +168,12 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeaderOutputFile>
       </PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>..\..\Release/</AssemblerListingLocation>
-      <ObjectFileName>..\..\Release/</ObjectFileName>
-      <ProgramDataBaseFileName>..\..\Release/</ProgramDataBaseFileName>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <DisableSpecificWarnings>%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>26495;6386;6387;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -250,18 +257,18 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;C:\Program Files (x86)\Visual Leak Detector\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WIN64;JHC_GVID;JHC_MSIO;JHC_MEM_LEAK;WINVER=0x0601;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MinimalRebuild>true</MinimalRebuild>
+      <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PrecompiledHeaderOutputFile>
       </PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>..\..\Debug\</AssemblerListingLocation>
-      <ObjectFileName>..\..\Debug\</ObjectFileName>
-      <ProgramDataBaseFileName>..\..\Debug\</ProgramDataBaseFileName>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
       <WarningLevel>Level4</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <DisableSpecificWarnings>4100;4127;4701;4702;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4100;4127;4701;4702;4458;26495;6386;6387;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -293,6 +300,7 @@
     <ClCompile Include="MensEtFrm.cpp" />
     <ClCompile Include="MensEtView.cpp" />
     <ClCompile Include="jhcMensCoord.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp" />
     <ClCompile Include="..\..\audio\common\Acoustic\jhcSpeechWeb.cpp" />
     <ClCompile Include="..\..\audio\common\Semantic\jhcTxtAssoc.cpp" />
     <ClCompile Include="..\..\audio\common\Language\jhcNetBuild.cpp" />
@@ -350,7 +358,6 @@
     <ClCompile Include="..\..\audio\common\Parse\jhcSlotVal.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcTxtLine.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcTxtSrc.cpp" />
-    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaAttn.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaOp.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaRule.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcAssocMem.cpp" />
@@ -410,6 +417,7 @@
     <ClInclude Include="..\..\audio\common\Comm\zmq.h" />
     <ClInclude Include="..\..\audio\common\Language\jhcMorphFcns.h" />
     <ClInclude Include="..\..\audio\common\Language\jhcNetBuild.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcActionTree.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaNote.h" />
     <ClInclude Include="..\..\audio\common\Semantic\jhcAliaDesc.h" />
     <ClInclude Include="..\..\audio\common\Semantic\jhcTxtAssoc.h" />
@@ -469,7 +477,6 @@
     <ClInclude Include="..\..\audio\common\Parse\jhcSlotVal.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcTxtLine.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcTxtSrc.h" />
-    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaAttn.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaOp.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaRule.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcAssocMem.h" />

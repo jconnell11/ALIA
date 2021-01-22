@@ -136,7 +136,7 @@ int jhcStats::MaxLoc (int *mx, int *my, const jhcImg& src, const jhcRoi& area) c
   jhcRoi a2;
   UL32 roff;
   const UC8 *s;
-  int x, y, rw, rh, rsk, wx, wy, big = -1;
+  int x, y, rw, rh, rsk, wx = 0, wy = 0, big = -1;
 
   a2.CopyRoi(area);
   a2.RoiClip(src);
@@ -173,14 +173,13 @@ int jhcStats::MaxLoc (int *mx, int *my, const jhcImg& src, const jhcRoi& area) c
 int jhcStats::MaxCentH (int *mx, int *my, const jhcImg& src, const jhcRoi& area) const 
 {
   if (!src.Valid(1))
-    return Fatal("Bad image to jhcStats::MaxLoc");
+    return Fatal("Bad image to jhcStats::MaxCentH");
 
   // process specified region
   jhcRoi a2;
-  int x, y, rw, rh, rw2, rh2, rsk, wx, wy, poff, boff;
-  UL32 roff;
   const UC8 *s;
-  int big = -1;
+  UL32 roff;
+  int x, y, rw, rh, rw2, rh2, rsk, poff, boff, wx = 0, wy = 0, big = -1;
 
   a2.CopyRoi(area);
   a2.RoiClip(src);

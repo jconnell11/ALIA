@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,16 +33,16 @@
 #include "Data/jhcImg.h"
 #include "Data/jhcParam.h"
 #include "Processing/jhcGroup.h"
-#include "Processing/jhcHist.h"
 #include "Processing/jhcLabel.h"
 #include "Processing/jhcStats.h"
-#include "Processing/jhcThresh.h"
 
 #include "Depth/jhcOverhead3D.h"       // common robot
 #include "Geometry/jhcSmTrack.h"
 
 
 //= Finds and tracks objects on table.
+// originally developed for multiple stationary Kinects
+// information below is wrt native map coordinates (inches)
 // <pre>
 // raw array has nr (detections) or nr2 (+ under hand) entries:
 //   0 = x center
@@ -65,25 +66,21 @@
 //   5 = ellipse angle
 // </pre>
 
-class jhcBumps : public jhcOverhead3D, 
-                 private jhcGroup, private jhcHist, private jhcLabel, private jhcStats, 
-                 virtual private jhcThresh
+class jhcBumps : public jhcOverhead3D, protected jhcGroup, private jhcLabel, private jhcStats
 {
-friend class CMesaDoc;  // for debugging
+friend class CMesaDoc;       // for debugging
+friend class CBanzaiDoc;
 
 // PRIVATE MEMBER VARIABLES
 private:
   // object detection
-  jhcBlob blob;
-  jhcImg det, prev, obj, hand, cc, hcc;
+  jhcImg prev, hand, hcc;
   jhcArr pks;
   jhcRoi troi;
-  int surf, nr, nr2;
+  int nr, nr2;
 
   // object tracking
-  jhcSmTrack pos;
   double **raw;
-  double **shp;
   int total, rlim;
 
   // touch source
@@ -91,6 +88,18 @@ private:
 
   // debugging graphics
   char tmp[80];
+
+
+// PROTECTED MEMBER VARIABLES
+protected:
+  // object detection
+  jhcBlob blob;
+  jhcImg det, obj, cc;
+  int surf;
+
+  // object tracking
+  jhcSmTrack pos;
+  double **shp;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -140,11 +149,11 @@ public:
   int CntValid (int trk =1) const {return((trk > 0) ? CntTracked() : nr2);}
   int AnyTouch () const;
 
-  // read-only object properties 
+  // object properties 
   int ObjLimit (int trk =1) const;
   bool ObjOK (int i, int trk =1) const;
   int ObjID (int i, int trk =1) const;
-  const char *ObjDesc (int i, int trk) const;
+  const char *ObjDesc (int i, int trk =1) const;
   double PosX (int i, int trk =1) const; 
   double PosY (int i, int trk =1) const; 
   double PosZ (int i, int trk =1) const; 
@@ -154,8 +163,18 @@ public:
   double Major (int i, int trk =1) const;
   double Minor (int i, int trk =1) const;
   double Angle (int i, int trk =1) const;
-  double Elongation (int i, int trk) const;
+  double Elongation (int i, int trk =1) const;
+  double MaxDim (int i, int trk =1) const;
   bool Contact (int i, int trk =1) const;
+
+  // image region selection
+  int ObjMask (jhcImg& dest, int i, int clr =0) const;
+  int TopMask (jhcImg& dest, int i, double frac =0.2, int clr =0) const;
+
+  // semantic network functions
+  void SetNode (int i, void *n);
+  void *GetNode (int i) const;
+  int NodeIndex (void *n) const; 
 
   // auxiliary object-person array
   int TouchID (int i, int trk =1) const;
@@ -170,6 +189,8 @@ public:
   bool OverTable (double wx, double wy) const;
 
   // debugging graphics
+  int MaxID (int trk =1) const;
+  int MinID (int trk =1) const;
   int ShowAll (jhcImg& dest, int trk =1, int invert =0, int style =2);
   int Targets (jhcImg& dest, const char *desc =NULL, int trk =1, int invert =0);
   int Occlusions (jhcImg& dest);
@@ -192,13 +213,13 @@ private:
   int target_params (const char *fname);
 
   // main functions
-  void raw_objs (int trk);
+  virtual void raw_objs (int trk);
   void obj_boxes ();
   double find_max (const jhcImg& val, const jhcImg& comp, int i, const jhcRoi& area);
   void adj_shapes ();
 
   // occlusion handling
-  void occluded ();
+  virtual void occluded ();
   void img_box (double& xc, double& yc, double& wid, double& len, int i) const;
   int arm_end (int& ex, int& ey, double xc, double yc) const;
   int incl_x (double xc, double wid, int ex) const; 

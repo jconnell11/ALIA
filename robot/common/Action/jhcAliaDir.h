@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +32,7 @@
 #include "Semantic/jhcBindings.h"
 #include "Semantic/jhcGraphlet.h"
 #include "Semantic/jhcNodePool.h"
+#include "Semantic/jhcSituation.h"
 
 #include "Action/jhcAliaChain.h"       // common robot
 
@@ -85,9 +87,9 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,  JDIR_ANTE, JDIR_POST, JDIR_PUNT, JDIR_FCN,
 //       returns success/fail
 //       cannot be top-level focus 
 // 
-//  CHK: actively test if item true/false
+//  CHK: test if item known to be true/false
 //       try all applicable operators one-by-one
-//       done (success) when item newly true/false (NOTE)
+//       done (success) when item true/false
 //       returns continue/alternate based on true/false
 //       done (fail) when no more operators   
 //       times out when done if top-level focus    
@@ -116,50 +118,68 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,  JDIR_ANTE, JDIR_POST, JDIR_PUNT, JDIR_FCN,
 //       allows delay to see if user is reliable
 // </pre>
 
-class jhcAliaDir 
+class jhcAliaDir : private jhcSituation
 {
 // PRIVATE MEMBER VARIABLES
 private:
   static const int omax = 20;      /** Max number of operator choices. */
   static const int hmax = 20;      /** Max non-return inhibit history. */
-  static const int smax = 20;      /** Maximum FIND selections.        */
+  static const int smax = 20;      /** Max key variable substitutions. */
+  static const int gmax = 3;       /** Maximum instantiations to try.  */    
 
   // name associated with each "kind"
   static const char * const ktag[JDIR_MAX];
+
+  // calling environment and scoping
+  jhcAliaChain *step;
+  jhcNetNode *fact[smax], *val0[smax];
+  int anum[smax];
+  int nsub;
+
+  // partial CHK and FIND control
+  jhcGraphlet full;
+  int subset;
+
+  // choices for FIND directive
+  jhcNetNode *guess[gmax];
+  jhcGraphlet hyp;
+  int cand, cand0, fdbg;
 
   // already tried operators
   class jhcAliaOp *op0[hmax];
   jhcBindings m0[hmax];
   int nri;
 
-  // FIND node candidates 
-  jhcNetNode *foci[smax];
-  int cand;
-
   // execution state
-  class jhcAliaCore *core;
   jhcAliaChain *meth;
-  jhcAliaDir *punt;
   jhcGraphlet ctx;
-  int inst, verdict;
+  int inst, verdict, wait;
+
+  // multi-method for NOTE
+  double obsess;
+  UL32 t0;
 
 
 // PUBLIC MEMBER VARIABLES
 public:
-  // configuration
+  // basic configuration
   jhcGraphlet key; 
   JDIR_KIND kind;
-  int root;
+  int root, own;
 
-  // operators to choose from
+  // payload for ADD 
+  class jhcAliaRule *new_rule;
+  class jhcAliaOp *new_oper;
+
+  // current matching progress
   class jhcAliaOp *op[omax];
   jhcBindings match[omax];
   int mc;
 
-  // value for nodes related to NOTE
-  int own;
+  // whether FIND allowed to assume argument
+  int fass;
 
-  // control of diagnostic messages
+  // control of procedural diagnostic messages
   int noisy;                    
 
 
@@ -170,9 +190,10 @@ public:
   jhcAliaDir (JDIR_KIND k =JDIR_NOTE);
   JDIR_KIND Kind () const      {return kind;}
   bool IsNote () const         {return(kind == JDIR_NOTE);}
+  bool ConcreteFind () const   {return((kind == JDIR_FIND) && hyp.Empty());}
   const char *KindTag () const {return ktag[kind];}
-  int MaxOps () const  {return omax;}
-  int MaxHist () const {return hmax;}
+  int MaxOps () const          {return omax;}
+  int MaxHist () const         {return hmax;}
   JDIR_KIND CvtKind (const char *name) const;
   const char *CvtTag (JDIR_KIND k) const;
 
@@ -180,18 +201,19 @@ public:
   void Copy (const jhcAliaDir& ref);
   int CopyBind (jhcNodePool& pool, const jhcAliaDir& ref, jhcBindings& b, const jhcGraphlet *ctx =NULL);
   int SetKind (const char *tag);
-  bool HasAlt () const {return((kind == JDIR_CHK) || (kind == JDIR_FIND));}
+  bool HasAlt () const {return(kind == JDIR_CHK);}
   bool Involves (const jhcNetNode *item) const;
   void MarkSeeds ();
 
   // main functions
-  int Start (class jhcAliaCore& all);
+  int Start (jhcAliaChain *st);
   int Status ();
   int Stop ();
+  int FindActive (const jhcGraphlet& desc, int halt);
 
   // file functions
   int Load (jhcNodePool& pool, jhcTxtLine& in); 
-  int Save (FILE *out, int lvl =0, int detail =2);
+  int Save (FILE *out, int lvl =0, int detail =0) const;
   void Print (int lvl =0, int detail =0) {Save(stdout, lvl, detail);}
 
 
@@ -205,9 +227,14 @@ private:
 
   // main functions
   int first_method ();
-  int do_status (int res);
+  int do_status (int res, int more);
   int next_method ();
   int report (int val);
+  void halt_subgoal ();
+
+  // variable scoping
+  void subst_key (const jhcBindings *sc);
+  void revert_key ();
 
   // method selection
   int pick_method ();
@@ -216,7 +243,19 @@ private:
   int max_spec (int& sel);
   int wtd_rand (double wild) const;
   double std_factor (double lo, double avg, int cnt, double wild) const;
-  int rand_best (double temp);
+
+  // CHK control 
+  void init_cond ();
+  void reduce_cond (const jhcBindings& match);
+  int seek_match ();
+  int pat_confirm (const jhcGraphlet& desc);
+  int match_found (jhcBindings *m, int& mc);
+
+  // FIND control
+  int seek_instance ();
+  jhcNetNode *sat_criteria (const jhcGraphlet& desc, int exc);
+  class jhcAliaChain *chk_method ();
+  int assume_found ();
 
 
 };

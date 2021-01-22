@@ -164,6 +164,7 @@ int jhcTrack3D::TrackPeople (const jhcImg& map)
 
   // find new people and get pairwise distances
   m = FindPeople(map);
+//  world_coords();
   dist_matrix(dude, nt, raw, m);
 
   // match sure tracked items first then tentative ones

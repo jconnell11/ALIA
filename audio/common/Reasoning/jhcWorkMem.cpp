@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +21,12 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
+
 #include "Action/jhcAliaDir.h"         // common robot
+
+#include "Interface/jms_x.h"           // common video
+
+#include "Reasoning/jhcAliaRule.h"     // common audio - since only spec'd as class in header
 
 #include "Reasoning/jhcWorkMem.h"
 
@@ -40,9 +46,113 @@ jhcWorkMem::~jhcWorkMem ()
 
 jhcWorkMem::jhcWorkMem ()
 {
+  // halo control
   halo.NegID();
-  src = 0;
+  nimbus = 0;
   mode = 0;
+
+  // conversational agents
+  self = NULL;
+  user = NULL;
+  InitPeople(NULL);
+
+  // fact belief threshold
+  skep = 0.5;           
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                       Conversation Participants                       //
+///////////////////////////////////////////////////////////////////////////
+
+//= Set up definitions of "self" and "user" in semantic net.
+
+void jhcWorkMem::InitPeople (const char *rname)
+{
+  char first[80];
+  char *sep;
+
+  // make nodes for participants in conversation
+  self = MakeNode("self", "you", 0, -1.0);
+  AddProp(self, "ako", "person", 0, -1.0);
+  if ((rname != NULL) && (*rname != '\0'))
+  {
+    // copy robot's name (if any) to "self" node
+    AddLex(self, rname, 0, -1.0);
+    strcpy_s(first, rname);
+    if ((sep = strchr(first, ' ')) != NULL)
+    {
+      *sep = '\0';
+      AddLex(self, first, 0, -1.0);
+    }
+  }
+  ShiftUser();
+}
+
+
+//= Find an old user with the given name or make up a new one.
+// useful when face recognition notices a change
+// returns value of "user" member variable for convenience
+
+jhcNetNode *jhcWorkMem::ShiftUser (const char *name)
+{
+  jhcNetNode *n = NULL;
+
+  // see if named user already exists
+  if ((name != NULL) && (*name != '\0'))
+    while ((n = NextNode(n)) != NULL)
+      if (n->HasWord(name, 1))
+        return SetUser(n);
+
+  // make up a new user node and add pronouns
+  n = MakeNode("dude", NULL, 0, -1.0);
+  if ((name != NULL) && (*name != '\0'))
+    AddLex(n, name, 0, -1.0);
+  return SetUser(n);
+}
+
+
+//= Force user to be some existing node.
+
+jhcNetNode *jhcWorkMem::SetUser (jhcNetNode *n)
+{
+  // reassign "I" and "me" to new node
+  set_prons(0);
+  user = n;
+  set_prons(1);
+
+  // make sure that personhood is marked
+  AddProp(user, "ako", "person", 0, -1.0);
+  AddProp(user, "ako", "user", 0, -1.0);
+  return user;
+}
+
+
+//= Set reference words "I" and "me" of current user to some negation state.
+
+void jhcWorkMem::set_prons (int tru) 
+{
+  const char *word;
+  int i, np;
+
+  // sanity check
+  if (user == NULL)
+    return;
+
+  // change negation value of first person pronouns (if they exist)
+  np = user->NumProps();
+  for (i = 0; i < np; i++)
+    if ((word = user->LexBase(i)) != NULL)
+      if ((strcmp(word, "I") == 0) || (strcmp(word, "me") == 0))
+        (user->Prop(i))->SetNeg((tru > 0) ? 0 : 1);
+
+  // if asserting, make sure first person pronouns exist
+  if (tru <= 0)
+    return;
+  if (!user->HasWord("I"))
+    AddLex(user, "I", 0, -1.0);
+  if (!user->HasWord("me"))
+    AddLex(user, "me", 0, -1.0);
 }
 
 
@@ -50,8 +160,8 @@ jhcWorkMem::jhcWorkMem ()
 //                              List Access                              //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Returns next node in list, transitioning from halo to main if needed.
-// call with prev = NULL to get first node, use SetMode(1) to include halo
+//= Returns next node in list, transitioning from main to halo-1 to halo-2 if needed.
+// call with prev = NULL to get first node, use SetMode(2) to include halo
 // assumes all items in halo node pool have "id" < 0, tries non-halo first
 
 jhcNetNode *jhcWorkMem::NextNode (const jhcNetNode *prev) const
@@ -67,8 +177,30 @@ jhcNetNode *jhcWorkMem::NextNode (const jhcNetNode *prev) const
   // possibly switch from main to halo list
   if ((n == NULL) && (mode > 0)) 
     if ((prev == NULL) || (prev->Inst() >= 0))
+    {
       n = halo.Pool();
+      if (mode == 1) 
+        while (n != NULL) 
+        {
+          // skip high-numbered nodes if only 1-step inference allowed
+          if (abs(n->Inst()) <= nimbus)
+            break;
+          n = Next(n);
+        }
+    }
   return n;
+}
+
+
+//= Tell if a node comes from currently valid section of memory.
+// useful when matching against just main, main plus halo-1, or everything
+// makes sure jhcSituation::try_props and try_args remain in correct region
+
+bool jhcWorkMem::Prohibited (const jhcNetNode *n) const
+{
+  return((n == NULL) || 
+         ((mode <= 0) && (n->Inst() < 0)) || 
+         ((mode == 1) && (n->Inst() < -nimbus)));
 }
 
 
@@ -77,148 +209,104 @@ jhcNetNode *jhcWorkMem::NextNode (const jhcNetNode *prev) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Make up network in halo for some pattern (typically result of rule).
-// uses main nodes found in bindings, all new nodes asserted with blf = conf
-// carefully re-uses main nodes when identical instead of making new halo nodes
-// conceptually, facts should not be added to halo if they are already in main 
-// returns source label if something made, 0 if nothing made, negative for error
 
-int jhcWorkMem::AssertHalo (const jhcGraphlet& pat, jhcBindings& b, double conf, int tval)
+void jhcWorkMem::AssertHalo (const jhcGraphlet& pat, jhcBindings& b, jhcAliaRule *r)
 {
   jhcNetNode *n;
   const jhcNetNode *pn;
-  int i, ni = pat.NumItems();
+  int i, nb, nb0 = b.NumPairs(), tval = 0;
 
-  // mark all unbound parts of pattern as eligible for selection
-  for (i = 0; i < ni; i++)
+  // make up new halo nodes for result (and record source NOTE)
+  for (i = 0; i < nb0; i++)
   {
-    n = pat.Item(i);
-    n->mark = ((b.InKeys(n)) ? 0 : 1);
+    n = b.GetSub(i);
+    tval = __max(tval, n->top);                  
   }
+  halo.Assert(pat, b, 0.0, tval);    
 
-  // select some pattern node that currently has all its args in main
-  // bind to similar main node if main node is at least as sure
-  while ((pn = args_bound(pat, b)) != NULL)
-    if ((n = main_equiv(pn, b, conf)) != NULL)
+  // set initial beliefs and record provenance for new parts
+  nb = b.NumPairs();
+  for (i = nb0; i < nb; i++)
+  {
+    pn = b.GetKey(i);
+    n = b.GetSub(i);
+    if (n->Halo())
     {
-      b.Bind(pn, n);
-      n->TopMax(tval);                           // record NOTE origin (if any)
+      n->SetBelief(pn->Belief());
+      n->hrule = r;
+      n->hbind = &b;
     }
-
-  // create any new nodes needed in halo (new bindings will obviate some)
-  for (i = 0; i < ni; i++)
-    if (!b.InKeys(pat.Item(i)))                  // any missing brings in all
-    {
-      src++;
-      halo.Assert(pat, b, conf, src, tval);     
-      actualize_halo(src);
-      return src;
-    }
-  return 0;
+  }
 }
 
 
-//= Find some pattern nodes having only main node arguments.
-// all pattern nodes are local, so main nodes must be linked to by bindings
-// returns suitable node, NULL if none
+//= Find the version of a halo node with the highest belief and invalidate all others.
+// if run incrementally, first non-zero match found should be the only one 
+// keeps the version (NEG or positive) with the highest belief, others all zeroed
+// similar to Endorse but does always defer to the most recent assertion
 
-const jhcNetNode *jhcWorkMem::args_bound (const jhcGraphlet& pat, const jhcBindings& b) const
+void jhcWorkMem::MaxHalo (jhcNetNode *n)
 {
-  jhcNetNode *n;
-  int i, j, na, ni = pat.NumItems();
+  jhcNetNode *n2 = NULL;
+  double b;
 
-  // search over all nodes in pattern
-  for (i = 0; i < ni; i++)
-  {
-    // must not be already bound and have some args (mark > 0)
-    n = pat.Item(i);
-    if (n->mark > 0) 
-    {
-      // check that all args are bound to a main node
-      na = n->NumArgs();
-      for (j = 0; j < na; j++)
-        if (!b.InKeys(n->Arg(j)))
-          break;
-      if (j >= na)
+  // ignore object and word nodes
+  if ((n == NULL) || !n->Halo() || n->Hyp() || n->ObjNode())
+    return;
+  b = n->Belief();
+
+  // scan through all others for first match with positive belief
+  while ((n2 = halo.Next(n2)) != NULL)
+    if ((n2 != n) && !n2->Hyp() && !n2->ObjNode())
+      if (n->SameArgs(n2) && (n->LexMatch(n2) || n->SharedWord(n2)))
       {
-        // prevent re-selection and return candidate
-        n->mark = 0;
-        return n;
+jprintf("MaxHalo: similar %s (%4.2f) and %s (%4.2f)\n", n->Nick(), b, n2->Nick(), n2->Belief()); 
+        // negate belief for any fact with same sense or opposite sense (neg)
+        // prevents rule matching (node removal could leave dangling pointers)
+        if (b > n2->Belief())
+          n2->Hide();
+        else
+          n->Hide();                   // earlier wins if tied
+        break;
       }
-    }
-  }
-  return NULL;
 }
 
 
-//= Find a node in main memory with same arguments, negation, and lexical term as pattern node.
-// returns NULL if nothing suitable, else first suitable (most recent)
+//= Make suitably connected main memory node for each halo node in bindings.
+// saves mapping of correspondences between halo nodes and replacements in "h2m"
+// does not change original rule bindings "b" (still contains halo references)
+// used with jhcActionTree::ReifyRules
 
-jhcNetNode *jhcWorkMem::main_equiv (const jhcNetNode *pn, const jhcBindings& b, double conf) const
+void jhcWorkMem::PromoteHalo (jhcBindings& h2m, const jhcBindings& b)
 {
-  jhcNetNode *mate = NULL;
-  int i, na = pn->NumArgs();
-  
-  // consider all nodes in main memory
-  while ((mate = NextNode(mate)) != NULL)
-    if ((mate->Neg() == pn->Neg()) && (mate->Done() == pn->Done()) && (mate->Belief() >= conf) && 
-        (mate->NumArgs() == na) && !mate->LexConflict(pn) && mate->SameWords(pn))
-    {
-      // check that all arguments match
-      for (i = 0; i < na; i++)
-        if (!mate->HasVal(pn->Slot(i), b.LookUp(pn->Arg(i))))
-          break;
-      if (i >= na)
-        return mate;
-    }
-  return NULL;
-}
-
-
-//= Mark truth value of asserted rule conclusion with given source number.
-
-void jhcWorkMem::actualize_halo (int src) const
-{
-  jhcNetNode *n = NULL;
-
-  while ((n = halo.Next(n)) != NULL)
-    if (n->pod == src)
-    {
-      if (n->LexNode())
-        MarkBelief(n, 1.0);
-      else
-        n->Actualize(ver);
-    }
-}
-
-
-//= Promote any halo items with given source to main memory.
-// creates translation between original halo and new main nodes 
-// typically used for the full result of some particular rule
-
-void jhcWorkMem::PromoteHalo (jhcBindings& h2m, int s)
-{
-  jhcNetNode *n2, *n = NULL;
+  jhcBindings b2;
+  jhcNetNode *n2, *n;
   const jhcNetNode *n0;
-  int i, j, narg, hcnt = 0;
+  int i, j, hcnt, narg, nb = b.NumPairs(), h0 = h2m.NumPairs();
 
   // make a main node for each halo node using same lex and neg
-  h2m.Clear();
   BuildIn(NULL);
-  while ((n = halo.Next(n)) != NULL)
-   if (n->pod == s)
-   {
-     n2 = MakeNode(n->Kind());     // sets proper generation
-     n2->SetNeg(n->Neg());
-     n2->SetDone(n->Done());
-     n2->SetBelief(n->Default());  // actualize result pattern
-     h2m.Bind(n, n2);
-     n->pod = 0;                   // prevent re-selection later
-     hcnt++;
-   }
+  b2.CopyReplace(b, h2m);              // subs from earlier promotions
+  for (i = 0; i < nb; i++)
+  {
+    // see if this substitution is a halo node
+    n = b2.GetSub(i);
+    if (!n->Halo())
+      continue;
+
+    // make equivalent wmem node with proper generation
+    n2 = MakeNode(n->Kind());     
+    n2->SetNeg(n->Neg());
+    n2->SetDone(n->Done());
+
+    // actualize result and save translation
+    n2->SetBelief(n->Default());  
+    h2m.Bind(n, n2);
+  }
 
   // replicate structure of each halo node for replacement main node
-  // rule result only has main nodes and halo nodes with same source (in h2m)
-  for (i = 0; i < hcnt; i++)
+  hcnt = h2m.NumPairs();
+  for (i = h0; i < hcnt; i++)
   {
     // copy each argument from halo node to main node
     n0 = h2m.GetKey(i);
@@ -236,31 +324,153 @@ void jhcWorkMem::PromoteHalo (jhcBindings& h2m, int s)
 }
 
 
-//= Print halo assertions with given source (0 = all).
-// prefixes it with "HALO N" and indents by lvl (but not prefix if lvl < 0)
+///////////////////////////////////////////////////////////////////////////
+//                           Garbage Collection                          //
+///////////////////////////////////////////////////////////////////////////
 
-void jhcWorkMem::PrintHalo (int s, int lvl) const
+//= Resolve any contradictions and possibly remove old nodes from main memory.
+// keeps only semantic network nodes attached to foci or active directives.
+// generally additional seeds will have been marked by other components
+// returns number of nodes removed
+
+int jhcWorkMem::CleanMem (int dbg)
 {
-  jhcNetNode *n = NULL;
-  char num[20] = "";
-  int lvl2 = abs(lvl) + 2, kmax = 0, nmax = 0, rmax = 0, cnt = 0;
+  jhcNetNode *self = Robot(), *user = Human(), *n = NULL;
 
-  // get field widths of everything that will be printed
-  while ((n = halo.Next(n)) != NULL)
-    if ((s <= 0) || (n->pod == s))
-      n->TxtSizes(kmax, nmax, rmax);
+  // all things are potential garbage
+  jprintf(1, dbg, "\nCleaning memory ...\n");
+  while ((n = NextNode(n)) != NULL)
+    n->keep = ((n->keep > 0) ? 1 : 0);           // normalize values
 
-  // print header
-  if (s > 0)
-    _itoa_s(s, num, 10);
-  jprintf("%*sHALO %s", __max(0, lvl), "", num);
+  // mark definite keepers              
+  if (self != NULL)
+    self->keep = 1;
+  if (user != NULL)
+    user->keep = 1;         
 
-  // print all matching nodes
+  // scan all and expand marks to related nodes
+  jprintf(2, dbg, "\n  retaining nodes:\n");
   n = NULL;
-  while ((n = halo.Next(n)) != NULL)
-    if ((s <= 0) || (n->pod == s))
-      n->Print(lvl2, kmax, nmax, rmax, NULL, ((cnt++ <= 0) ? -1 : 0));   // cnt is hack!
-
-  // blank line at end
-  jprintf("\n\n");
+  while ((n = Next(n)) != NULL)
+    if (n->keep == 1)
+      keep_from(n, dbg);
+  return rem_unmarked(dbg);
 }
+
+
+//= Mark this particular node and all things connected to it as non-garbage.
+// generally external marks are 1 and these spreads marks are 2
+
+void jhcWorkMem::keep_from (jhcNetNode *anchor, int dbg)
+{
+  jhcNetNode *p;
+  int i, n;
+
+  // make sure node is not already marked or part of some other pool
+  if ((anchor == NULL) || (anchor->keep > 1) || !InPool(anchor))
+    return;
+  jprintf(2, dbg, "    %s%s\n", ((anchor->keep <= 0) ? "  " : ""), anchor->Nick());  
+
+  // mark node and all its arguments as being keepers 
+  anchor->keep = 2;
+  n = anchor->NumArgs();  
+  for (i = 0; i < n; i++)
+    keep_from(anchor->Arg(i), dbg);
+
+  // mark most properties for retention
+  n = anchor->NumProps();  
+  for (i = 0; i < n; i++)
+  {
+    // skip if user speech act (might be marked from focus anyhow)
+    p = anchor->Prop(i);
+    if (strcmp(p->Kind(), "meta") == 0) 
+      continue;
+
+    // skip if no belief and no properties depend on it
+    if ((p->Belief() == 0.0) && (p->NonLexCnt() == 0))
+      continue;
+    keep_from(p, dbg);
+  }
+}
+
+
+//= Eliminate all facts not connected to marked active nodes.
+// expects something else to mark some nodes as non-zero
+// after GC all remaining nodes left in unmarked (0) state 
+// returns number of nodes removed
+
+int jhcWorkMem::rem_unmarked (int dbg)
+{
+  jhcNetNode *tail, *n = Next(NULL);
+  int cnt = 0;
+
+  // get rid of anything not marked (0)
+  while (n != NULL)
+    if (n->keep > 0)
+    {
+      n->keep = 0;           // eligible on next round
+      n = Next(n);
+    }
+    else
+    {
+      if (cnt++ <= 0)
+        jprintf(1, dbg, "\n  FORGETTING nodes:\n");
+      jprintf(1, dbg, "    %s\n", n->Nick());
+      tail = Next(n);
+      RemNode(n);
+      n = tail;
+   }
+
+  // done
+  if (cnt > 0)
+    jprintf(1, dbg, "\n");
+  return cnt;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                           Truth Maintenance                           //
+///////////////////////////////////////////////////////////////////////////
+  
+//= Override beliefs of any older main memory versions of nodes in description.
+// sets belief of older versions negative in favor of newer version
+// ignores sense negation when checking for equality to allow truth value flip
+// ensures only one variant of predicate will have belief > 0 (generally most recent)
+// if run incrementally, first non-zero match found should be the only one 
+// similar to MaxHalo but current assertions always override previous ones
+
+void jhcWorkMem::Endorse (const jhcGraphlet& desc, int dbg)
+{
+  const jhcNetNode *n;
+  jhcNetNode *n2;
+  int i, ni = desc.NumItems(), cnt = 0;
+
+  // look through all description items (except object nodes and words)
+  for (i = 0; i < ni; i++)
+  {
+    n = desc.Item(i);
+    if (!n->Hyp() && !n->ObjNode())
+    {
+      // scan through all others for first match with non-zero belief
+      n2 = NULL;
+      while ((n2 = Next(n2)) != NULL)
+        if ((n2 != n) && !n2->Hyp() && !n2->ObjNode())
+          if (n->SameArgs(n2) && (n->LexMatch(n2) || n->SharedWord(n2)))
+          {
+            // negate belief for any fact with same sense or opposite sense (neg)
+            // prevents rule matching (node removal could leave dangling pointers)
+            if (cnt++ <= 0)
+              jprintf(1, dbg, "Endorse:\n");
+            jprintf(1, dbg, "  %s overrides %s\n", n->Nick(), n2->Nick());
+            n2->Hide();
+            break;
+          }
+    }
+  }
+
+  // mark whether any changes have occurred (mostly for halo recomputation)
+  if (cnt > 0)
+    jprintf(1, dbg, "\n");
+  Dirty(cnt);
+}
+

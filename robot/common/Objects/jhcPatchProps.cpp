@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -157,10 +158,12 @@ int jhcPatchProps::size_params (const char *fname)
   int ok;
 
   ps->SetTag("prop_size", 0);
-  ps->NextSpecF( &big, 2.5, "Big size (in)");  
-  ps->NextSpecF( &sm,  1.0, "Small size (in)");  
-  ps->NextSpecF( &wth, 1.7, "Wide ratio");
-  ps->NextSpecF( &nth, 0.7, "Narrow ratio");
+  ps->NextSpecF( &big,    2.5, "Big size (in)");  
+  ps->NextSpecF( &sm,     1.0, "Small size (in)");  
+  ps->NextSpecF( &wth,    1.7, "Wide ratio");
+  ps->NextSpecF( &nth,    0.7, "Narrow ratio");
+  ps->NextSpecF( &tall,   5.0, "Tall size (in)");
+  ps->NextSpecF( &petite, 1.0, "Short size (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -510,22 +513,32 @@ int jhcPatchProps::Striped (const jhcImg& mask, const jhcImg& mono)
 //                             Size and Shape                            //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Returns categorization of object as small (0), normal (1), or wide (2).
-// based on object area and scale factor of pixels near base
+//= Find size category based on object area and scale factor of pixels near base.
+// returns: small (0), normal (1), or wide (2)
 
 int jhcPatchProps::SizeClass (int area, double ppi) 
 {
   dim = sqrt((double) area) / ppi;
-  if (dim >= big)
+  return SizeClass(dim);
+}
+
+
+//= Find size category based on given object max dimension (in inches).
+// returns: small (0), normal (1), or wide (2)
+
+int jhcPatchProps::SizeClass (double dmax) const
+{
+  if (dmax >= big)
     return 2;
-  if (dim > sm)
+  if (dmax > sm)
     return 1;
   return 0;
 }
 
 
-//= Returns categorization of object width as narrow (0), normal (1), or wide (2).
-// based on width of bounding box versus height
+//= Find object width category based on oriented aspect ratio.
+// can use width of bounding box versus height, or max planar dimension over Z height
+// returns: narrow (0), normal (1), or wide (2)
 
 int jhcPatchProps::WidthClass (double wx, double hy) 
 {
@@ -536,6 +549,20 @@ int jhcPatchProps::WidthClass (double wx, double hy)
     return 1;
   return 0;
 }
+
+
+//= Find object height category based on absolute dimension (inches).
+// returns: short (0), normal (1), or tall (2)
+
+int jhcPatchProps::HeightClass (double zdim) const
+{
+  if (zdim >= tall)
+    return 2;
+  if (zdim > petite)
+    return 1;
+  return 0;
+}
+
 
 
 

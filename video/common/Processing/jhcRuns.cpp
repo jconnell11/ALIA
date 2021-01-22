@@ -4,7 +4,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 1999-2019 IBM Corporation
+// Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -903,6 +904,99 @@ void jhcRuns::thresh (jhcImg& dest, const jhcImg& src, int th, int over, int und
 }
 
 
+//= Simultaneously fill in short gaps in all connected components in 8 bit image.
+// maxgap = 0 will fill any length, can still leave polygonal holes in objects
+// use Fill8 and Fill16 to convert back and forth from 16 bit images
+
+int jhcRuns::ConvexAll (jhcImg& dest, const jhcImg& src, int maxgap)
+{
+  c1.InitSize(dest, 255);
+  return StripOutside(dest, c1, src, maxgap, 0);
+}
+
+
+//= Fill in short gaps in source where runs only pass through allowed gate regions.
+// maxgap = 0 will fill any length, can still leave polygonal holes in source region
+// can handle multiple components in source (i.e. pixel label matters, not all 255)
+// no runs will pass through regions where gate is zero (but any positive value is okay)
+
+int jhcRuns::ConvexClaim (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int maxgap)
+{
+  return StripOutside(dest, gate, src, maxgap, 0);
+}
+
+
+//= Fill in all horizontal gaps of less than maxgap wide.
+
+int jhcRuns::ConvexH (jhcImg& dest, const jhcImg& src, int maxgap, int fill)
+{
+  if (!dest.Valid(1) || !dest.SameFormat(src))
+    return Fatal("Bad images to jhcRuns::ConvexH");
+  dest.CopyArr(src);
+
+  // generic ROI case
+  int x, y, n, rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  UC8 fval = BOUND(fill);
+  UC8 *d = dest.RoiDest();
+
+  // scan image horizontal line by line
+  for (y = rh; y > 0; y--, d += rsk)
+  {
+    n = -1;                                // initially unanchored
+    for (x = rw; x > 0; x--, d++)
+      if (*d > 0)                            
+      {
+        // see if just hit opposite side
+        if ((n > 0) && (n <= maxgap))   
+          while (n > 0)                    // back fill missing part
+            d[-(n--)] = fval;                   
+        n = 0;                             // mark as anchored    
+      }
+      else if (n >= 0)
+        n++;                               // outside mask so measure
+  }
+  return 1;
+}
+
+
+//= Fill in all upward facing horizontal gaps of less than maxgap wide.
+// like ConvexH but requires any filled run to be completely filled below
+// useful for smoothing over occulsion shadows in depth projections
+
+int jhcRuns::ConvexUp (jhcImg& dest, const jhcImg& src, int maxgap, int fill)
+{
+  if (!dest.Valid(1) || !dest.SameFormat(src))
+    return Fatal("Bad images to jhcRuns::ConvexUp");
+  dest.CopyArr(src);
+
+  // generic ROI case
+  int x, y, n, rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip(), ln = dest.Line();
+  UC8 fval = BOUND(fill);
+  UC8 *d = dest.RoiDest();
+
+  // scan image horizontal line by line
+  for (y = rh; y > 0; y--, d += rsk)
+  {
+    n = -1;                                // initially unanchored
+    for (x = rw; x > 0; x--, d++)
+      if (*d > 0)                            
+      {
+        // see if just hit opposite side
+        if ((n > 0) && (n <= maxgap))   
+          while (n > 0)                    // back fill missing part
+            d[-(n--)] = fval;                   
+        n = 0;                             // mark as anchored    
+      }
+      else if (n >= 0)
+        if ((y == rh) || (d[-ln] == 0))
+          n = -1;                          // unsupported below
+        else
+          n++;                             // outside mask so measure
+  }
+  return 1;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                           Edge Filling                                //
 ///////////////////////////////////////////////////////////////////////////
@@ -916,8 +1010,7 @@ void jhcRuns::thresh (jhcImg& dest, const jhcImg& src, int th, int over, int und
 
 int jhcRuns::StripOutside (jhcImg& dest, const jhcImg& src, const jhcImg& bnd, int mrun, int bdok)  
 {
-  if (!dest.Valid(1) || dest.SameImg(bnd) ||
-      !dest.SameFormat(src) || !dest.SameFormat(bnd))
+  if (!dest.Valid(1) || !dest.SameFormat(src) || !dest.SameFormat(bnd))
     return Fatal("Bad images to jhcRuns::TrimOutside");
 
   // set up temporary images
@@ -943,8 +1036,7 @@ int jhcRuns::StripOutside (jhcImg& dest, const jhcImg& src, const jhcImg& bnd, i
 
 int jhcRuns::InsideRuns (jhcImg& dest, const jhcImg& src, const jhcImg& bnd, int mrun, int bdok, int cnt) 
 {
-  if (!dest.Valid(1) || dest.SameImg(bnd) ||
-      !dest.SameFormat(src) || !dest.SameFormat(bnd))
+  if (!dest.Valid(1) || !dest.SameFormat(src) || !dest.SameFormat(bnd))
     return Fatal("Bad images to jhcRuns::InsideRuns");
 
   // set up temporary images

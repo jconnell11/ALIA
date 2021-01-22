@@ -98,7 +98,7 @@ BOOL CBanzaiApp::InitInstance()
 
 // JHC: override to store strings which are not necessarily files
 
- void CBanzaiApp::AddToRecentFileList(LPCTSTR lpszPathName)
+void CBanzaiApp::AddToRecentFileList(LPCTSTR lpszPathName)
 {
 	ASSERT_VALID(this);
 	ENSURE_ARG(lpszPathName != NULL);

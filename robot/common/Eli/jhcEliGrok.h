@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +30,8 @@
 
 #include "Body/jhcEliBody.h"           // common robot
 #include "Environ/jhcLocalOcc.h"
+#include "Objects/jhcPatchProps.h"
+#include "Objects/jhcSurfObjs.h"
 #include "People/jhcFaceName.h"
 #include "People/jhcSpeaker.h"
 #include "People/jhcStare3D.h"
@@ -47,7 +50,7 @@ class jhcEliGrok : public jhcBackgRWI
 private:
   jhcImg mark, mark2;
   UL32 tnow;
-  int phy, seen;
+  int phy, seen, reflex;
 
   // target watching control
   char wtarg[9][20];
@@ -76,6 +79,8 @@ public:
   jhcFaceName fn;                      // face ID and gaze for heads
   jhcSpeaker tk;                       // sound location vs head
   jhcLocalOcc nav;                     // navigation obstacles
+  jhcSurfObjs tab;                     // depth-based object detection
+  jhcPatchProps ext;                   // object color analysis
 
   // watching behaviors bids
   jhcParam wps;
@@ -113,7 +118,7 @@ public:
   int SaveCfg (const char *fname) const;
 
   // main functions
-  void Reset (int rob =1);
+  void Reset (int rob =1, int behaviors =1);
   int Update (int voice =0, UL32 resume =0);
   void Stop ();
 
@@ -147,8 +152,10 @@ private:
   void assert_seek ();
   void assert_servo ();
 
-  // interaction overrrides
+  // interaction overrrides and helpers
   void body_update ();
+  void interpret ();
+  void interpret2 ();
   void body_issue ();
   void adjust_heads ();
 

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +60,7 @@ jhcEliBody::jhcEliBody ()
   kin = 0;
   vid = NULL;
   bnum = -1;
+  tfill = 0;
 
   // default robot name
   *rname = '\0';
@@ -118,6 +120,28 @@ int jhcEliBody::idle_params (const char *fname)
 }
 
 
+//= Parameters used when no physical robot is present.
+// nothing geometric that differs between bodies
+
+int jhcEliBody::static_params (const char *fname)
+{
+  jhcParam *ps = &sps;
+  int ok;
+
+  ps->SetTag("body_static", 0);
+  ps->NextSpecF( &pdef,   0.0, "Default neck pan (deg)");
+  ps->NextSpecF( &tdef, -53.6, "Default neck tilt (deg)");
+  ps->NextSpecF( &hdef,  31.8, "Default lift height (in)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                          Parameter Bundles                            //
+///////////////////////////////////////////////////////////////////////////
+
 //= Read all relevant defaults variable values from a file.
 
 int jhcEliBody::Defaults (const char *fname)
@@ -126,6 +150,7 @@ int jhcEliBody::Defaults (const char *fname)
 
   ok &= body_params(fname);
   ok &= idle_params(fname);
+  ok &= static_params(fname);
   ok &= arm.Defaults(fname);
   ok &= neck.Defaults(fname);
   ok &= base.Defaults(fname);
@@ -184,6 +209,7 @@ int jhcEliBody::SaveVals (const char *fname) const
 
   ok &= bps.SaveVals(fname);
   ok &= ips.SaveVals(fname);
+  ok &= sps.SaveVals(fname);
   ok &= arm.SaveVals(fname);
   ok &= neck.SaveVals(fname);
   ok &= base.SaveVals(fname);
@@ -401,16 +427,21 @@ int jhcEliBody::CfgFile (char *fname, int chk, int ssz)
     bnum = dyn.RobotID();
   }
 
-  // look in local directory
+  // look in current directory first
   sprintf_s(fname, ssz, "robot-%d.cfg", __max(0, bnum));
   if (fopen_s(&in, fname, "r") != 0)
   {
-    // look in parallel directory
-    sprintf_s(fname, ssz, "../config/robot-%d.cfg", __max(0, bnum));
+    // else look in subdirectory of current
+    sprintf_s(fname, ssz, "config/robot-%d.cfg", __max(0, bnum));
     if (fopen_s(&in, fname, "r") != 0)
     {
-      *fname = '\0';
-      return -1;
+      // else look in parallel directory
+      sprintf_s(fname, ssz, "../config/robot-%d.cfg", __max(0, bnum));
+      if (fopen_s(&in, fname, "r") != 0)
+      {
+        *fname = '\0';
+        return -1;
+      }
     }
   }
 
@@ -593,7 +624,7 @@ int jhcEliBody::Freeze ()
   base.Freeze();
   arm.Freeze();
   neck.Freeze();
-  return CommOK();
+  return CommOK(0);
 }
 
 
@@ -605,7 +636,7 @@ int jhcEliBody::Limp ()
   base.Limp();
   arm.Limp();
   neck.Limp();
-  return CommOK();
+  return CommOK(0);
 }
 
 

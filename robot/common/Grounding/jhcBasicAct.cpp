@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -418,6 +419,8 @@ int jhcBasicAct::get_dist (double& dist, const jhcAliaDesc *act) const
     dist = move;
   else if (act->WordIn("drive"))
     dist = drive;
+  else if (act->WordIn("cruise"))
+    dist = 30.0 * drive;               // nearly continuous (60 sec @ 8 ips)
   else
     return -1;
   return 1;

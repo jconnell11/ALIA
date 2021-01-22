@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,7 +61,7 @@ private:
   // image conversion and placement
   DWORD tdisp;
   jhcImg tmp;
-  int imgx, imgy, imgw, imgh, gcnt;
+  int imgx, imgy, imgw, imgh, gcnt, gmax;
 
 
 // PUBLIC MEMBER VARIABLES

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -182,12 +183,12 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
 
   // suppress some printouts
   noisy = 1;
-  attn.noisy = 1;
+  atree.noisy = 1;
 
   // note that system is awake
-  attn.StartNote();
-  attn.AddProp(attn.self, "hq", "awake");
-  attn.FinishNote();
+  atree.StartNote();
+  atree.AddProp(atree.Robot(), "hq", "awake");
+  atree.FinishNote();
   return 1;
 }
 
@@ -321,7 +322,8 @@ int jhcAliaSpeech::UpdateSpeech ()
 
 int jhcAliaSpeech::Respond (int alert)
 {
-  int bid;
+  char mark[80] = "##  +------------------------------------------------------------------------";
+  int bid, n;
 
   // possibly wake up system then evaluate any language input
   now = jms_now();
@@ -338,6 +340,14 @@ int jhcAliaSpeech::Respond (int alert)
   {
     sp.Say(bid, output);
     sp.Issue();
+  }
+
+  // show prominently in log file
+  if ((n = (int) strlen(output)) > 0)
+  {
+    n = __min(n, 70);
+    mark[n + 9] = '\0';
+    jprintf("\n%s+\n##  | \"%s\" |\n%s+\n\n", mark, output, mark);
   }
   return 1;
 }
@@ -377,7 +387,7 @@ void jhcAliaSpeech::xfer_input ()
   if (hear < 0)
     Interpret(NULL, attn, amode);                         // for "huh?" response
   else if (hear >= 2)
-    if (Interpret(sent, attn, amode) >= 2)
+    Interpret(sent, attn, amode);
   if (hear != 0)
     awake = now;
 

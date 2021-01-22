@@ -7,6 +7,7 @@
   <%obj-i0>
   <%obj-i>
   <%obj>
+  <query>
 
 
 // noun phrase including plural indefinites
@@ -30,8 +31,8 @@
 // indefinite noun phrase
 
 =[%obj-i]
-  <ind> (<desc>) <AKO>
-  <ind> (<desc>) thing
+  <ind> (<desc>) <AKO> (<comp>)
+  <ind> (<desc>) thing (<comp>)
   <AKO-M>
 
 
@@ -55,16 +56,24 @@
 // noun
 
 =[n]
+  thing
   <AKO>
   <AKO-S>
 
 
+// superclass of some noun type
+
+=[%n-super]
+  kind of <AKO>
+  type of <AKO>
+
+
 // --------------------------------------------------
 
-// description
+// description (up to 3 adjectives)
 
 =[desc]
-  (<nmod> (and)) <nmod>
+  <nmod> ((and) <nmod> ((and) <nmod>))
 
 
 // one modifiying term
@@ -88,18 +97,20 @@
   (<DEG>) <LOC> <np>
   <LOC-2> <np> and <np>
   <LOC-0>
+  <LOC-V>
 
 
 // --------------------------------------------------
 
-// copula verb phrase
+// copula verb phrase ("be" optional for yn-questions)
 
 =[$add]
-  <cop> <NAME>
-  <cop> <desc> 
-  <cop> <comp>
-  <cop> <%obj-i>
-  <cop-p> <%obj-s>
+  (<cop>) <NAME>
+  (<cop>) <desc> 
+  (<cop>) <comp>
+  (<cop>) <%obj-i>
+  (<cop-p>) <%obj-s>
+  (<cop>) a <%n-super>
 
 
 // copula core

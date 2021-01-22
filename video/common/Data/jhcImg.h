@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -115,7 +116,7 @@ public:
 
   jhcImg *Wrap (UC8 *raw, int wid =0, int ht =0, int fields =0);
   void Clone (const jhcImg& ref) {SetSize(ref); if (ref.Valid()) CopyArr(ref);}  /** Copy size and content. */
-  void Clone (const jhcImg *ref) {Clone(*ref);}
+  void Clone (const jhcImg *ref) {if (ref != NULL) Clone(*ref);}
 
   // member variable access
   int *Dims (int specs[]) const;
@@ -184,6 +185,8 @@ public:
   int CopyField (const jhcImg& src, int sfield, int dfield =0);
   int CopyField (const UC8 *src, int sfield, int stotal =3, int dfield =0);
   int Sat8 (const jhcImg& src);
+  int Fill8 (const jhcImg& src);
+  int Fill16 (const jhcImg& src);
   int FillArr (int v =0);
   int FillMax (int v =0) {MaxRoi(); return FillArr(v);}  /** Fill ALL pixels. */
   int FillAll (int v =0);

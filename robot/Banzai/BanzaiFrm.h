@@ -22,6 +22,7 @@ public:
 // Operations
 public:
 
+
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CMainFrame)
@@ -40,6 +41,7 @@ public:
 protected:  // control bar embedded members
 	CStatusBar  m_wndStatusBar;
 
+
 // Generated message map functions
 protected:
 	//{{AFX_MSG(CMainFrame)
@@ -48,6 +50,8 @@ protected:
 		//    DO NOT EDIT what you see in these blocks of generated code!
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+  afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 };
 
 /////////////////////////////////////////////////////////////////////////////

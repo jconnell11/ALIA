@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,7 +83,7 @@ public:
 
   // local plane fitting
   double CamCalib (double& t, double& r, double& h, const jhcImg& src, double z0, double ztol, 
-                   double zlo, double zhi, double ipp, double yoff =0.0);
+                   double zlo, double zhi, double ipp, double yoff =0.0, const jhcRoi *area =NULL);
 
   // standard overhead map
   void BuildMatrices (double cpan, double ctilt, double croll, double x0, double y0, double z0);

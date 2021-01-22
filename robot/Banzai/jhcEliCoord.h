@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@
 #include "Body/jhcEliBody.h"           // common robot
 #include "Eli/jhcEliGrok.h"
 #include "Grounding/jhcBallistic.h"
+#include "Grounding/jhcSceneVis.h"
 #include "Grounding/jhcSocial.h"
 
 #include "Parse/jhcNameList.h"         // common audio
@@ -60,6 +62,7 @@ public:
   // extra grounding kernels
   jhcBallistic ball; 
   jhcSocial soc;
+  jhcSceneVis vscn;
 
 
 // PUBLIC MEMBER FUNCTIONS

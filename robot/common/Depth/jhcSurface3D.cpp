@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,13 +81,14 @@ void jhcSurface3D::SetSize (int x, int y, int full)
 // returns standard deviation of points in estimate to found plane (in inches)
 
 double jhcSurface3D::CamCalib (double& t, double& r, double& h, const jhcImg& src, double z0, double ztol, 
-                               double zlo, double zhi, double ipp, double yoff) 
+                               double zlo, double zhi, double ipp, double yoff, const jhcRoi *area) 
 {
-  int lo, hi, x, y, iw = src.XDim(), ih = src.YDim(), sk = src.Skip();
-  double cxm = cx + 0.5 * ipp * iw, cym = cy + yoff;
+  const jhcRoi *samp = ((area != NULL) ? area : &src);
+  int lo, hi, x, y, iw = samp->RoiW(), ih = samp->RoiH(), sk = src.RoiSkip(*samp);
+  double cxm = cx + 0.5 * ipp * src.XDim(), cym = cy + yoff;
   double rads = D2R * (p0 + 90.0), cp = cos(rads), sp = sin(rads);
   double a, b, c, tz, ipz = (zhi - zlo) / 252.0, sc = 1.0 / ipz;
-  const UC8 *s = src.PxlSrc();
+  const UC8 *s = src.RoiSrc(*samp);
 
   if (!src.Valid(1))
     return Fatal("Bad images to jhcSurface3D::Calibrate");

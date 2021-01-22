@@ -26,11 +26,7 @@
 
 #include "Interface/jhcString.h"       // common video
 
-#if WINVER >= 0x0600
-  #include <sapi.h>
-#else
-  #include "Acoustic/sapi_xp.h"
-#endif
+#include <sapi.h>                      // used to have "sapi_xp.h"
 
 #include "Acoustic/jhcSpRecoMS.h"
 
@@ -2092,13 +2088,13 @@ void jhcSpRecoMS::add_dict (void *n, int cnt, int opt)
 {
   ISpRecoGrammar *gram = (ISpRecoGrammar *) g; 
   SPSTATEHANDLE *node = (SPSTATEHANDLE *) n;
-  SPSTATEHANDLE prev, final;
+  SPSTATEHANDLE prev, end;
   int i;
 
   // build node for end of chain and possibly add skip transition
-  gram->CreateNewState(*node, &final);
+  gram->CreateNewState(*node, &end);
   if (opt > 0)
-    gram->AddWordTransition(*node, final, NULL, L" ", SPWT_LEXICAL, 1.0, NULL);
+    gram->AddWordTransition(*node, end, NULL, L" ", SPWT_LEXICAL, 1.0, NULL);
 
   // build new nodes with dictation link from previous
   // also install a skip transition each new node to final node
@@ -2107,13 +2103,13 @@ void jhcSpRecoMS::add_dict (void *n, int cnt, int opt)
     prev = *node;
     gram->CreateNewState(prev, node);
     gram->AddRuleTransition(prev, *node, SPRULETRANS_DICTATION, (float) dict_wt, NULL);
-    gram->AddWordTransition(*node, final, NULL, L" ", SPWT_LEXICAL, 1.0, NULL);
+    gram->AddWordTransition(*node, end, NULL, L" ", SPWT_LEXICAL, 1.0, NULL);
   }    
 
   // for final dictation link no new node or skip link needed
   // this enforces at least one dictated element (unless overall skip)
-  gram->AddRuleTransition(*node, final, SPRULETRANS_DICTATION, (float) dict_wt, NULL);
-  *node = final;
+  gram->AddRuleTransition(*node, end, SPRULETRANS_DICTATION, (float) dict_wt, NULL);
+  *node = end;
 }
 
 

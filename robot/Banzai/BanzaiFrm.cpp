@@ -23,6 +23,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 		//    DO NOT EDIT what you see in these blocks of generated code !
 	ON_WM_CREATE()
 	//}}AFX_MSG_MAP
+  ON_WM_SYSCOMMAND()
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -52,8 +53,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		return -1;
 
 	if (!m_wndStatusBar.Create(this) ||
-		!m_wndStatusBar.SetIndicators(indicators,
-		  sizeof(indicators)/sizeof(UINT)))
+		  !m_wndStatusBar.SetIndicators(indicators, sizeof(indicators)/sizeof(UINT)))
 	{
 		TRACE0("Failed to create status bar\n");
 		return -1;      // fail to create
@@ -76,10 +76,10 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
   cs.x = 430;
   cs.y = 5;
   cs.cx = 1370;
-  cs.cy = 780;
+  cs.cy = 810;
 
 	// JHC: change window title 
-  cs.lpszName = _T("Banzai Application - IBM");
+  cs.lpszName = _T("Banzai Application");
 
 	return TRUE;
 }
@@ -103,3 +103,12 @@ void CMainFrame::Dump(CDumpContext& dc) const
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame message handlers
 
+// JHC: intercept main app close button to perform some cleanup
+
+void CMainFrame::OnSysCommand(UINT nID, LPARAM lParam)
+{
+  if (nID == SC_CLOSE)
+    PostMessage(WM_COMMAND, ID_APP_EXIT, 0);   // jhcChatBox will see this "Exit"  
+  else
+    CFrameWnd::OnSysCommand(nID, lParam);
+}

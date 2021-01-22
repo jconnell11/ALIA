@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,7 +113,7 @@ int jhcFaceOwner::AddVect (jhcFaceVect *v, int vcnt)
 
 void jhcFaceOwner::rem_weakest ()
 {
-  jhcFaceVect *prev, *weak, *last = NULL, *v = NULL;
+  jhcFaceVect *prev = NULL, *weak = NULL, *last = NULL, *v = NULL;
   int low = -1;
 
   // scan through vectors to find least useful

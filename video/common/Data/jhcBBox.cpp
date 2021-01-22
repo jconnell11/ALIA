@@ -1863,7 +1863,7 @@ int jhcBBox::PoisonOver (const jhcImg& labels, const jhcImg& marks, int th)
   {
     for (y = rh; y > 0; y--, m += msk, n += lsk)
       for (x = rw; x > 0; x--, m++, n++)
-        if ((*m < -th) && (*n > 0) && (*n < valid))
+        if ((*m <=-th) && (*n > 0) && (*n < valid))
           status[*n] = 0;
   }
   return 1;

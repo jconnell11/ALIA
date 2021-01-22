@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1537,10 +1538,10 @@ int jhcColor::DeBayer (jhcImg& dest, const jhcImg& src) const
   int x, y, w = dest.XDim(), wm2 = w - 2, hm2 = dest.YDim() - 2;
   int dln = dest.Line(), sln = src.Line(), sln2 = sln << 1, sln3 = sln2 + sln;
   int dsk = dest.Skip(), dsk2 = dsk + dln, ssk2 = src.Skip() + sln + 2;
-  int p00 = 0,    p10 = 1,        p20 = 2,        p30 = 3;
+  int p00 = 0,    p10 = 1,        p20 = 2;   //   p30 = 3;
   int p01 = sln,  p11 = sln  + 1, p21 = sln  + 2, p31 = sln  + 3;
   int p02 = sln2, p12 = sln2 + 1, p22 = sln2 + 2, p32 = sln2 + 3;
-  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;
+  int             p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;  // p03 = sln3,
   int b00 = 0, g00 = 1, r00 = 2, b01 = dln,     g01 = dln + 1, r01 = dln + 2;
   int b10 = 3, g10 = 4, r10 = 5, b11 = dln + 3, g11 = dln + 4, r11 = dln + 5;
   UC8 *d = dest.PxlDest();
@@ -1626,10 +1627,10 @@ int jhcColor::DeBayer_GB (jhcImg& dest, const jhcImg& src) const
   int x, y, w = dest.XDim(), wm2 = w - 2, hm2 = dest.YDim() - 2;
   int dln = dest.Line(), sln = src.Line(), sln2 = sln << 1, sln3 = sln2 + sln;
   int dsk = dest.Skip(), dsk2 = dsk + dln, ssk2 = src.Skip() + sln + 2;
-  int p00 = 0,    p10 = 1,        p20 = 2,        p30 = 3;
+  int             p10 = 1,        p20 = 2,        p30 = 3;   // p00 = 0;
   int p01 = sln,  p11 = sln  + 1, p21 = sln  + 2, p31 = sln  + 3;
   int p02 = sln2, p12 = sln2 + 1, p22 = sln2 + 2, p32 = sln2 + 3;
-  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;
+  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2;  // p33 = sln3 + 3;
   int b00 = 0, g00 = 1, r00 = 2, b01 = dln,     g01 = dln + 1, r01 = dln + 2;
   int b10 = 3, g10 = 4, r10 = 5, b11 = dln + 3, g11 = dln + 4, r11 = dln + 5;
   UC8 *d = dest.PxlDest();
@@ -1713,10 +1714,10 @@ int jhcColor::DeBayer16 (jhcImg& dest, const jhcImg& src, int off, int sh) const
   int x, y, r, g, b, w = dest.XDim(), wm2 = w - 2, hm2 = dest.YDim() - 2;
   int dln = dest.Line(), sln = src.Line() >> 1, sln2 = sln << 1, sln3 = sln2 + sln;
   int dsk = dest.Skip(), dsk2 = dsk + dln, ssk2 = (src.Skip() >> 1) + sln + 2;
-  int p00 = 0,    p10 = 1,        p20 = 2,        p30 = 3;
+  int p00 = 0,    p10 = 1,        p20 = 2;   //   p30 = 3;
   int p01 = sln,  p11 = sln  + 1, p21 = sln  + 2, p31 = sln  + 3;
   int p02 = sln2, p12 = sln2 + 1, p22 = sln2 + 2, p32 = sln2 + 3;
-  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;
+  int             p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;  // p03 = sln3;
   int b00 = 0, g00 = 1, r00 = 2, b01 = dln,     g01 = dln + 1, r01 = dln + 2;
   int b10 = 3, g10 = 4, r10 = 5, b11 = dln + 3, g11 = dln + 4, r11 = dln + 5;
   UC8 *d = dest.PxlDest();
@@ -1812,10 +1813,10 @@ int jhcColor::DeBayer16_GB (jhcImg& dest, const jhcImg& src, int off, int sh) co
   int x, y, r, g, b, w = dest.XDim(), wm2 = w - 2, hm2 = dest.YDim() - 2;
   int dln = dest.Line(), sln = src.Line() >> 1, sln2 = sln << 1, sln3 = sln2 + sln;
   int dsk = dest.Skip(), dsk2 = dsk + dln, ssk2 = (src.Skip() >> 1) + sln + 2;
-  int p00 = 0,    p10 = 1,        p20 = 2,        p30 = 3;
+  int             p10 = 1,        p20 = 2,        p30 = 3;   // p00 = 0;
   int p01 = sln,  p11 = sln  + 1, p21 = sln  + 2, p31 = sln  + 3;
   int p02 = sln2, p12 = sln2 + 1, p22 = sln2 + 2, p32 = sln2 + 3;
-  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;
+  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2;  // p33 = sln3 + 3;
   int b00 = 0, g00 = 1, r00 = 2, b01 = dln,     g01 = dln + 1, r01 = dln + 2;
   int b10 = 3, g10 = 4, r10 = 5, b11 = dln + 3, g11 = dln + 4, r11 = dln + 5;
   UC8 *d = dest.PxlDest();
@@ -1928,10 +1929,10 @@ int jhcColor::DeBayer16 (jhcImg& red, jhcImg& grn, jhcImg& blu, const jhcImg& sr
   int x, y, w = red.XDim(), wm2 = w - 2, hm2 = red.YDim() - 2;
   int dln = red.Line() >> 1, sln = src.Line() >> 1, sln2 = sln << 1, sln3 = sln2 + sln;
   int dsk = red.Skip() >> 1, dsk2 = dsk + dln, ssk2 = (src.Skip() >> 1) + sln + 2;
-  int p00 = 0,    p10 = 1,        p20 = 2,        p30 = 3;
+  int p00 = 0,    p10 = 1,        p20 = 2;   //   p30 = 3;
   int p01 = sln,  p11 = sln  + 1, p21 = sln  + 2, p31 = sln  + 3;
   int p02 = sln2, p12 = sln2 + 1, p22 = sln2 + 2, p32 = sln2 + 3;
-  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;
+  int             p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;  // p03 = sln3;
   int i00 = 0, i01 = dln, i10 = 1, i11 = dln + 1; 
   US16 *rd = (US16 *) red.PxlDest(), *gd = (US16 *) grn.PxlDest(), *bd = (US16 *) blu.PxlDest();
   const US16 *s = (const US16 *) src.PxlSrc();
@@ -2031,10 +2032,10 @@ int jhcColor::DeBayer16_GB (jhcImg& red, jhcImg& grn, jhcImg& blu, const jhcImg&
   int x, y, w = red.XDim(), wm2 = w - 2, hm2 = red.YDim() - 2;
   int dln = red.Line() >> 1, sln = src.Line() >> 1, sln2 = sln << 1, sln3 = sln2 + sln;
   int dsk = red.Skip() >> 1, dsk2 = dsk + dln, ssk2 = (src.Skip() >> 1) + sln + 2;
-  int p00 = 0,    p10 = 1,        p20 = 2,        p30 = 3;
+  int             p10 = 1,        p20 = 2,        p30 = 3;   // p00 = 0;
   int p01 = sln,  p11 = sln  + 1, p21 = sln  + 2, p31 = sln  + 3;
   int p02 = sln2, p12 = sln2 + 1, p22 = sln2 + 2, p32 = sln2 + 3;
-  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;
+  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2;  // p33 = sln3 + 3;
   int i00 = 0, i01 = dln, i10 = 1, i11 = dln + 1; 
   US16 *rd = (US16 *) red.PxlDest(), *gd = (US16 *) grn.PxlDest(), *bd = (US16 *) blu.PxlDest();
   const US16 *s = (const US16 *) src.PxlSrc();
@@ -2134,10 +2135,10 @@ int jhcColor::DeBayer16_GR (jhcImg& red, jhcImg& grn, jhcImg& blu, const jhcImg&
   int x, y, w = red.XDim(), wm2 = w - 2, hm2 = red.YDim() - 2;
   int dln = red.Line() >> 1, sln = src.Line() >> 1, sln2 = sln << 1, sln3 = sln2 + sln;
   int dsk = red.Skip() >> 1, dsk2 = dsk + dln, ssk2 = (src.Skip() >> 1) + sln + 2;
-  int p00 = 0,    p10 = 1,        p20 = 2,        p30 = 3;
+  int             p10 = 1,        p20 = 2,        p30 = 3;   // p00 = 0;
   int p01 = sln,  p11 = sln  + 1, p21 = sln  + 2, p31 = sln  + 3;
   int p02 = sln2, p12 = sln2 + 1, p22 = sln2 + 2, p32 = sln2 + 3;
-  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2, p33 = sln3 + 3;
+  int p03 = sln3, p13 = sln3 + 1, p23 = sln3 + 2;  // p33 = sln3 + 3;
   int i00 = 0, i01 = dln, i10 = 1, i11 = dln + 1; 
   US16 *rd = (US16 *) red.PxlDest(), *gd = (US16 *) grn.PxlDest(), *bd = (US16 *) blu.PxlDest();
   const US16 *s = (const US16 *) src.PxlSrc();

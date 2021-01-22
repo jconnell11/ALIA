@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -797,6 +798,7 @@ const char *jhcMorphFcns::NounLex (UL32& tags, char *pair) const
   char dummy[2][40] = {"thing", "something"};
   char *val = SlotRef(pair);
   const char *irr;
+  UL32 t;
   int i;
 
   // check for special non-informative words
@@ -807,9 +809,10 @@ const char *jhcMorphFcns::NounLex (UL32& tags, char *pair) const
       return NULL;
 
   // determine tags then generate base form
-  tags = gram_tag(pair);
-  if ((tags & JTAG_NOUN) == 0)
+  t = gram_tag(pair) & JTAG_NOUN;
+  if (t == 0)
     return NULL;
+  tags = t;
   if ((irr = lookup_base(val, tags)) != NULL)
     return irr;
   return noun_stem(val, tags);
@@ -826,6 +829,7 @@ const char *jhcMorphFcns::VerbLex (UL32& tags, char *pair) const
 {
   char *val = SlotRef(pair);
   const char *irr;
+  UL32 t;
 
   // check for verbatim echo
   if (val == NULL)
@@ -837,9 +841,10 @@ const char *jhcMorphFcns::VerbLex (UL32& tags, char *pair) const
   }
 
   // determine tags then generate base form
-  tags = gram_tag(pair);
-  if ((tags & JTAG_VERB) == 0)
+  t = gram_tag(pair) & JTAG_VERB;
+  if (t == 0)
     return NULL;
+  tags = t;
   if ((irr = lookup_base(val, tags)) != NULL)
     return irr;
   return verb_stem(val, tags);
@@ -856,11 +861,13 @@ const char *jhcMorphFcns::AdjLex (UL32& tags, char *pair) const
 {
   char *val = SlotRef(pair);
   const char *irr;
+  UL32 t;
 
   // determine tags then generate base form
-  tags = gram_tag(pair);
-  if ((tags & JTAG_ADJ) == 0)
+  t = gram_tag(pair) & JTAG_ADJ;
+  if (t == 0)
     return NULL;
+  tags = t;
   if ((irr = lookup_base(val, tags)) != NULL)
     return irr;
   return adj_stem(val, tags);
@@ -1121,7 +1128,7 @@ int jhcMorphFcns::surf2base (FILE *out, FILE *in, UL32 tags, int chk)
         // write file line
         if (n++ <= 0)
           deriv_hdr(out, tags);
-        fprintf(out, "  %s%*s<- %s\n", val, 20 - strlen(val), "", line);
+        fprintf(out, "  %s%*s<- %s\n", val, 20 - (int) strlen(val), "", line);
 
         // possibly check inverse
         if (chk > 0)

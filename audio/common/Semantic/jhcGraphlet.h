@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -113,42 +114,51 @@ public:
 
   // description access
   bool Full () const {return(ni >= gmax);}
+  bool Empty () const {return(ni <= 0);}
   int NumItems () const {return ni;}
   jhcNetNode *Item (int i) const
     {return(((i >= 0) && (i < ni)) ? desc[i] : NULL);}
-  jhcNetNode *Main () const    {return Item(0);}
-  const char *MainTag () const {return((ni <= 0) ? blank : Main()->Tag());}
+  jhcNetNode *Main () const     {return Item(0);}
+  const char *MainNick () const {return((ni <= 0) ? blank : Main()->Nick());}
+  const char *MainTag () const  {return((ni <= 0) ? blank : Main()->Tag());}
+  int MainNeg () const          {return((ni <= 0) ? 0 : Main()->Neg());}
     
   // list access (overrides virtual)
   jhcNetNode *NextNode (const jhcNetNode *prev =NULL) const;
   int Length () const {return NumItems();}
-  bool InList (const jhcNetNode *n) const;
+  bool InList (const jhcNetNode *n) const {return InDesc(n);}
 
   // configuration
   void Copy (const jhcGraphlet& ref);
+  void Append (const jhcGraphlet& ref);
   int CopyBind (const jhcGraphlet& ref, const jhcBindings& sub);
+  void CutTail (jhcGraphlet& tail, int start);
   jhcNetNode *AddItem (jhcNetNode *item);
+  int RemItem (int i);
+  int RemItem (const jhcNetNode *item);
+  void Pop (int cnt =1) {ni = __max(0, ni - cnt);}
   jhcNetNode *SetMain (jhcNetNode *main);
   int ReplaceMain (jhcNetNode *main);
   jhcNetNode *MainLast ();
   jhcNetNode *MainProp ();
-  bool InDesc (const jhcNetNode *item) const
-    {return InList(item);}
+  bool InDesc (const jhcNetNode *item) const;
+  bool ArgOut (const jhcNetNode& item) const;
+  bool PropOut (const jhcNetNode& item) const;
   int ActualizeAll (int ver) const;
+  void Believe (double blf) const;
 
   // writing functions
   int Save (FILE *out, int lvl =0, int detail =0) const;
   int Print (int lvl =0, int detail =0) const
     {return Save(stdout, lvl, detail);}
+  void Print (int lvl, const char *tag, int detail =0) const;
+  void ListAll (int lvl =0, int blf =0) const;
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  // configuration 
-  bool in_list (const jhcNetNode *n, int rng =0) const;
-
   // writing functions
-  int save_props (FILE *out, int lvl, int kmax, int nmax, int rmax);
+  bool has_lex_in (const jhcNetNode *n) const;
 
 
 };

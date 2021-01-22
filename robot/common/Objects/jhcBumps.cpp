@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -347,6 +348,7 @@ int jhcBumps::Analyze (int trk)
 
   // match detections to tracks then salvage grabbed objects
   pos.MatchAll(raw, nr, 0, shp);
+  nr2 = nr;                            // for easy override
   occluded();
   pos.Prune();
 
@@ -362,9 +364,8 @@ int jhcBumps::Analyze (int trk)
 }
 
 
-//= Find candidate objects on table for later tracking.
-// information is in "cc" image and "blob" analyzer
-// returns number found
+//= Find candidate object pixels in overhead map.
+// uses image "map" to yield info in "cc" image and "blob" analyzer
 
 void jhcBumps::raw_objs (int trk)
 {
@@ -383,10 +384,12 @@ void jhcBumps::raw_objs (int trk)
   }
   BoxThresh(obj, *src, sc, sth);
 
-  // thin out then get rid of components extending beyond table
+  // thin out then get properties
   BoxAvg(obj, obj, sc);
   CComps4(cc, obj, amin, 180);
-  blob.FindParams(cc);             // also centroid, major, minor
+  blob.FindParams(cc);           
+
+  // suppress components extending beyond table
   if (surf > 0)
     blob.PoisonOver(cc, top, -128);
 }
@@ -431,7 +434,7 @@ void jhcBumps::obj_boxes ()
       // record equivalent ellipse (compensate for bloat)
       xyz[6] = xyf * P2I(blob.BlobLength(i));
       xyz[7] = xyf * P2I(blob.BlobWidth(i));
-      xyz[8] = blob.BlobAngle(i, 1);
+      xyz[8] = blob.BlobAngle(i, 1);        
 
       // assume no fingertip point needed
       xyz[9]  = -1;
@@ -525,6 +528,7 @@ void jhcBumps::adj_shapes ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Generate fake detections for tracked objects under presumed arms.
+// assumes nr2 = nr at start
 
 void jhcBumps::occluded ()
 {
@@ -538,7 +542,6 @@ void jhcBumps::occluded ()
   CComps4(hcc, hand);                      // in case 2 arms visible
 
   // attempt to imagine detections for unpaired tracks
-  nr2 = nr;
   for (i = 0; i < n; i++)
     if ((pos.Valid(i) > 0) && (pos.DetectFor(i) < 0))
     {
@@ -599,7 +602,7 @@ void jhcBumps::img_box (double& xc, double& yc, double& wid, double& len, int i)
 int jhcBumps::arm_end (int& ex, int& ey, double xc, double yc) const
 {
   jhcRoi area;
-  double bx, by, xrng, yrng, jump = I2P(8.0);
+  double bx, by, xrng, yrng;
   int mark, hx, hy, dude; 
 
   // search near track center for arm blob (and person blob)
@@ -1006,13 +1009,23 @@ double jhcBumps::Angle (int i, int trk) const
 
 double jhcBumps::Elongation (int i, int trk) const
 {
-{
   if (!ok_idx(i, trk))
     return 0.0;
   return((trk > 0) ? shp[i][3] / shp[i][4] : raw[i][6] / raw[i][7]);
 }
 
+
+//= Tells the longest viewpoint-independent direction (Z and major).
+
+double jhcBumps::MaxDim (int i, int trk) const
+{
+  if (!ok_idx(i, trk))
+    return 0.0;
+  if (trk > 0)
+    return __max(shp[i][2], shp[i][3]);    
+  return __max(raw[i][5], raw[i][6]);
 }
+
 
 //= Whether supplied index makes sense for an actual object.
 
@@ -1032,6 +1045,83 @@ bool jhcBumps::Contact (int i, int trk) const
     return(pos.DetectFor(i) >= nr);
   return((i >= nr) && (i < nr2));
 }
+
+
+///////////////////////////////////////////////////////////////////////////
+//                        Image Region Selection                         //
+///////////////////////////////////////////////////////////////////////////
+
+//= Get binary mask for whole object relative to color image.
+// pads by one black pixel all around and sets destination ROI
+// can optionally clear whole original image for prettier debugging
+
+int jhcBumps::ObjMask (jhcImg& dest, int i, int clr) const
+{
+  // set default and sanity check
+  if (clr > 0)
+    dest.FillMax(0);
+  if ((i < 0) || (i >= pos.Limit()))
+    return 0;
+
+//look at all object pixels in map and convert to source image
+//  return oblob.TightMask(dest, occ, n, 1);
+  return 0;
+}
+
+
+//= Get binary mask for top portion of object relative to color image.
+// pads by one black pixel all around and sets destination ROI
+// can optionally clear whole original image for prettier debugging
+
+int jhcBumps::TopMask (jhcImg& dest, int i, double frac, int clr) const
+{
+  // set default and sanity check
+  if (clr > 0)
+    dest.FillMax(0);
+  if ((i < 0) || (i >= pos.Limit()))
+    return 0;
+
+  return 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                       Semantic Network Functions                      //
+///////////////////////////////////////////////////////////////////////////
+
+//= Associate some track index (not ID) with a particular semantic network node.
+
+void jhcBumps::SetNode (int i, void *n)
+{
+  if ((i >= 0) && (i < pos.Limit()))
+    pos.node[i] = n;
+}
+
+
+//= Retrieve the semantic network node associated with some track index (not ID).
+
+void *jhcBumps::GetNode (int i) const
+{
+  if ((i >= 0) && (i < pos.Limit()))
+    return pos.node[i];
+  return NULL;
+}
+
+
+//= Find the track index (not ID) linked to a particular semantic nework node.
+// only considers valid tracks (ID assigned and not retracted)
+// returns negative if nothing found
+
+int jhcBumps::NodeIndex (void *n) const
+{
+  int i, lim = pos.Limit();
+
+  if (n != NULL)
+    for (i = 0; i < lim; i++)
+      if ((pos.Valid(i) > 0) && (pos.node[i] == n))
+        return i;
+  return -1;
+} 
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1199,6 +1289,40 @@ bool jhcBumps::OverTable (double wx, double wy) const
 ///////////////////////////////////////////////////////////////////////////
 //                           Debugging Graphics                          //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Find index of valid detection with highest ID (for debugging).
+
+int jhcBumps::MaxID (int trk) const
+{
+  int i, hi, n = ObjLimit(trk), win = -1;
+
+  for (i = 0; i < n; i++)
+   if (ObjOK(i, trk))
+     if ((win < 0) || (ObjID(i, trk) > hi))
+     {
+       hi = ObjID(i, trk);
+       win = i;
+     }
+  return win;
+}
+
+
+//= Find index of valid detection with lowest ID (for debugging).
+
+int jhcBumps::MinID (int trk) const
+{
+  int i, lo, n = ObjLimit(trk), win = -1;
+
+  for (i = 0; i < n; i++)
+   if (ObjOK(i, trk))
+     if ((win < 0) || (ObjID(i, trk) < lo))
+     {
+       lo = ObjID(i, trk);
+       win = i;
+     }
+  return win;
+}
+
 
 //= Show all items on a map-like image.
 // only shows primary detections, not imagined occlusions

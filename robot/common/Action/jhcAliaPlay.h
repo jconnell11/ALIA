@@ -4,7 +4,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2017-2018 IBM Corporation
+// Copyright 2017-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,9 +82,10 @@ public:
     {return(((n >= 0) && (n < ng)) ? guard[n] : NULL);}
 
   // main functions
-  int Start (class jhcAliaCore& all);
+  int Start (jhcAliaCore *all, int lvl);
   int Status ();
   int Stop (int ans =-1);
+  int FindActive (const jhcGraphlet& desc, int halt);
 
   // file functions
   int Load (jhcNodePool& pool, jhcTxtLine& in); 

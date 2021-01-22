@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -121,6 +122,7 @@ BEGIN_MESSAGE_MAP(CMensEtDoc, CDocument)
   ON_COMMAND(ID_DEMO_TIMING, &CMensEtDoc::OnDemoTiming)
   ON_COMMAND(ID_UTILITIES_EXTVOCAB, &CMensEtDoc::OnUtilitiesExtvocab)
   ON_COMMAND(ID_UTILITIES_TESTVOCAB, &CMensEtDoc::OnUtilitiesTestvocab)
+  ON_COMMAND(ID_UTILITIES_TESTGRAPHIZER, &CMensEtDoc::OnUtilitiesTestgraphizer)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -131,7 +133,7 @@ CMensEtDoc::CMensEtDoc()
   // JHC: move console and chat windows
   prt.SetTitle("ALIA console", 1);
   SetWindowPos(GetConsoleWindow(), HWND_TOP, 5, 5, 673, 1000, SWP_SHOWWINDOW);
-  chat.Launch(680, 5);
+  chat.Launch(1250, 505);              // was 1005
 
   // direct pointers to useful parts
   fsm = (mc.rwi).fsm;
@@ -180,7 +182,7 @@ BOOL CMensEtDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = mc.Version(); 
-  LockAfter(12, 2020, 7, 2020);
+  LockAfter(6, 2021, 1, 2021);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -980,8 +982,8 @@ void CMensEtDoc::OnDemoFilelocal()
   catch (...){Tell("Unexpected exit!");}
 
   // cleanup
-  jprintf("\n:::::::::::::::::::::::::::::::::::::\n");
-  mc.PrintMem();
+  jprintf("\n==========================================================\n");
+  mc.ShowMem();
   mc.Done();
   jprintf("Done.\n\n");
   jprintf("Think %3.1f Hz, Sense %3.1f Hz\n", mc.Thinking(), mc.Sensing()); 
@@ -1075,8 +1077,8 @@ void CMensEtDoc::OnDemoInteract()
 #endif
 
   // cleanup
-  jprintf("\n:::::::::::::::::::::::::::::::::::::\n");
-  mc.PrintMem();
+  jprintf("\n==========================================================\n");
+  mc.ShowMem();
   mc.Done();
   jprintf("Done.\n\n");
   jprintf("Think %3.1f Hz, Sense %3.1f Hz\n", mc.Thinking(), mc.Sensing()); 
@@ -1554,7 +1556,7 @@ void CMensEtDoc::OnVisionStackgrow()
 {
   jhcBlob blob(100);
   jhcImg proto, mask, cc, p2, s2, gate, pass, both, g2;
-  const jhcImg *src;
+  const jhcImg *src = NULL;
   int i, n, a, run = 1;
 
   // make sure video exists
@@ -1807,7 +1809,7 @@ void CMensEtDoc::OnVisionFeatures()
 void CMensEtDoc::OnVisionBoundary()
 {
   jhcImg ej, ej_wk, ej_rg, ej_yb, ej2, ej3, ej4;
-  const jhcImg *src;
+  const jhcImg *src = NULL;
 
   // make sure video exists
   if (ChkStream() <= 0)
@@ -2133,7 +2135,6 @@ void CMensEtDoc::OnUtilitiesExtvocab()
 }
 
 
-
 // Refine grammar terms for consistent morphology
 
 void CMensEtDoc::OnUtilitiesTestvocab()
@@ -2167,6 +2168,102 @@ void CMensEtDoc::OnUtilitiesTestvocab()
     Tell("Adjust original =[XXX-morph] section to fix %d problems", err);
   else
     Tell("Looks good but examine \"derived.sgm\" then \"base_words.txt\"\n\nAdjust original =[XXX-morph] section to fix any problems");
+}
+
+
+
+/////////////////////////////////////////////////////////////////////////////
+//                           Input Conversion                              //
+/////////////////////////////////////////////////////////////////////////////
+
+// Check for correct semantic networks from standard input forms
+
+void CMensEtDoc::OnUtilitiesTestgraphizer()
+{
+  char test[5][80] = {"RULE", "NOTE", "DO", "ANTE", "PUNT"};
+  char fname[200], in[200] = "";
+  char line[200], line2[200], result[80] = "";
+  FILE *f, *f2;
+  int i, ok;
+
+  // go through a series of test inputs
+  system("cls");
+  for (i = 0; i < 5; i++)
+  {
+    // get input and output file names
+    sprintf_s(fname, "test/%s_forms.tst", test[i]);
+    sprintf_s(mc.cfile, "%s.cvt", test[i]);
+    if (fopen_s(&f, fname, "r") != 0)
+    {
+      Complain("Could not open file: %s", fname);
+      break;
+    } 
+
+    // reset all required components
+    (mc.body).BindVideo(NULL);
+    mc.Reset(0);
+
+    // go through all file inputs and save conversions to cfile
+    while (chat.Interact() >= 0)
+    {
+      // process next line (if any)
+      if (!next_line(in, 200, f))
+        break;
+      mc.Accept(in);
+
+      // compute response
+      if (mc.Respond() <= 0)
+        break;
+
+      // show interaction
+      chat.Post(mc.NewInput(), 1);
+      chat.Post(mc.NewOutput());
+    }
+
+    // open golden file and current conversion result
+    mc.Done();
+    fclose(f);
+    sprintf_s(fname, "test/%s_forms.cvt", test[i]);
+    if (fopen_s(&f, fname, "r") != 0)
+      break;
+    if (fopen_s(&f2, mc.cfile, "r") != 0)
+      break;
+
+    // compare two files line by line
+    ok = 0;
+    while (1)
+    {
+      // get next lines (else see if simultaneous end)
+      if (fgets(line, 200, f) == NULL)
+      {
+        if (fgets(line2, 200, f2) == NULL)
+          ok = 1;
+        break;
+      }
+
+      // make sure lines are identical
+      if (fgets(line2, 200, f2) == NULL)
+        break;
+      if (strcmp(line, line2) != 0)
+        break;
+    }
+
+    // cleanup and mark if any problems
+    fclose(f);
+    fclose(f2);
+    if (ok <= 0)
+    {
+      strcat_s(result, " ");
+      strcat_s(result, test[i]);
+    }
+  }
+
+  // report summary
+  *(mc.cfile) = '\0';
+  if (*result != '\0')
+    Tell("Anomalies with: %s", result);
+  else
+    Tell("All forms correct");
 }
 
 

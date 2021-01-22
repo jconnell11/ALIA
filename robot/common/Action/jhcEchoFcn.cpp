@@ -126,7 +126,7 @@ int jhcEchoFcn::Status (const jhcAliaDesc *desc, int inst)
   // mark status check of non-grounded function
   if (noisy >= 1)
   {
-    jprintf("\nECHO: ");
+    jprintf("ECHO: ");
     fcn_args(desc);
     jprintf(" status ignored\n");
   }
@@ -163,7 +163,7 @@ int jhcEchoFcn::Stop (const jhcAliaDesc *desc, int inst)
     rc = next->Stop(desc, inst);
   if (rc > -2)
     return rc;
-
+/*
   // mark stop of non-grounded function
   if (noisy >= 1)
   {
@@ -171,6 +171,7 @@ int jhcEchoFcn::Stop (const jhcAliaDesc *desc, int inst)
     fcn_args(desc);
     jprintf(" stop ignored\n\n");
   }
+*/
   return 1;
 }
 

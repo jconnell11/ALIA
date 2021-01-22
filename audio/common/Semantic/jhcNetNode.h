@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@
 
 #include <stdio.h>           // needed for FILE and stdout
 #include <string.h>
+#include <math.h>
 
 #include "Semantic/jhcAliaDesc.h"
 
@@ -40,6 +42,7 @@
 // terms associated with a predicate ("lex") now treated as properties
 // "evt" field: 0 = state, 1 = completed event ("neg" tells success/failure)
 // "inv" field: 0 = positive assertion (success), 1 = negative assertion (failed)
+// "blf" field: pos = valid belief, 0 = hypothetical, neg = hidden
 
 class jhcNetNode : public jhcAliaDesc
 {
@@ -75,8 +78,12 @@ private:
 // PUBLIC MEMBER VARIABLES
 public:
   // status and grammatical tags
-  int pod, top, keep, mark;
+  int top, keep, mark;
   UL32 tags;
+
+  // source of halo inference
+  class jhcAliaRule *hrule;
+  class jhcBindings *hbind;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -86,10 +93,15 @@ public:
   const char *Nick () const    {return nick;}
   const char *Literal () const {return quote;}
   int Inst () const            {return id;}
+  bool Halo () const           {return(id < 0);}
   bool Hyp () const            {return(blf <= 0.0);}
+  bool String () const         {return(quote != NULL);}
   int Generation () const      {return gen;}
   int LastRef () const         {return ref;}
-  void TopMax (int tval)       {if (!ObjNode() && (top < tval)) top = tval;}
+  void XferRef (jhcNetNode& n) 
+    {ref = n.ref; n.ref = 0;}
+  void TopMax (int tval)            
+    {if (!ObjNode() && (top < tval)) top = tval;}
 
   // negation and belief and literals
   int Neg () const          {return inv;}
@@ -98,8 +110,9 @@ public:
   double Default () const   {return blf0;}
   void SetNeg (int val =1)  {inv = val;}
   void SetDone (int val =1) {evt = val;}
-  void SetBelief (double val =1.0)  {blf = val;}
+  void SetBelief (double val =1.0)  {blf = val; blf0 = val;}
   void SetDefault (double val =1.0) {blf0 = val;}
+  void Hide () {blf = -fabs(blf);}
   void SetString (const char *wds);
   bool NounTag () const;
   bool VerbTag () const;
@@ -117,7 +130,9 @@ public:
   jhcNetNode *Val (const char *slot, int i =0) const;
   bool HasVal (const char *slot, const jhcNetNode *val) const;
   bool SameArgs (const jhcNetNode *ref) const;
+  bool SameArgs (const jhcNetNode *ref, const class jhcBindings *b) const;
   int AddArg (const char *slot, jhcNetNode *val);
+  void SubstArg (int i, jhcNetNode *val);
 
   // property functions
   int NumProps () const     {return np;}
@@ -132,6 +147,7 @@ public:
   jhcNetNode *NonLex (int i =0) const;
   jhcNetNode *Prop (int i =0) const
     {return(((i < 0) || (i >= np)) ? NULL : props[i]);}   
+  jhcNetNode *PropMatch (int i, const char *role, double bth =0.0, int neg =0) const;
   int NumFacts (const char *role) const;
   jhcNetNode *Fact (const char *role, int i =0) const;
   bool HasFact (const jhcNetNode *prop, const char *role) const;
@@ -150,6 +166,9 @@ public:
               const char *v4 =NULL, const char *v5 =NULL, const char *v6 =NULL) const;
   bool SameWords (const jhcNetNode *ref) const;
   bool SharedWord (const jhcNetNode *ref) const;
+  bool WordConflict (const jhcNetNode *ref, double bth =0.0) const;
+  const char *ValidWord (int i, double bth =0.0, int neg =0) const;
+  bool WordMatch (int i, const char *label, double bth =0.0, int neg =0) const;
 
   // writing functions
   void NodeSize (int& k, int& n, int bind =0) const;
@@ -170,6 +189,7 @@ private:
   // writing functions
   int save_tags (FILE *out, int lvl, int r, const jhcGraphlet *acc, int detail) const;
   int naked_lex (FILE *out, int lvl, int k, int n, int r, const jhcGraphlet *acc, int detail) const;
+  const char *bfmt (char *txt, double val) const;
 
 
 };

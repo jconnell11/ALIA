@@ -17,6 +17,8 @@
 #define IDC_JHC_ARG1                    1001
 #define IDC_JHC_RATE                    1001
 #define IDC_JHC_TPROMPT1                1001
+#define IDC_OK                          1001
+#define IDC_QUIT                        1001
 #define IDC_JHC_TXT2                    1002
 #define IDC_JHC_PAUSE                   1002
 #define IDC_JHC_CHECK1                  1002
@@ -142,6 +144,19 @@
 #define ID_NAV_CONFIDENCE               32870
 #define ID_PEOPLE_VISIBILITY            32871
 #define ID_DEMO_ATTN                    32872
+#define ID_OBJECTS_TRACKOBJS            32873
+#define ID_OBJECTS_SURFACEMAP           32874
+#define ID_OBJECTS_DETECT               32875
+#define ID_OBJECTS_SHAPE                32876
+#define ID_OBJECTS_TRACK                32877
+#define ID_OBJECTS_FILTER               32878
+#define ID_SURFACE_PICKTABLE            32879
+#define ID_OBJECTS_PLANEFIT             32880
+#define ID_SURFACE_FRONTOBJS            32881
+#define ID_NAV_DEPTHFOV                 32882
+#define ID_OBJECTS_SURFACEZOOM          32883
+#define ID_UTILITIES_TEST2              32884
+#define ID_DEMO_STATICPOSE              32885
 
 // Next default values for new objects
 // 
@@ -149,8 +164,8 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        131
-#define _APS_NEXT_COMMAND_VALUE         32873
-#define _APS_NEXT_CONTROL_VALUE         1000
+#define _APS_NEXT_COMMAND_VALUE         32886
+#define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

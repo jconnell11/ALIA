@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +25,7 @@
 #include <Mmsystem.h>
 #include <process.h>
 
-#include "Interface/jhcString.h"       // common video
-#include "Interface/jms_x.h"
+#include "Interface/jms_x.h"           // common video
 
 #include "Grounding/jhcSoundFcn.h"
 
@@ -95,7 +95,7 @@ int jhcSoundFcn::play_snd_set (const jhcAliaDesc *desc, int i)
 
 
 //= Check whether sound defined by verb is launched yet.
-// plys sound synchronously in a background thread
+// plays sound synchronously in a background thread
 // returns 1 if done, 0 if still working, -1 for failure
 
 int jhcSoundFcn::play_snd_chk (const jhcAliaDesc *desc, int i)

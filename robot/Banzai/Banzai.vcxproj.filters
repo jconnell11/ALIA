@@ -405,9 +405,6 @@
     <ClCompile Include="..\..\audio\common\Semantic\jhcNodePool.cpp">
       <Filter>Source Files\common audio\Semantic</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaAttn.cpp">
-      <Filter>Source Files\common audio\Reasoning</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\audio\common\Reasoning\jhcWorkMem.cpp">
       <Filter>Source Files\common audio\Reasoning</Filter>
     </ClCompile>
@@ -551,6 +548,24 @@
     </ClCompile>
     <ClCompile Include="..\..\audio\common\Semantic\jhcTxtAssoc.cpp">
       <Filter>Source Files\common audio\Semantic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Objects\jhcBumps.cpp">
+      <Filter>Source Files\common robot\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Geometry\jhcSmTrack.cpp">
+      <Filter>Source Files\common robot\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Objects\jhcPatchProps.cpp">
+      <Filter>Source Files\common robot\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Objects\jhcSurfObjs.cpp">
+      <Filter>Source Files\common robot\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcSceneVis.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -821,9 +836,6 @@
     <ClInclude Include="..\..\audio\common\Semantic\jhcNodePool.h">
       <Filter>Header Files\common audio\Semantic</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaAttn.h">
-      <Filter>Header Files\common audio\Reasoning</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\audio\common\Reasoning\jhcWorkMem.h">
       <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
@@ -985,6 +997,24 @@
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Semantic\jhcTxtList.h">
       <Filter>Header Files\common audio\Semantic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Objects\jhcBumps.h">
+      <Filter>Header Files\common robot\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Geometry\jhcSmTrack.h">
+      <Filter>Header Files\common robot\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Objects\jhcPatchProps.h">
+      <Filter>Header Files\common robot\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Objects\jhcSurfObjs.h">
+      <Filter>Header Files\common robot\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcSceneVis.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcActionTree.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

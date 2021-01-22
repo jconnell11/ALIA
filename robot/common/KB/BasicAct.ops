@@ -35,9 +35,17 @@
                 -arg-> act-1 ]
 
 
+// OP 5: "To cruise ..."
+  trig:   
+      DO[ act-1 -lex-  cruise ]
+  ---------------
+     FCN[ fcn-1 -lex-  base_drive 
+                -arg-> act-1 ]
+
+
 // --------------------------------------
 
-// OP 5: "To turn ..."
+// OP 6: "To turn ..."
   trig:   
       DO[ act-1 -lex-  turn ]
   ---------------
@@ -45,7 +53,7 @@
                 -arg-> act-1 ]
 
 
-// OP 6: "To rotate ..."
+// OP 7: "To rotate ..."
   trig:   
       DO[ act-1 -lex-  rotate ]
   ---------------
@@ -53,7 +61,7 @@
                 -arg-> act-1 ]
 
 
-// OP 7: "To spin ..."
+// OP 8: "To spin ..."
   trig:   
       DO[ act-1 -lex-  spin ]
   ---------------
@@ -63,7 +71,7 @@
 
 // --------------------------------------
 
-// OP 8: "To raise the gripper ..."
+// OP 9: "To raise the gripper ..."
   trig:
      DO[ act-1 -lex-  raise
                -obj-> obj-1
@@ -74,7 +82,7 @@
                -arg-> act-1 ]
 
 
-// OP 9: "To lower the gripper ..."
+// OP 10: "To lower the gripper ..."
   trig:
      DO[ act-1 -lex-  lower
                -obj-> obj-1
@@ -85,7 +93,7 @@
                -arg-> act-1 ]
 
 
-// OP 10: "To lift something raise it"
+// OP 11: "To lift something raise it"
   trig:
     DO[ act-1 -lex-  lift
               -obj-> obj-1 ]
@@ -96,7 +104,7 @@
 
 // --------------------------------------
 
-// OP 11: "To open the gripper ..."
+// OP 12: "To open the gripper ..."
   trig:
      DO[ act-1 -lex-  open
                -obj-> obj-1
@@ -107,7 +115,7 @@
                -arg-> act-1 ]
 
 
-// OP 12: "To close the gripper ..."
+// OP 13: "To close the gripper ..."
   trig:
      DO[ act-1 -lex-  close
                -obj-> obj-1
@@ -118,7 +126,7 @@
                -arg-> act-1 ]
 
 
-// OP 13: "To grab something close the gripper"
+// OP 14: "To grab something close the gripper"
   trig:
      DO[ act-1 -lex-  grab
                -obj-> obj-1 ]
@@ -129,7 +137,7 @@
                -ako-> obj-2 ]
 
 
-// OP 14: "To release something open the gripper"
+// OP 15: "To release something open the gripper"
   trig:
      DO[ act-1 -lex-  release
                -obj-> obj-1 ]

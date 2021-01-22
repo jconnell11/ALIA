@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +40,6 @@ int jprintf_end (const char *msg =NULL, ...);
 int jprintf (const char *msg, ...);
 int jprintf (int th, int lvl, const char *msg, ...);
 int jprint (const char *txt);
-int jprint (int th, int lvl, const char *txt);
 int jprint_back ();
 
 int jfprintf (FILE *out, const char *msg, ...);

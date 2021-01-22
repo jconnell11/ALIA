@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,7 +43,6 @@
 
 #include "Acoustic/jhcChatHist.h"        // custom control
 
-
 ///////////////////////////////////////////////////////////////////////////
 
 //= Dialog for text entry and conversation history.
@@ -76,6 +76,7 @@ private:
 
 // Dialog Data 
 private:
+  double scene;                                // separator gap (sec)
   FILE *log;                                   // log file (if any)
   char entry[200];                             // last unseen user input
   UL32 last;                                   // time of last post
@@ -93,7 +94,7 @@ private:
   protected:
   virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
   //}}AFX_VIRTUAL
-  void OnOK();
+  void OnOK() {}
   void OnCancel() {}
 
 
@@ -108,8 +109,8 @@ protected:
 public:
   CChatHist m_hist;
   CEdit m_input;
-  double scene;                                  // separator gap (sec)
 
+  afx_msg void OnBnClickedQuit();
 };
 
 //{{AFX_INSERT_LOCATION}}

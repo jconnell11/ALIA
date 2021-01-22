@@ -51,7 +51,7 @@ BOOL CBanzaiView::PreCreateWindow(CREATESTRUCT& cs)
 
 void CBanzaiView::OnInitialUpdate ()
 {
-	CBanzaiDoc* pDoc = GetDocument();
+//	CBanzaiDoc* pDoc = GetDocument();
 
 //  pDoc->ShowFirst();  
 }
@@ -90,3 +90,4 @@ CBanzaiDoc* CBanzaiView::GetDocument() // non-debug version is inline
 
 /////////////////////////////////////////////////////////////////////////////
 // CBanzaiView message handlers
+

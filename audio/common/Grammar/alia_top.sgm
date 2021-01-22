@@ -105,7 +105,7 @@
 =[%Operator]
   <$trig> (<then>) <$proc> (<$trig>)
   <$proc> <$trig>
-  <$trig-n> ((<conj>) instead (<PREF>) <$proc> (<$trig>))
+  <$trig-n> ((<conj>) instead <$proc> (<$trig>))
  
 
 // operator trigger goal
@@ -131,7 +131,55 @@
   you finish <!do-g>
 
 
-// a conjunction of aspects (up to 5 parts)
+// advice not to do something
+
+=[$trig-n]
+  <dont> ever <cmd> (<situation>)
+  (you should) never <cmd> (<situation>)
+  <dont> <cmd-s> (<situation>)
+  (you should) never <cmd-s> (<situation>)
+  <situation> <dont> <cmd>
+  <situation> <dont> <cmd-s>
+  <situation> (<then>) <punt>
+  <punt> <situation>
+
+
+// prohibition phrases
+
+=[dont]
+  do not
+  don't
+  you should not
+  you shouldn't 
+
+
+// probibition actions
+
+=[punt]
+  do not (comply)
+  don't (comply)
+  refuse (to (<ref-v>))
+  do not <ref-v>
+  don't <ref-v>
+  do nothing
+
+
+// reference to an action
+
+=[ref-v]
+  do it
+  do that
+
+
+// operator procedure to follow (PREF in do!)
+
+=[$proc]
+  <chain>
+
+
+// --------------------------------------------------
+
+// a conjunction of aspects (up to 5 conditions/caveats)
 
 =[situation]
   (<UNLESS> <asp>) <if> <asp>
@@ -153,13 +201,9 @@
   <UNLESS>
 
 
-// operator procedure to follow
+// --------------------------------------------------
 
-=[$proc]
- <chain>
-
-
-// sequence of activites
+// sequence of activites (up to 6 actions)
 
 =[chain]
   <step>
@@ -195,45 +239,6 @@
  
 =[par]
   and (also)
-
-
-// advice not to do something
-
-=[$trig-n]
-  <dont> <cmd> (<situation>)
-  <dont> <cmd-s> (<situation>)
-  <situation> <dont> <cmd>
-  <situation> <dont> <cmd-s>
-  <situation> (<then>) <punt>
-  <punt> <situation>
-
-
-// prohibition phrases
-
-=[dont]
-  do not
-  don't
-  you should not
-  you shouldn't
-  (you should) never
-
-
-// probibition actions
-
-=[punt]
-  do not (comply)
-  don't (comply)
-  refuse (to (<ref-v>))
-  do not <ref-v>
-  don't <ref-v>
-  do nothing
-
-
-// reference to an action
-
-=[ref-v]
-  do it
-  do that
 
 
 

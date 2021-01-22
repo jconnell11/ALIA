@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2018 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +47,9 @@ jhcSmTrack::jhcSmTrack (int n)
   bin_sz = 0.5;
   SetTrack(1.0, 1.0, 1.0, 0.2, 0.0, 0.0, 2.0);
   SetFilter(3.0, 3.0, 3.0, 0.1, 0.1, 0.1, 5, 5);
+
+  // assume direction of x and y axes is meaningful
+  axes = 1;
 
   // read values from file and clear state
   Defaults();
@@ -112,6 +116,10 @@ int jhcSmTrack::SetSize (int n)
       ok = 0;
   }
 
+  // semantic network bindings
+  if ((node = new void * [n]) == NULL)
+    ok = 0;
+
   // check for success
   if (ok > 0)
     total = n;
@@ -124,6 +132,9 @@ int jhcSmTrack::SetSize (int n)
 void jhcSmTrack::dealloc ()
 {
   int i;
+
+  // semantic network bindings
+  delete [] node;
 
   // get rid of coordinate and matching arrays
   if (tag != NULL)
@@ -395,13 +406,21 @@ void jhcSmTrack::score_all (const double * const *detect, int n, const double * 
         for (j = 0; j < n; j++)
           (dist[i])[j] = get_d2(i, detect[j]);
   }
-  else
+  else if (axes > 0)
   {
     // use shape differences also
     for (i = 0; i < valid; i++)
       if ((id[i] >= 0) && (ena[i] > 0))
         for (j = 0; j < n; j++)
           (dist[i])[j] = get_d2s(i, detect[j], shp[j]);
+  }
+  else
+  {
+    // use axis-independent position and shape 
+    for (i = 0; i < valid; i++)
+      if ((id[i] >= 0) && (ena[i] > 0))
+        for (j = 0; j < n; j++)
+          (dist[i])[j] = get_d2i(i, detect[j], shp[j]);
   }
 }
 
@@ -453,7 +472,7 @@ double jhcSmTrack::get_d2s (int i, const double *item, const double *shp) const
   // basic centroid offset (squared)
   d2 = dx * dx + dy * dy + dz * dz;   
 
-  // shape difference (in percent)
+  // shape difference (in percent scaled by dsf = in/pct)
   if (dsf > 0.0)
   {
     dh = (100.0 / dsf) * (shp[2] - item[5]) / shp[2];       // bounding box height
@@ -462,7 +481,62 @@ double jhcSmTrack::get_d2s (int i, const double *item, const double *shp) const
     d2 += dw * dw + dl * dl + dh * dh;
   }
 
-  // orientation difference (in degrees)
+  // orientation difference (in degrees scaled by daf = in/deg)
+  if (daf > 0.0)
+  {
+    da = shp[5] - item[8];               // ellipse angle
+    if (da >= 90.0)
+      da -= 180.0;
+    else if (da < -90.0)
+      da += 180.0;
+    da /= daf;
+    d2 += da * da;
+  }
+  return d2;
+}
+
+
+//= Get squared distance to some detection ignoring the orientation of x and y axes.
+// this is useful if camera changes orientation dynamically (e.g. pan)
+// index i references "pos" (trk[3]) is (x, y, z) after Kalman smoothing
+// "shp[6]" is track shape info                  (w, l, h, maj, min, ang)
+// "item[9]" is the detection candidate (x, y, z, w, l, h, maj, min, ang)
+
+double jhcSmTrack::get_d2i (int i, const double *item, const double *shp) const
+{
+  const double *trk = pos[i];
+  double rtol = close[0], ztol = close[2];
+  double d2, d2r, dx, dy, dz, dw, dl, dh, da;
+
+  // only allow position shift up to a fraction of shape dimension (xtol in xy plane)
+  if (frac > 0.0)
+  {
+    ztol = __max(ztol, frac * shp[2]);                     // bounding box height
+    rtol = __max(rtol, frac * shp[3]);                     // ellipse length (maj)
+  }
+
+  // radial offset in xy plane
+  dx = trk[0] - item[0];
+  dy = trk[1] - item[1];
+  d2r = dx * dx + dy * dy;
+
+  // see if valid candidate at all based on hard bounds for matching
+  if (d2r > (rtol * rtol))                                 // ignores orientation                                  
+    return -1.0;
+  if ((dz = fabs(trk[2] - item[2])) > ztol)
+    return -1.0;
+  d2 = d2r + dz * dz;                                      // center offset (squared)
+
+  // shape difference (in percent scaled by dsf = in/pct)
+  if (dsf > 0.0)
+  {
+    dh = (100.0 / dsf) * (shp[2] - item[5]) / shp[2];      // bounding box height
+    dw = (100.0 / dsf) * (shp[3] - item[6]) / shp[3];      // ellipse length
+    dl = (100.0 / dsf) * (shp[4] - item[7]) / shp[4];      // ellipse width
+    d2 += dw * dw + dl * dl + dh * dh;
+  }
+
+  // orientation difference (in degrees scaled by daf = in/deg)
   if (daf > 0.0)
   {
     da = shp[5] - item[8];               // ellipse angle
@@ -618,6 +692,7 @@ int jhcSmTrack::add_track (const double *item)
 
   // clear text description and reset state
   (tag[i])[0] = '\0';
+  node[i] = NULL;
   state[i] = 0;
 
   // assign brand new track to item (probationary at start)
@@ -833,4 +908,5 @@ const double *jhcSmTrack::Coords (int i) const
     return NULL;
   return pos[i];
 }
+
 

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -139,6 +140,17 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_NAV_CONFIDENCE, &CBanzaiDoc::OnNavConfidence)
   ON_COMMAND(ID_PEOPLE_VISIBILITY, &CBanzaiDoc::OnPeopleVisibility)
   ON_COMMAND(ID_DEMO_ATTN, &CBanzaiDoc::OnDemoAttn)
+  ON_COMMAND(ID_OBJECTS_TRACKOBJS, &CBanzaiDoc::OnObjectsTrackobjs)
+  ON_COMMAND(ID_OBJECTS_SURFACEMAP, &CBanzaiDoc::OnObjectsSurfacemap)
+  ON_COMMAND(ID_OBJECTS_DETECT, &CBanzaiDoc::OnObjectsDetect)
+  ON_COMMAND(ID_OBJECTS_SHAPE, &CBanzaiDoc::OnObjectsShape)
+  ON_COMMAND(ID_OBJECTS_TRACK, &CBanzaiDoc::OnObjectsTrack)
+  ON_COMMAND(ID_OBJECTS_FILTER, &CBanzaiDoc::OnObjectsFilter)
+  ON_COMMAND(ID_SURFACE_PICKTABLE, &CBanzaiDoc::OnSurfacePicktable)
+  ON_COMMAND(ID_OBJECTS_PLANEFIT, &CBanzaiDoc::OnObjectsPlanefit)
+  ON_COMMAND(ID_NAV_DEPTHFOV, &CBanzaiDoc::OnNavDepthfov)
+  ON_COMMAND(ID_OBJECTS_SURFACEZOOM, &CBanzaiDoc::OnObjectsSurfacezoom)
+  ON_COMMAND(ID_DEMO_STATICPOSE, &CBanzaiDoc::OnDemoStaticpose)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -149,14 +161,14 @@ CBanzaiDoc::CBanzaiDoc()
   // JHC: move console and chat windows
   prt.SetTitle("ALIA console", 1);
   SetWindowPos(GetConsoleWindow(), HWND_TOP, 5, 5, 673, 1000, SWP_SHOWWINDOW);
-  chat.Launch(50, 5);
+  chat.Launch(1250, 505);                    // was 50 5 then 693 580
 
   // JHC: assume app called with command line argument fo file to open
   cmd_line = 1;
   strcpy_s(rname, "saved.bmp");
 
   // break out components
-  eb  = &(ec.body);
+  eb = &(ec.body);
 
   // video parameters
   eb->BindVideo(&v);
@@ -218,7 +230,7 @@ BOOL CBanzaiDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = ec.Version();
-  LockAfter(12, 2020, 7, 2020);
+  LockAfter(6, 2021, 1, 2021);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -1680,6 +1692,16 @@ void CBanzaiDoc::OnDemoAttn()
 }
 
 
+// Neck angles and lift height to use if no physical robot
+
+void CBanzaiDoc::OnDemoStaticpose()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(eb->sps); 
+}
+
+
 // Force a robot hardware reset
 
 void CBanzaiDoc::OnDemoResetrobot()
@@ -1736,7 +1758,9 @@ void CBanzaiDoc::OnDemoTextfile()
 
   // keep taking sentences until ESC
   d.Clear(1, "File input (ESC to quit) ...");
+#ifndef _DEBUG
   try
+#endif
   {
     while (chat.Interact() >= 0)
     {
@@ -1756,11 +1780,13 @@ void CBanzaiDoc::OnDemoTextfile()
       chat.Post(ec.NewOutput());
     }
   }
+#ifndef _DEBUG
   catch (...){Tell("Unexpected exit!");}
+#endif
 
   // cleanup
-  jprintf("\n:::::::::::::::::::::::::::::::::::::\n");
-  ec.PrintMem();
+  jprintf("\n==========================================================\n");
+  ec.ShowMem();
   ec.Done(fsave);
   ec.spin = sp0;
   jprintf("Done.\n\n");
@@ -1816,6 +1842,7 @@ void CBanzaiDoc::OnDemoInteractive()
   (ec.body).BindVideo(NULL);
   if (cam > 0)
   { 
+
     if (ChkStream() > 0)
       (ec.body).BindVideo(&v);
     else if (cmd_line > 0)
@@ -1877,8 +1904,8 @@ jtimer_clr();
 #endif
 
   // cleanup
-  jprintf("\n:::::::::::::::::::::::::::::::::::::\n");
-  ec.PrintMem();
+  jprintf("\n==========================================================\n");
+  ec.ShowMem();
   ec.Done(fsave);
   jprintf("Done.\n\n");
   jprintf("Think %3.1f Hz, Sense %3.1f Hz\n", ec.Thinking(), ec.Sensing()); 
@@ -2038,7 +2065,7 @@ void CBanzaiDoc::OnAttentionEnrolllive()
   jhcRoi box;
   FILE *out;
   const jhcFaceVect *inst = NULL;
-  int ok;
+  int ok = 0;
 
   // check video
   if (!ChkStream())
@@ -2456,6 +2483,16 @@ void CBanzaiDoc::OnNavGuidance()
 }
 
 
+// Define active part of Kinect sensing cone (only for navigation)
+
+void CBanzaiDoc::OnNavDepthfov()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(((ec.rwi).nav).kps); 
+}
+
+
 // Refine sensor tilt, roll, and height based on floor
 
 void CBanzaiDoc::OnNavCamcalib()
@@ -2616,7 +2653,7 @@ void CBanzaiDoc::OnEnvironFloormap()
 
       // show overhead map and input image
       d.ShowGrid(map2, 0, 0, 2, "Raw overhead map  --  pan %3.1f, tilt %3.1f", (eb->neck).Pan(), (eb->neck).Tilt());
-      d.ShowGrid(fw,   1, 0, 2, "Walls, floor, and missing");
+      d.ShowGrid(fw,   1, 0, 2, "Walls, floor, and missing  --  adj tilt %4.2f, adj roll %4.2f", nav->TiltDev(), nav->RollDev());
     }
   }
   catch (...){Tell("Unexpected exit!");}
@@ -2839,13 +2876,12 @@ void CBanzaiDoc::OnEnvironGoto()
   jhcMatrix z(4);
   char label[80] = "";
   double p0 = 60.0, t0 = -40.0, tol = 2.0, arrive = 4.0, tsp = 0.7;
-  double cx, cy, ipp, circ, ix, iy, err, tx, ty, d0;
+  double cx, cy, ipp, circ, ix, iy, err, tx, ty, d0 = -1.0;
   int mx, my, fbid = (ec.rwi).freeze, mbut = 0, step = 0;
 
   // make sure video is working
   if (!ChkStream())
     return;
-jprintf_open();
 
   // initialize robot system (no ALIA)
   d.StatusText("Initializing robot ...");
@@ -2957,7 +2993,6 @@ jprintf_open();
   (ec.rwi).Stop();
   (ec.rwi).freeze = fbid;
   d.StatusText("Stopped.");  
-jprintf_close();
 
   // clean up
   FalseClone(res, map);
@@ -2973,6 +3008,246 @@ jprintf_close();
 
 
 /////////////////////////////////////////////////////////////////////////////
+//                             Object Detection                            //
+/////////////////////////////////////////////////////////////////////////////
+
+// Parameters for mapping and filling support surface
+
+void CBanzaiDoc::OnObjectsSurfacezoom()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(((ec.rwi).tab).zps);    
+}
+
+
+// Map size and resolution for detecting objects on surface
+
+void CBanzaiDoc::OnObjectsSurfacemap()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(((ec.rwi).tab).mps);    
+}
+
+
+// Parameters for fitting plane to surface
+
+void CBanzaiDoc::OnObjectsPlanefit()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(((ec.rwi).tab).pps);    
+}
+
+
+// Parameters for finding objects on surface
+
+void CBanzaiDoc::OnObjectsDetect()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(((ec.rwi).tab).dps);
+}
+
+
+// Parameters for size compensation and temporal update rate
+
+void CBanzaiDoc::OnObjectsShape()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(((ec.rwi).tab).sps);  
+}
+
+
+// Set parameters for tracking objects on table
+
+void CBanzaiDoc::OnObjectsTrack()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((((ec.rwi).tab).pos).tps);
+}
+
+
+// Set parameters for updating object tracks
+
+void CBanzaiDoc::OnObjectsFilter()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((((ec.rwi).tab).pos).fps);
+}
+
+
+// Find best surface from full range height map
+
+void CBanzaiDoc::OnSurfacePicktable()
+{
+  HWND me = GetForegroundWindow();
+  jhcStare3D *s3 = &((ec.rwi).s3);
+  jhcBumps *tab = &((ec.rwi).tab);
+  jhcImg map2, surf;
+  double rng = 2.0;
+  int dev, pk, gh0 = d.ght;
+
+  // make sure video is working
+  if (!ChkStream())
+    return;
+
+  // initialize robot system (no ALIA)
+  d.StatusText("Initializing robot ...");
+  if (rob > 0)
+    if (eb->Reset(1, 0) <= 0)
+    {
+      d.StatusText("Failed.");
+      return;
+    }
+  (ec.rwi).Reset(rob, 0);
+  eb->Limp();
+
+  // local images
+  surf.SetSize(s3->map);
+  dev = s3->ZDEV(rng);
+
+  // loop over selected set of frames  
+  SetForegroundWindow(me);
+  d.ght = 500;
+  d.Clear(1, "Flat regions ...");
+  v.Rewind(1);
+  try
+  {
+    while (!d.LoopHit(v.StepTime()))
+    {
+      // get images and body data then process it
+      if ((ec.rwi).Update() <= 0)
+        break;
+
+      // make pretty pictures
+      map2.Clone(s3->map);
+      pk = s3->I2Z(tab->ztab);
+      Between(surf, s3->map, __max(1, pk - dev), pk + dev, 200);
+
+      // prompt for new sensors
+      (ec.rwi).Issue();
+
+      // show overhead map and selected surface
+      d.ShowGrid(map2, 0, 0, 2, "Person height map");
+      d.ShowGrid(surf, 0, 1, 2, "Selected surface");
+
+      // show various height planes considered
+      d.GraphGridV(s3->hhist, 1, 0, 0, 0, "Height clusters = %3.1f in", tab->ztab);
+      d.GraphValV(200, 0, 4);
+      d.GraphMarkV(pk, 1);
+      d.GraphMarkV(s3->I2Z((eb->lift).Height() - 2.0), 2, 0.5);
+     
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  d.ght = gh0;
+  d.StatusText("Stopped.");  
+
+  // clean up
+  FalseClone(res, map2);
+  sprintf_s(rname, "%s_flat.bmp", v.FrameName());
+}
+
+
+// Detect and track protrusions from a flat surface
+
+void CBanzaiDoc::OnObjectsTrackobjs()
+{
+  HWND me = GetForegroundWindow();
+  jhcSurfObjs *tab = &((ec.rwi).tab);
+  jhcImg map2, scr, obj2;
+  jhcMatrix loc(4);
+  double ang;
+  int n = -1;
+
+  // make sure video is working
+  if (!ChkStream())
+    return;
+
+  // initialize robot system (no ALIA)
+  d.StatusText("Initializing robot ...");
+  if (rob > 0)
+    if (eb->Reset(1, 0) <= 0)
+    {
+      d.StatusText("Failed.");
+      return;
+    }
+  (ec.rwi).Reset(rob, 0);
+  (eb->neck).SetTilt(-50.0);
+  eb->Limp();
+
+  // local images
+  scr.SetSize(tab->map);
+  obj2.SetSize(tab->map);
+
+jhcImg scr2(tab->map);
+jhcImg cc2(tab->cc);
+
+jtimer_clr();
+  // loop over selected set of frames  
+  SetForegroundWindow(me);
+  d.Clear(1, "Table bumps ...");
+  v.Rewind(1);
+  try
+  {
+    while (!d.LoopHit(v.StepTime()))
+    {
+      // get images and body data then process it
+      if ((ec.rwi).Update() <= 0)
+        break;
+
+      // make pretty pictures
+      map2.Clone(tab->map);
+      tab->ShowAll(map2);
+      Scramble(scr, tab->cc);                      // everything
+//      Threshold(obj2, tab->top, 50);
+//      SubstOver(obj2, scr, scr, 0);
+
+(tab->blob).CopyRegions(cc2, tab->cc);             // only valid
+Scramble(scr2, cc2);
+
+      // pick newest object
+      if (!tab->ObjOK(n))
+        n = tab->MinID();
+      ang = tab->World(loc, n);
+
+      // prompt for new sensors
+      (ec.rwi).Issue();
+
+      // show overhead map and input image
+      if (n < 0)
+        d.ShowGrid(map2,   0, 0, 2, "Height map");
+      else
+        d.ShowGrid(map2,   0, 0, 2, "Height map  --  Object %d: (%3.1f %3.1f %3.1f) @ %3.1f degs",
+                                    tab->ObjID(n), loc.X(), loc.Y(), loc.Z(), ang);
+      d.ShowGrid(tab->det, 1, 0, 2, "Deviations  --  %5.3f ipp", tab->ipp);
+d.ShowGrid(scr,  0, 1, 2, "Components");
+d.ShowGrid(scr2, 1, 1, 2, "Not Poisoned");
+//      d.ShowGrid(tab->top, 0, 1, 2, "Table  --  surface %4.2f in", tab->ztab);
+//      d.ShowGrid(obj2,     1, 1, 2, "Objects (%d)", tab->ObjLimit());
+
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  d.StatusText("Stopped.");  
+jtimer_rpt();
+
+  // clean up
+  FalseClone(res, map2);
+  sprintf_s(rname, "%s_bumps.bmp", v.FrameName());
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
 //                              Test Functions                             //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -2980,6 +3255,47 @@ jprintf_close();
 
 void CBanzaiDoc::OnUtilitiesTest()
 {
+  jhcImgIO jio;
+  jhcSurfObjs so;
+  jhcImg d16, scr;
+  jhcMatrix pos(4), dir(4);
+  char iname[80] = "environ/table_t536_z561_h318_z.ras";
+  double t0 = -53.6, z0 = 56.1;
+
+  if (jio.LoadResize(d16, iname) <= 0)
+    jprintf("Fail depth load\n");
+
+  so.Defaults("Banzai_vals.ini");
+  so.SrcSize(640, 480, 525.0, 0.9659);
+  so.Reset();
+
+  scr.SetSize(so.map);
+
+  so.ztab = 28.5;
+  pos.SetVec3(0.0, 0.0, z0);
+  dir.SetVec3(-60.0, t0, 0.0);
+jtimer_clr();
+//for (int i = 1000; i > 0; i--)
+  so.FindObjects(d16, pos, dir);
+jtimer_rpt();
+
+  Scramble(scr, so.cc);
+  so.ShowAll(so.map2, 0);
+
+  d.Clear();
+  d.ShowGrid(so.map2, 0, 0, 2, "Heights");
+  d.ShowGrid(so.det,  1, 0, 2, "Deviations");
+
+  d.ShowGrid(scr,     0, 1, 2, "Components");
+  d.ShowGrid(so.top,  1, 1, 2, "Table");
+
+  for (int i = 0; i < so.nr; i++)
+  {
+    double *xyz = so.raw[i];
+    jprintf("%d: (%5.1f %5.1f %3.1f), box (%4.2f %4.2f% 4.2f), fit (%4.2f %4.2f)  @ %5.1f\n", 
+            i, xyz[0], xyz[1], xyz[2], xyz[3], xyz[4], xyz[5], xyz[6], xyz[7], xyz[8]);
+  }
+
 }
 
 

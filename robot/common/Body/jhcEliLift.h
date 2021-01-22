@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,6 +83,7 @@ public:
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
   int CommOK (int bad =0) const {return lok;}
+  void Inject (double ht0) {ht = ht0;}
 
   // low level commands
   int Freeze (int doit =1, double tupd =0.033);

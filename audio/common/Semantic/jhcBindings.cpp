@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +32,8 @@
 
 jhcBindings::~jhcBindings ()
 {
+  delete [] sub;
+  delete [] key;
 }
 
 
@@ -38,6 +41,11 @@ jhcBindings::~jhcBindings ()
 
 jhcBindings::jhcBindings (const jhcBindings *ref)
 {
+  // make arrays on heap (keeps jhcAliaDir size manageable)
+  key = new const jhcNetNode * [bmax];
+  sub = new jhcNetNode * [bmax];
+
+  // initialize contents
   nb = 0;
   expect = 0;
   if (ref != NULL)
@@ -69,9 +77,9 @@ jhcBindings *jhcBindings::Copy (const jhcBindings& ref)
 //= Get the current binding value for some key.
 // returns NULL if key not found
 
-jhcNetNode *jhcBindings::LookUp (const jhcNetNode *probe) const
+jhcNetNode *jhcBindings::LookUp (const jhcNetNode *k) const
 {
-  int i = index(probe);
+  int i = index(k);
 
   return((i >= 0) ? sub[i] : NULL);
 }
@@ -89,6 +97,20 @@ int jhcBindings::index (const jhcNetNode *probe) const
       if (probe == key[i])
         return i;
   return -1;
+}
+
+
+//= Do inverse lookup of key for this substitution (may not be unique).
+
+const jhcNetNode *jhcBindings::FindKey (const jhcNetNode *subst) const
+{
+  int i;
+  
+  if (subst != NULL)
+    for (i = 0; i < nb; i++)
+      if (subst == sub[i])             // first key found is winner
+        return key[i];
+  return NULL;
 }
 
 
@@ -127,6 +149,16 @@ int jhcBindings::TrimTo (int n)
     return 0;
   nb = n;
   return 1;
+}
+
+
+//= Remove most recent binding, but only if it has the specified key.
+
+void jhcBindings::RemFinal (jhcNetNode *k)
+{
+  if (nb > 0)
+    if (key[nb - 1] == k)    
+      nb--;
 }
 
 
@@ -217,38 +249,44 @@ bool jhcBindings::Same (const jhcBindings& ref) const
 //= Replace each value in list with its lookup in the reference bindings.
 // self: obj-8 = obj-1 + ref: obj-1 = obj-237 --> self: obj-8 = obj-237 
 
-void jhcBindings::ReplaceSubs (const jhcBindings& ref)
+void jhcBindings::ReplaceSubs (const jhcBindings& alt)
 {
   jhcNetNode *s;
   int i;
 
   for (i = 0; i < nb; i++)
-    if ((s = ref.LookUp(sub[i])) != NULL)
+    if ((s = alt.LookUp(sub[i])) != NULL)
       sub[i] = s;
 }
 
 
 //= List bindings in format "key = subst".
+// can optionally write header "<prefix> bindings:" instead of "bindings:"
+// can optionally show only first "num" bindings instead of all
+// if num < 0 then shows everything except the first bindings
 
-void jhcBindings::Print (int lvl, const char *prefix) const
+void jhcBindings::Print (int lvl, const char *prefix, int num) const
 {
+  int start = ((num < 0) ? -num : 0);
+  int stop  = ((num > 0) ? __min(num, nb) : nb);
   int i, k = 0, n = 0, k2 = 0, n2 = 0;
 
   // get print field widths
-  for (i = 0; i < nb; i++)
+  for (i = start; i < stop; i++)
   {
     key[i]->NodeSize(k, n, 1);
     sub[i]->NodeSize(k2, n2, 1);
   }
 
-  // print header
+  // print header (even if nothing to show)
   if ((prefix != NULL) && (*prefix != '\0'))
     jprintf("%*s%s bindings:\n", lvl, "", prefix);
   else
     jprintf("%*sBindings:\n", lvl, "");
 
-  // print key-sub pairs
-  for (i = 0; i < nb; i++)
+  // print key-sub pairs (might be none)
+  for (i = start; i < stop; i++)
     jprintf("%*s  %*s = %*s\n", lvl, "", 
             (k + n + 1), key[i]->Nick(), -(k2 + n2 + 1), sub[i]->Nick());
 }
+

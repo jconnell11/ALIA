@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,27 +65,28 @@ int jhcNetBuild::NameSaid (const char *alist, int mode) const
 
 
 //= Build an appropriate structure based on given association list.
-// return: 7 = farewell, 6 = greet, 5 = hail, 
-//         4 = op, 3 = rule, 2 = command, 1 = fact, 
+// return: 8 = farewell, 7 = greet, 6 = hail, 
+//         5 = op, 4 = rule, 3 = question, 2 = command, 1 = fact, 
 //         0 = nothing, negative for error
 
 int jhcNetBuild::Convert (const char *alist)
 {
-  int ans;
+  int spact;
 
   // sanity check then cleanup any rejected suggestions
   if (core == NULL) 
     return -1;
+  add = NULL;                                // deleted elsewhere
   ClearLast();
   if ((alist == NULL) || (*alist == '\0'))               
     return huh_tag();                        // misheard utterance
 
   // generate core interpretation then add speech act
-  ans = Assemble(alist);
-  if ((ans == 1) || (ans == 2))
-    return attn_tag(alist);                  // fact or command
-  if ((ans == 3) || (ans == 4))
-    return add_tag(ans, alist);              // new rule or operator
+  spact = Assemble(alist);
+  if ((spact >= 1) && (spact <= 3))
+    return attn_tag(spact, alist);           // fact or command
+  if ((spact >= 4) && (spact <= 5))
+    return add_tag(spact, alist);            // new rule or operator
 
   // handle superficial speech acts
   if (HasSlot(alist, "HELLO"))               // simple greeting
@@ -94,6 +96,44 @@ int jhcNetBuild::Convert (const char *alist)
   if (HasSlot(alist, "ATTN"))                // calling robot name
     return hail_tag();
   return huh_tag();                          // no network created
+}
+
+
+//= Record a summary of last sentence conversion process.
+// part of jhcNetBuild because needs access to "add" and "bulk"
+
+void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) const
+{
+  // make sure there is somewhere to record stuff
+  if (log == NULL)
+    return;
+
+  // record overall parsing result
+  fprintf(log, ".................................................\n\n");
+  fprintf(log, "\"%s\"\n\n", sent);
+  if (nt == 0)
+    fprintf(log, "*** NO PARSE ***\n\n");
+  else if (nt > 1)
+    fprintf(log, "*** %d parses ***\n\n", nt);
+
+  // record interpretation result
+  if (spact == 8)
+    fprintf(log, "-- farewell --\n\n");
+  else if (spact == 7)
+    fprintf(log, "-- greeting --\n\n");
+  else if (spact == 6)
+    fprintf(log, "-- hail --\n\n");
+  else if ((spact == 5) && (add != NULL) && (add->new_oper != NULL))
+    (add->new_oper)->Save(log);
+  else if ((spact == 4) && (add != NULL) && (add->new_rule != NULL))
+    (add->new_rule)->Save(log);
+  else if ((spact <= 3) && (spact >= 1) && (bulk != NULL))
+  {
+    bulk->Save(log);
+    fprintf(log, "\n");
+  }
+  else if (nt > 0)
+    fprintf(log, "-- nothing --\n\n");
 }
 
 
@@ -112,22 +152,22 @@ int jhcNetBuild::Convert (const char *alist)
 
 int jhcNetBuild::huh_tag () const
 {
-  jhcAliaAttn *attn = &(core->attn);
+  jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = new jhcAliaChain;
   jhcAliaDir *dir = new jhcAliaDir();
   jhcNetNode *n;
  
   // fill in details of the speech act
-  attn->BuildIn(&(dir->key));
-  n = attn->MakeNode("meta", "understand", 1);
-  n->AddArg("agt", attn->self);
-  n->AddArg("obj", attn->user);
-  n->SetDone(1);
+  atree->BuildIn(&(dir->key));
+  n = atree->MakeNode("meta", "understand", 1);
+  n->AddArg("agt", atree->Robot());               // in WMEM since NOTE
+  n->AddArg("obj", atree->Human());               // in WMEM since NOTE
+//  n->SetDone(1);
 
   // add completed structure to attention buffer
   ch->BindDir(dir);
-  attn->AddFocus(ch);
-  attn->BuildIn(NULL);
+  atree->AddFocus(ch);
+  atree->BuildIn(NULL);
   return 0;
 }
 
@@ -136,18 +176,18 @@ int jhcNetBuild::huh_tag () const
 
 int jhcNetBuild::hail_tag () const
 {
-  jhcAliaAttn *attn = &(core->attn);
+  jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch;
   jhcNetNode *input; 
 
   // make a new NOTE directive
   ch = build_tag(&input, NULL);
-  attn->AddLex(input, "hail");
+  atree->AddLex(input, "hail");
 
   // add completed structure to attention buffer
-  attn->AddFocus(ch);
-  attn->BuildIn(NULL);
-  return 5;
+  atree->AddFocus(ch);
+  atree->BuildIn(NULL);
+  return 6;
 }
 
 
@@ -155,18 +195,18 @@ int jhcNetBuild::hail_tag () const
 
 int jhcNetBuild::greet_tag () const
 {
-  jhcAliaAttn *attn = &(core->attn);
+  jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch;
   jhcNetNode *input; 
 
   // make a new NOTE directive
   ch = build_tag(&input, NULL);
-  attn->AddLex(input, "greet");
+  atree->AddLex(input, "greet");
 
   // add completed structure to attention buffer
-  attn->AddFocus(ch);
-  attn->BuildIn(NULL);
-  return 6;
+  atree->AddFocus(ch);
+  atree->BuildIn(NULL);
+  return 7;
 }
 
 
@@ -174,73 +214,86 @@ int jhcNetBuild::greet_tag () const
 
 int jhcNetBuild::farewell_tag () const
 {
-  jhcAliaAttn *attn = &(core->attn);
+  jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch;
   jhcNetNode *input; 
 
   // make a new NOTE directive
   ch = build_tag(&input, NULL);
-  attn->AddLex(input, "dismiss");
+  atree->AddLex(input, "dismiss");
 
   // add completed structure to attention buffer
-  attn->AddFocus(ch);
-  attn->BuildIn(NULL);
-  return 7;
+  atree->AddFocus(ch);
+  atree->BuildIn(NULL);
+  return 8;
 }
 
 
 //= Generate speech act followed by a request to add rule or operator.
-// returns 3 for rule, 4 for operator (echoes input "kind")
+// save core of ADD directive in "add" for convenience
+// returns 4 for rule, 5 for operator (echoes input "kind")
 
-int jhcNetBuild::add_tag (int kind, const char *alist) const
+int jhcNetBuild::add_tag (int spact, const char *alist) 
 {
-  jhcAliaAttn *attn = &(core->attn);
-  jhcAliaChain *ch, *add;
-  jhcAliaDir *dir;
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *ch, *ch2;
   jhcNetNode *input, *r;
  
   // make a new NOTE directive
   ch = build_tag(&input, alist);
-  attn->AddLex(input, "give");
-  r = attn->MakeNode("obj");
+  atree->AddLex(input, "give");
+  r = atree->MakeNode("obj");
   input->AddArg("obj", r);
-  attn->AddProp(r, "ako", ((kind == 3) ? "rule" : "operator"));
+  atree->AddProp(r, "ako", ((spact == 4) ? "rule" : "operator"));
 
   // tack on a generic ADD directive at the end
-  add = new jhcAliaChain;
-  dir = new jhcAliaDir(JDIR_ADD);
-  add->BindDir(dir);
-  ch->cont = add;
+  ch2 = new jhcAliaChain;
+  add = new jhcAliaDir(JDIR_ADD);
+  ch2->BindDir(add);
+  ch->cont = ch2;
+
+  // move newly create rule or operator into directive (in case slow)
+  if (spact == 4)
+    add->new_rule = rule;
+  else
+    add->new_oper = oper;
+  rule = NULL;               // prevent deletion by jhcGraphizer
+  oper = NULL;
 
   // add completed structure to attention buffer
-  attn->AddFocus(ch);
-  attn->BuildIn(NULL);
-  return kind;
+  atree->AddFocus(ch);
+  atree->BuildIn(NULL);
+  return spact;
 }
 
 
 //= Insert NOTE directive about source of command or fact before actual statement.
 // gives the opportunity to PUNT and disbelief fact or reject command
-// returns 2 for command, 1 for fact, 0 for problem
+// returns 3 for question, 2 for command, 1 for fact, 0 for problem
 
-int jhcNetBuild::attn_tag (const char *alist) const
+int jhcNetBuild::attn_tag (int spact, const char *alist) const
 {
-  jhcAliaAttn *attn = &(core->attn);
-  const jhcAliaDir *d0 = bulk->GetDir();
+  jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch;
-  jhcNetNode *input; 
+  jhcNetNode *input;
 
   // make a new NOTE directive before bulk
   ch = build_tag(&input, alist);
   ch->cont = bulk;
-  attn_args(input, bulk);
+
+  // specialize based on speech act
+  atree->AddLex(input, ((spact <= 2) ? "tell" : "ask"));
+  if (spact == 1)
+    input->AddArg("obj", atree->MakeNode("fact"));
+  else if (spact == 2)
+    input->AddArg("cmd", atree->MakeNode("cmd"));
+  else
+    input->AddArg("obj", atree->MakeNode("query"));
 
   // add completed structure to attention buffer
-  attn->AddFocus(ch);
-  attn->BuildIn(NULL);
-  if ((d0 != NULL) && (d0->Kind() == JDIR_NOTE))     // might be play
-    return 1;
-  return 2;
+  atree->AddFocus(ch);
+  atree->BuildIn(NULL);
+  return spact;
 }
 
 
@@ -250,84 +303,25 @@ int jhcNetBuild::attn_tag (const char *alist) const
 
 jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *alist) const
 {
-  jhcAliaAttn *attn = &(core->attn);
+  jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = new jhcAliaChain;
   jhcAliaDir *dir = new jhcAliaDir();
   jhcNetNode *n;
  
   // fill in details of the speech act
-  attn->BuildIn(&(dir->key));
-  n = attn->MakeNode("meta");
-  n->AddArg("agt", attn->user);
-  n->AddArg("dest", attn->self);
+  atree->BuildIn(&(dir->key));
+  n = atree->MakeNode("meta");
+  n->AddArg("agt", atree->Human());                 // in WMEM since NOTE
+  n->AddArg("dest", atree->Robot());                // in WMEM since NOTE
   if ((alist != NULL) && HasSlot(alist, "POLITE"))
-    attn->AddProp(n, "mod", "polite");
-  n->SetDone(1);
+    atree->AddProp(n, "mod", "polite");
+//  n->SetDone(1);
 
   // embed in chain then return pieces
   ch->BindDir(dir);
   if (node != NULL)
     *node = n;
   return ch;
-}
-
-
-//= Add important parts of bulk as arguments to what user told.
-
-void jhcNetBuild::attn_args (jhcNetNode *input, const jhcAliaChain *bulk) const
-{
-  jhcAliaAttn *attn = &(core->attn);
-  const jhcAliaChain *ch = bulk;
-  const jhcAliaDir *d = bulk->GetDir();
-  const jhcGraphlet *g;
-  jhcNetNode *n;
-  JDIR_KIND kind = JDIR_MAX;
-//  int i, ni = 0, ask = 0;
-  int ask = 0;
-  
-  // mark overall type of input
-  if (d != NULL)
-  {
-    // determine whether this is a question
-    kind = d->Kind();
-    if ((kind == JDIR_CHK) || (kind == JDIR_FIND))
-      ask = 1;
-
-    // get attributes of directive key
-    g = &(d->key);
-    n = g->Main();
-//    ni = g->NumItems();
-  }
-  if (ask > 0)
-    attn->AddLex(input, "ask");
-  else
-    attn->AddLex(input, "tell");
-
-  // see if question, fact, or string of commands
-  if (kind == JDIR_CHK)
-     input->AddArg("ynq", n);      // yes-no question
-  else if (kind == JDIR_FIND)
-     input->AddArg("whq", n);      // wh- question
-  else if (kind == JDIR_NOTE)
-     input->AddArg("obj", attn->MakeNode("data"));
-  /*
-    for (i = 0; i < ni; i++)
-    {
-      // add all predicates to what was told (including lone lex)
-      n = g->Item(i);
-      if ((n->NumArgs() > 0) && ((ni == 1) || !n->LexNode()))
-        input->AddArg("obj", n);
-    }
-  */
-  else
-    while (ch != NULL)
-    {
-      // add all explicit actions to what was requested
-      if ((d = ch->GetDir()) != NULL)
-        if (d->Kind() == JDIR_DO)
-          input->AddArg("cmd", (d->key).Main());
-      ch = ch->cont;
-    }
 }
 
 
@@ -400,6 +394,7 @@ int jhcNetBuild::scan_lex (const char *fname)
         if (isalnum(*wds) == 0)
           continue;
         end = wds + 1;
+        last = end;
         while ((*end != '\0') && (*end != '\n')) 
         {
           if (isalnum(*end) != 0)

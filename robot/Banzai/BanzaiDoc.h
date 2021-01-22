@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -115,6 +116,7 @@ public:
 
 protected:
 
+
 // Generated message map functions
 protected:
 	//{{AFX_MSG(CBanzaiDoc)
@@ -190,6 +192,17 @@ public:
   afx_msg void OnNavConfidence();
   afx_msg void OnPeopleVisibility();
   afx_msg void OnDemoAttn();
+  afx_msg void OnObjectsTrackobjs();
+  afx_msg void OnObjectsSurfacemap();
+  afx_msg void OnObjectsDetect();
+  afx_msg void OnObjectsShape();
+  afx_msg void OnObjectsTrack();
+  afx_msg void OnObjectsFilter();
+  afx_msg void OnSurfacePicktable();
+  afx_msg void OnObjectsPlanefit();
+  afx_msg void OnNavDepthfov();
+  afx_msg void OnObjectsSurfacezoom();
+  afx_msg void OnDemoStaticpose();
 };
 
 /////////////////////////////////////////////////////////////////////////////

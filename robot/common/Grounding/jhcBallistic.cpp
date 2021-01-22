@@ -435,6 +435,7 @@ void jhcBallistic::power_state ()
   kvetch = now;
 
   // generate conscious event
+  jprintf(">>> Battery at %d percent\n", pct);
   rpt->StartNote();
   rpt->NewProp(rpt->Self(), "hq", "tired");
   rpt->FinishNote();

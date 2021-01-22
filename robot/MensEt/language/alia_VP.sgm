@@ -22,15 +22,28 @@
 // abstract action by some agent
 
 =[%fact-g]
-  <ACT-G> (<np> (<np>))
+  (<BLF>) <ACT-G> (<np> (<np>))
 
+
+// verb phrase
+
+=[vp]
+  (<BLF>) <ACT-S>
+  (<BLF>) <ACT-D>
+  (<BLF>) <AUX-D> (<BLF>) (<NEG>) <ACT>
+  (<BLF>) <aux> (<BLF>) (<NEG>) <ACT-G>
+
+
+// ==================================================
 
 // action to take
 
 =[cmd]
   <!do>
-  <find>
   <!chk>
+  <!chk-t>
+  <!find>
+  <!find-t>
 
 
 // hypothetical action (not a command)
@@ -43,13 +56,39 @@
 
 // --------------------------------------------------
 
-// verb phrase
+// DO directive ("you" or missing subject, 0 to 2 objects)
 
-=[vp]
-  <ACT-S>
-  <ACT-D>
-  <AUX-D> (<NEG>) <ACT>
-  <aux> (<NEG>) <ACT-G>
+=[!do]
+  (you <PREF>) (<adv3>) <ACT> (<np> (<np>)) (<vmod3>)
+  (you <PREF>) (<adv3>) <SAY> (to <np>) <QUOTE>
+  <STOP> <ACT-G> (<np> (<np>)) (<vmod3>)
+  <NEG-V> <ACT> (<np> (<np>)) (<vmod3>)
+  
+
+// hypothetical DO directive for prohibition
+
+=[!do-s]
+  (<adv3>) <ACT> <np-s> (<np-s>) (<vmod3>)
+  (<adv3>) <ACT> <np-s> <np> (<vmod3>)
+  (<adv3>) <SAY> to <np-s> <QUOTE>
+
+
+// DO directive phrased as a progressive
+
+=[!do-g]
+  <ACT-G> (<np> (<np>)) (<vmod3>)
+
+
+// request to echo something
+
+=[SAY]
+  say
+
+
+// from 1 to 16 words
+
+=[QUOTE]
+ # (# (# (# (# (# (# (# (# (# (# (# (# (# (# (#)))))))))))))))
 
 
 // negated verb
@@ -58,6 +97,117 @@
   don't 
   do not
 
+
+// stop some currently on-going action
+
+=[STOP]
+  stop
+  quit
+
+
+// --------------------------------------------------
+
+// FIND directive
+
+=[!find]
+  find (out) <query>
+  find <np>
+
+
+// implicit tell for answering wh-question
+
+=[!find-t]
+  <query>
+
+
+// types of questions
+
+=[query]
+  <$q-ako>
+  <$q-hq>
+  <$q-lex>
+  <$q-loc>
+  <$q-cnt>
+
+
+// hypothetical FIND for prohibitions
+
+=[!find-s]
+  find (out) <$q-ako-s>
+  find (out) <$q-hq-s>
+
+
+// embedded question about type
+
+=[$q-ako]
+  what (is) <np> (is)
+  what <%n-super> (is) <np> (is)
+
+
+// hypothetical embedded question about type
+
+=[$q-ako-s]
+  what <np-s> are
+  what <n-super> <np-s> are
+
+
+// embedded question about property
+
+=[$q-hq]
+  what <AKO> (is) <np> (is)
+  what (is) <np-poss> <AKO> (is)
+  what (is) the <AKO> of <np> (is)
+
+
+// hypothetical embedded question about property
+
+=[$q-hq-s]
+  what <AKO> <np-s> are
+
+
+// question about the identity of an item
+
+=[$q-lex]
+  who (is) <%obj> (is)
+  who <$add>
+  what <$add>
+
+
+// question about location of an item
+
+=[$q-loc]
+  where (is) <np> (is)
+
+
+// question about number of items
+
+=[$q-cnt]
+  how many <np-s> (are) there (are)
+
+
+// --------------------------------------------------
+
+// CHK directive
+
+=[!chk]
+  <check-v> <%fact>
+
+
+// implicit tell for answering yn-question
+
+=[!chk-t]
+  <be> <%fact>
+
+
+// check verb phrase
+
+=[check-v]
+  check (if) 
+  check that
+  find (out) if
+
+
+// ==================================================
 
 // set of adverbs that appear before verb
 
@@ -96,107 +246,6 @@
 
 =[$rel]
   <place>
-
-
-// ==================================================
-
-// DO directive ("you" or missing subject, 0 to 2 objects)
-
-=[!do]
-  (you <PREF>) (<adv3>) <ACT> (<np> (<np>)) (<vmod3>)
-  (you <PREF>) (<adv3>) <ACT> <ACT-G> (<np> (<np>)) (<vmod3>)
-  (you <PREF>) (<adv3>) <SAY> (to <np>) <QUOTE>
-
-
-// hypothetical DO directive for prohibition
-
-=[!do-s]
-  (you <PREF>) (<adv3>) <ACT> <np-s> (<np-s>) (<vmod3>)
-  (you <PREF>) (<adv3>) <ACT> <np-s> <np> (<vmod3>)
-  (you <PREF>) (<adv3>) <ACT> <ACT-G> <np-s> (<np-s>) (<vmod3>)
-  (you <PREF>) (<adv3>) <ACT> <ACT-G> <np-s> <np> (<vmod3>)
-  (you <PREF>) (<adv3>) <SAY> to <np-s> <QUOTE>
-
-
-// DO directive phrased as a progressive
-
-=[!do-g]
-  <ACT-G> (<np> (<np>)) (<vmod3>)
-
-
-// request to echo something
-
-=[SAY]
-  say
-
-
-// from 1 to 16 words
-
-=[QUOTE]
- # (# (# (# (# (# (# (# (# (# (# (# (# (# (# (#)))))))))))))))
-
-
-// --------------------------------------------------
-
-// FIND directive
-
-=[find]
- <find-v> <!find-ako>
- <find-v> <!find-hq>
-
-
-// hypothetical FIND for prohibitions
-
-=[find-s]
- <find-v> <!find-ako-s>
- <find-v> <!find-hq-s>
-
-
-// find verb phrase
-
-=[find-v]
-  find (out) 
-
-
-// embedded question about type
-
-=[!find-ako]
-  what <np> is
-  what kind of <AKO> <np> is
-
-
-// hypothetical embedded question about type
-
-=[!find-ako-s]
-  what <np-s> are
-  what kind of <AKO> <np-s> is
-
-
-// embedded question about property
-
-=[!find-hq]
-  what <AKO> <np> is
-  what <np-poss> <AKO> is
-
-
-// hypothetical embedded question about property
-
-=[!find-hq-s]
-  what <AKO> <np-s> are
-
-
-// --------------------------------------------------
-
-// CHECK directive
-
-=[!chk]
-  <check-v> <%fact>
-
-
-// check verb phrase
-
-=[check-v]
-  check (if) 
-
+  with <np>
 
 

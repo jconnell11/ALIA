@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,10 +139,20 @@ void jhcFaceName::Reset (int local)
 
 //= Change the position and orientation (p, t, r) of the single sensor.
 
-void jhcFaceName::SetCam (const jhcMatrix& pos, const jhcMatrix& dir)
+void jhcFaceName::SetCam (const jhcMatrix& pos, const jhcMatrix& dir, int full)
 {
   SetAttn(pos);
-  if (s3 != NULL)
+  if (s3 == NULL)
+    return;
+  if (full <= 0)
+  {
+    // camera always points upward, fix world coordinates in tracking
+    s3->SetCam(0, 0.0, 0.0, pos.Z(), 90.0, dir.T(), dir.R());
+//    xcomp = pos.X();
+//    ycomp = pos.Y();
+//    pcomp = dir.P();
+  }
+  else
     s3->SetCam(0, pos, dir);
 }
 

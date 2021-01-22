@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,9 +100,9 @@ void jhcChatBox::Reset (int disable, const char *dir)
   if (dir != NULL)
   {
     if (*dir == '\0')
-      sprintf_s(fname, "chat_%s.txt", jms_date(date));
+      sprintf_s(fname, "log_%s.chat", jms_date(date));
     else
-      sprintf_s(fname, "%s/chat_%s.txt", dir, jms_date(date));
+      sprintf_s(fname, "%s/log_%s.chat", dir, jms_date(date));
     log = _fsopen(fname, "w", _SH_DENYWR);
   }
 }
@@ -147,9 +148,9 @@ int jhcChatBox::Interact ()
   while (PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE))
   {
     // hard quit if user selects something from a menu 
-    if (msg.message == WM_QUIT)
+    if (msg.message == WM_QUIT) 
       return -1;
-    if (msg.message == WM_COMMAND)          
+    if (msg.message == WM_COMMAND) 
     {
       quit = 1;
       return 0;
@@ -288,6 +289,7 @@ BEGIN_MESSAGE_MAP(jhcChatBox, CDialog)
 	//{{AFX_MSG_MAP(jhcChatBox)
 		// NOTE: the ClassWizard will add message map macros here
 	//}}AFX_MSG_MAP
+  ON_BN_CLICKED(IDC_QUIT, &jhcChatBox::OnBnClickedQuit)
 END_MESSAGE_MAP()
 
 
@@ -297,10 +299,8 @@ END_MESSAGE_MAP()
 //= Mark interaction as finsihed when button hit.
 // Note: this used to be the "OK" button which called grab_text()
 
-void jhcChatBox::OnOK()
+void jhcChatBox::OnBnClickedQuit()
 {
   if (disable <= 0)
     quit = 1;
 }
-
-

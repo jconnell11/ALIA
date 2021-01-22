@@ -4,7 +4,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 1999-2019 IBM Corporation
+// Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +60,10 @@ public:
 
   // region bulking
   int Convexify (jhcImg& dest, const jhcImg& src, int maxgap =0);
+  int ConvexAll (jhcImg& dest, const jhcImg& src, int maxgap =0);
+  int ConvexClaim (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int maxgap =0);
+  int ConvexH (jhcImg& dest, const jhcImg& src, int maxgap =0, int fill =255);
+  int ConvexUp (jhcImg& dest, const jhcImg& src, int maxgap =0, int fill =255);
 
   // edge filling
   int StripOutside (jhcImg& dest, const jhcImg& src, const jhcImg& bnd, int mrun =0, int bdok =0);

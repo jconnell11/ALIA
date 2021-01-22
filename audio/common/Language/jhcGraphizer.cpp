@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@
 #include "Action/jhcAliaCore.h"        // common robot - only spec'd as class in header
 #include "Action/jhcAliaPlay.h"
 
-#include "Language/jhcMorphTags.h"     //  common audio
+#include "Language/jhcMorphTags.h"     // common audio
 #include "Language/jhcNetRef.h"        
 
 #include "Language/jhcGraphizer.h"
@@ -37,10 +38,7 @@
 
 jhcGraphizer::~jhcGraphizer ()
 {
-  if (rule != NULL)
-    delete rule;
-  if (oper != NULL)
-    delete oper;
+  ClearLast();
 }
 
 
@@ -48,6 +46,16 @@ jhcGraphizer::~jhcGraphizer ()
 
 jhcGraphizer::jhcGraphizer ()
 {
+  // system interface
+  core = NULL;
+
+  // dereferencing
+  univ = NULL;
+  skolem = NULL;
+  create = 0;
+  resolve = 0;
+
+  // outputs
   rule = NULL;
   oper = NULL;
   dbg = 0;
@@ -63,22 +71,21 @@ jhcGraphizer::jhcGraphizer ()
 
 void jhcGraphizer::ClearLast ()
 {
-  if (rule != NULL)
-    delete rule;
+  delete rule;
   rule = NULL;
-  if (oper != NULL)
-    delete oper;
+  delete oper;
   oper = NULL;
 }
 
 
 //= Build an appropriate structure based on given association list.
-// return: 4 = op, 3 = rule, 2 = command, 1 = fact, 
+// return: 5 = op, 4 = rule, 3 = question, 2 = command, 1 = fact, 
 //         0 = nothing, negative for error
 
 int jhcGraphizer::Assemble (const char *alist)
 {
-  char head[80], body[amax];
+  char body[amax], head[80] = "";
+  int spact = 0;                       // no network created
 
   // sanity check 
   if (core == NULL) 
@@ -90,13 +97,17 @@ int jhcGraphizer::Assemble (const char *alist)
   if (SplitFrag(head, body, alist) != NULL)
   {
     if (strcmp(head, "%Attn") == 0)
-      return cvt_attn(body);
-    if (strcmp(head, "%Rule") == 0)
-      return cvt_rule(body);
-    if (strcmp(head, "%Operator") == 0)
-      return cvt_op(body);
+      spact = cvt_attn(body);
+    else if (strcmp(head, "%Rule") == 0)
+      spact = cvt_rule(body);
+    else if (strcmp(head, "%Operator") == 0)
+      spact = cvt_op(body);
   }
-  return 0;                  // no network created
+
+  // cleanup
+  univ = NULL;
+  skolem = NULL;
+  return spact; 
 }
 
 
@@ -107,56 +118,119 @@ int jhcGraphizer::Assemble (const char *alist)
 //= Interpret association list to build an attention item.
 //   %Attn -> chain (!dir or %play) or fact
 // "bulk" member variable holds resulting jhcAliaChain
-// returns 1 (fact) or 2 (command) if successful, 0 for failure
+// returns 1 (fact) or 2 (command) or 3 (question) if successful, 0 for failure
 
 int jhcGraphizer::cvt_attn (const char *alist) 
 {
   char head[80], body[amax];
-  jhcAliaAttn *attn = &(core->attn);
+  jhcWorkMem *wmem = &(core->atree);
+  jhcAliaChain *ch;
   jhcAliaDir *dir;
 
-  // CHAIN - see if some sort of complex command
+  // solve references against WMEM
   if (SplitFrag(head, body, alist) == NULL)
     return 0;
+  univ = wmem;
+  resolve = 0;
+
+  // CHAIN - see if some sort of complex command (or question)
   if ((*head == '!') || (strcmp(head, "%play") == 0))
   {
-    if ((bulk = build_chain(alist, NULL, *attn)) == NULL)
+    create = 0;
+    if ((bulk = build_chain(alist, NULL, *wmem)) == NULL)
       return 0;
+    if (strcmp(head, "!chk-t") == 0)
+      return append_ynq(bulk, *wmem);
+    if (strcmp(head, "!find-t") == 0)
+      return append_whq(bulk, *wmem);
     return 2;
   }
 
   // FACT - build a single NOTE encapsulating factual assertion
+  create = 1;
   dir = new jhcAliaDir;
-  attn->BuildIn(&(dir->key));
-  if (build_fact(NULL, body, *attn) == NULL)
+  wmem->BuildIn(&(dir->key));
+  if (build_fact(NULL, body, *wmem) == NULL)                   
   {
     // cleanup from error
     delete dir;
-    attn->BuildIn(NULL);
+    wmem->BuildIn(NULL);
     return 0;
   }
 
   // embed NOTE in chain step
   (dir->key).MainProp();
-  bulk = new jhcAliaChain;
-  bulk->BindDir(dir);
+  ch = new jhcAliaChain;
+  ch->BindDir(dir);
+
+  // prepend FINDs (if any)
+  if (skolem != NULL)
+    bulk = skolem->Append(ch);
+  else
+    bulk = ch;
   return 1;
 }
 
 
-//= Turn qualifier ("usually") into numeric belief value.
+//= Adds actions to announce verdict for a yes/no question.
+// assumes last directive in sequence is the main CHK
+// returns 3 if successful, 0 if last directive is not a CHK
 
-double jhcGraphizer::belief_val (const char *word) const
+int jhcGraphizer::append_ynq (jhcAliaChain *seq, jhcNodePool& pool) const
 {
-  char term[7][20] = {"definitely", "certainly", "probably", "likely", "may", "might", "possibly"};
-  double val[7]    = {   1.2,          1.1,         0.8,       0.7,     0.5,    0.5,      0.3    };
-  int i;
+  jhcAliaChain *chk;
 
-  for (i = 0; i < 7; i++)
-    if (strcmp(word, term[i]) == 0)
-      return val[i];
-  return 1.0;
-} 
+  // make sure last directive in sequence is a CHK
+  if (seq != NULL) 
+    if ((chk = seq->Last()) != NULL)
+      if (chk->StepDir(JDIR_CHK))
+      {
+        // attach normal, alt, and fail continuations
+        chk->cont = tell_step("affirm", pool);
+        chk->alt  = tell_step("deny",   pool);
+        chk->fail = tell_step("pass",   pool);
+        return 3;
+      }
+  return 0;
+}
+
+
+//= Adds action for when telling answer to wh- question fails.
+// assumes last directive in sequence is the main FIND
+// always returns 3 for convenience
+
+int jhcGraphizer::append_whq (jhcAliaChain *seq, jhcNodePool& pool) const
+{
+  jhcAliaChain *find;
+
+  // no fail branch needed if no FIND in chain
+  if (seq != NULL) 
+    if ((find = seq->Penult()) != NULL)
+      if (find->StepDir(JDIR_FIND))
+        find->fail = tell_step("pass", pool);
+  return 3;
+}
+
+
+//= Make a step consisting of a DO directive having a verb with no arguments.
+
+jhcAliaChain *jhcGraphizer::tell_step (const char *verb, jhcNodePool& pool) const
+{
+  jhcAliaChain *step;
+  jhcAliaDir *dir;
+  jhcGraphlet *old;
+
+  // build a DO directive embedded in a step
+  step = new jhcAliaChain;
+  dir  = new jhcAliaDir(JDIR_DO);
+  step->BindDir(dir);
+  
+  // flesh out directive with given action
+  old = pool.BuildIn(&(dir->key));
+  pool.MakeNode("act", verb);
+  pool.BuildIn(old);
+  return step;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -166,18 +240,27 @@ double jhcGraphizer::belief_val (const char *word) const
 //= Interpret association list to build a new rule.
 //   %Rule -> $macro or [$cond $res] or [$cond-i $res-i] or [$cond-s $res-s] or [$res $cond]
 // "rule" member variable holds result
-// returns 3 if successful, 0 for failure
+// returns 4 if successful, 0 for failure
 
 int jhcGraphizer::cvt_rule (const char *alist) 
 {
   CallList(1, "cvt_rule", alist);
 
-  // make a new rule and determine which pattern was used
+  // make a new rule
   rule = new jhcAliaRule;
+  univ = rule;
+  create = 1;
+  resolve = 1;
+
+  // determine which pattern was used
   if (build_fwd(*rule, alist)  || build_rev(*rule, alist)  ||
       build_ifwd(*rule, alist) || build_sfwd(*rule, alist) ||
       build_macro(*rule, alist))
-    return 3;
+  {
+    // make sure result has actual beliefs (not all 0.0)
+    (rule->result).ActualizeAll(0);
+    return 4;
+  }
 
   // cleanup from failure
   delete rule;
@@ -188,7 +271,7 @@ int jhcGraphizer::cvt_rule (const char *alist)
 
 //= Interpret association list where condition precedes result.
 
-bool jhcGraphizer::build_fwd (jhcAliaRule& r, const char *alist) const
+bool jhcGraphizer::build_fwd (jhcAliaRule& r, const char *alist) 
 {
   char body[amax];
   const char *tail;
@@ -211,7 +294,7 @@ bool jhcGraphizer::build_fwd (jhcAliaRule& r, const char *alist) const
 
 //= Interpret association list where result precedes condition.
 
-bool jhcGraphizer::build_rev (jhcAliaRule& r, const char *alist) const
+bool jhcGraphizer::build_rev (jhcAliaRule& r, const char *alist)
 {
   char body[amax];
   const char *tail;
@@ -234,7 +317,7 @@ bool jhcGraphizer::build_rev (jhcAliaRule& r, const char *alist) const
 
 //= Interpret association list starting with an indefinite condition.
 
-bool jhcGraphizer::build_ifwd (jhcAliaRule& r, const char *alist) const
+bool jhcGraphizer::build_ifwd (jhcAliaRule& r, const char *alist) 
 {
   char next[200], body[amax];
   jhcNetNode *obj, *arg;
@@ -247,7 +330,7 @@ bool jhcGraphizer::build_ifwd (jhcAliaRule& r, const char *alist) const
 
   // assemble condition part  
   r.BuildIn(&(r.cond));
-  if ((obj = build_obj(NULL, body, r)) == NULL)
+  if ((obj = build_obj(NULL, body, r)) == NULL)            
   {
     // ascribe property to unknown subject ("orange ... is a color")
     if (FragNextPair(body, next) == NULL)
@@ -265,13 +348,14 @@ bool jhcGraphizer::build_ifwd (jhcAliaRule& r, const char *alist) const
   r.BuildIn(&(r.result));
   if (add_cop(NULL, obj, body, r) == NULL)
     return false;
+  (r.result).MainProp();
   return true;
 }
 
 
 //= Interpret association list starting with an indefinite plural condition.
 
-bool jhcGraphizer::build_sfwd (jhcAliaRule& r, const char *alist) const
+bool jhcGraphizer::build_sfwd (jhcAliaRule& r, const char *alist) 
 {
   char body[amax];
   jhcNetNode *obj;
@@ -282,16 +366,17 @@ bool jhcGraphizer::build_sfwd (jhcAliaRule& r, const char *alist) const
     return false;
   CallList(1, "build_sfwd", alist);
   r.BuildIn(&(r.cond));
-  if ((obj = build_obj(NULL, body, r)) == NULL)
+  if ((obj = build_obj(NULL, body, r)) == NULL)                
     return false;
-  (rule->cond).MainProp();
+  (r.cond).MainProp();
 
   // assemble result part
   if (ExtractBody("$res-s", body, tail) == NULL)
     return false;
   r.BuildIn(&(r.result));
-  if (build_fact(NULL, body, r, obj) == NULL)
+  if (build_fact(NULL, body, r, obj) == NULL)                  
     return false;
+  (r.result).MainProp();
   return true;
 }
 
@@ -333,9 +418,9 @@ bool jhcGraphizer::build_macro (jhcAliaRule& r, const char *alist) const
 // used by the result part of rules (set BuildIn before calling)
 // returns 1 if successful, 0 or negative for problems
 
-int jhcGraphizer::build_graph (jhcGraphlet& gr, const char *alist, jhcNodePool& pool) const
+int jhcGraphizer::build_graph (jhcGraphlet& gr, const char *alist, jhcNodePool& pool)
 {
-  char head[80], body[amax];
+  char body[amax], head[80] = "";
   const char *tail = alist;
   int must = 0;
 
@@ -346,7 +431,7 @@ int jhcGraphizer::build_graph (jhcGraphlet& gr, const char *alist, jhcNodePool& 
     if (strncmp(head, "%fact", 5) == 0)
     {
       jprintf(1, dbg, "-- ASSERT %d\n", ++must);
-      if (build_fact(NULL, body, pool) == NULL)
+      if (build_fact(NULL, body, pool) == NULL)                
         return 0;
     }
   gr.MainProp();
@@ -361,7 +446,7 @@ int jhcGraphizer::build_graph (jhcGraphlet& gr, const char *alist, jhcNodePool& 
 //= Interpret association list to build a new operator.
 //   %Operator -> [$trig $proc] or [$trig-n $proc]
 // "oper" member variable holds result
-// returns 4 if successful, 0 for failure
+// returns 5 if successful, 0 for failure
 
 int jhcGraphizer::cvt_op (const char *alist) 
 {
@@ -373,17 +458,22 @@ int jhcGraphizer::cvt_op (const char *alist)
   // try to create correct kind of operator (handles $trig-n)
   if ((oper = config_op(alist)) == NULL)
     return 0;
+  univ = oper;
 
   // allow non-local exit
   while (1)
   {
     // fill in trigger from beginning clause (if any)
+    create = 1;
+    resolve = 1;
     if ((tail = ExtractBody("$trig", body, tail, 1)) == NULL)
       tail = alist;
     else if (build_sit(*oper, body, oper->KindTag()) <= 0)
       break;
 
     // fill in procedure (required unless this is a prohibition)
+    create = 0;
+    resolve = 0;
     if ((t2 = ExtractBody("$proc", body, tail)) != NULL)
     {
       if ((oper->meth = build_chain(body, oper->meth, *oper)) == NULL)
@@ -394,6 +484,8 @@ int jhcGraphizer::cvt_op (const char *alist)
       break;
 
     // add to trigger from ending clause (if any)
+    create = 1;
+    resolve = 1;
     if ((tail = ExtractBody("$trig", body, tail)) != NULL)
       if (build_sit(*oper, body, oper->KindTag()) <= 0)
         break;
@@ -401,7 +493,7 @@ int jhcGraphizer::cvt_op (const char *alist)
     // make sure some trigger was found
     if (((oper->cond).NumItems() <= 0) && (oper->nu <= 0))
       break;
-    return 4;
+    return 5;
   }
 
   // cleanup from some problem
@@ -479,28 +571,13 @@ const char *jhcGraphizer::kind_op (int& k, const char *alist, int veto) const
 }
 
 
-//= Turn qualifier ("should") into numeric belief value.
-
-double jhcGraphizer::pref_val (const char *word) const
-{
-  char term[5][20] = {"might", "could", "should", "must", "always"};
-  double val[5]    = {  0.3,     0.5,      1.2,    1.5,      2.0  };
-  int i;
-
-  for (i = 0; i < 5; i++)
-    if (strcmp(word, term[i]) == 0)
-      return val[i];
-  return 1.0;
-} 
-
-
 //= Assemble a situation description with AND and UNLESS parts.
 //   situation -> %fact or %fact-i (or possibly cmd like !do for op trigger)
 // needs to interpret clauses sequential to resolve pronouns
 // used for preconditions of both rules and operators (ktag != NULL)
 // returns 1 if successful, 0 or negative if error
 
-int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *ktag) const
+int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *ktag) 
 {
   char head[80], body[amax];
   jhcNetNode *cmd = NULL;
@@ -525,7 +602,7 @@ int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *k
     {
       // triggering condition (only for ops with ktag != NULL)
       jprintf(1, dbg, "-- %s\n", ktag);
-      sit.CondPart();
+      sit.BuildCond();
       if ((cmd = build_cmd(head, body, sit)) == NULL)
         return 0;
       sit.CmdHead(cmd);
@@ -536,10 +613,10 @@ int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *k
     else if ((cond <= 0) || (neg > 0))
     {
       // prima facie absent ("unless" or "and not")
-      if ((prima = sit.UnlessPart()) <= 0)
+      if ((prima = sit.BuildUnless()) <= 0)
         return 0;
       jprintf(1, dbg, "-- UNLESS %d\n", prima);      
-      if (build_fact(NULL, body, sit, NULL, cond) == NULL)
+      if (build_fact(NULL, body, sit, NULL, cond) == NULL)     
         return 0;
       sit.UnlessHead();
       jprintf(1,dbg, "----\n\n");
@@ -547,11 +624,11 @@ int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *k
     else
     {
       // required condition
-      sit.CondPart();
+      sit.BuildCond();
       jprintf(1, dbg, "-- CONJUNCT %d\n", ++must);
-      if (build_fact(NULL, body, sit, 0) == NULL)
+      if (build_fact(NULL, body, sit, 0) == NULL)              
         return 0;
-      jprintf(1,dbg, "----\n\n");
+      jprintf(1, dbg, "----\n\n");
     }
   }
 
@@ -562,19 +639,36 @@ int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *k
 }
 
 
+//= Turn qualifier ("could maybe") into numeric belief value.
+// note that "could" is at end to give preference to "could maybe"
+
+double jhcGraphizer::pref_val (const char *word) const
+{
+  char term[7][20] = {"must", "always", "definitely", "probably", "might", "maybe", "could"};
+  double val[7]    = {  1.5,    1.3,        1.2,         0.8,       0.6,     0.3,     0.5  };
+  int i;
+
+  for (i = 0; i < 7; i++)
+    if (strstr(word, term[i]) != NULL)
+      return val[i];
+  return 1.0;
+} 
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                           Command Sequences                           //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Create a chain of activities, some sequential others potentially parallel.
-// will append "final" activity (can be NULL) to full chain built 
+// will append "ult" activity (can be NULL) to full chain built 
 // returns NULL if some problem
 
-jhcAliaChain *jhcGraphizer::build_chain (const char *alist, jhcAliaChain *final, jhcNodePool& pool) const
+jhcAliaChain *jhcGraphizer::build_chain (const char *alist, jhcAliaChain *ult, jhcNodePool& pool) 
 {
-  char entry[200];
+  char entry[200] = "";
+  jhcGraphlet temp;
   jhcAliaPlay *play = NULL;
-  jhcAliaChain *pod, *ch0, *start = NULL, *ch = NULL;
+  jhcAliaChain *ch0, *mini, *pod = NULL, *start = NULL, *ch = NULL;
   jhcAliaDir *dir = NULL;
   jhcNetNode *cmd;
   const char *tail = alist;
@@ -605,31 +699,48 @@ jhcAliaChain *jhcGraphizer::build_chain (const char *alist, jhcAliaChain *final,
     {
       // make up new chain step which is a single directive
       ch0 = ch;
+      pool.BuildIn(&temp);
       if ((ch = dir_step(entry + 1)) == NULL)
         break;
       dir = ch->GetDir();
+      skolem = NULL;
 
       // complete action spec, set dir to NULL if success 
       pool.BuildIn(&(dir->key));
       if ((cmd = build_cmd(entry, tail, pool)) == NULL)
         break;
       (dir->key).SetMain(cmd);
+      pool.BuildIn(NULL);
       dir = NULL;
 
+      // prepend any generated FINDs (ch always at end)
+      if (skolem == NULL)
+        mini = ch;
+      else if (strcmp(entry, "!find") != 0)
+        mini = skolem->Append(ch);
+      else
+      {
+        // throw away any partial FIND directive (skolem is more complete)
+        delete ch;
+        mini = skolem;
+        ch = skolem->Last();
+      }
+      skolem = NULL;                   // re-initialize
+      
       // add either as a required activity or tack onto end of chain
       if (play != NULL)
-        play->AddReq(ch);
+        play->AddReq(mini);
       else if (ch0 == NULL)
-        start = ch;
+        start = mini;
       else
-        ch0->cont = ch;  
+        ch0->cont = mini;  
       tail = FragClose(tail, 0);
     }
 
   // check for success 
-  if (dir == NULL)
+  if ((dir == NULL) && (ch != NULL))
   {
-    ch->cont = final;
+    ch->cont = ult;
     return start;
   }
 
@@ -643,11 +754,14 @@ jhcAliaChain *jhcGraphizer::build_chain (const char *alist, jhcAliaChain *final,
 
 jhcAliaChain *jhcGraphizer::dir_step (const char *kind) const
 {
-  jhcAliaDir *dir = new jhcAliaDir;
+  jhcAliaDir *dir;
   jhcAliaChain *ch;
 
-  // make sure directive kind is valid
-  if (dir->SetKind(kind) <= 0)
+  // make up new directive of proper kind based on beginning of string
+  dir = new jhcAliaDir;
+  if (strcmp(kind, "find-t") == 0)     // wh-question needs a tell at end
+    dir->SetKind("do");           
+  else if (dir->SetKind(kind) <= 0)
   {
     delete dir;
     return NULL;
@@ -661,81 +775,93 @@ jhcAliaChain *jhcGraphizer::dir_step (const char *kind) const
 
 
 //= Fill in details of directive from remaining association list.
-//    cmd -> !do or find (!find-ako or !find-hq) or !chk
+//    cmd -> !do or !chk or !chk-t or !find or !find-t
 // returns main action node if successful, NULL for problem
 
-jhcNetNode *jhcGraphizer::build_cmd (const char *head, const char *alist, jhcNodePool& pool) const
+jhcNetNode *jhcGraphizer::build_cmd (const char *head, const char *alist, jhcNodePool& pool)
 {
   char body[amax];
-  jhcNetNode *main = NULL;
+  jhcNetNode *focus, *main;
+  const jhcAliaChain *find;
+  jhcAliaDir *dir;
 
   CallList(1, "build_cmd", alist, 0, head);
 
-  // try building structure corresponding to a command 
-  if (strcmp(head, "!find-ako") == 0)
-    main = query_ako(alist, pool);
-  else if (strcmp(head, "!find-hq") == 0)
-    main = query_hq(alist, pool);
-  else if (strncmp(head, "!do", 3) == 0)
-    main = build_do(alist, pool);   
-  else if (strcmp(head, "!chk") == 0)
+  // possibly convert question "X?" to command "Tell me X"
+  if (strcmp(head, "!find-t") == 0)
+  {
+    // build_chain automatically pre-pends one or more FINDs using "skolem"
+    if ((focus = build_query(alist, pool)) == NULL)
+      return NULL;
+    if (skolem != NULL)
+      if ((find = skolem->Last()) != NULL)
+        if ((dir = find->GetDir()) != NULL)
+          dir->fass = 0;                                   // don't allow assumption
+
+    // generate guts for a DO directive to tell about node found
+    main = pool.MakeNode("act", "tell");
+    main->AddArg("dest", (core->atree).Human());
+    main->AddArg("obj", focus);
+    return main;
+  }
+
+  // try building structure for other directives
+  if (strncmp(head, "!do", 3) == 0)                       
+    return build_do(alist, pool);   
+  if (strncmp(head, "!chk", 4) == 0)                       // includes "!chk-t"
     if (ExtractBody("%fact", body, alist) != NULL) 
-      main = build_fact(NULL, body, pool);
-  return main;
+      return build_fact(NULL, body, pool);                 
+  if (strncmp(head, "!find", 5) == 0)
+    return build_query(alist, pool);
+  return NULL;
 }
 
 
-//= Create structure for finding out the type of something.
+//= Build structures for various types of wh-questions and return focal node.
+//  query -> np or $q-ako or $q-hq or $q-lex or $q-loc or $q-cnt
 
-jhcNetNode *jhcGraphizer::query_ako (const char *alist, jhcNodePool& pool) const
+jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool) 
 {
-  char entry[200];
-  jhcNetNode *obj;
-  const char *t2, *tail;
-
-  CallList(1, "query_ako", alist);
-
-  // possibly remove directive request
-  if ((tail = NextEntry(alist, entry)) == NULL)
-    return NULL;
-  if (*entry != '!')
-    tail = alist;
-
-  // get referent and add unknown AKO property
-  if ((obj = build_obj(&t2, tail, pool)) == NULL)
-    return NULL;
-  return pool.AddProp(obj, "ako", NULL);
-}
-
-
-//= Create structure for finding out some property of something.
-
-jhcNetNode *jhcGraphizer::query_hq (const char *alist, jhcNodePool& pool) const
-{
-  char entry[200];
+  jhcNetRef nr(univ, (core->atree).MinBlf());
+  char head[80], entry[200], body[amax];
   jhcNetNode *obj, *main;
-  const char *tail, *t2, *kind;
+  const char *t2, *tail, *kind = NULL;
 
-  CallList(1, "query_hq", alist);
+  CallList(1, "build_query", alist);
 
-  // possibly remove directive request
-  if ((tail = NextEntry(alist, entry)) == NULL)
+  // figure out what type of question this is (object vs. property)
+  if (SplitFrag(head, body, alist) == NULL)
     return NULL;
-  if (*entry != '!')
-    tail = alist;
+  if (*head != '$')
+    return build_obj(NULL, alist, pool, NULL, 0, 0.0);
+  tail = body;
 
-  // get desired property kind
-  if ((tail = NextEntry(tail, entry)) == NULL)
-    return NULL;
-  if ((kind = SlotGet(entry, "AKO")) == NULL)
-    return NULL;
+  // get constraint on desired answer kind 
+  if (strcmp(head, "$q-hq") == 0)                          // required for props
+  {
+    if ((tail = NextEntry(tail, entry)) == NULL)
+      return NULL;
+    if ((kind = SlotGet(entry, "AKO")) == NULL)
+      return NULL;
+  }
+  else if (strcmp(head, "$q-ako") == 0)                    // optional for kinds
+    if ((t2 = nsuper_kind(entry, 200, tail)) != NULL)
+    {
+      kind = entry;
+      tail = t2;
+    }
 
-  // get referent then add unknown HQ of given kind
-  if ((obj = build_obj(&t2, tail, pool)) == NULL)
+  // get referent (return it directly if seeking a label)
+  if ((obj = build_obj(&t2, tail, pool, NULL, 0, 0.0)) == NULL)              
     return NULL;
-  main = pool.AddProp(obj, "hq", NULL);
-  pool.AddProp(main, "ako", kind);
-  return main;
+  if (strcmp(head, "$q-lex") == 0)
+    return obj;
+
+  // add unknown property and possibly constrain its type
+  main = nr.AddProp(obj, head + 3, NULL, 0, 0.0);
+  if (kind != NULL)
+    nr.AddProp(main, "ako", kind, 0, 0.0);                               // was -1.0
+  return nr.FindMake(pool, 0, NULL, (core->atree).MinBlf(), &skolem);    // was find 1
 }
 
 
@@ -748,7 +874,7 @@ jhcNetNode *jhcGraphizer::query_hq (const char *alist, jhcNodePool& pool) const
 // expects "do!" is stripped off front already
 // returns pointer to newly created action node
 
-jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool) const
+jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool)
 {
   char next[200];
   const char *val = NULL, *end = alist, *tail = alist;
@@ -759,7 +885,7 @@ jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool) const
   CallList(1, "build_do", alist);
 
   // check for overall negation of verb
-  if (FragHasSlot(tail, "NEG-V"))
+  if (FragHasSlot(tail, "NEG-V") || FragHasSlot(tail, "STOP"))
     neg = 1;
 
   // look for main verb but ignore placeholder "do something"
@@ -791,7 +917,7 @@ jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool) const
   // add noun-like arguments or quoted string (comes after verb)
   if (quote > 0)
   {
-    if ((iobj = build_obj(NULL, end, pool)) != NULL)       // iobj only
+    if ((iobj = build_obj(NULL, end, pool)) != NULL)       // iobj only (FINDs okay)
       act->AddArg("dest", iobj);
     add_quote(act, end, pool);
   }
@@ -809,13 +935,14 @@ jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool) const
 // if "pos" > 0 forces interpretation to be positive (i.e. can ignore <NEG> for unless clauses)
 
 jhcNetNode *jhcGraphizer::build_fact (const char **after, const char *alist, jhcNodePool& pool, 
-                                      jhcNetNode *subj, int pos) const
+                                      jhcNetNode *subj, int pos)
 {
-  char pair[200];
+  char word[80], pair[200];
   const char *t2, *post = alist, *tail = alist, *val = NULL;
   jhcNetNode *act = NULL, *agt = subj;
+  double blf = 1.0;
   UL32 t = 0;      
-  int neg = 0, past = 0;  
+  int neg = 0, past = 0;
 
   CallList(1, "build_fact", alist, 0, ((subj != NULL) ? subj->Nick() : ""));
 
@@ -833,30 +960,32 @@ jhcNetNode *jhcGraphizer::build_fact (const char **after, const char *alist, jhc
     return act;
   }
 
-  // check for overall negation of verb and past tense auxiliary
+  // check for overall negation of verb, past tense auxiliary, and belief
   if (pos <= 0)
     if (FragHasSlot(alist, "NEG-V") || FragHasSlot(alist, "NEG"))
       neg = 1;
   if (FragHasSlot(alist, "AUX-D"))
     past = 1;
+  if (FindSlot(alist, "BLF", word) != NULL)
+    blf = belief_val(word);
 
-  // look for main verb 
+  // look for main verb (but also allow naked noun phrase)
   while ((post = FragNextPair(post, pair)) != NULL)
     if ((val = mf.VerbLex(t, pair)) != NULL)                
       break;
   if (val == NULL)
-    return NULL;
+    return build_obj(after, alist, pool);
   if (past > 0)
     t = JTAG_VPAST;
 
-  // make node for sentence
-  act = pool.MakeNode("act", val, neg);
-  if ((t & JTAG_VPROG) == 0)
+  // make node for sentence using proper belief
+  act = pool.MakeNode("act", val, neg, blf);
+  if ((t & JTAG_VPAST) != 0)                               // was VPRES = 0
     act->SetDone(1);
   act->tags = t;
 
   // go back and see if some object at front 
-  if ((t != JTAG_VPROG) && (agt == NULL))
+  if (agt == NULL)
     agt = build_obj(&t2, alist, pool);
   if (agt != NULL)
     act->AddArg("agt", agt);
@@ -932,9 +1061,9 @@ int jhcGraphizer::add_quote (jhcNetNode *v, const char *alist, jhcNodePool& pool
 //= Look for direct object (or infinitive) plus indirect object and link them to verb.
 // returns embedded infinitive command (if any), else main verb (passed in)
 
-jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePool& pool) const
+jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePool& pool)
 {
-  char entry[200];
+  char entry[200] = "";
   const char *tail;
   jhcNetNode *obj2, *dobj = NULL, *iobj = NULL, *act = NULL;
 
@@ -977,9 +1106,9 @@ jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePoo
 
 //= Add prepositional phrases modifiers (typically only one) to action.
 
-void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& pool) const
+void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& pool) 
 {
-  char entry[200];
+  char entry[200] = "";
   const char *t2, *tail = alist;
 
   // sanity check 
@@ -1009,31 +1138,46 @@ void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& po
 // initially creates description in a NodeRef to check if a referent already exists
 // can optionally force new description onto an old object in pool by setting "f0"
 // spreads negation widely: not a big red dog -> not big & not red & not a dog
+// "find": -1 = always create new item (create > 0)
+//          0 = always make FIND
+//          1 = resolve locally else make FIND
+//          2 = resolve locally else create item (resolve > 0)
 // returns pointer to newly created object node (and advances alist to after object)
 
 jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcNodePool& pool, 
-                                     jhcNetNode *f0, int neg, double blf) const
+                                     jhcNetNode *f0, int neg, double blf) 
 {
-  jhcNetRef nr;
-  char next[200];
+  jhcNetRef nr(univ, (core->atree).MinBlf());
+  char next[200] = "";
   const char *val, *tail;
   jhcNetNode *obj, *ref, *fact = NULL;
   UL32 t;
-  int find = 1;
+  int find = ((resolve > 0) ? 2 : 1); 
 
   CallList(1, "build_obj", alist, 1, ((f0 != NULL) ? f0->Nick() : NULL));
 
-  // make sure the next thing is some sort of object description
+  // check if next thing is some sort of question object
   if ((tail = NextEntry(alist, next)) == NULL)
     return NULL;
+  if (strncmp(next, "$q-", 3) == 0)
+    return build_query(alist, pool);
+  if (strcmp(next, "$add") == 0)
+  {
+    obj = nr.MakeNode("obj");
+    if (add_cop(after, obj, alist, nr) == NULL)
+      return NULL;
+    return nr.FindMake(pool, find, NULL, blf, &skolem);
+  } 
+
+  // more standard types of object descriptions
   if (SlotStart(next, "ACT-G") > 0)
     return build_fact(after, alist, pool);
   if (strncmp(next, "%obj", 4) != 0)
     return NULL;
   if (strncmp(next, "%obj-i", 6) == 0)
-    find = 0;                                                  // no new node required    
+    find = ((create > 0) ? -1 : 0);                 
 
-  // add features to object node in temporary network                  
+  // add features to object node in temporary network 
   obj = nr.MakeNode("obj");
   while ((tail = FragNextPair(tail, next)) != NULL)
     if ((val = SlotGet(next, "REF", 0)) != NULL)               // reference ("you", "she")
@@ -1059,7 +1203,9 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
   // possibly link to existing node else create new graph
   if (after != NULL)
     *after = FragClose(alist);
-  ref = nr.FindMake(pool, find, f0);
+  if ((&pool == rule) || (&pool == oper))
+    nr.bth = -nr.bth;                                          // allow hypotheticals
+  ref = nr.FindMake(pool, find, f0, blf, &skolem);
 
   // if properties being added to old node, return last such property
   if (f0 == NULL)
@@ -1073,9 +1219,8 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
 
 jhcNetNode *jhcGraphizer::ref_props (jhcNetNode *n, jhcNodePool& pool, const char *pron, int neg) const
 {
-  // specify conversational role (can be negated)
-  if ((strcmp(pron, "you") == 0) ||
-      ((strcmp(pron, "me") == 0) || (_stricmp(pron, "I") == 0)))
+  // specify conversational role (can be negated) 
+  if ((strcmp(pron, "you") == 0) || (strcmp(pron, "me") == 0) || (_stricmp(pron, "I") == 0))
     pool.AddLex(n, pron, neg);
   else if (neg > 0) 
     return n;
@@ -1099,7 +1244,7 @@ jhcNetNode *jhcGraphizer::ref_props (jhcNetNode *n, jhcNodePool& pool, const cha
 // returns propery assertion, can also give unused portion of alist (after)
 
 jhcNetNode *jhcGraphizer::obj_deg (const char **after, jhcNetNode *obj, const char *amt, const char *alist, 
-                                   jhcNodePool& pool, int neg, double blf) const
+                                   jhcNodePool& pool, int neg, double blf) 
 {
   char pair[200];
   jhcNetNode *prop, *mod;
@@ -1145,7 +1290,7 @@ jhcNetNode *jhcGraphizer::obj_deg (const char **after, jhcNetNode *obj, const ch
 // returns location assertion, can also give unused portion of alist (after)
 
 jhcNetNode *jhcGraphizer::add_place (const char **after, jhcNetNode *obj, char *pair, const char *alist, 
-                                     jhcNodePool& pool, int neg, double blf) const
+                                     jhcNodePool& pool, int neg, double blf)
 {
   jhcNetNode *ref, *prop;
   const char *t2, *tail, *rel = SlotGet(pair, "LOC");
@@ -1157,12 +1302,14 @@ jhcNetNode *jhcGraphizer::add_place (const char **after, jhcNetNode *obj, char *
     *after = alist;
   prop = pool.AddProp(obj, "loc", rel, neg, blf);
 
-  // check if anchor object required (not needed for "here")
-  if (SlotStart(pair, "LOC-0") > 0)
+  // check if anchor object required (not needed for "here" or "in front")
+  if ((SlotStart(pair, "LOC-0") > 0) || (SlotStart(pair, "LOC-V") > 0))
     return prop;
   if ((ref = build_obj(&tail, alist, pool)) == NULL)
     return prop;
   prop->AddArg("wrt", ref);                        // add reference object 
+  if (after != NULL)
+    *after = tail;
 
   // check if second anchor expected (e.g. "between")
   if (SlotStart(pair, "LOC-2") <= 0)
@@ -1180,7 +1327,7 @@ jhcNetNode *jhcGraphizer::add_place (const char **after, jhcNetNode *obj, char *
 // returns possession relation, can also give unused portion of alist
 
 jhcNetNode *jhcGraphizer::obj_has (const char **after, jhcNetNode *obj, const char *prep, const char *alist, 
-                                  jhcNodePool& pool, int neg, double blf) const
+                                  jhcNodePool& pool, int neg, double blf) 
 {
   jhcNetNode *part, *prop;
   const char *tail;
@@ -1207,14 +1354,14 @@ jhcNetNode *jhcGraphizer::obj_has (const char **after, jhcNetNode *obj, const ch
 // if "pos" > 0 forces interpretation to be positive (i.e. can ignore <NEG> for unless clauses)
 // returns last assigned property, can also give unused portion of alist (after)
 
-jhcNetNode *jhcGraphizer::add_cop (const char **after, jhcNetNode *obj, const char *alist, jhcNodePool& pool, int pos) const
+jhcNetNode *jhcGraphizer::add_cop (const char **after, jhcNetNode *obj, const char *alist, jhcNodePool& pool, int pos) 
 {
   char next[200], body[amax];
   jhcNetNode *f2, *fact = NULL;
   const char *val, *post, *tail;
   double blf = 1.0;                     // was 0.0
   UL32 t;
-  int neg = 0;
+  int neg = 0, cr0 = create;  
 
   CallList(1, "add_cop", alist, 0, obj->Nick());
 
@@ -1249,10 +1396,65 @@ jhcNetNode *jhcGraphizer::add_cop (const char **after, jhcNetNode *obj, const ch
     post = tail;
   }
 
-  // check for indeterminate predicate nominal ("a dog")
+  // see if fragments left after discrete properties handled
   if (*post != '\0')
+  {
+    // check for super-type declaration ("a kind of dog")
+    if (nsuper_kind(next, 200, post) != NULL)
+      if ((f2 = pool.AddProp(obj->Fact("ako"), "ako", next)) != NULL)
+        return f2;
+              
+    // check for indeterminate predicate nominal ("a dog") which is always hypothetical
+    create = 1;
     if ((f2 = build_obj(NULL, post, pool, obj, neg, blf)) != NULL)    
+    {
+      create = cr0;
       return f2;
+    }
+  }
   return fact;
 }
+
+
+//= Extract the nound kind associated with a super-kind element.
+// returns NULL if fails, else binds kind and returns remainder of list
+
+const char *jhcGraphizer::nsuper_kind (char *kind, int ssz, const char *alist) const
+{
+  char entry[80] = "";
+  const char *tail, *val;
+
+  // look for correct start
+  if ((tail = NextEntry(alist, entry)) == NULL)
+    return NULL;
+  if (strcmp(entry, "%n-super") != 0)
+    return NULL;
+
+  // pull out AKO portion and copy
+  if ((tail = NextEntry(tail, entry)) == NULL)
+    return NULL;
+  if ((val = SlotGet(entry, "AKO")) == NULL)
+    return NULL;
+  strcpy_s(kind, ssz, val);
+  return FragClose(tail, 0);
+}
+
+
+//= Turn qualifier ("usually") into numeric belief value.
+
+double jhcGraphizer::belief_val (const char *word) const
+{
+  char term[13][20] = {"definitely", "always", "certainly", "usually",  "probably",     "likely", 
+                          "may",     "might",  "sometimes", "possibly", "occasionally", "unlikely to be", "seldom"};
+  double val[13]    = {    1.2,        1.2,       1.1,         0.9,         0.8,           0.7,     
+                           0.5,        0.5,       0.5,         0.3,         0.3,           0.1,             0.1   };
+  int i;
+
+  for (i = 0; i < 13; i++)
+    if (strcmp(word, term[i]) == 0)
+      return val[i];
+  return 1.0;
+} 
+
+
 

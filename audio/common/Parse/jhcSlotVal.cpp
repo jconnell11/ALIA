@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -670,7 +671,8 @@ const char *jhcSlotVal::SplitFrag (char *head, char *body, const char *alist, in
     n = (int)(end - rest);
   else
     n = (int) strlen(rest);
-  strncpy_s(body, bsz, rest, n - 2);       // 2 = tab + delimiter
+  if (body != NULL)
+    strncpy_s(body, bsz, rest, n - 2);       // 2 = tab + delimiter
   return FragClose(rest, 0);
 }
 

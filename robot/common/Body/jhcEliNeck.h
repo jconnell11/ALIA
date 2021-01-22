@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,6 +89,8 @@ public:
   int Check (int rpt =0, int tries =2);
   double Voltage ();
   int Power (double vbat =0.0);
+  void Inject (double pan, double tilt) 
+    {jt[0].Inject(pan); jt[1].Inject(tilt);}
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);

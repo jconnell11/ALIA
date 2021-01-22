@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,11 +39,11 @@ class jhcBindings
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  static const int bmax = 20;  /** Maximum number of bindings. */
+  static const int bmax = 20;          /** Maximum number of bindings. */
 
-  // match keys and substitutions
-  const jhcNetNode *key[bmax];
-  jhcNetNode *sub[bmax];
+  // match keys and substitutions (now on heap)
+  const jhcNetNode **key;
+  jhcNetNode **sub;
   int nb;
 
 
@@ -58,13 +59,19 @@ public:
   jhcBindings (const jhcBindings *ref =NULL);
   void Clear () {nb = 0;}
   jhcBindings *Copy (const jhcBindings& ref);
-  bool Complete () const {return(nb >= expect);}
+  void Copy (const jhcBindings *ref) 
+    {if (ref != NULL) Copy(*ref);}
+  bool Complete () const 
+    {return((expect > 0) && (nb >= expect));}
+  bool Empty () const {return(nb <= 0);}
 
   // main functions
-  jhcNetNode *LookUp (const jhcNetNode *probe) const;
+  jhcNetNode *LookUp (const jhcNetNode *k) const;
+  const jhcNetNode *FindKey (const jhcNetNode *subst) const;
   int Bind (const jhcNetNode *k, jhcNetNode *subst);
   int TrimTo (int n);
   int Pop () {return TrimTo(nb - 1);}
+  void RemFinal (jhcNetNode *key);
 
   // list functions
   int NumPairs () const {return nb;} 
@@ -72,6 +79,8 @@ public:
     {return(((i >= 0) && (i < nb)) ? key[i] : NULL);}
   jhcNetNode *GetSub (int i) const 
     {return(((i >= 0) && (i < nb)) ? sub[i] : NULL);}
+  void SetSub (int i, jhcNetNode *n)
+    {if ((i >= 0) && (i < nb)) sub[i] = n;}
   bool InKeys (const jhcNetNode *k) const;
   bool InSubs (const jhcNetNode *sub) const;
   int KeyMiss (const jhcNodeList& f) const;
@@ -79,8 +88,10 @@ public:
 
   // bulk functions
   bool Same (const jhcBindings& ref) const;
-  void ReplaceSubs (const jhcBindings& ref);
-  void Print (int lvl =0, const char *prefix =NULL) const;
+  void ReplaceSubs (const jhcBindings& alt);
+  void CopyReplace (const jhcBindings& ref, const jhcBindings& alt)
+    {Copy(ref); ReplaceSubs(alt);}
+  void Print (int lvl =0, const char *prefix =NULL, int num =0) const;
 
 
 // PRIVATE MEMBER FUNCTIONS

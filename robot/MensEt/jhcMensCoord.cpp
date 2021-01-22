@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +40,7 @@ jhcMensCoord::~jhcMensCoord ()
 jhcMensCoord::jhcMensCoord ()
 {
   // current software version
-  ver = 3.80;
+  ver = 4.20;
 
   // connect processing to basic robot I/O
   rwi.BindBody(&body);
@@ -50,7 +51,7 @@ jhcMensCoord::jhcMensCoord ()
 
   // bridge from operators to motion sequences
 //  seq.Platform(&rwi);
-//  (core.kern).AddFcns(&seq);
+//  kern.AddFcns(&seq);
 
   // bridge from operators to visual detection
   vis.Platform(&rwi);

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,7 +50,8 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int noisy;                    // controls diagnostic messages
+  jhcAliaOp probe;             // for jhcAliaDir::FindActive
+  int noisy;                   // controls diagnostic messages
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -58,28 +60,29 @@ public:
   ~jhcProcMem ();
   jhcProcMem ();
   int NumOperators () const {return np;}
-
-  // configuration
   int ClearOps () {return clear();}
-  int Load (const char *fname, int add =0, int rpt =0, int level =1);
-  int Save (const char *fname, int level =1) const;
-  int Print (int level =1) const {return save_ops(stdout, level);}
 
   // list functions
   int AddOperator (jhcAliaOp *p, int ann =0);
+  void Remove (const jhcAliaOp *rem);
 
   // main functions
-  int FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth, int tol =0) const;
+  int FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth) const;
+
+  // file functions
+  int Load (const char *fname, int add =0, int rpt =0, int level =1);
+  int Save (const char *fname, int level =1, int cats =0) const;
+  int Print (int level =1) const {return save_ops(stdout, level);}
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // creation and initialization
   int clear ();
-  void init_lists ();
 
-  // configuration
+  // file functions
   int save_ops (FILE *out, int level) const;
+  int save_cats (FILE *out, int level) const;
 
 
 };

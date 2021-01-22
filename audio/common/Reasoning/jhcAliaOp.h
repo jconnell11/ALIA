@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,17 +66,18 @@ public:
 // PUBLIC MEMBER FUNCTIONS
 public:
   // read only functions
-  int Inst () const {return id;}
+  int OpNum () const {return id;}
   JDIR_KIND Kind () const {return kind;}
-  const char *KindTag () const {jhcAliaDir dcvt; return dcvt.CvtTag(kind);}
+  const char *KindTag () const 
+    {jhcAliaDir dcvt; return dcvt.CvtTag(kind);}
 
   // main functions
-  int FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth, int tol =0);
+  int FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth);
   bool SameEffect (const jhcBindings& b1, const jhcBindings& b2) const;
 
   // file functions
   int Load (jhcTxtLine& in); 
-  int Save (FILE *out, int detail =2);
+  int Save (FILE *out, int detail =0);
   int Print (int detail =0) {return Save(stdout, detail);}
 
 
@@ -86,7 +88,7 @@ private:
   jhcAliaOp (JDIR_KIND k =JDIR_NOTE);
  
   // main functions
-  int try_mate (jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f, int tol);
+  int try_mate (jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f);
 
   // file functions
   int load_pattern (jhcTxtLine& in);

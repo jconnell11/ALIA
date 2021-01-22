@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -709,7 +710,7 @@ void jhcGramExec::PrintTree (int top)
 
 void jhcGramExec::print_focus (int indent, int start, int end)
 {
-  char val[500], node[40], leader[40] = "";
+  char val[500], node[80], leader[80] = "";
   int i, first, last;
 
   // check for valid node then get surface coverage

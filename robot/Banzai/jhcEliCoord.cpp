@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,7 +35,7 @@
 jhcEliCoord::jhcEliCoord ()
 {
   // current software version
-  ver = 3.30;
+  ver = 3.80;
   
   // connect processing to basic robot I/O
   rwi.BindBody(&body);
@@ -44,6 +45,8 @@ jhcEliCoord::jhcEliCoord ()
   kern.AddFcns(&ball);
   soc.Platform(&rwi);
   kern.AddFcns(&soc);
+  vscn.Platform(&rwi);
+  kern.AddFcns(&vscn);
 
   // default processing parameters and state
   noisy = 1;
@@ -72,6 +75,7 @@ int jhcEliCoord::Defaults (const char *fname)
   ok &= time_params(fname);
   ok &= ball.Defaults(fname);
   ok &= soc.Defaults(fname);
+  ok &= vscn.Defaults(fname);
   ok &= rwi.Defaults(fname);
   ok &= body.Defaults(fname);
   return ok;
@@ -87,6 +91,7 @@ int jhcEliCoord::SaveVals (const char *fname)
   ok &= tps.SaveVals(fname);
   ok &= ball.SaveVals(fname);
   ok &= soc.SaveVals(fname);
+  ok &= vscn.SaveVals(fname);
   ok &= rwi.SaveVals(fname);
   ok &= body.SaveVals(fname);
   return ok;
@@ -222,7 +227,7 @@ void jhcEliCoord::Done (int face)
 void jhcEliCoord::check_user (int id)
 {
   jhcBodyData *p = (rwi.s3).RefID(id);
-  jhcNetNode *n;
+  jhcNetNode *n, *user = atree.Human();
   const char *name, *lex;
   int cnt, i = (rwi.s3).TrackIndex(id), w = 0, best = 0;
 
@@ -231,12 +236,12 @@ void jhcEliCoord::check_user (int id)
     return;
   n = (jhcNetNode *) p->node;
   if (n == NULL)
-    p->node = (void *) attn.user;
-  else if (n != attn.user)
+    p->node = (void *) user;
+  else if (n != user)
   {
-    jprintf(1, noisy, "\n  ... changing user %s to speaker %s ...\n", (attn.user)->Nick(), n->Nick());
-    attn.SetUser(n);
-    attn.user = n;
+    jprintf(1, noisy, "\n  ... changing user %s to speaker %s ...\n", user->Nick(), n->Nick());
+    atree.SetUser(n);
+    user = n;
   }
 
   // possibly set speech model based on face recognition
@@ -253,7 +258,7 @@ void jhcEliCoord::check_user (int id)
     }
 
   // try setting speech model to longest lexical tag
-  while ((lex = (attn.user)->Word(w++)) != NULL)
+  while ((lex = user->Word(w++)) != NULL)
     if ((strcmp(lex, "me") != 0) && (strcmp(lex, "I") != 0))
     {
       cnt = (int) strlen(lex);
@@ -309,7 +314,7 @@ void jhcEliCoord::tag_tracks ()
           // possibly add full name ("Jon Connell")
           if (!n->HasWord(name))
           {
-            attn.AddLex(n, name);
+            atree.AddLex(n, name);
             jprintf(1, noisy, "\n  ... adding %s lex \"%s\" ...\n", n->Nick(), name);
           }
 
@@ -318,7 +323,7 @@ void jhcEliCoord::tag_tracks ()
           if ((end = strchr(first, ' ')) != NULL)
             *end = '\0';
           if (!n->HasWord(first))
-            attn.AddLex(n, first);
+            atree.AddLex(n, first);
         }
   }
 }

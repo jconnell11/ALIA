@@ -4,7 +4,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2017-2018 IBM Corporation
+// Copyright 2017-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -111,7 +112,7 @@ int jhcAliaPlay::AddSimul (jhcAliaChain *act)
 
 //= Set mark to one for all nodes belonging to instantiated directives.
 // beware that network nodes may be shared between activities
-// useful for mark/sweep garbage collection (jhcAliaAttn::CleanMem)
+// useful for mark/sweep garbage collection (jhcActionTree::clean_mem)
 
 void jhcAliaPlay::MarkSeeds ()
 {
@@ -134,18 +135,18 @@ void jhcAliaPlay::MarkSeeds ()
 //= Start processing this parallel set.
 // returns: 0 = working, -2 = fail 
 
-int jhcAliaPlay::Start (class jhcAliaCore& core)
+int jhcAliaPlay::Start (jhcAliaCore *all, int lvl)
 {
   int i;
 
   // start all concurrent activities (if any)
   for (i = 0; i < ng; i++)
-    if ((gstat[i] = guard[i]->Start(core)) < 0)
+    if ((gstat[i] = guard[i]->Start(all, lvl)) < 0)
       return fail();
 
   // start all main activities (if any)
   for (i = 0; i < na; i++)
-    if ((status[i] = main[i]->Start(core)) < 0)
+    if ((status[i] = main[i]->Start(all, lvl)) < 0)
       return fail();
 
   // report current status
@@ -154,7 +155,7 @@ int jhcAliaPlay::Start (class jhcAliaCore& core)
 }
 
 
-//= Continue running this parallel set.
+//= Continue running this parallel set (focus > 0 if top-level attention item).
 // return: 1 (or 2) = done, 0 = working, -2 = fail
 
 int jhcAliaPlay::Status ()
@@ -220,6 +221,32 @@ int jhcAliaPlay::Stop (int ans)
   // record forced termination
   verdict = ans;
   return verdict;
+}
+
+
+//= Look for all in-progress activities matching graph and possibly stop them.
+// returns 1 if found (and stopped) all, 0 if nothing matching found
+
+int jhcAliaPlay::FindActive (const jhcGraphlet& desc, int halt)
+{
+  int i, ans = 0;
+
+  // shortcut if nothing still active
+  if (verdict != 0)
+    return 0;
+
+  // search all required activities
+  for (i = 0; i < na; i++)
+    if (status[i] == 0)
+      if (main[i]->FindActive(desc, halt) > 0)
+        ans = 1;
+
+  // search all parallel activities
+  for (i = 0; i < ng; i++)
+    if (gstat[i] == 0)
+      if (guard[i]->FindActive(desc, halt) > 0)
+        ans = 1;
+  return ans;
 }
 
 

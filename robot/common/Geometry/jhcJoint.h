@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,6 +78,7 @@ public:
   int Reset ();
   int Check (int noisy =0);
   double Battery ();
+  void Inject (double degs) {th = degs;}
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);

@@ -673,7 +673,7 @@ int jhcALU_0::RelDrop (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, dou
   dest.MergeRoi(imgb);
 
   // general ROI case
-  int x, y, diff, v, num = ROUND(255.0 * sc);
+  int i, x, y, diff, v, num = ROUND(255.0 * sc);
   int rcnt = dest.RoiCnt(), rh = dest.RoiH(), rsk = dest.RoiSkip();
   UL32 roff = dest.RoiOff();
   UC8 *d = dest.PxlDest() + roff;
@@ -682,8 +682,8 @@ int jhcALU_0::RelDrop (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, dou
   UC8 big;
 
   // compute arbitrarily scaled denomiator for all possible sums
-  for (big = 0; big <= 255; big++)
-    den[big] = num * recip[big];
+  for (i = 0; i <= 255; i++)
+    den[i] = num * recip[i];
 
   // run lookup table over images (rounding omitted)
   for (y = rh; y > 0; y--)

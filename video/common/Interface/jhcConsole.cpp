@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2009-2019 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,7 +41,7 @@
 
 jhcConsole::jhcConsole (const char *title, int x, int y)
 {
-  int hand;
+	FILE *fpstdin = stdin, *fpstdout = stdout, *fpstderr = stderr;
 
   // make console window and possibly customize
   AllocConsole();
@@ -49,6 +50,14 @@ jhcConsole::jhcConsole (const char *title, int x, int y)
   // possibly customize
   SetTitle(title);
   SetPosition(x, y);
+
+  // redirect streams to the console
+  freopen_s(&fpstdin, "CONIN$", "r", stdin);
+	freopen_s(&fpstdout, "CONOUT$", "w", stdout);
+	freopen_s(&fpstderr, "CONOUT$", "w", stderr);
+
+/*
+  int hand;        // VS2010 method of redirection
 
   // redirect unbuffered STDOUT to the console
   hand = _open_osfhandle((intptr_t) GetStdHandle(STD_OUTPUT_HANDLE), _O_TEXT);
@@ -64,6 +73,7 @@ jhcConsole::jhcConsole (const char *title, int x, int y)
   hand = _open_osfhandle((intptr_t) GetStdHandle(STD_ERROR_HANDLE), _O_TEXT);
   *stderr = *(_fdopen(hand, "w"));
   setvbuf(stderr, NULL, _IONBF, 0);
+*/
 }
 
 

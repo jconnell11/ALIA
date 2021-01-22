@@ -528,7 +528,7 @@ int jhcStackSeg::CloseAbove (int x, int y) const
 
 //= Get binary mask associated with some item.
 // pads by one black pixel all around and sets destination ROI
-// cona optionally clear whole original image for prettier debugging
+// can optionally clear whole original image for prettier debugging
 
 int jhcStackSeg::PadMask (jhcImg& dest, int n, int clr) const
 {

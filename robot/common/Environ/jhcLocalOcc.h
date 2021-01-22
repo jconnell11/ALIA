@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +42,7 @@
 // uses obstacles to limit motion, floor and unknown pixels are assumed okay
 // obstacle = 255 (white), temporary = 200 (red), floor = 128 (green)
 
-class jhcLocalOcc : public jhcOverhead3D, virtual private jhcGroup, private jhcLUT
+class jhcLocalOcc : public jhcOverhead3D, private jhcGroup, private jhcLUT
 {
 friend class CBanzaiDoc;  // for debugging
 
@@ -82,9 +83,9 @@ public:
   double dej, hat, fbump;
   int drop, hole;
 
-  // Kinect beam parameters and robot size
+  // robot size parameters
   jhcParam gps;
-  double dlf, drt, dtop, dbot, rside, rfwd, rback;
+  double rside, rfwd, rback;
 
   // parameters for known areas
   jhcParam kps;
@@ -153,7 +154,7 @@ private:
 
   // main functions
   void adj_hist (double fwd, double lf, double dr);
-  void expect_floor (jhcImg& dest) const;
+//  void expect_floor (jhcImg& dest) const;
   void mixin_scan (jhcImg& obs, jhcImg& cf, const jhcImg& junk, const jhcImg& flat) const;
   void block_bot (jhcImg& obs, jhcImg& cf) const;
   void erase_blips (jhcImg& obs, const jhcImg& junk) const;

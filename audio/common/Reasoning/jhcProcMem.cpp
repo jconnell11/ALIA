@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -114,8 +115,7 @@ int jhcProcMem::AddOperator (jhcAliaOp *p, int ann)
   // possibly announce formation
   if ((ann > 0) && (noisy >= 1))
   {
-    jprintf("---------------------------------\n");
-    jprintf(">>> Newly added:\n\n");
+    jprintf("\n---------------------------------\n");
     p->Print();
     jprintf("---------------------------------\n\n");
   }
@@ -123,8 +123,102 @@ int jhcProcMem::AddOperator (jhcAliaOp *p, int ann)
 }
 
 
+//= Remove an operator from the list and permanently delete it.
+// must make sure original rem pointer is set to NULL in caller
+// used by jhcAliaDir to clean up incomplete ADD operator
+
+void jhcProcMem::Remove (const jhcAliaOp *rem)
+{
+  jhcAliaOp *op, *prev = NULL;
+  int k;
+
+  // get appropriate list for operator kind
+  if (rem == NULL)
+    return;
+  k = rem->Kind();
+  if ((k < 0) || (k >= JDIR_MAX))
+    return;
+  op = resp[k];
+
+  // look for operator in list
+  while (op != NULL)
+  {
+     // possibly splice out of list and delete
+    if (op == rem)
+    {
+      if (prev != NULL)
+        prev->next = op->next;
+      else
+        resp[k] = op->next;
+      delete op;
+      return;
+    }
+
+    // move on to next list entry
+    prev = op;
+    op = op->next;
+  }
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
-//                              Configuration                            //
+//                              Main Functions                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Find applicable operators that match trigger directive.
+// operators and bindings are stored inside directive itself
+// returns total number of bindings found
+
+int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth) const
+{
+  jhcAliaOp *p;
+  int i, k, mc0, mmax;
+
+  // get operator type by examining directive kind
+  if (dir == NULL)
+    return -2;
+  k = dir->kind;
+  if ((k < 0) || (k >= JDIR_MAX))
+    return -1;
+  p = resp[k];
+
+  // set up to get up to bmax bindings using halo as needed
+  mmax = dir->MaxOps();
+  dir->mc = mmax;
+  wmem.SetMode(2);
+
+  // try matching all operators above the preference threshold
+  while (p != NULL)
+  {
+    if (p->pref >= pth)
+    {
+      // save operator associated with each group of bindings
+      mc0 = dir->mc;
+      if (p->FindMatches(*dir, wmem, mth) < 0)
+        break;
+      for (i = mc0 - 1; i >= dir->mc; i--)
+        dir->op[i] = p;                         
+    }
+    p = p->next;
+  }
+
+  // possibly report summary of what was found
+  if (noisy >= 2)
+  {
+    int n = mmax - dir->mc;
+    jprintf("%d matches", n);
+    if (n > 0)
+      jprintf(": OPS = ");
+    for (i = mmax - 1; i >= dir->mc; i--)
+      jprintf("%d ", (dir->op[i])->id);
+    jprintf("\n");
+  }
+  return(mmax - dir->mc);
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                            File Functions                             //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Read a list of procedures from a file.
@@ -183,23 +277,76 @@ int jhcProcMem::Load (const char *fname, int add, int rpt, int level)
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
 // returns number of operators saved, negative for problem
 
-int jhcProcMem::Save (const char *fname, int level) const
+int jhcProcMem::Save (const char *fname, int level, int cats) const
 {
   FILE *out;
   int cnt;
 
   if (fopen_s(&out, fname, "w") != 0)
     return -1;
-  cnt = save_ops(out, level);
+  if (cats > 0)
+    cnt = save_cats(out, level);
+  else
+    cnt = save_ops(out, level);
   fclose(out);
   return cnt;
 }
 
 
-//= Save all operators in order.
+//= Save all operators in order irrespective of category.
 // returns number saved
 
 int jhcProcMem::save_ops (FILE *out, int level) const
+{
+  jhcAliaOp *p[JDIR_MAX];
+  int i, low, win, cnt = 0;
+
+  // initialize pointers for all categories
+  for (i = 0; i < JDIR_MAX; i++)
+    p[i] = resp[i];
+
+  while (1)
+  {
+    // find lowest numbered operator across categories
+    low = 0;
+    for (i = 0; i < JDIR_MAX; i++)
+    {
+      // find next suitable operator in this category
+      while (p[i] != NULL)
+      {
+        if (p[i]->lvl >= level)
+          break;
+        p[i] = p[i]->next;
+      }
+      if (p[i] == NULL)
+        continue;
+
+      // check its id number against current winner
+      if ((low <= 0) || (p[i]->id < low))
+      {
+        low = p[i]->id;
+        win = i;
+      } 
+    }
+
+    // write selected operator (if any) to file
+    if (low <= 0)            
+      break;
+    if (p[win]->Save(out) > 0)
+    {
+      jfprintf(out, "\n");
+      cnt++;
+    }
+    p[win] = p[win]->next;
+  }
+  return cnt;
+}
+
+
+//= Save all operators in order by category.
+// returns number saved
+
+int jhcProcMem::save_cats (FILE *out, int level) const
 {
   jhcAliaOp *p;
   int i, cnt = 0, last = 0, any = 0;
@@ -236,59 +383,4 @@ int jhcProcMem::save_ops (FILE *out, int level) const
   return cnt;
 }
 
-
-///////////////////////////////////////////////////////////////////////////
-//                              Main Functions                           //
-///////////////////////////////////////////////////////////////////////////
-
-//= Find applicable operators that match trigger directive.
-// operators and bindings are stored inside directive itself
-// returns total number of bindings found
-
-int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth, int tol) const
-{
-  jhcAliaOp *p;
-  int i, k, mc0, mmax;
-
-  // get operator type by examining directive kind
-  if (dir == NULL)
-    return -2;
-  k = dir->kind;
-  if ((k < 0) || (k >= JDIR_MAX))
-    return -1;
-  p = resp[k];
-
-  // set up to get up to bmax bindings using halo as needed
-  mmax = dir->MaxOps();
-  dir->mc = mmax;
-  wmem.SetMode(1);
-
-  // try matching all operators above the preference threshold
-  while (p != NULL)
-  {
-    if (p->pref >= pth)
-    {
-      // save operator associated with each group of bindings
-      mc0 = dir->mc;
-      if (p->FindMatches(*dir, wmem, mth, tol) < 0)
-        break;
-      for (i = mc0 - 1; i >= dir->mc; i--)
-        dir->op[i] = p;                         
-    }
-    p = p->next;
-  }
-
-  // possibly report summary of what was found
-  if (noisy >= 2)
-  {
-    int n = mmax - dir->mc;
-    jprintf("%d matches (tol = %d)", n, tol);
-    if (n > 0)
-      jprintf(": OPS = ");
-    for (i = mmax - 1; i >= dir->mc; i--)
-      jprintf("%d ", (dir->op[i])->id);
-    jprintf("\n");
-  }
-  return(mmax - dir->mc);
-}
 

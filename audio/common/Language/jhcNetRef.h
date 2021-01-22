@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +28,8 @@
 
 #include "jhcGlobal.h"
 
+#include "Action/jhcAliaChain.h"         // common robot
+
 #include "Reasoning/jhcWorkMem.h"        // common audio
 #include "Semantic/jhcSituation.h"
 
@@ -37,31 +40,41 @@ class jhcNetRef : public jhcSituation
 {
 // PRIVATE MEMBER VARIABLES
 private:
+  jhcNodePool *univ;
   const jhcNetNode *focus;
+  jhcGraphlet *partial;
   jhcBindings win;
   int recent;
-
-
-// PUBLIC MEMBER VARIABLES
-public:
-  jhcNetNode *LookUp (const jhcNetNode *old) const {return win.LookUp(old);}
 
 
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and initialization
   ~jhcNetRef ();
-  jhcNetRef ();
- 
-  // main functions
-  jhcNetNode *FindMake (jhcNodePool& add, int find =0, jhcNetNode *f0 =NULL);
+  jhcNetRef (jhcNodePool *u =NULL, double bmin =0.5);
 
-  // main functions (virtual override)
-  int match_found (jhcBindings *m, int& mc);
+  // language interpretation
+  jhcNetNode *FindMake (jhcNodePool& add, int find =0, jhcNetNode *f0 =NULL, 
+                        double blf =-1.0, jhcAliaChain **skolem =NULL);
+  jhcNetNode *LookUp (const jhcNetNode *old) const {return win.LookUp(old);}
+
+  // language generation
+  jhcNetNode *Main () const {return cond.Main();}
+  int NumMatch (const jhcNodeList *wmem, double mth, int retract =0);
+  jhcNetNode *BestMate () const {return win.LookUp(cond.Main());}
+
+  // debugging
+  void Print (int lvl =0) const 
+    {jprintf("%*sNetRef =", lvl, ""); cond.Print(lvl + 2); jprintf("\n");}
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
+  // language interpretation
+  jhcNetNode *append_find (int n0, double blf, jhcAliaChain **skolem);
+
+  // virtual override
+  int match_found (jhcBindings *m, int& mc);
 
 
 };

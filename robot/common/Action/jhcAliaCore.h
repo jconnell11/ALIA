@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,10 +29,9 @@
 #include "jhcGlobal.h"
 
 #include "Acoustic/jhcGenIO.h"         // common audio
-#include "Language/jhcDegrapher.h"     
 #include "Language/jhcNetBuild.h"  
 #include "Parse/jhcGramExec.h"
-#include "Reasoning/jhcAliaAttn.h"     
+#include "Reasoning/jhcActionTree.h"     
 #include "Reasoning/jhcAssocMem.h"
 #include "Reasoning/jhcProcMem.h"
 
@@ -49,43 +49,39 @@ class jhcAliaCore
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  static const int dmax = 30;   /** Maximum extra grounding DLLs. */
+  static const int dmax = 30;  /** Maximum extra grounding DLLs. */
 
-  jhcDegrapher dg;              // network to language generation
-  jhcTalkFcn talk;              // literal text output
-  jhcAssocMem amem;             // working memory expansions
-  jhcProcMem pmem;              // reactions and expansions
+  jhcTalkFcn talk;             // literal text output
+  jhcAssocMem amem;            // working memory expansions
+  jhcProcMem pmem;             // reactions and expansions
 
-  jhcAliaDLL gnd[dmax];         // extra grounding DLLs
-  int ndll;                     // number of DLLs added
+  jhcAliaDLL gnd[dmax];        // extra grounding DLLs
+  int ndll;                    // number of DLLs added
+  double ver;                  // current code version
 
-  double ver;                   // current code version
+  double pth;                  // operator preference threshold
+  double wild;                 // respect for operator preference
 
-  double bth;                   // condition belief threshold
-  double pth;                   // operator preference threshold
-  double wild;                  // respect for operator preference
+  int svc;                     // which focus is being worked on
+  int bid;                     // importance of next activity in focus
+  int topval;                  // unique ID for active NOTEs
 
-  int bid;                      // importance of next activity in focus
-  int svc;                      // which focus is being worked on
-  int topval;                   // unique ID for active NOTEs
-
-  UL32 t0;                      // starting time of this run
-  FILE *log;                    // user input conversion results
+  UL32 t0;                     // starting time of this run
+  FILE *log;                   // user input conversion results
 
 
 // PROTECTED MEMBER VARIABLES
 protected:
-  jhcEchoFcn kern;              // external procedure calls  
-  jhcGramExec gr;               // text parser
+  jhcEchoFcn kern;             // external procedure calls  
+  jhcGramExec gr;              // text parser
 
 
 // PUBLIC MEMBER VARIABLES
 public:
   jhcNetBuild net;             // language to network conversion
-  jhcAliaAttn attn;             // working memory and call roots
-
-  // configuration
-  int noisy;      
+  jhcActionTree atree;         // working memory and call roots
+  char cfile[80];              // preferred log file for conversions
+  int noisy;                   // controls diagnostic messages
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -96,14 +92,15 @@ public:
   double Version () const {return ver;}
   double Wild () const    {return wild;}
   double MinPref () const {return pth;}
-  double MinBlf () const  {return pth;}
   int NextBid () const    {return bid;}
 
   // extensions
   void KernExtras (const char *kdir);
   int Baseline (const char *fname, int add =0, int rpt =0);
   int AddOn (const char *fname, void *body, int rpt =0);
-  int Accept ();
+  int Accept (jhcAliaRule *r, jhcAliaOp *p);
+  void Remove (const jhcAliaRule *rem) {amem.Remove(rem);}
+  void Remove (const jhcAliaOp *rem)   {pmem.Remove(rem);}
 
   // main functions
   int MainGrammar (const char *gfile, const char *top, const char *rname =NULL);
@@ -119,20 +116,21 @@ public:
     int Response (char (&out)[ssz])            
       {return Response(out, ssz);}
 
+  // directive functions
+  int MainMemOnly (jhcBindings& b);
+  jhcAliaChain *CopyMethod (const jhcAliaOp *op, jhcBindings& b, const jhcGraphlet *ctx =NULL)
+    {return (op->meth)->Instantiate(atree, b, ctx);}
+  int GetChoices (jhcAliaDir *d)
+    {return pmem.FindOps(d, atree, pth, atree.MinBlf());}
+  void SetPref (double pref)
+    {bid = atree.ServiceWt(pref);}
+  int HaltActive (jhcGraphlet& desc);
+  jhcAliaOp *Probe () {return &(pmem.probe);}
+
   // halo control
   void RecomputeHalo ();
   int Percolate (const jhcAliaDir& dir);
   int ZeroTop (const jhcAliaDir& dir);
-
-  // directive functions
-  int MainMemOnly (jhcBindings& b) 
-    {return attn.ReifyRules(b);}
-  jhcAliaChain *CopyMethod (const jhcAliaOp *op, jhcBindings& b, const jhcGraphlet *ctx =NULL)
-    {return (op->meth)->Instantiate(attn, b, ctx);}
-  int GetChoices (jhcAliaDir *d, int tol)
-    {return pmem.FindOps(d, attn, pth, bth, tol);}
-  void SetPref (double pref)
-    {bid = attn.ServiceWt(pref);}
 
   // external grounding
   int FcnStart (const jhcNetNode *fcn);
@@ -145,7 +143,7 @@ public:
   int SayStop (const jhcGraphlet& g, int inst);
 
   // debugging
-  void PrintMem () const;
+  void ShowMem () const {atree.PrintMain();}
   void LoadLearned ();
   void DumpLearned () const;
   void DumpSession () const;
@@ -157,9 +155,6 @@ private:
   // extensions
   int add_info (const char *dir, const char *base, int rpt, int level);
   bool readable (char *fname, int ssz, const char *msg, ...) const;
-
-  // main functions
-  void log_conversion (const char *sent, int nt, int cvt);
 
 };
 

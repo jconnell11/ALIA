@@ -30,11 +30,10 @@
 
 #include "jhcGlobal.h"
 
-//#include "stdafx.h"        // needed for CString
 #include <dshow.h>
 
 #if (_MSC_VER >= 1400)
-  #include "qedit_vs8.h"  // altered version in common
+  #include "qedit_vs8.h"     // altered version in common
 #else
   #include <qedit.h>
 #endif

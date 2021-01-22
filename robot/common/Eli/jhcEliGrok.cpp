@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +51,7 @@ jhcEliGrok::jhcEliGrok ()
   clr_ptrs();
 
   // change some head finder/tracker defaults
-  s3.SetMap(192.0, 96.0, 96.0, 0.0, 20.0, 84.0, 0.3, 0.0);   // 16' wide x 8' front
+  s3.SetMap(192.0, 96.0, 96.0, 0.0, -2.0, 84.0, 0.3, 0.0);   // 16' wide x 8' front
   s3.ch = 34.0;                                              // allow seated
   s3.h0 = 40.0;
   s3.ring = 120.0;                                           // long range okay
@@ -72,6 +73,10 @@ jhcEliGrok::jhcEliGrok ()
   strcpy_s(wtarg[2], "recent face");
   strcpy_s(wtarg[1], "twitch");
   strcpy_s(wtarg[0], "rise");
+
+  // configure object finding map
+  tab.SetMap(48.0, 90.0, 24.0, -6.0, -2.0, 18.0, 0.15, 28.5);
+  tab.hmix = 0.0;
 }
 
 
@@ -241,6 +246,8 @@ int jhcEliGrok::Defaults (const char *fname)
   ok &= vis_params(fname);
   ok &= fn.Defaults(fname);      // does s3 also
   ok &= nav.Defaults(fname);
+  ok &= tab.Defaults(fname);
+  ok &= ext.Defaults(fname);
   return ok;
 }
 
@@ -269,6 +276,8 @@ int jhcEliGrok::SaveVals (const char *fname)
   ok &= vps.SaveVals(fname);
   ok &= fn.SaveVals(fname);      // does s3 also
   ok &= nav.SaveVals(fname);
+  ok &= tab.SaveVals(fname);
+  ok &= ext.SaveVals(fname);
   return ok;
 }
 
@@ -292,9 +301,10 @@ int jhcEliGrok::SaveCfg (const char *fname) const
 
 //= Restart background processing loop.
 // if rob > 0 then runs with body active (else motion disabled)
-// NOTE: body should be reset outside of this
+// if behaviors > 0 then runs with autonomic behaviors (else only commands)
+// NOTE: body should be reset outside of this !!!
 
-void jhcEliGrok::Reset (int rob)
+void jhcEliGrok::Reset (int rob, int behaviors)
 {
   jhcVideoSrc *v;
   const jhcImg *src;
@@ -303,24 +313,30 @@ void jhcEliGrok::Reset (int rob)
   s3.Reset();
   fn.Reset();
   nav.Reset();
+  tab.Reset();
 
   // configure body 
   phy = 0;
   seen = 0;
-  if ((rob > 0) && (body != NULL))
+  if (body != NULL)
   {
-    phy = 1; 
-    base->Zero();
-    body->InitPose(-1.0);
-    body->Update(-1, 1);       // sensor info will be waiting and need to be read
-  }
+    // configure actuators
+    if (rob > 0)
+    {
+      phy = 1; 
+      base->Zero();
+      body->InitPose(-1.0);
+      body->Update(-1, 1);       // sensor info will be waiting and need to be read
+    }
+    else
+      body->StaticPose();
 
-  // configure vision elements
-  if (body != NULL) 
+    // configure vision elements
     if ((v = body->vid) != NULL)
     {
       // setup navigation
       nav.SrcSize(v->XDim(), v->YDim(), v->Focal(1), v->Scaling(1));
+      tab.SrcSize(v->XDim(), v->YDim(), v->Focal(1), v->Scaling(1));
 
       // make status images
       body->BigSize(mark);
@@ -331,6 +347,7 @@ void jhcEliGrok::Reset (int rob)
       src = body->View();
       s3.SetSize(*src);
     }
+  }
 
   // high-level commands
   wlock = 0;
@@ -344,6 +361,7 @@ void jhcEliGrok::Reset (int rob)
   idle = 0;
 
   // restart background loop, which first generates a body Issue call
+  reflex = behaviors;
   jhcBackgRWI::Reset();
 }
 
@@ -387,37 +405,45 @@ void jhcEliGrok::Stop ()
 //                          Interaction Overrides                        //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Get sensor inputs and fully process images.
+//= Get new sensor inputs from robot body (override).
+// waits (if needed) for data to be received (no mic)
 
 void jhcEliGrok::body_update ()
 {
-  jhcMatrix pos(4), dir(4);
-
-  // wait (if needed) for body sensor data to be received (no mic)
+jtimer(2, "body update (bg1)");
+  // get actuator positions, etc.
   if (phy > 0)
-{
-jtimer(2, "body update");
     body->Update(-1, 0);
+
+  // use old person map to guess table height for this cycle
+  tab.ztab = s3.PickPlane(lift->Height() + tab.lrel, tab.ppel);
 jtimer_x(2);
 }
 
-  // do slow head finding and tracking (needs both pose and image)
-  if (seen > 0)
-  {  
-    // find new person location based on current camera pose
-    adjust_heads();
-jtimer(3, "face track");
-    neck->HeadPose(pos, dir, lift->Height());
-    fn.SetCam(pos, dir);
-    fn.Analyze(body->Color(), body->Range());
+
+//= Process images for navigation and person finding in primary background thread (override).
+
+void jhcEliGrok::interpret ()
+{
+  jhcMatrix pos(4), dir(4);
+
+  // needs depth data
+  if (seen <= 0)
+    return;
+
+  // find new person location based on current camera pose
+jtimer(3, "face track (bg1)");
+  adjust_heads();
+  neck->HeadPose(pos, dir, lift->Height());
+  fn.SetCam(pos, dir);
+  fn.Analyze(body->Color(), body->Range());
 jtimer_x(3);
 
-jtimer(4, "navigation");
-    // update navigation map
-    nav.AdjustMaps(base->StepFwd(), base->StepLeft(), base->StepTurn());
-    nav.RefineMaps(body->Range(), pos, dir);
+jtimer(4, "navigation (bg1)");
+  // update navigation map
+  nav.AdjustMaps(base->StepFwd(), base->StepLeft(), base->StepTurn());
+  nav.RefineMaps(body->Range(), pos, dir);
 jtimer_x(4);
-  }
 }
 
 
@@ -452,18 +478,36 @@ void jhcEliGrok::adjust_heads ()
 }
 
 
-//= Run local behaviors then send arbitrated commands to body.
+//= Process images for object finding in secondary background thread (overrride).
+
+void jhcEliGrok::interpret2 ()
+{
+  jhcMatrix pos(4), dir(4);
+
+  // needs depth data
+  if (seen <= 0)
+    return;
+
+  // detect objects (tab.ztab already set by body_update)
+jtimer(49, "objects (bg2)");
+  neck->HeadPose(pos, dir, lift->Height());
+  tab.FindObjects(body->Range(), pos, dir);
+jtimer_x(49);
+}
+
+
+//= Run local behaviors then send arbitrated commands to body (override).
 
 void jhcEliGrok::body_issue ()
 {
-jtimer(12, "body_issue");
+jtimer(12, "body_issue (bg1)");
   // record current time
   tnow = jms_now();
   if (body == NULL)
     return;
 
   // run some reactive behaviors (tk is up-to-date) 
-  if (freeze >= 0)
+  if ((reflex > 0) && (freeze >= 0))
   {
     cmd_freeze();
     watch_talker();
@@ -490,7 +534,6 @@ jtimer_x(13);
 jtimer(11, "UpdateImgs");
   seen = body->UpdateImgs();    
 jtimer_x(11);
-
 jtimer_x(12);
 }
 

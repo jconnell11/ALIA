@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1188,7 +1189,7 @@ int jhcImg::CopyField (const UC8 *src, int sfield, int stotal, int dfield)
 
 //= Force a multi-plane image into a monochrome image by clipping values to 255.
 // adjust size of self to match dimensions of source but with a single plane
-// usually more meaningful than just copying the bottom field
+// usually more meaningful than just copying the bottom field (Fill8)
 // assumes source is not swizzled
 
 int jhcImg::Sat8 (const jhcImg& src)
@@ -1224,6 +1225,46 @@ int jhcImg::Sat8 (const jhcImg& src)
   for (y = src.YDim(); y > 0; y--, d += dsk, s32 += ssk)
     for (x = w; x > 0; x--, d++, s32++)
       *d = (UC8) __min(*s32, 255);
+  return 1;
+}
+
+
+//= Generate an 8 bit image (self) from a 16 bit image (just take lower byte).
+// NOTE: any value > 255 in source gets set to 0 in destination (else aliasing)
+
+int jhcImg::Fill8 (const jhcImg& src)
+{
+  int x, y, dsk = Skip(), ssk2 = src.Skip() >> 1;
+  const US16 *s = (const US16 *) src.PxlSrc();
+  UC8 *d = PxlDest();
+
+  if ((nf != 1) || !SameSize(src, 2))
+    return Fatal("Bad image to jhcImg::Fill8");
+
+  for (y = h; y > 0; y--, d += dsk, s += ssk2)
+    for (x = w; x > 0; x--, d++, s++)
+      if (*s > 255)
+        *d = 0;
+      else
+        *d = (UC8)(*s);
+  return 1;
+}
+
+
+//= Generate a 16 bit image (self) from an 8 bit image (top byte always zero).
+
+int jhcImg::Fill16 (const jhcImg& src)
+{
+  int x, y, dsk2 = Skip() >> 1, ssk = src.Skip();
+  const UC8 *s = src.PxlSrc();
+  US16 *d = (US16 *) PxlDest();
+
+  if ((nf != 2) || !SameSize(src, 1))
+    return Fatal("Bad image to jhcImg::Fill16");
+
+  for (y = h; y > 0; y--, d += dsk2, s += ssk)
+    for (x = w; x > 0; x--, d++, s++)
+      *d = (US16)(*s);
   return 1;
 }
 

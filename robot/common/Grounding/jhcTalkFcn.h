@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,9 +46,6 @@ class jhcTalkFcn : public jhcTimedFcns
 
 // PRIVATE MEMBER VARIABLES
 private:
-  // other parts of system
-  jhcAliaNote *attn;
-
   // string generation
   jhcDegrapher dg;
   char full[smax][500];
@@ -69,14 +67,14 @@ public:
   jhcTalkFcn ();
   int Output (char *out, int ssz);
   template <size_t ssz>
-    int *Output (char (&outt)[ssz])              // for convenience
+    int *Output (char (&out)[ssz])               // for convenience
       {return Output(out, ssz);}
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // overridden virtuals
-  void local_reset (jhcAliaNote *top) {attn = top;}
+  void local_reset (jhcAliaNote *top) {dg.Bind(top);}
   int local_start (const jhcAliaDesc *desc, int i);
   int local_status (const jhcAliaDesc *desc, int i);
 

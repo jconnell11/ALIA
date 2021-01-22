@@ -66,6 +66,7 @@ END
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\Banzai.ico"
 
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // Menu
@@ -106,13 +107,26 @@ BEGIN
         MENUITEM "Enroll &Photo",               ID_ATTENTION_ENROLLPHOTO
         MENUITEM "&Enroll Live",                ID_ATTENTION_ENROLLLIVE
     END
+    POPUP "&Objects"
+    BEGIN
+        MENUITEM "Surface &Zoom",               ID_OBJECTS_SURFACEZOOM
+        MENUITEM "&Map Size",                   ID_OBJECTS_SURFACEMAP
+        MENUITEM "&Plane Fit",                  ID_OBJECTS_PLANEFIT
+        MENUITEM SEPARATOR
+        MENUITEM "&Detect Params",              ID_OBJECTS_DETECT
+        MENUITEM "&Shape Params",               ID_OBJECTS_SHAPE
+        MENUITEM SEPARATOR
+        MENUITEM "&Track Params",               ID_OBJECTS_TRACK
+        MENUITEM "&Filter Params",              ID_OBJECTS_FILTER
+    END
     POPUP "&Nav"
     BEGIN
         MENUITEM "&Map Size",                   ID_NAVIGATION_UPDATING
-        MENUITEM "FOV + &Dims",                 ID_NAV_FOVLIMITS
+        MENUITEM "Robot &Size",                 ID_NAV_FOVLIMITS
         MENUITEM "Con&fidence",                 ID_NAV_CONFIDENCE
         MENUITEM "&Guidance",                   ID_NAV_GUIDANCE
         MENUITEM SEPARATOR
+        MENUITEM "Depth &FOV",                  ID_NAV_DEPTHFOV
         MENUITEM "&Cam Calib",                  ID_NAV_CAMCALIB
     END
     POPUP "&Ballistic"
@@ -164,6 +178,11 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Seek Loc",                   ID_ENVIRON_GOTO
     END
+    POPUP "&Surface"
+    BEGIN
+        MENUITEM "&Pick Table",                 ID_SURFACE_PICKTABLE
+        MENUITEM "&Track Objs",                 ID_OBJECTS_TRACKOBJS
+    END
     POPUP "&Arm"
     BEGIN
         MENUITEM "Swing &Params",               ID_ARM_SWINGPARAMS
@@ -182,8 +201,9 @@ BEGIN
     BEGIN
         MENUITEM "Demo &Options",               ID_DEMO_DEMOOPTIONS
         MENUITEM "Attn + Time",                 ID_DEMO_ATTN
-        MENUITEM "&Reset Robot",                ID_DEMO_RESETROBOT
+        MENUITEM "Static &Pose",                ID_DEMO_STATICPOSE
         MENUITEM SEPARATOR
+        MENUITEM "&Reset Robot",                ID_DEMO_RESETROBOT
         MENUITEM "&Text File",                  ID_DEMO_TEXTFILE
         MENUITEM "> &Interactive",              ID_DEMO_INTERACTIVE
     END
@@ -239,8 +259,8 @@ CAPTION "About Banzai"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "Banzai Version 3.30",IDC_STATIC,47,11,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2015-2020, IBM Corporation",IDC_STATIC,47,36,171,8
+    LTEXT           "Banzai Version 3.80",IDC_STATIC,47,11,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2015-2021, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
 END
@@ -316,10 +336,10 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_MINIMIZEBOX | WS_POPUP | WS_
 CAPTION "Conversation"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "Quit",IDOK,213,251,30,29
     EDITTEXT        IDC_JHC_CHAT,7,251,201,29,ES_MULTILINE
     LTEXT           "Input:",IDC_STATIC,7,239,68,12
-    LISTBOX         IDC_JHC_HIST,7,7,236,230,NOT LBS_NOTIFY | LBS_SORT | LBS_OWNERDRAWVARIABLE | LBS_HASSTRINGS | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    LISTBOX         IDC_JHC_HIST,7,7,236,227,NOT LBS_NOTIFY | LBS_SORT | LBS_OWNERDRAWVARIABLE | LBS_HASSTRINGS | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "Quit",IDC_QUIT,214,251,30,29
 END
 
 
@@ -406,6 +426,17 @@ BEGIN
     END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -631,11 +662,28 @@ BEGIN
     ID_ENVIRON_COZYUP       "Move straight ahead until blocked by obstacle"
     ID_ENVIRON_LOCALPATHS   "Show distances robot can go in various orientations"
     ID_ENVIRON_DISTANCES    "Show valid forward and backward motions on large maps"
-    ID_NAV_FOVLIMITS        "Define active part of Kinect sensing cone and size of robot"
+    ID_NAV_FOVLIMITS        "Specified rough footprint of robot on floor"
     ID_ENVIRON_GOTO         "Pick fixed map location for robot to travel toward"
     ID_NAV_CONFIDENCE       "Parameters governing minimal area and map fading"
     ID_PEOPLE_VISIBILITY    "Angular range where heads are likely to be detected"
     ID_DEMO_ATTN            "Adjust attention timing and thought rate"
+    ID_OBJECTS_TRACKOBJS    "Detect and track protrusions from a flat surface"
+    ID_OBJECTS_SURFACEMAP   "Map size and resolution for detecting objects on surface"
+    ID_OBJECTS_DETECT       "Parameters for finding objects on surface"
+    ID_OBJECTS_SHAPE        "Parameters for size compensation and temporal update rate"
+    ID_OBJECTS_TRACK        "Set parameters for tracking objects on table"
+    ID_OBJECTS_FILTER       "Set parameters for updating object tracks"
+    ID_SURFACE_PICKTABLE    "Find best surface from full range height map"
+END
+
+STRINGTABLE
+BEGIN
+    ID_OBJECTS_PLANEFIT     "Parameters for fitting plane to surface"
+    ID_SURFACE_FRONTOBJS    "Show height of pixels above table in frontal camera view"
+    ID_NAV_DEPTHFOV         "Define active part of Kinect sensing cone"
+    ID_OBJECTS_SURFACEZOOM  "Parameters for mapping and filling support surface"
+    ID_UTILITIES_TEST2      "Temporary item"
+    ID_DEMO_STATICPOSE      "Neck angles and lift height to use if no physical robot"
 END
 
 #endif    // English (United States) resources

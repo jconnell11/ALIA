@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -3706,6 +3707,7 @@ jhcImg *jhcResize::QuadSize (jhcImg& target, const jhcImg& src,
 
 
 //= Pull out one panel of 4 part image.
+// quadrant 5 = zoom middle half
 // panels labelled in DISPLAY order:   
 // <pre>
 //    1 2
@@ -3731,8 +3733,10 @@ int jhcResize::GetQuad (jhcImg& dest, const jhcImg& src, int n,
       return Extract(dest, src, ev + qw + cv, eh + qh + ch);
     case 3:
       return Extract(dest, src, ev,           eh);
-    default:
+    case 4:
       return Extract(dest, src, ev + qw + cv, eh);
+    default:
+      return Extract(dest, src, ev + (qw / 2) + cv, eh + (qh / 2) + ch);
   }
 }
 

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,6 +50,7 @@ public:
 
   // CC variants
   int GComps4 (jhcImg& dest, const jhcImg& src, int amin =0, int diff =0, int bg =0);
+  int GComps16 (jhcImg& dest, const jhcImg& src, int amin =0, int diff =0, int bg =0);
   int AComps4 (jhcImg& dest, const jhcImg& src, int amin =0, int diff =0, int bg =0);
   int AComps8 (jhcImg& dest, const jhcImg& src, int amin =0, int diff =0, int bg =0);
   int SiamCC (jhcImg& dest, const jhcImg& src, double arel =0.3, int amin =20, int th =0);
@@ -84,6 +86,7 @@ protected:
 
   // CC variants
   int scan_diff (jhcImg& dest, const jhcImg& src, int diff, int bg);
+  int scan_diff16 (jhcImg& dest, const jhcImg& src, int diff, int bg);
   int scan_diff_a (jhcImg& dest, const jhcImg& src, int diff, int bg);
   int scan_diff_a8 (jhcImg& dest, const jhcImg& src, int diff, int bg);
   int scan_top (jhcImg& dest, const jhcImg& src, double arel, int amin, int th);

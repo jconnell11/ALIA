@@ -14,6 +14,8 @@
 
 =[HQ]
   awake
+  male 
+  female
 
 
 // -----------------------------------------
@@ -23,10 +25,14 @@
 =[ACT]
   understand
   hail
+  greet
   dismiss
   give
   ask
   tell
+  affirm
+  deny
+  pass
 
 
 // ================================================

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +59,7 @@
 // jhcBodyData class has more functionality than needed but subsumes old jhcBodyParts
 // </pre>
 
-class jhcParse3D : protected jhcArea, protected jhcGroup, protected jhcLabel, protected jhcThresh,
+class jhcParse3D : protected jhcArea, protected jhcGroup, protected jhcLabel, protected jhcThresh, 
                    virtual protected jhcDraw
 {
 // PROTECTED MEMBER VARIABLES

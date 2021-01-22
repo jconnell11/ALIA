@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2018 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +35,12 @@
 
 
 //= Tracks objects in 3D with simple smoothing.
+// <pre>
+// pos array has Limit() object entries:
+//   0 = x center
+//   1 = y center
+//   2 = z center
+// </pre>
 
 class jhcSmTrack
 {
@@ -49,7 +56,11 @@ private:
 public:
   // track labels
   char **tag;
+  void **node;
   int *state;
+
+  // whether xyz axes are fixed
+  int axes;
 
   // debugging information
   double bin_sz;
@@ -108,7 +119,9 @@ public:
   double TX (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][0]);}
   double TY (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][1]);}
   double TZ (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][2]);}
-  
+  void ForceTX (int i, double x) {if ((i >= 0) && (i < valid)) pos[i][0] = x;}
+  void ForceTY (int i, double y) {if ((i >= 0) && (i < valid)) pos[i][1] = y;}
+
 
 // PRIVATE MEMBER FUNCTIONS
 private:
@@ -123,6 +136,7 @@ private:
   void score_all (const double * const *detect, int n, const double * const *shp);
   double get_d2 (int i, const double *item) const;
   double get_d2s (int i, const double *item, const double *shp) const;
+  double get_d2i (int i, const double *item, const double *shp) const;
   void greedy_pair (const double * const *detect, int n, int solid);
   int add_track (const double *item);
   int shift_pos (int i, const double *item);

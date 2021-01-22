@@ -23,6 +23,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 		//    DO NOT EDIT what you see in these blocks of generated code !
 	ON_WM_CREATE()
 	//}}AFX_MSG_MAP
+  ON_WM_SYSCOMMAND()
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -73,7 +74,7 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 
   // JHC: set size and position of window
   // must comment out "ShowWindow(SW_SHOWMAXIMIZED)" in application file
-  cs.x = 1060;
+  cs.x = 680;
   cs.y = 5;
   cs.cx = 710;
   cs.cy = 500;
@@ -102,4 +103,14 @@ void CMainFrame::Dump(CDumpContext& dc) const
 
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame message handlers
+
+// JHC: intercept main app close button to perform some cleanup
+
+void CMainFrame::OnSysCommand(UINT nID, LPARAM lParam)
+{
+  if (nID == SC_CLOSE)
+    PostMessage(WM_COMMAND, ID_APP_EXIT, 0);   // jhcChatBox will see this "Exit"  
+  else
+    CFrameWnd::OnSysCommand(nID, lParam);
+}
 

@@ -103,22 +103,6 @@ void jhcStare3D::Reset (double ftime)
 
 int jhcStare3D::Analyze (int sm, int pmin)
 {
-/*
-  double tcut;
-  int by = ROUND(W2Y(-0.5 * blank));
-  
-  // adjust for changing table height if needed
-  if (ztab > 0.0)
-  {
-    tcut = ztab + poff;
-    alev = __max(alev0, tcut); 
-    ch   = __max(ch0, tcut);
-  }
-
-  // clean up overhead depth then assess candidates
-  if (blank > 0.0)
-    RectFill(map, 0, by, XDim(), YDim() - by, 0);  
-*/
   Interpolate(sm, pmin);
   return TrackPeople(map2);  
 }

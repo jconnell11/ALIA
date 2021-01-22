@@ -30,24 +30,38 @@
   with
 
 
-// location phrase with reference object
+// locations 
 
 =[LOC]
   behind
-  outside
-  inside
+  outside (of)
+  inside (of)
+  at
   on
   in
-  in front of
+  next to
+  near (to)
   close to
-  at
-  
+  in front of
+  in back of
+  (to the) left of 
+  (to the) right of
+
 
 // definite place
 
 =[LOC-0]
   here
   there
+
+
+// standalone view-dependent locations (but not superlatives)
+
+=[LOC-V]
+  on the left
+  on the right
+  in front
+  in back
 
 
 // dual location phrase
@@ -73,7 +87,7 @@
 
 =[def]
   the
-  that
+  <REF-D>
 
 
 // alternate definite article
@@ -93,8 +107,8 @@
 
 =[n-ind]
   something
-  someone
   anything
+  someone
   anyone
 
 
@@ -204,38 +218,38 @@
   not
 
 
-// preference
-
-=[PREF]
-  could
-  should
-  always
-  must
-  might
-
-
-// strength
-
-=[CONF]
-  always
-  usually
-  probably
-  sometimes
-  occasionally
-  seldom
-  never
-
-
-// belief
+// belief for facts (adverbs)
 
 =[BLF]
-  may
-  might
   definitely
-  certainly
+  always
+  certainly 
+  usually
   probably
   likely
+  may
+  might
+  sometimes
   possibly
+  occasionally
+  unlikely to be
+  seldom
+
+
+// preference for operators
+
+=[PREF]
+  must
+  should always
+  definitely should
+  should definitely
+  should
+  probably should
+  should probably
+  might
+  could
+  could maybe
+  should maybe
 
 
 // particle

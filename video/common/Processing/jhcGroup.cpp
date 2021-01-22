@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -294,7 +295,7 @@ int jhcGroup::GComps4 (jhcImg& dest, const jhcImg& src, int amin, int diff, int 
 
 
 //= First pass of labelling -- may generate several labels for a region.
-// Pixels are connected if their label is less than or equal to diff
+// Pixels are connected if the change in value is less than or equal to diff
 // Returns number of labels used, global "areas" holds counts and linkages.
 
 int jhcGroup::scan_diff (jhcImg& dest, const jhcImg& src, int diff, int bg)
@@ -319,6 +320,86 @@ int jhcGroup::scan_diff (jhcImg& dest, const jhcImg& src, int diff, int bg)
 
   // do first pass over image labelling all foreground areas
   for (y = rh; y > 0; y--, d += dsk2, ddn += dsk2, dlf += dsk2, s += ssk, sdn += ssk, slf += ssk)
+    for (x = rw; x > 0; x--, d++, ddn++, dlf++, s++, sdn++, slf++)
+      if (*s == bg)
+        *d = 0;
+      else
+      {
+        label = 0;
+
+        // check left and below neighbors (if any) 
+        if ((y < rh) && (*ddn != 0))
+        {
+          ej = *s - *sdn;
+          if (ej < 0)
+            ej = -ej;
+          if (ej <= diff)
+            label = merge_labels(label, *ddn);
+        }
+        if ((x < rw) && (*dlf != 0))
+        {
+          ej = *s - *slf;
+          if (ej < 0)
+            ej = -ej;
+          if (ej <= diff)
+            label = merge_labels(label, *dlf);
+        }
+
+        // if no label copied then create new one, assign to pixel
+        if ((label == 0) && (n < lim))
+        {
+          label = ++n;
+          areas.ASet(label, 1);
+        }
+        *d = (US16) label;
+      }
+  return n;
+}
+
+
+//= Find 4 way connected regions in a 16 bit image (e.g. depth).
+// ignores pixels with value bg, connects if abs diff less than or equal to th
+// Can automatically eliminate regions below the area threshold given.
+// Stores blob labels in a 2 field image, use Scramble to display.
+// Returns the number of blobs if successful, -1 if error.
+
+int jhcGroup::GComps16 (jhcImg& dest, const jhcImg& src, int amin, int diff, int bg)
+{
+  int n;
+
+  if (!dest.Valid(2) || !dest.SameFormat(src))
+    return Fatal("Bad images to jhcGroup::GComps16");
+
+  n = scan_diff16(dest, src, diff, bg);
+  n = norm_labels(dest, n, __max(1, amin));
+  return n;
+}
+
+
+//= First pass of labelling in 16 bit image -- may generate several labels for a region.
+// Pixels are connected if the change in value is less than or equal to diff
+// Returns number of labels used, global "areas" holds counts and linkages.
+
+int jhcGroup::scan_diff16 (jhcImg& dest, const jhcImg& src, int diff, int bg)
+{
+  dest.CopyRoi(src);
+
+  // general ROI case
+  int rw = dest.RoiW(), rh = dest.RoiH(), ln2 = dest.Line() >> 1, sk2 = dest.RoiSkip() >> 1;
+  int lim, ej, x, y, label, maxblob, n = 0;
+  const US16 *s = (const US16 *) src.RoiSrc(), *slf = s - 1, *sdn = s - ln2;
+  US16 *d = (US16 *) dest.RoiDest();
+  const US16 *dlf = d - 1, *ddn = d - ln2;
+
+  // make and initialize area and pointer array
+  maxblob = (rw * rh) / 2 + 2;
+  if (areas.Size() < maxblob)
+    areas.SetSize(maxblob);
+  lim = areas.Last();
+  areas.ASet(0, 0);  
+
+  // do first pass over image labelling all foreground areas
+  for (y = rh; y > 0; y--, d += sk2, ddn += sk2, dlf += sk2, s += sk2, sdn += sk2, slf += sk2)
     for (x = rw; x > 0; x--, d++, ddn++, dlf++, s++, sdn++, slf++)
       if (*s == bg)
         *d = 0;

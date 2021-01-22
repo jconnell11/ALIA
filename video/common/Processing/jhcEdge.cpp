@@ -1965,7 +1965,7 @@ int jhcEdge::RawSobel4 (jhcImg& xm, jhcImg& ym,
                         jhcImg& d1m, jhcImg& d2m, const jhcImg& src) const 
 {
   if (!src.Valid(1) || !src.SameFormat(xm) || !src.SameFormat(ym) ||
-      !src.SameFormat(d1m) || !src.SameFormat(d1m))
+      !src.SameFormat(d1m) || !src.SameFormat(d2m))
     return Fatal("Bad images to jhcEdge::RawSobel4");
   xm.CopyRoi(src);
   ym.CopyRoi(src);
@@ -2120,7 +2120,7 @@ int jhcEdge::AbsSobel4 (jhcImg& xm, jhcImg& ym,
                         jhcImg& d1m, jhcImg& d2m, const jhcImg& src, double sc) const 
 {
   if (!src.Valid(1) || !src.SameFormat(xm) || !src.SameFormat(ym) ||
-      !src.SameFormat(d1m) || !src.SameFormat(d1m))
+      !src.SameFormat(d1m) || !src.SameFormat(d2m))
     return Fatal("Bad images to jhcEdge::AbsSobel4");
   xm.CopyRoi(src);
   ym.CopyRoi(src);

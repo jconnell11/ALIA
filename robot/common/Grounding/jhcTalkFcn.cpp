@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,7 +41,7 @@ jhcTalkFcn::~jhcTalkFcn ()
 
 jhcTalkFcn::jhcTalkFcn ()
 {
-  ver = 1.20;
+  ver = 1.30;
   strcpy_s(tag, "TalkFcn");
   SetSize(smax);
   winner = NULL;
@@ -98,12 +99,12 @@ int jhcTalkFcn::local_status (const jhcAliaDesc *desc, int i)
 //                          User Literal Output                          //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Assembles utterance for ouput to user.
+//= Assembles utterance for output to user.
 // returns new instance number (>= 0) if success, -1 for problem, -2 for unknown
 
 int jhcTalkFcn::echo_wds_set (const jhcAliaDesc *desc, int i)
 {
-  if (i >= 10)
+  if (i >= smax)
     return -1;
   if (build_string(desc, i) <= 0)
     return -1;
@@ -112,80 +113,79 @@ int jhcTalkFcn::echo_wds_set (const jhcAliaDesc *desc, int i)
 
 
 //= Assemble full string with substitutions as required.
-// Examples:
-//   Compose("I see ?1 ?2 things", "two", "red") --> "I see two red things"
-//   Compose("I see ?1 of them",   "two", "red") --> "I see two of them"
-//   Compose("I see some ?1 ones", "two", "red") --> "I see some red ones"
-// if no text supplied for some argument, assumed to be blank string
-// NOTE: arguments start with "?0" (listener name) NOT "?1"
-// returns 1 if successful (result in "full"), 0 if some problem
+// <pre>
+//   fcn-1 -lex-   echo_wds
+//         -pat->  obj-1                   (directly describe object)
+//
+//   fcn-1 -lex-   echo_wds
+//         -dest-> agt-1                   (optional binding for ?0)
+//         -pat--> txt-1
+//   txt-1 -str-   I think ?1 is ?2 ?0     (fill in slots with arguments)
+//         -arg1-> obj-1
+//         -arg2-> hq-1      
+// </pre>
+// returns 1 if successful (result in "full"), 0 or negative if some problem
 
 int jhcTalkFcn::build_string (const jhcAliaDesc *desc, int inst)
 {
-  const jhcAliaDesc *n;
-  const char *item, *in;
-  char *out = full[inst];
-  char args[10][80];
-  int i, j, w;
+  char slot[40] = "arg0";
+  char *txt = full[inst];
+  const char *form, *ref;
+  const jhcAliaDesc *pat, *n;
+  char num;
 
-  // get main pattern
-  if ((n = desc->Val("pat")) == NULL)
-    return -1;
-  if ((in = n->Literal()) == NULL)
-    return -1;
-
-  // create substitution strings (if any specified)
-  for (i = 0; i < 10; i++)
+  // if utterance is a single node try to generate a string for it 
+  if ((pat = desc->Val("pat")) == NULL)
+    return -2;
+  if ((form = pat->Literal()) == NULL)
   {
-    // stop after first missing arg
-    args[i][0] = '\0';
-    sprintf_s(full[inst], "arg%d", i);
-    if ((n = desc->Val(full[inst])) == NULL)
-      break;
-
-    // use most recent real word (not pronoun) associated with node (if any)
-    w = 0;
-    while ((item = n->Word(w++, 1.0)) != NULL)
-      if ((_stricmp(item, "me") != 0) && (_stricmp(item, "I") != 0) && (_stricmp(item, "you") != 0))
-        break;
-    if (item == NULL)
-      continue;
-    strcpy_s(args[i], item);
-
-//    if ((item = dg.GenRef(n, attn)) == NULL)
-//      return -1;
-//    strcpy_s(args[i], item);
+    if ((ref = dg.NodeRef(pat, -1)) == NULL)
+      return 0;
+    strcpy_s(full[inst], ref);
+    return 1;
   }
 
-  // find possible substitution points in pattern
-  // this code borrowed from jhcTxtAssoc::Compose
-  while (*in != '\0')
+  // find substitution points in a format like: "I see ?1 ?2 things ?0"
+  while (*form != '\0')
   {
-    // check for variable marker (?0, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, or ?9)
-    i = (int)(in[1] - '0');
-    if ((*in != '?') || (i < 0) || (i > 9))
+    // check for variable markerand strip it off when found
+    num = form[1];
+    if ((*form != '?') || (num < '0') || (num > '9'))
     {
-      *out++ = *in++;
+      *txt++ = *form++;
       continue;
     }
+    form += 2;                   
 
-    // strip variable symbol and bind argument
-    in += 2;
-    item = args[i];
-    if (item == NULL)
-      continue;
+    // find string to substitute for variable
+    if (num == '0')
+    {
+      // ?0 means user so see if proper name given or previously known
+      if ((n = desc->Val("dest")) != NULL)   
+        ref = dg.LexRef(n);
+      else
+        ref = dg.UserRef();
+    }
+    else
+    {
+      // otherwise find correct node and generate a string
+      slot[3] = num;
+      if ((n = pat->Val(slot)) == NULL)
+        return -1;
+      if ((ref = dg.NodeRef(n)) == NULL)
+        return 0;
+    }
 
-    // copy argument to output 
-    j = (int) strlen(item);
-    if (j > 0)
-      while (j-- > 0)
-        *out++ = *item++;
-    else if (out > full[inst])
-      out--;                     // blank argument erases leading space
-  }
+    // if unknown user erase leading space, else copy string to output
+    if (ref == NULL)
+      txt--;                     
+    else
+      while (*ref != '\0')
+        *txt++ = *ref++;
+   }
 
   // clean up
-  *out = '\0';
+  *txt = '\0';
   return 1;
 }
 
@@ -202,6 +202,4 @@ int jhcTalkFcn::echo_wds_chk (const jhcAliaDesc *desc, int i)
   }
   return 1;
 }
-
-
 

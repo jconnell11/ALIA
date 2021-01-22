@@ -43,6 +43,7 @@
   step
   move
   drive
+  cruise
   turn
   rotate
   spin

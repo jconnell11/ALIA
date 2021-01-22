@@ -4,7 +4,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 1999-2018 IBM Corporation
+// Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -173,6 +174,7 @@ public:
   int FirstValley (int th, double tol =1.2) const;
   int LastValley (int th, double tol =1.2) const;
   int NearestPeak (int pos) const;
+  int NearMassPeak (int pos, int th =0) const;
   int AdjacentPeak (int pos, double drop =0.3) const;
   int DualPeak (int pos, int rng, double dip =0.1) const;
   int TruePeak (double lo, double hi, int bias =0) const;
@@ -209,6 +211,7 @@ public:
   int Complement (const jhcArr& src, int top =255);
   int Offset (const jhcArr& src, int inc =1);
   int OffsetN (const jhcArr& src, int inc =1);
+  int Squelch (const jhcArr& src, int sub);
   int PadNZ (const jhcArr& src, int left, int right, int val =1);
   int NormBy (const jhcArr& src, int cnt, int total =255);
   int Normalize (int total =255);

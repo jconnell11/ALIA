@@ -249,7 +249,7 @@ void jhcExpVSrc::SetSize (int xmax, int ymax, int bw)
     w2 /= 2;
   }
   qbase.SetSize(w, h, d); 
-  qbase.SetSize(w2, h2, d2); 
+  qbase2.SetSize(w2, h2, d2); 
 
   // mark whether monochrome conversion needed
   // special negative Mono mode makes RGB with all equal

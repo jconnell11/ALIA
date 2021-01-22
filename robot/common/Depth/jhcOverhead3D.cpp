@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -74,6 +75,9 @@ void jhcOverhead3D::dealloc ()
 
 jhcOverhead3D::jhcOverhead3D (int ncam)
 {
+  // plane selection
+  hhist.SetSize(256);
+
   // determine how many cameras will be used
   smax = 0;
   AllocCams(ncam);
@@ -81,7 +85,7 @@ jhcOverhead3D::jhcOverhead3D (int ncam)
 
   // set up processing parameters (make sure some sensor is valid)
   SetMap(144.0, 144.0, 72.0, 72.0, 0.0, 8.0, 0.2, 42.0);
-  SetFit(4.0, 10000, 2.0, 3.0, 4.0, 2.0);
+  SetFit(4.0, 10000, 2.0, 3.0, 4.0, 2.0, 100);
   SrcSize();
   Defaults();
   Reset();
@@ -242,6 +246,29 @@ int jhcOverhead3D::plane_params (const char *fname)
   ps->NextSpecF( &dt,    "Max surface tilt (deg)");  
   ps->NextSpecF( &dr,    "Max surface roll (deg)");  
   ps->NextSpecF( &dh,    "Max surface offset (in)");  
+
+  ps->NextSpec4( &wfit, "Long term average (cycles)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters used for restricting Kinect sensing cone FOV.
+// values here are typical for (original) Kinect 360
+
+int jhcOverhead3D::beam_params (const char *fname)
+{
+  char tag[40];
+  jhcParam *ps = &kps;
+  int ok;
+
+  sprintf_s(tag, "%s_beam", name);
+  ps->SetTag(tag, 0);
+  ps->NextSpecF( &dlf,    3.0, "Trim beam left (deg)");
+  ps->NextSpecF( &drt,    5.5, "Trim beam right (deg)");
+  ps->NextSpecF( &dtop,   4.5, "Trim beam top (deg)");
+  ps->NextSpecF( &dbot,   1.0, "Trim beam bot (deg)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -270,7 +297,7 @@ void jhcOverhead3D::SetMap (double w, double h, double x, double y,
 
 //= Set all parameters for plane fitting in order that they appear in configuration file.
 
-void jhcOverhead3D::SetFit (double d, int n, double e, double t, double r, double h)
+void jhcOverhead3D::SetFit (double d, int n, double e, double t, double r, double h, int w)
 {
   srng = d;
   npts = n;
@@ -278,6 +305,7 @@ void jhcOverhead3D::SetFit (double d, int n, double e, double t, double r, doubl
   dt = t;
   dr = r;
   dh = h;
+  wfit = w;
 }
 
 
@@ -311,6 +339,7 @@ int jhcOverhead3D::Defaults (const char *fname)
 
   ok &= LoadCfg(fname);
   ok &= plane_params(fname);
+  ok &= beam_params(fname);
   return ok;
 }
 
@@ -347,6 +376,7 @@ int jhcOverhead3D::SaveVals (const char *fname, int geom) const
 
   ok &= SaveCfg(fname, geom);
   ok &= pps.SaveVals(fname);
+  ok &= kps.SaveVals(fname);
   return ok;
 }
 
@@ -656,10 +686,18 @@ void jhcOverhead3D::SrcSize (int w, int h, double f, double sc)
 
 void jhcOverhead3D::Reset ()
 {
+  // depth projection 
   map.SetSize(PELS(mw), PELS(mh), 1);
   map2.SetSize(map);
   ztab = ztab0;
   rasa = 1;
+
+  // long term pose statistics
+  fit = 0;
+  nfit = 0;
+  tavg = 0.0;
+  ravg = 0.0;
+  havg = 0.0;
 }
 
 
@@ -790,27 +828,53 @@ int jhcOverhead3D::EstDev (jhcImg& devs, double dmax, double ztol)
 {
   if (!devs.SameFormat(map))
     return Fatal("Bad images to jhcOverhead3D::EstDev");  
-  devs.FillArr(0); 
-  return surf_err(devs, map2, dmax, ztab - ztol, ztab + ztol);
+  return z_err(devs, map2, dmax, ztab - ztol, ztab + ztol);
 }
 
 
 //= Fit plane to points with +/- search of surface then note pixel-by-pixel deviations.
 // fit must have at least "npt" and adjustments must be less then "dt", "dr", and "dh"
 // surface estimation points must have standard deviation less than "rough" inches
+// assumes expected surface is at 0 (not ztab) within [zlo zhi] projection range
 // returns 1 if successful, 0 if bad fit
 
-int jhcOverhead3D::PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax, double search)
+int jhcOverhead3D::PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax, double search, const jhcRoi *area)
 {
-  double std, t, r, h, sdev = ((search > 0.0) ? search : srng);
+  double f, cf, dz = 1.265 * dmax, sdev = ((search > 0.0) ? search : srng);
 
   if (!devs.SameFormat(map) || !hts.SameFormat(map))
     return Fatal("Bad images to jhcOverhead3D::PlaneDev");
-  devs.FillArr(0);
-  std = CamCalib(t, r, h, hts, ztab, sdev, zlo, zhi, ipp);
-  if ((Pts() < npts) || (std > rough) || (fabs(t) > dt) || (fabs(r) > dr) || (fabs(h) > dh))
+
+  // get plane parameters and see if good fit found
+  fit = 0;
+  efit = CamCalib(tfit, rfit, hfit, hts, 0.0, sdev, zlo, zhi, ipp, 0.0, area);
+  if ((Pts() < npts) || (efit > rough) || (fabs(tfit) > dt) || (fabs(rfit) > dr) || (fabs(hfit) > dh))
+  {
+    // for bad fit just assume plane is flat and at height ztab
+    RampOver(devs, map2, DI2Z(-dz), DI2Z(dz));
     return 0;
-  return surf_err(devs, hts, dmax, zlo, zhi);
+  }
+
+  // update pose statistics by blending in new values
+  fit = 1;
+  if (nfit < wfit)
+    nfit++;
+  f = 1.0 / nfit;
+  cf = 1.0 - f;
+  tavg = f * tfit + cf * tavg;
+  ravg = f * rfit + cf * ravg;
+  havg = f * hfit + cf * havg;
+
+  // use surface parameters to give z differences (not orthogonal distance)
+  return z_err(devs, hts, dmax, zlo, zhi);
+}
+
+
+//= Debugging tool lists measurements obtained on last (failed) call to PlaneDev.
+
+void jhcOverhead3D::PlaneVals () const
+{
+  jprintf("Plane: pts %d, efit %4.2f, tfit %4.2f, rfit %4.2f, hfit %4.2f\n", Pts(), efit, tfit, rfit, fit);
 }
 
 
@@ -818,6 +882,7 @@ int jhcOverhead3D::PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax, doubl
 // ignores input heights of 0 (unknown) and writes 0 to output (otherwise 1-255 valid) 
 // marks below plane by dmax = 28, on plane = 128 above plane by dmax = 228
 // assumes hts map was created with zlo = lo and zhi = hi, returns 1 for convenience
+// measures difference in expected z for a presumed nearly flat xy plane
 // <pre>
 // wz0 = a * wx + b * wy + c where coefficients come from jhcPlaneEst
 //   wx, wy, and wz are in inches, where wx, wy are from lower left corner
@@ -828,7 +893,7 @@ int jhcOverhead3D::PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax, doubl
 //     = (k * ipz) * z - [(k * ipp * a) * x + (k * ipp * b) * y + (k * c - 128)]
 // </pre>
 
-int jhcOverhead3D::surf_err (jhcImg& devs, const jhcImg& hts, double dmax, double lo, double hi) const
+int jhcOverhead3D::z_err (jhcImg& devs, const jhcImg& hts, double dmax, double lo, double hi) const
 { 
   double k = 100.0 / dmax, sc = 4096.0 * k * ipp;
   int sum, dx = ROUND(sc * CoefX()), dy = ROUND(sc * CoefY()); 
@@ -840,12 +905,127 @@ int jhcOverhead3D::surf_err (jhcImg& devs, const jhcImg& hts, double dmax, doubl
 
   for (y = rh; y > 0; y--, d += sk, m += sk, sum0 += dy)
    for (sum = sum0, x = rw; x > 0; x--, d++, m++, sum += dx)
-     if (*m > 0)
+     if (*m == 0)
+       *d = 0;
+     else
      {
        dz = (zsc * (*m) - sum) >> 12;
        dz = __max(1, __min(dz, 255));
        *d = (UC8) dz;
      }
+  return 1;
+}
+
+
+//= Look for planar region closest to given preferred height (in inches).
+// returns plane height if good surface found, else original hpref 
+
+double jhcOverhead3D::PickPlane (double hpref, int amin, int bin)
+{
+  jhcArr hhist0(256);
+  int pk;
+
+  // get nice histogram of all projection heights
+  HistAll(hhist0, map, 1);
+  hhist.Boxcar(hhist0, bin);
+
+  // pick closest peak to preferred height
+  pk = hhist.NearMassPeak(I2Z(hpref), amin);
+  if (hhist.ARef(pk) < amin)
+    return hpref;
+  return Z2I(pk);
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                           Surface Intersection                        //
+///////////////////////////////////////////////////////////////////////////
+
+//= Fill in area where restricted depth beam intersects surface of given height.
+
+int jhcOverhead3D::BeamFill (jhcImg& dest, double z, int r, int g, int b) const
+{
+  double x[4], y[4];
+
+  if (!map.SameFormat(dest))
+    return Fatal("Bad images to jhcOverhead3D::BeamFill");
+  if (BeamCorners(x, y, z) <= 0)
+    return 0;
+  return FillPoly4(dest, x, y, r, g, b); 
+}
+
+
+//= Outline edges of area where restricted depth beam intersects surface of given height.
+// similar to Footprint but more accurate
+
+int jhcOverhead3D::BeamEmpty (jhcImg& dest, double z, int t, int r, int g, int b) const
+{
+  double x[4], y[4];
+
+  if (!map.SameFormat(dest))
+    return Fatal("Bad images to jhcOverhead3D::BeamEmpty");
+  if (BeamCorners(x, y, z) <= 0)
+    return 0;
+  return DrawCorners(dest, x, y, 4, t, r, g, b); 
+}
+
+
+//= Find where adjusted depth view impinges on a surface of some height.
+// adapted from original jhcLocalOcc::expect_floor, assumes roll = 0
+// fills clockwise: x[] = {nwx, nex, sex, swx}, y[] = {nwy, ney, sey, swy}
+// returns 1 if successful, 0 if no intersection
+
+int jhcOverhead3D::BeamCorners (double *x, double *y, double z) const
+{
+  double hh = 0.5 * hfov, lrads = D2R * (hh - dlf), rrads = D2R * (hh - drt);
+  double hv = 0.5 * vfov, trads = D2R * (hv - dtop), brads = D2R * (hv - dbot);
+  double prads = D2R * p0[0], c = cos(prads), s = sin(prads), mrads = D2R * t0[0];
+  double cx0 = x0 + cx[0], cy0 = y0 + cy[0], dz = cz[0] - z, ppi = 1.0 / ipp;
+  double hyp0, ej0, off0, bx0, by0, lfw0, rtw0;
+  double hyp1, ej1, off1, bx1, by1, lfw1, rtw1;
+  double tx, ty, fx;
+
+  // find middle of bottom of beam, punt if angle too shallow
+  hyp0 = -dz / sin(mrads - brads);
+  ej0 = rmax[0] / cos(brads);
+  if ((hyp0 < 0.0) || (hyp0 > ej0))
+    return 0;
+  off0 = sqrt(hyp0 * hyp0 - dz * dz);
+  if ((mrads - brads) < (D2R * -90.0))           // backward facing
+    off0 = -off0;
+
+  // find left and right corners of bottom beam edge
+  bx0 = cx0 + off0 * c;
+  by0 = cy0 + off0 * s;
+  lfw0 = hyp0 * tan(lrads);
+  rtw0 = hyp0 * tan(rrads);
+  x[2] = ppi * (bx0 + rtw0 * s);       // sex
+  y[2] = ppi * (by0 - rtw0 * c);       // sey
+  x[3] = ppi * (bx0 - lfw0 * s);       // swx
+  y[3] = ppi * (by0 + lfw0 * c);       // swy
+
+  // find middle of top of beam, else use far end of sensing cone
+  hyp1 = -dz / sin(mrads + trads);
+  ej1 = rmax[0] / cos(trads);
+  if ((hyp1 < 0.0) || (hyp1 > ej1))
+  {
+    // find top edge of beam then backtrack to floor orthogonally wrt tilt
+    tx = ej1 * cos(mrads + trads);
+    ty = ej1 * sin(mrads + trads) + dz;
+    fx = tx + ty * tan(mrads);
+    hyp1 = sqrt(fx * fx + dz * dz);
+  }
+  off1 = sqrt(hyp1 * hyp1 - dz * dz);
+
+  // find left and right corners of top beam edge
+  bx1 = cx0 + off1 * c;
+  by1 = cy0 + off1 * s;
+  lfw1 = hyp1 * tan(lrads);
+  rtw1 = hyp1 * tan(rrads);
+  x[0] = ppi * (bx1 - lfw1 * s);       // nwx
+  y[0] = ppi * (by1 + lfw1 * c);       // nwy
+  x[1] = ppi * (bx1 + rtw1 * s);       // nex
+  y[1] = ppi * (by1 - rtw1 * c);       // ney
   return 1;
 }
 

@@ -37,6 +37,7 @@ jhcVideoSink::jhcVideoSink ()
   w = 0;
   h = 0;
   d = 0;
+  freq = 30.0;
   bound = 0;
   nextframe = 0;
 }

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,28 +63,37 @@ jhcAliaOp::jhcAliaOp (JDIR_KIND k)
 // assumes initial directive "bcnt" member variable has been initialized 
 // returns total number of bindings filled, negative for problem
 
-int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth, int tol) 
+int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth) 
 {
   jhcNetNode *mate = NULL;
   int found, cnt = 0;
 
   // set control parameters
+  jprintf(2, dbg, "  try_mate: %s initial focus\n", cond.MainNick()); 
   omax = dir.MaxOps();
   tval = dir.own;
   bth = mth;
 
   // generally require main nodes (i.e. verb) of directives to match
-  if (dir.kind != JDIR_NOTE)
-    return try_mate((dir.key).Main(), dir, f, tol);
-
-  // NOTE triggers match anything in memory (check for relatedness at end)
-  while ((mate = f.NextNode(mate)) != NULL)
-  {
-    // see if any single pairing makes for a decent overall match
-    if ((found = try_mate(mate, dir, f, tol)) < 0)
-      return found;
-    cnt += found;
-  }
+  if (dir.kind == JDIR_CHK)
+    while ((mate = (dir.key).NextNode(mate)) != NULL)
+    {
+      // CHK triggers can start matching anywhere in description
+      if ((found = try_mate(mate, dir, f)) < 0)
+        return found;
+      cnt += found;
+    }
+  else if (dir.kind == JDIR_NOTE)
+    while ((mate = f.NextNode(mate)) != NULL)
+    {
+      // NOTE triggers match anything in memory (including halo)
+      // checks for relatedness at end (i.e. tval in match_found)
+      if ((found = try_mate(mate, dir, f)) < 0)
+        return found;
+      cnt += found;
+    }
+  else                       // most directives (DO, FIND, ...)
+    cnt = try_mate((dir.key).Main(), dir, f);    
   return cnt;
 }
 
@@ -91,22 +101,26 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth, in
 //= Given some candidate for main condition node, find all bindings that let directive match.
 // returns total number of bindings filled, negative for problem
  
-int jhcAliaOp::try_mate (jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f, int tol) 
+int jhcAliaOp::try_mate (jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f) 
 {
   const jhcNetNode *focus = cond.Main();
   const jhcGraphlet *trig = &(dir.key);
   jhcBindings *m = dir.match;
   int i, n = cond.NumItems();
 
-  // check main node compatibility (okay with blank nodes)
+  // sanity check
   if (mate == NULL)
     return -1;
+  jprintf(2, dbg, "   mate (%4.2f) = %s (%4.2f)", bth, mate->Nick(), mate->Belief());
+
+  // test main node compatibility (okay with blank nodes)
   if ((mate->Neg() != focus->Neg()) || (mate->Done() != focus->Done()) || mate->LexConflict(focus))
-    return 0;
-  if (mate->NumArgs() != focus->NumArgs())       // different arity = different predicate
-    return 0;
+    return jprintf(2, dbg, " -> bad neg or done\n");
+  if (mate->NumArgs() < focus->NumArgs())                 
+    return jprintf(2, dbg, " -> bad num args\n");
 
   // force binding of initial items and set trigger size
+  jprintf(2, dbg, "\n");
   first = dir.mc;
   for (i = 0; i < first; i++)
   {
@@ -117,8 +131,8 @@ int jhcAliaOp::try_mate (jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f,
 
   // start core matcher as a one step process if NOTE, else two step
   if (dir.Kind() == JDIR_NOTE)
-    return MatchGraph(m, dir.mc, cond, f, NULL, tol);
-  return MatchGraph(m, dir.mc, cond, *trig, &f, tol);
+    return MatchGraph(m, dir.mc, cond, f, NULL);
+  return MatchGraph(m, dir.mc, cond, *trig, &f);
 }
 
 
@@ -128,7 +142,7 @@ int jhcAliaOp::match_found (jhcBindings *m, int& mc)
 {
   jhcBindings *b = &(m[mc - 1]);
   const jhcNetNode *n;
-  int i, nb = b->NumPairs(), any = 0;
+  int i, nb = b->NumPairs();
 
   // typically checking an unless clause
   if (mc <= 0)
@@ -140,8 +154,8 @@ int jhcAliaOp::match_found (jhcBindings *m, int& mc)
     for (i = 0; i < nb; i++)
       if ((n = b->GetSub(i)) != NULL)
         if (n->top == tval)
-          any++;
-    if (any <= 0)
+          break;
+    if (i >= nb)
       return 0;
   }
 
@@ -152,9 +166,10 @@ int jhcAliaOp::match_found (jhcBindings *m, int& mc)
       return 0;
   
   // accept bindings and shift to next set
-  mc--;
-  if (mc < 0)
-    jprintf(">>> More than %d directive operators in jhcAliaOp::match_found !\n", omax);
+  if (mc <= 1)
+    jprintf(">>> More than %d applicable operators in jhcAliaOp::match_found !\n", omax);
+  else
+     mc--;
   return 1;
 }
 

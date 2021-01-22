@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2020 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -941,9 +942,11 @@ int jhcThresh_0::ThreshGateRGB (jhcImg& dest, const jhcImg& src, const jhcImg& g
 
 int jhcThresh_0::OverGate (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int th, int def) const 
 {
-  if (dest.SameFormat(gate))
+  if (dest.Valid(1))
     return OverGateBW(dest, src, gate, th, def);
-  if (dest.Valid(3) && gate.Valid(1))
+  if (dest.Valid(2))
+    return OverGate16(dest, src, gate, th, def);
+  if (dest.Valid(3))
     return OverGateRGB(dest, src, gate, th, def, def, def);
   if (!dest.SameFormat(src) || !dest.SameSize(gate, 1))
     return Fatal("Bad images to jhcThresh::OverGate");
@@ -1028,12 +1031,12 @@ int jhcThresh_0::OverGateRGB (jhcImg& dest, const jhcImg& src, const jhcImg& gat
 }
 
 
-//= Like basic version but for case where src and dest are same depth (usually mono).
+//= Like basic version but for case where src and dest are both monochrome.
 // special 32 bit version is not noticeably faster
 
 int jhcThresh_0::OverGateBW (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int th, int def) const 
 {
-  if (!dest.SameFormat(src) || !dest.SameFormat(gate))
+  if (!dest.Valid(1) || !dest.SameFormat(src) || !dest.SameFormat(gate))
     return Fatal("Bad images to jhcThresh::OverGateBW");
   dest.CopyRoi(src);
   dest.MergeRoi(gate);
@@ -1064,6 +1067,38 @@ int jhcThresh_0::OverGateBW (jhcImg& dest, const jhcImg& src, const jhcImg& gate
     s += rsk;
     g += rsk;
   }
+  return 1;
+}
+
+
+//= Like basic version but for case where src and dest are both 16 bit.
+
+int jhcThresh_0::OverGate16 (jhcImg& dest, const jhcImg& src, const jhcImg& gate, int th, int def) const 
+{
+  if (!dest.Valid(2) || !dest.SameFormat(src) || !dest.SameSize(gate, 1))
+    return Fatal("Bad images to jhcThresh::OverGate16");
+  dest.CopyRoi(src);
+  dest.MergeRoi(gate);
+
+  // check for simplest cases
+  if (th < 0) 
+    return dest.CopyArr(src);
+  if (th >= 65535)
+    return dest.FillArr(def);
+
+  // local variables
+  int x, y, rw = dest.RoiW(), rh = dest.RoiH(), rsk2 = dest.RoiSkip() >> 1, gsk = gate.RoiSkip(dest);
+  US16 dval = (US16)(__max(0, __min(def, 65535)));
+  const UC8 *g = gate.RoiSrc(dest);
+  const US16 *s = (const US16 *) src.RoiSrc(dest);
+  US16 *d = (US16 *) dest.RoiDest();
+
+  for (y = rh; y > 0; y--, d += rsk2, s += rsk2, g += gsk)
+    for (x = rw; x > 0; x--, d++, s++, g++)
+      if (*g > th)
+        *d = *s;
+      else
+        *d = dval;
   return 1;
 }
 
