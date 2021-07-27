@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,6 +56,7 @@ void jhcTimedFcns::clr_ptrs ()
 {
   // call info
   cmd  = NULL;     // function name
+  sub  = NULL;     // fcn specifier
   cbid = NULL;     // importance
   ct0  = NULL;     // starting time
 
@@ -88,6 +90,9 @@ void jhcTimedFcns::SetSize (int n)
     cmd  = new char * [n];
     for (i = 0; i < n; i++)
       cmd[i] = new char [40];
+    sub = new char * [n];
+    for (i = 0; i < n; i++)
+      sub[i] = new char [40];
     cbid = new int [n];
     ct0  = new UL32 [n];
 
@@ -127,6 +132,10 @@ void jhcTimedFcns::dealloc ()
   // call info
   delete [] ct0;
   delete [] cbid;
+  if (sub != NULL)
+    for (i = nc - 1; i >= 0; i--)
+      delete [] sub[i];
+  delete [] sub;
   if (cmd != NULL)
     for (i = nc - 1; i >= 0; i--)
       delete [] cmd[i];
@@ -153,15 +162,15 @@ void jhcTimedFcns::AddFcns (jhcAliaKernel *pool)
 //= Kill all instance of all functions.
 // automatically chains to "next" pool
 
-void jhcTimedFcns::Reset (jhcAliaNote *attn)
+void jhcTimedFcns::Reset (jhcAliaNote *atree)
 {
   int i;
 
-  local_reset(attn);                                
+  local_reset(atree);                                
   for (i = 0; i < nc; i++)
     cbid[i] = 0;
   if (next != NULL) 
-    next->Reset(attn);
+    next->Reset(atree);
 }
 
 
@@ -186,10 +195,11 @@ void jhcTimedFcns::Volunteer ()
 
 int jhcTimedFcns::Start (const jhcAliaDesc *desc, int bid)
 {
+  const char *str;
   int inst, rc;
 
   // sanity check
-  if ((bid <= 0) || (desc == NULL) || (desc->Word() == NULL))
+  if ((bid <= 0) || (desc == NULL) || (desc->Lex() == NULL))
     return -1;
 
   // find a locally free entry based on cbid[] <= 0
@@ -203,7 +213,9 @@ int jhcTimedFcns::Start (const jhcAliaDesc *desc, int bid)
   cst[inst]  = 0;
   cbid[inst] = bid;
   ct0[inst]  = jms_now();
-  strcpy_s(cmd[inst], 40, desc->Word());
+  strcpy_s(cmd[inst], 40, desc->Lex());
+  str = desc->Literal();
+  strcpy_s(sub[inst], 40, ((str != NULL) ? str : ""));
   if ((rc = local_start(desc, inst)) >= 0)
     return inst;
 
@@ -223,12 +235,12 @@ int jhcTimedFcns::Status (const jhcAliaDesc *desc, int inst)
   int rc = -2;
 
   // sanity check (catches failure during start also)
-  if ((inst < 0) || (desc == NULL) || (desc->Word() == NULL))
+  if ((inst < 0) || (desc == NULL) || (desc->Lex() == NULL))
     return -1;
 
   // possibly get the status of some local instance
   if (cbid[inst] > 0)
-    if (_stricmp(desc->Word(), cmd[inst]) == 0)
+    if (_stricmp(desc->Lex(), cmd[inst]) == 0)
       rc = local_status(desc, inst);
 
   // otherwise pass on to next pool in list
@@ -254,7 +266,7 @@ int jhcTimedFcns::Stop (const jhcAliaDesc *desc, int inst)
     // stop locally matching instances (NULL matches any function)
     for (i = 0; i < nc; i++)
       if (cbid[i] > 0)
-        if ((desc == NULL) || (_stricmp(desc->Word(), cmd[i]) == 0))
+        if ((desc == NULL) || desc->LexMatch(cmd[i]))
         {
           local_stop(desc, i);
           cbid[i] = 0;
@@ -268,7 +280,7 @@ int jhcTimedFcns::Stop (const jhcAliaDesc *desc, int inst)
 
   // stop a single local instance
   if (cbid[inst] > 0)
-    if (_stricmp(desc->Word(), cmd[inst]) == 0)
+    if (desc->LexMatch(cmd[inst]))
     {
       rc = local_stop(desc, inst);
       cbid[inst] = 0;

@@ -41,6 +41,7 @@
 jhcAliaChain::~jhcAliaChain ()
 {
   // detect loops and delete only once
+
   if (cut <= 0)               
     cut_loops();
 
@@ -138,6 +139,49 @@ bool jhcAliaChain::StepDir (int kind) const
 }
 
 
+//= Add main node of each valid directive to arguments of source node.
+// only used by jhcNetBuild with init = 1 
+
+void jhcAliaChain::RefSteps (jhcNetNode *src, const char *slot, jhcNodePool& pool, int init)
+{
+  jhcAliaChain *ch;
+  int i, n;
+
+  // mark all steps for one time use (in case of loops)
+  if (init > 0)
+    clr_labels(1);
+  if (idx > 0)
+    return;
+
+  // add payload of step (actual work done by RefDir)
+  if (d != NULL)
+    d->RefDir(src, slot, pool);
+  else if (p != NULL)
+  {
+    n = p->NumReq();
+    for (i = 0; i < n; i++)
+    {
+      ch = p->ReqN(i);
+      ch->RefSteps(src, slot, pool, 0);
+    }
+    n = p->NumSimul();
+    for (i = 0; i < n; i++)
+    {
+      ch = p->SimulN(i);
+      ch->RefSteps(src, slot, pool, 0);
+    }
+  }
+    
+  // check for all sorts of continuations
+  if (cont != NULL)
+    cont->RefSteps(src, slot, pool, 0);
+  if (alt != NULL)
+    alt->RefSteps( src, slot, pool, 0);
+  if (fail != NULL)
+    fail->RefSteps(src, slot, pool, 0);
+}
+
+
 //= Go to the (N-1)th normal continuation in chain.
 // does not necessarily go to the label N since a play only counts as 1 step
 // returns NULL if chain too short
@@ -189,6 +233,49 @@ jhcAliaChain *jhcAliaChain::Append (jhcAliaChain *tackon)
 
   end->cont = tackon;
   return this;
+}
+
+
+//= Determine the maximum subgoal depth for this part of the tree.
+
+int jhcAliaChain::MaxDepth () const
+{
+  // if still working then look at payload
+  if ((done == 0) && (d != NULL))
+    return d->MaxDepth();
+  if ((done == 0) && (p != NULL))
+    return p->MaxDepth();
+  
+  // if finished check where control was passed
+  if ((done == 1) && (cont != NULL))
+    return cont->MaxDepth();
+  if ((done == 2) && (alt != NULL))
+    return alt->MaxDepth();
+  if ((done == -2) && (fail != NULL))
+    return fail->MaxDepth();
+  return 1; 
+}
+
+
+//= Determine number of simultaneous activities (possibly subgoaled).
+// if leaf > 0 then only considers currently active goals not pass-thrus
+
+int jhcAliaChain::NumGoals (int leaf) const
+{
+  // if still working then look at payload
+  if ((done == 0) && (d != NULL))
+    return d->NumGoals(leaf);
+  if ((done == 0) && (p != NULL))
+    return p->NumGoals(leaf);
+  
+  // if finished check where control was passed
+  if ((done == 1) && (cont != NULL))
+    return cont->NumGoals(leaf);
+  if ((done == 2) && (alt != NULL))
+    return alt->NumGoals(leaf);
+  if ((done == -2) && (fail != NULL))
+    return fail->NumGoals(leaf);
+  return 0; 
 }
 
 
@@ -506,15 +593,15 @@ int jhcAliaChain::Status ()
     else if (p != NULL)
       done = p->Status();
 
+    // if payload fails, unwind to most recent FIND
+    if ((done == -2) && (backstop != NULL))
+      return backstop->Start(NULL);
+
     // see if control will be transferred next cycle
     if (((done ==  1) && (cont != NULL)) ||
         ((done ==  2) && (alt  != NULL)) ||
         ((done == -2) && (fail != NULL)))
       return 0;
-
-    // if payload fails, unwind to most recent FIND
-    if ((done == -2) && (backstop != NULL))
-      return backstop->Start(NULL);
   }
 
   // if control not passed, report local status

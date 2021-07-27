@@ -78,9 +78,6 @@ public:
   void PropHead () {cond.MainProp();}
   void UnlessHead () {if (nu > 0) unless[nu - 1].MainProp();}
 
-
-// PROTECTED MEMBER FUNCTIONS
-protected:
   // main functions
   int MatchGraph (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2 =NULL);
   int TryBinding (const jhcNetNode *focus, jhcNetNode *mate, 
@@ -93,6 +90,7 @@ private:
   int try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
   int try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
   int try_bare (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
+  int try_hash (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
   int consistent (const jhcNetNode *mate, const jhcNetNode *focus, const jhcGraphlet& pat, const jhcBindings *b, double th) const;
 
   // virtuals to override

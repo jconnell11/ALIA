@@ -128,7 +128,7 @@ int jhcSpeechX::Init (int dbg, int noisy)
     jprintf("\n-------- parse -------\n");
     jprintf("DLL = %s\ncfg = %s\ngrm = %s\n", pfile, pcfg, gram);
   }
-  ClearGrammar();
+  ClearGrammar();                      
   ans = BindParse(pfile, pcfg);
   if (ans <= 0) 
   {  
@@ -182,7 +182,7 @@ int jhcSpeechX::InitTTS (int noisy)
     jprintf("Voice\t= %s\n", tts_voice(info, 80));
     jprintf("Output\t= %s\n", tts_output(info, 80));
     jprintf("  %d re-spellings from: pronounce.map\n", Fixes());
-    jprintf("TTS -> %s\n", ((ans > 0) ? "OK" : "FAILED !!!"));
+    jprintf("\nTTS -> %s\n", ((ans > 0) ? "OK" : "FAILED !!!"));
     jprintf("=========================\n\n");
   }
   return ans;

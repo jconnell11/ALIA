@@ -1,37 +1,101 @@
 // terms associated with "SceneVis" ops and rules
 // ================================================
 
-// singular nouns - mass nouns like "a rice" belong in =[AKO-M] instead
+// singular nouns
 
 =[AKO]
-  color
+  distance
   size
+  length
   width
   height
+  color
+  closeness
+  farness
+  bigness
+  smallness
+  longness
+  compactness
+  wideness
+  narrowness
+  thickness
+  thinness
+  tallness
+  shortness
+  redness
+  orangeness
+  yellowness
+  greenness
+  blueness
+  purpleness
+  blackness
+  grayness
+  whiteness
+  object
+  comparison
 
 
-// adjective
+// mass nouns (like "a rice")
+
+=[AKO-M]
+
+
+// adjectives
 
 =[HQ]
-  visible
+  close
+  medium close
+  far
+  big
+  medium big
+  small
+  long
+  medium long
+  compact
+  wide
+  medium wide
+  narrow
+  thick
+  medium thick
+  thin
+  tall
+  medium tall
+  short
   red
   orange
   yellow
   green
-  blue 
+  blue
   purple
   black
   gray
   white
-  small
-  medium sized
-  big
-  narrow
-  medium width
-  wide
-  short
-  medium height
-  tall
+  leftmost
+  rightmost
+  middle
+  visible
+
+
+// proper nouns
+
+=[NAME]
+
+
+// -----------------------------------------
+
+// modifiers
+
+=[MOD]
+
+
+// directions
+
+=[DIR]
+
+
+// imperative verbs
+
+=[ACT]
 
 
 // ================================================
@@ -39,19 +103,18 @@
 // irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
 
 =[XXX-morph]
-  visible * acomp = more visible
-  visible * asup  = most visible
-  yellow * acomp = yellower
-  yellow * asup  = yellowest
+  far * acomp = farther
+  far * asup  = farthest
   orange * acomp = oranger
   orange * asup  = orangest
+  yellow * acomp = yellower
+  yellow * asup  = yellowest
   blue * acomp = bluer
   blue * asup  = bluest
   purple * acomp = purpler
   purple * asup  = purplest
-  medium sized * acomp = more medium sized
-  medium sized * asup  = most medium sized
-  medium width * acomp = more medium width
-  medium width * asup  = most medium width
-  medium height * acomp = more medium height
-  medium height * asup  = most medium height
+  visible * acomp = more visible
+  visible * asup  = most visible
+
+
+

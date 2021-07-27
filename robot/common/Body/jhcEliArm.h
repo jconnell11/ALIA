@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,6 +117,10 @@ private:
   int ice;                              /** Whether arm is already in frozen mode.   */
   int ice2;                             /** Whether hand is already in frozen mode.  */
 
+  // speed estimates
+  UL32 now;
+  double iarm, igrip;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
@@ -158,13 +163,13 @@ public:
   // creation and initialization
   jhcEliArm ();
   int CommOK (int bad =0) const {return aok;}
+  double FingerIPS () const {return __max(iarm, igrip);}
 
   // configuration
   void Bind (jhcDynamixel *ctrl);
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
   double Voltage ();
-  int Power (double vbat =0.0);
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);
@@ -203,7 +208,8 @@ public:
   double Squeeze () const {return sqz;}
   bool WidthStop (double wch =0.1) const {return(fabs(w00 - w0) < wch);}
   bool SqueezeSome (double f =8.0) const {return(sqz >= f);}
-  bool HoldMode () const {return(fwin > 0.0);}
+  bool HoldMode () const  {return(fwin > 0.0);}
+  double GripIPS () const {return igrip;}
     
   // hand goal specification commands
   void HandClear () {wctrl.RampReset();}
@@ -265,6 +271,7 @@ public:
   const jhcMatrix *Direction () const {return &aim;} 
   int ForceVect (jhcMatrix &fdir, double z0 =0.0, int raw =0) const;
   double Force (const jhcMatrix &dir, int raw =0) const;
+  double ArmIPS () const {return iarm;}
 
   // arm goal specification commands
   void CfgClear ();
@@ -275,6 +282,7 @@ public:
   int PosTarget (const jhcMatrix& pos, double rate =1.0, int bid =10);
   int DirTarget (const jhcMatrix& dir, double rate =1.0, int bid =10);
   int ShiftTarget (const jhcMatrix& dpos, double rate =1.0, int bid =10);
+  int ArmStop (double rate =1.5, int bid =1);
 
   // arm motion progress
   void CfgErr (jhcMatrix& aerr, const jhcMatrix& ang, int abs =1) const;

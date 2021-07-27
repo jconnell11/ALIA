@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -403,7 +404,7 @@ int jhcEliArm::Reset (int rpt, int chk)
     if ((v = Voltage()) <= 0.0)
       return fail(rpt);
     if (rpt > 0)
-      jprintf("    %3.1f volts\n", v);
+      jprintf("    %3.1f volts nominal\n", v);
 
     // possibly look for all servos
     if (rpt > 0)
@@ -447,6 +448,11 @@ int jhcEliArm::Reset (int rpt, int chk)
   ice = 0;
   ice2 = 0;
   Freeze();
+
+  // instantaneous speed estimates
+  now = 0;
+  iarm = 0.0;
+  igrip = 0.0;
 
   // finished
   if (rpt > 0)
@@ -518,19 +524,6 @@ double jhcEliArm::Voltage ()
 }
 
 
-//= Returns rough percentage charge of lead-acid battery.
-// if called with 0 then talks to servos to find voltage first
-
-int jhcEliArm::Power (double vbat)
-{
-  double v = ((vbat > 0.0) ? vbat : Voltage());
-
-  if ((v > 0.0) && (dyn != NULL))
-    return dyn->Charge(v);
-  return -1;
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //                           Kinematic Controls                          //
 ///////////////////////////////////////////////////////////////////////////
@@ -587,6 +580,7 @@ int jhcEliArm::FreezeArm (int doit, double tupd)
   // remember angles at first call (prevents drift)
   if (ice <= 0)                                      // needed!
   {
+//    ArmStop(1.5, 2001);
     pctrl.RampTarget(loc);
     dctrl.RampTarget(aim);
     ice = 1;
@@ -675,12 +669,15 @@ int jhcEliArm::Limp ()
 
 int jhcEliArm::Update (int mega)
 {
-  jhcMatrix diff(4);
+  jhcMatrix orig(4), diff(4);
+  UL32 last = now;
+  double s, a, g, wprev = w0, mix = 0.5;
   int i;
 
   // make sure hardware is working
   if (aok < 0)
     return aok;
+  orig.Copy(loc);
 
   // works from end to base so more sensitive angles are "fresher"
   if (mega > 0)
@@ -713,6 +710,17 @@ int jhcEliArm::Update (int mega)
     diff.DiffVec3(fvec, fsm);
     fsm.IncVec3(fmix * diff.X(), fmix * diff.Y(), fmix2 * diff.Z());
   }
+
+  // instantaneous speed estimates
+  now = jms_now();
+  if (last != 0)
+    if ((s = jms_secs(now, last)) > 0.0)
+    {
+      a = orig.PosDiff3(loc) / s;
+      g = fabs(w0 - wprev) / s;
+      iarm  += mix * (a - iarm); 
+      igrip += mix * (g - igrip); 
+    }
 
   // set up for new target arbitration
   clr_locks(0);
@@ -1539,6 +1547,18 @@ int jhcEliArm::ShiftTarget (const jhcMatrix& dpos, double rate, int bid)
     Fatal("Bad input to jhcEliArm::ShiftTarget");
   p2.AddVec(loc, dpos);
   return PosTarget(p2, rate, bid);
+}
+
+
+//= Bring hand to rest using limited deceleration (no sudden jerk).
+
+int jhcEliArm::ArmStop (double rate, int bid)
+{
+  jhcMatrix pos(4), dir(4);
+
+  pctrl.SoftStop(pos, loc, 0.25, rate);
+  dctrl.SoftStop(dir, aim, 5.0, rate);
+  return ArmTarget(pos, dir, rate, rate, bid);
 }
 
 

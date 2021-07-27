@@ -1,87 +1,57 @@
 // OPEN CLASS WORDS
 // ================================================
 
-// singular noun
+// singular nouns
 
 =[AKO]
-  dog
-  animal
-  cat
   tiger
-  maid
-  tantrum
-  force
-  motion
-  parameter
-  accomplishment
-  finder
-  routine
-  head
-  sponge
-  Advil
-  collar
-  house
-  door
-  bottle 
-  can
-  table
-  block
   object
-  wall
-  person
-  man
-  woman
-  boy
+  bottle
+  box
+  color
+  size
+  shape
+  dog
+  cat
+  yard
+  table
+  hammer
   girl
-  finger
-  step
-  example
-  vegetable
-  zebra
-  ducky
-  car
-  
+  animal
+  block
+
 
 // mass nouns (do not take "the" or "a")
 
 =[AKO-M]
-  danger
-  surprise
 
 
-// adjective
+// adjectives
 
 =[HQ]
-  furry
-  alive
-  new
-  violent
-  present
-  big
-  close
-  male
-  female
-  slippery
-  far
-  angry
-  sad
-  happy
-  scared
   orange
   striped
+  blue
+  red
+  green
+  round
+  square
+  clear
+  alive
+  dead
+  tawny
+  streaked
+  smart
+  ferocious
+  high
+  low
 
 
-// proper noun
+// proper nouns
 
 =[NAME]
-  Cyril
-  Tommy
-  Jon
-  Ivan
-  Groot
-  Rachel
-  Mary
   Rick
+  Mary
 
 
 // robot name
@@ -93,82 +63,40 @@
 
 // -----------------------------------------
 
-// modifier
+// modifiers
 
 =[MOD]
-  hard
-  fast
-  briskly
-  slow
 
 
-// direction
+// directions
 
 =[DIR]
-  away
-  widdershins
 
 
-// imperative verb
+// imperative verbs
 
 =[ACT]
   do something
   do anything
-  appear
-  wash
   sleep
-  hit
-  throw
-  set
-  swing
-  retract
-  begin
-  whack
-  adjust
-  tuck
-  rejoice
-  figure
-  determine
-  run
-  put
-  pat
-  use
-  cha-cha
-  shimmy
-  dance
-  run
-  drop
-  hold
-  deny
-  demur
-  complain
-  apologize
-  describe
-  excuse
-  reach
-  teach
-  know
-  express
-  sass
-  flee
-  sing
-  yack
-  twerk
-  waltz
-  tango
-  swing
-  riff
-  pirouette
-  proclaim
-  follow
   stop
-  charge
-  zoom
+  tell
+  see
+  catch
+  grab
+  hit
+  vet
+  complain
+  look around
+  flee
+  shimmy
+  cha-cha
+  dance
 
 
 // ================================================
 
-// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+// irregular morphologies (np, acomp, asup, vpres, vprog, vpast)
 
 =[XXX-morph]
   do something * vpres = does something
@@ -177,36 +105,11 @@
   do anything * vpres = does anything
   do anything * vprog = doing anything
   do anything * vpast = did anything
-  man * npl = men
-  woman * npl = women
-  alive * acomp = more alive
-  alive * asup  = most alive
-  violent * acomp = more violent
-  violent * asup  = most violent
-  present * acomp = more present
-  present * asup  = most present
-  far * acomp = farther
-  far * asup  = farthest
-  scared * acomp = more scared
-  scared * asup  = most scared
-  pirouette * vprog = pirouetting
-  pirouette * vpast = pirouetted
-  throw * vpast = threw
-  know * vpast = knew
-  flee * vpast = fled
-  figure * vprog = figuring
-  figure * vpast = figured
   orange * acomp = oranger
   orange * asup  = orangest
   striped * acomp = more striped
   striped * asup  = most striped
-
-
-
-
-
-  
-
-
-
- 
+  sleep * vpast = slept
+  see * vpast = saw
+  catch * vpast = caught
+  hit * vpast = hit

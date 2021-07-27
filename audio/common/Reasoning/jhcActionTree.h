@@ -52,7 +52,7 @@ class jhcActionTree : public jhcWorkMem, public jhcAliaNote
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  static const int imax = 50;    /** Maximum number of foci. */
+  static const int imax = 30;    /** Maximum number of foci. */
 
   // basic list of focus items and status
   jhcAliaChain *focus[imax];
@@ -71,11 +71,7 @@ private:
   int svc;
 
   // part for new NOTE focus
-  jhcAliaChain *ch0;
   class jhcAliaDir *dir0;
-
-  // mood variables
-  double surp;     
 
 
 // PUBLIC MEMBER VARIABLES
@@ -85,6 +81,9 @@ public:
 
   // rule adjustment parameters
   double binc, bdec;    
+
+  // operator adjustment parameters
+  double pinc, pdec;
             
   // control of diagnostic messages
   int noisy;                    
@@ -100,13 +99,15 @@ public:
   int NumFoci () const  {return fill;}
   int Inactive () const {return(fill - Active());}
   int Active () const;
+  int MaxDepth () const;
+  int NumGoals (int leaf =0) const;
  
   // list manipulation
   int NextFocus ();
   jhcAliaChain *FocusN (int n) const;
   bool NeverRun (int n) const;
   int BaseBid (int n) const;
-  void SetActive (int n, int running =1);
+  void SetActive (const jhcAliaChain *f, int running =1);
   int ServiceWt (double pref);
 
   // list modification
@@ -117,24 +118,34 @@ public:
   int Update (int gc =1);
 
   // halo interaction
-  double Surprise () const {return surp;}
   double CompareHalo (const jhcGraphlet& key);
-  int ReifyRules (jhcBindings& b, int note =1);
+  int ReifyRules (jhcBindings& b, int note =2);
 
   // external interface (jhcAliaNote virtuals)
   void StartNote ();
   jhcAliaDesc *NewNode (const char *kind, const char *word =NULL, int neg =0, double blf =1.0, int done =0)
-    {return MakeNode(kind, word, neg, blf, done);}
+    {return MakeNode(kind, word, neg, blf, done);} 
   jhcAliaDesc *NewProp (jhcAliaDesc *head, const char *role, const char *word,
-                        int neg =0, double blf =1.0, const char *kind =NULL)
-    {return AddProp(dynamic_cast<jhcNetNode *>(head), role, word, neg, blf, kind);}
-  void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val)
-    {jhcNetNode *hd = dynamic_cast<jhcNetNode *>(head); hd->AddArg(slot, dynamic_cast<jhcNetNode *>(val));}
-  void NewLex (jhcAliaDesc *head, const char *word, int neg =0, double blf =1.0) 
-    {AddLex(dynamic_cast<jhcNetNode *>(head), word, neg, blf);}
+                        int neg =0, double blf =1.0, int chk =0, int args =1)
+    {return AddProp(dynamic_cast<jhcNetNode *>(head), role, word, neg, blf, chk, args);}
+  jhcAliaDesc *NewDeg (jhcAliaDesc *head, const char *role, const char *word, const char *amt, 
+                       int neg =0, double blf =1.0, int chk =0, int args =1)
+    {return AddDeg(dynamic_cast<jhcNetNode *>(head), role, word, amt, neg, blf, chk, args);}
+  void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val) const
+    {if (head != NULL) (dynamic_cast<jhcNetNode *>(head))->AddArg(slot, dynamic_cast<jhcNetNode *>(val));}
+  void NewFound (jhcAliaDesc *obj) const 
+    {SetGen(dynamic_cast<jhcNetNode *>(obj));}
+  void GramTag (jhcAliaDesc *prop, int t) const 
+    {if (prop != NULL) (dynamic_cast<jhcNetNode *>(prop))->tags = t;}
   jhcAliaDesc *Person (const char *name) const {return FindName(name);}
-  jhcAliaDesc *Self () const {return Robot();}
-  jhcAliaDesc *User () const {return Human();}
+  jhcAliaDesc *Self () const                   {return Robot();}
+  jhcAliaDesc *User () const                   {return Human();}
+  int VisAssoc (int vid, jhcAliaDesc *obj, int agt =0) 
+    {return ExtLink(vid, dynamic_cast<jhcNetNode *>(obj), agt);}
+  jhcAliaDesc *NodeFor (int vid, int agt =0) const     
+    {return ExtRef(vid, agt);}
+  int VisID (const jhcAliaDesc *obj, int agt =0) const 
+    {return ExtRef(dynamic_cast<const jhcNetNode *>(obj), agt);}
   int FinishNote (int keep =1);
 
   // file functions
@@ -151,7 +162,7 @@ private:
 
   // halo interaction
   const jhcNetNode *halo_equiv (const jhcNetNode *n, const jhcNetNode *h0) const;
-  jhcNetNode *pick_halo (const jhcBindings& b, const jhcBindings& h2m, int stop) const;
+  jhcNetNode *pick_halo (int& step, const jhcBindings& b, const jhcBindings& h2m, int stop) const;
 
   // maintenance
   int prune_foci ();

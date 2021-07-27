@@ -52,7 +52,7 @@
 //  p.AddProp(jim, "tag", "Jim");
 //  fat = p.AddProp(jim, "hq", "fat", 1);
 //  fat->SetBelief(0.70);
-//  p.AddProp(fat, "mod", "very");
+//  p.AddProp(fat, "deg", "very");
 //
 //  dog = p.MakeNode("obj");
 //  ako = p.AddProp(dog, "ako", "dog");
@@ -111,6 +111,7 @@ public:
   jhcGraphlet ();
   int MaxItems () const {return gmax;}
   void Clear () {ni = 0;}
+  bool Moot () const;
 
   // description access
   bool Full () const {return(ni >= gmax);}
@@ -124,7 +125,7 @@ public:
   int MainNeg () const          {return((ni <= 0) ? 0 : Main()->Neg());}
     
   // list access (overrides virtual)
-  jhcNetNode *NextNode (const jhcNetNode *prev =NULL) const;
+  jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const;
   int Length () const {return NumItems();}
   bool InList (const jhcNetNode *n) const {return InDesc(n);}
 
@@ -136,29 +137,27 @@ public:
   jhcNetNode *AddItem (jhcNetNode *item);
   int RemItem (int i);
   int RemItem (const jhcNetNode *item);
+  int RemAll (const jhcGraphlet& ref);
   void Pop (int cnt =1) {ni = __max(0, ni - cnt);}
   jhcNetNode *SetMain (jhcNetNode *main);
   int ReplaceMain (jhcNetNode *main);
   jhcNetNode *MainLast ();
   jhcNetNode *MainProp ();
   bool InDesc (const jhcNetNode *item) const;
-  bool ArgOut (const jhcNetNode& item) const;
-  bool PropOut (const jhcNetNode& item) const;
+  bool ArgOut (const jhcNetNode *item) const;
+  bool PropOut (const jhcNetNode *item) const;
   int ActualizeAll (int ver) const;
-  void Believe (double blf) const;
 
   // writing functions
-  int Save (FILE *out, int lvl =0, int detail =0) const;
-  int Print (int lvl =0, int detail =0) const
+  int Save (FILE *out, int lvl =0, int detail =1) const;
+  int Print (int lvl =0, int detail =1) const
     {return Save(stdout, lvl, detail);}
-  void Print (int lvl, const char *tag, int detail =0) const;
-  void ListAll (int lvl =0, int blf =0) const;
+  void Print (const char *tag, int lvl =0, int detail =1) const;
+  void ListAll (const char *tag =NULL, int lvl =0, int blf =0) const;
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  // writing functions
-  bool has_lex_in (const jhcNetNode *n) const;
 
 
 };

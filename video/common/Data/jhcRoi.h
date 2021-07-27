@@ -135,6 +135,7 @@ public:
 
   // sizing
   void GrowRoi (int dw2, int dh2);
+  void PadRoi (int lf, int bot, int rt, int top);
   void ResizeRoi (int wdes, int hdes);
   void ResizeRoi (double fw, double fh =0.0);
   void ScaleRoi (double fx, double fy =0.0);

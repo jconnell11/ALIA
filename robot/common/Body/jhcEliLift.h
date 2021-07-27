@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,6 +49,10 @@ private:
 
   // sensor data
   double ht;                    /** Current height of fork stage. */
+
+  // speed estimate
+  UL32 now;                     /** Time of last height reading.   */
+  double ips;                   /** Estimated instantaneous speed. */
 
   // actuator command
   int llock0, llock;            /** Winning bid for fork height command.   */
@@ -98,13 +102,17 @@ public:
   // --------------------- LIFT MAIN ----------------------------
 
   // current lift information
-  double Height () const {return ht;}
+  double Height () const  {return ht;}
+  double LiftIPS () const {return ips;}
+  bool Moving (double sp =0.5) const {return(ips > sp);}
 
   // lift goal specification commands
   void LiftClear () {RampReset();}
   int LiftTarget (double high, double rate =1.0, int bid =10);
   int LiftShift (double dz, double rate =1.0, int bid =10) 
     {return LiftTarget(Height() + dz, rate, bid);}
+  int LiftStop (double rate =1.5, int bid =1)
+    {return LiftTarget(SoftStop(ht, ldone, rate), rate, bid);}
 
   // profiled motion progress
   double LiftErr (double high, int abs =1, int lim =1) const; 

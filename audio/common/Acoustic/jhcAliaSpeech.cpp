@@ -35,7 +35,6 @@
 jhcAliaSpeech::~jhcAliaSpeech ()
 {
   // for debugging - only happens when program closes
-  DumpSession();
   DumpAll();
 }
 
@@ -104,7 +103,6 @@ int jhcAliaSpeech::time_params (const char *fname)
 int jhcAliaSpeech::Reset (const char *rname, const char *vname)
 {
   char extras[200];
-  int ans;
 
   // remember interface choice and set attentional state
   sprintf_s(extras, "%sbaseline.lst", kdir2);
@@ -112,39 +110,43 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
   if (spin == 2)
   {
     // configure online speech recognition (requires internet connection)
-    ans = web.Init(1);
-    if (noisy > 0)
+    jprintf(1, noisy, "SPEECH online %s ...\n\n", web.Version());
+    if (web.Init(1) <= 0)
     {
-      jprintf("Using online %s\n", web.Version());
-      jprintf("  %d recognition fixes from: misheard.map\n", web.Fixes());
-      jprintf("SPEECH -> %s\n", ((ans > 0) ? "OK" : "FAILED !!!"));
-      jprintf("=========================\n\n");
-    }
-    if (ans <= 0)
+      jprintf(1, noisy, "\nSPEECH -> FAILED !!!\n");
+      jprintf(1, noisy, "=========================\n\n");
       return 0;
+    }
+    jprintf(1, noisy, "  %d recognition fixes from: misheard.map\n", web.Fixes());
+    jprintf(1, noisy, "\nSPEECH -> OK\n");
+    jprintf(1, noisy, "=========================\n\n");
   }
   else if (spin == 1)
   {
     // constrain local speech recognition by same grammar as core
+    jprintf(1, noisy, "SPEECH local ...\n\n");
     sp.SetGrammar(gram); 
-    ans = sp.Init(1, 0);                       // show partial transcriptions
-    if (noisy > 0)
+    if (sp.Init(1, 0) <= 0)            // show partial transcriptions
     {
-      sp.PrintCfg();
-      jprintf("SPEECH -> %s\n", ((ans > 0) ? "OK" : "FAILED !!!"));
-      jprintf("=========================\n\n");
-    }
-    if (ans <= 0)
+      jprintf(1, noisy, "\nSPEECH -> FAILED !!!\n");
+      jprintf(1, noisy, "=========================\n\n");
       return 0;
+    }
+    if (noisy > 0)
+      sp.PrintCfg();
 
-    // add kernel terms and robot name as attention word (speech only)
-    (net.mf).AddVocab(&sp, "language/graphizer.sgm");
-    (net.mf).AddVocab(&sp, "language/vocabulary.sgm");
+    // add words associated with kernels (slow second time?)
+    jprintf(1, noisy, "Augmenting speech grammar with:\n");
+    (net.mf).AddVocab(&sp, "language/vocabulary.sgm", 1);
+    base_gram(extras);                 // includes graphizer.sgm
     kern_gram();
-    base_gram(extras);
+
+    // add robot name as attention word (speech only)
     self_name(rname);
     sp.MarkRule("toplevel");          
     sp.Listen(1);
+    jprintf(1, noisy, "\nSPEECH -> OK\n");
+    jprintf(1, noisy, "=========================\n\n");
   }
   
   // set TTS and speech state
@@ -160,10 +162,9 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
   jhcAliaCore::Reset(1, rname, 1);
 
   // load rules, operators, and words for kernels (speech already set)
-  (net.mf).AddVocab(&gr, "language/graphizer.sgm");
   (net.mf).AddVocab(&gr, "language/vocabulary.sgm");
+  Baseline(extras, 1, 2);              // includes graphizer.sgm
   KernExtras(kdir);
-  Baseline(extras, 1, 2);
   if (acc > 0)
     LoadLearned();
 
@@ -184,11 +185,6 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
   // suppress some printouts
   noisy = 1;
   atree.noisy = 1;
-
-  // note that system is awake
-  atree.StartNote();
-  atree.AddProp(atree.Robot(), "hq", "awake");
-  atree.FinishNote();
   return 1;
 }
 
@@ -207,7 +203,7 @@ void jhcAliaSpeech::kern_gram ()
     if (*tag != '\0')
     {
       sprintf_s(fname, "%s%s.sgm", kdir, tag);
-      (net.mf).AddVocab(&sp, fname);
+      (net.mf).AddVocab(&sp, fname, 1);
     }
     k = k->NextPool();
   }
@@ -240,17 +236,23 @@ void jhcAliaSpeech::base_gram (const char *list)
   // read list of local file names
   while (fgets(line, 80, in) != NULL)
   {
-    // ignore commented out lines and blank ones
+    // ignore commented out lines 
     if (strncmp(line, "//", 2) == 0)
       continue;
-    if ((n = (int) strlen(line)) <= 0)
+
+    // trim trailing whitespace
+    n = 0;
+    end = line;
+    while (line[n] != '\0')
+      if (strchr(" \t\n", line[n++]) == NULL)
+        end = line + n;
+    if (end == line)
       continue;
+    *end = '\0';
 
     // read various types of input 
-    if (line[n - 1] == '\n')
-      line[n - 1] = '\0';
-    sprintf_s(fname, "%s%s.sgm", dir, line);     
-    (net.mf).AddVocab(&sp, fname);
+    sprintf_s(fname, "%s%s.sgm", dir, line);  
+    (net.mf).AddVocab(&sp, fname, 1);
   } 
 
   // clean up
@@ -342,12 +344,12 @@ int jhcAliaSpeech::Respond (int alert)
     sp.Issue();
   }
 
-  // show prominently in log file
+  // show prominently in log file (capitalize first letter)
   if ((n = (int) strlen(output)) > 0)
   {
     n = __min(n, 70);
     mark[n + 9] = '\0';
-    jprintf("\n%s+\n##  | \"%s\" |\n%s+\n\n", mark, output, mark);
+    jprintf("\n%s+\n##  | \"%c%s\" |\n%s+\n\n", mark, toupper(output[0]), output + 1, mark);
   }
   return 1;
 }
@@ -360,7 +362,7 @@ int jhcAliaSpeech::Respond (int alert)
 void jhcAliaSpeech::xfer_input ()
 {
   const char *sent;
-  int hear, attn = ((amode <= 0) ? 1 : awake);
+  int hear, attn = ((amode <= 0) ? 1 : awake), perk = 0;
 
   // get language status and input string 
   if (spin == 2)
@@ -385,16 +387,18 @@ void jhcAliaSpeech::xfer_input ()
 
   // pass input (if any) to semantic network generator
   if (hear < 0)
-    Interpret(NULL, attn, amode);                         // for "huh?" response
+    perk = Interpret(NULL, attn, amode);                   // for "huh?" response
   else if (hear >= 2)
-    Interpret(sent, attn, amode);
-  if (hear != 0)
+    perk = Interpret(sent, attn, amode);
+  if (perk >= 2)                                           // attention word heard
+    attn = 1;
+  if ((attn > 0) && (hear != 0))
     awake = now;
 
   // see if system should continue paying attention
   if (awake != 0) 
   {
-    if (sp.Talking() > 0)                                 // prolong during TTS output
+    if (sp.Talking() > 0)                                  // prolong during TTS output
       awake = now;
     else if ((attn > 0) && (sp.Silence() > splag) && (jms_secs(now, awake) > stretch))
     {
@@ -444,27 +448,29 @@ int jhcAliaSpeech::syllables (const char *txt) const
 
 
 //= Perform several cycles of reasoning disconnected from sensors and actuators.
+// quits early if some Run() takes too long to prevent missing sensor schedule
 
 void jhcAliaSpeech::DayDream ()
 {
-  double frac;
-  int i, cyc = 1;
+  double frac = 1.0;
+  int cyc, n = 1, ms = ROUND(1000.0 / shz);      // standard sensing time
 
-  // determine how many total thought cycles to run
+  // determine how many total thought cycles to run right now
   if (start == 0)
     start = now;
   else 
   {
     frac = thz * jms_secs(now, last) + rem;
-    cyc = ROUND(frac);
-    rem = frac - cyc;
+    n = ROUND(frac);
   }
   last = now;
 
   // possibly catch up on thinking (commands will be ignored)
-  for (i = cyc - 1; i > 0; i--)
-    RunAll(0);
-  think += __max(1, cyc);
+  for (cyc = 1; cyc < n; cyc++)
+    if (jms_diff(jms_now(), last) < ms)
+      RunAll(0);
+  rem = frac - cyc;          // how many thought cycles NOT completed
+  think += cyc;
   sense++;
 }
 
@@ -473,11 +479,18 @@ void jhcAliaSpeech::DayDream ()
 
 void jhcAliaSpeech::Done ()
 {
+  // stop running actions
+  StopAll();
+  atree.ClrFoci();
+
+  // stop speech input and output
   if (spin == 2)
     web.Close();
   else if (spin == 1)
     sp.Listen(0);
   CloseCvt();
+
+  // possibly save state
   if (acc > 0)
     DumpLearned();
 }
@@ -560,6 +573,7 @@ const char *jhcAliaSpeech::NewOutput ()
   // queue any new output for printing after slight delay
   if (*output != '\0')
   {
+    mood.Speak((int) strlen(output));
     strcpy_s(pend, output);
     yack = now;
     if ((spin <= 0) && (tts > 0))

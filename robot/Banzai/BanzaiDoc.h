@@ -87,6 +87,7 @@ public:
   void ShowFirst ();   
   int ChkStream (int dual =1);    
 
+  void set_tilt (const char *fname);
   int swing_params (const char *fname =NULL);
   int interact_params (const char *fname =NULL);
   bool next_line (char *txt, int ssz, FILE *f) const;
@@ -173,7 +174,6 @@ public:
   afx_msg void OnPeopleSpeaking();
   afx_msg void OnParametersWatching();
   afx_msg void OnParametersOrienting();
-  afx_msg void OnParametersTargettime();
   afx_msg void OnAttentionEnrollphoto();
   afx_msg void OnAttentionEnrolllive();
   afx_msg void OnPeopleSocialevents();
@@ -203,6 +203,26 @@ public:
   afx_msg void OnNavDepthfov();
   afx_msg void OnObjectsSurfacezoom();
   afx_msg void OnDemoStaticpose();
+  afx_msg void OnSurfaceHybridseg();
+  afx_msg void OnObjectsColorparams();
+  afx_msg void OnSurfaceColorobjs();
+  afx_msg void OnUtilitiesValuerules();
+  afx_msg void OnVisualDist();
+  afx_msg void OnVisualDimsbins();
+  afx_msg void OnVisualColorfinding();
+  afx_msg void OnVisualHuethresholds();
+  afx_msg void OnVisualPrimarycolors();
+  afx_msg void OnVisualObjcomparison();
+  afx_msg void OnPeopleChest();
+  afx_msg void OnPeopleHead();
+  afx_msg void OnPeopleShoulder();
+  afx_msg void OnRoomHeadtrack();
+  afx_msg void OnUtilitiesBatteryfull();
+  afx_msg void OnObjectsShapebins();
+  afx_msg void OnRoomPersonmap();
+  afx_msg void OnMoodActivitylevel();
+  afx_msg void OnMoodEnergylevel();
+  afx_msg void OnMoodInteractionlevel();
 };
 
 /////////////////////////////////////////////////////////////////////////////

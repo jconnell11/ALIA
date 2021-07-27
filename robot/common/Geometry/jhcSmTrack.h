@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2018 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,7 +56,6 @@ private:
 public:
   // track labels
   char **tag;
-  void **node;
   int *state;
 
   // whether xyz axes are fixed
@@ -69,7 +68,7 @@ public:
   // tracking parameters
   jhcParam tps;
   double close[3];
-  double frac, dsf, daf, rival;
+  double frac, dsf, daf, rival, fermi;
 
   // filtering parameters
   jhcParam fps;
@@ -88,7 +87,7 @@ public:
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);
   int SaveVals (const char *fname) const;
-  void SetTrack (double dx, double dy, double dz, double f, double sw, double aw, double rv);
+  void SetTrack (double dx, double dy, double dz, double f, double sw, double aw, double rv, double lap);
   void SetFilter (double nx, double ny, double nz, double mx, double my, double mz, int b, int g);
   void CopyParams (const jhcSmTrack& ref);
 
@@ -138,6 +137,7 @@ private:
   double get_d2s (int i, const double *item, const double *shp) const;
   double get_d2i (int i, const double *item, const double *shp) const;
   void greedy_pair (const double * const *detect, int n, int solid);
+  bool disputed (const double *item, const double * const *shp) const;
   int add_track (const double *item);
   int shift_pos (int i, const double *item);
   int mark_hit (int i);

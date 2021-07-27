@@ -60,6 +60,7 @@ public:
   void Summarize (FILE *log, const char *sent, int nt, int spact) const;
 
   // utilities
+  int AutoVals (const char *kern, const char *fcn =NULL) const;
   int HarvestLex (const char *kern);
 
 
@@ -75,6 +76,12 @@ private:
   jhcAliaChain *build_tag (jhcNetNode **node, const char *alist) const;
 
   // utilities
+  int range_rules (FILE *out, const char *cat, const char *lo, const char *hi, int nr) const;
+  int value_rules (FILE *out, const char *cat, const char *val, int n) const;
+  int mutex_rule (FILE *out, const char *val, const char *alt, int n) const;
+  int alias_rules (FILE *out, const char *cat, const char *val, const char *alt, int n) const;
+  int range_ops (FILE *out, const char *pre, const char *cat, int np) const;
+  int list_ops (FILE *out, const char *pre, const char *cat, int np) const;
   int scan_lex (const char *fname);
   void save_word (char (*list)[40], int& cnt, const char *term) const;
   int gram_cats (const char *fname, const char *label) const;

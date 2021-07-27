@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,7 +53,7 @@ private:
   int ice;
 
   // progress monitoring
-  double dist;      /** Current distance from goal.    */
+  double drem;      /** Current distance from goal.    */
   double d0;        /** Last distance during progress. */
   double stuck;     /** Seconds since progress made.   */
 
@@ -81,7 +82,7 @@ public:
   void RampCfg (double v =90.0, double a =180.0, double d =180.0, double tol =2.0, double e =0.0)
     {vstd = v; astd = a; dstd = d; done = tol; dmax = e;} 
   void RampReset () 
-    {vel.Zero(); sp = 0.0, d0 = 0.0; stuck = 0.0; rt = 1.0; ice = 0;} 
+    {vel.Zero(); sp = 0.0; d0 = 0.0; stuck = 0.0; rt = 1.0; ice = 0;} 
 
   // goal specification
   void RampTarget (double val, double rate =1.0) 
@@ -108,17 +109,20 @@ public:
     {return find_rate(find_dist(p2, p1), secs, rmax);}
   double RampRate (const jhcMatrix &p2, const jhcMatrix& p1, double secs =0.5, double rmax =1.5) const
     {return find_rate(find_dist(p2, p1), secs, rmax);}
+  void SoftStop (jhcMatrix& stop, const jhcMatrix& now, double skid =0.0, double rate =1.5);
+  double SoftStop (double now, double skid =0.0, double rate =1.5);
 
   // read only state
-  double RampVel (double dead =0.0) const {return((dist > dead) ? sp : 0.0);}
-  double RampCmd (int i =0) const {return cmd.VRef(i);}
+  double RampVel (double dead =0.0) const {return((drem > dead) ? sp : 0.0);}
+  double RampAxis (int i =0) const {return vel.VRefChk(i);}
+  double RampCmd (int i =0) const  {return cmd.VRefChk(i);}
   int RampFrozen () const {return ice;}
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // trajectory generation
-  void goal_dir (jhcMatrix& dir, const jhcMatrix& now, double tupd);
+  double goal_dir (jhcMatrix& dir, const jhcMatrix& now, double tupd);
   void alter_vel (const jhcMatrix& dir, double dist, double tupd);
   
   // trajectory queries

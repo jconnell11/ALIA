@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "Language/jhcMorphTags.h"
+#include "Semantic/jhcBindings.h"      // since only spec'd as class in header
 #include "Semantic/jhcGraphlet.h"      // since only spec'd as class in header
 
 #include "Semantic/jhcNetNode.h"
@@ -76,15 +77,26 @@ void jhcNetNode::rem_arg (const jhcNetNode *item)
 {
   int i, j;
 
+  // find all occurrences of items in list of arhs
   for (i = 0; i < na; i++)
     if (args[i] == item)
     {
+      // see if any other args with same slot name (arity decrease)
+      for (j = 0; j < na; j++)
+        if ((j != i) && (strcmp(links[j], links[i]) == 0))
+          break;
+      if ((na > 0) && (j >= na))
+        na0--;
+
+      // compact the list to cover hole made by removal
       na--;
       for (j = i; j < na; j++)
       {
         args[j] = args[j + 1];
         strcpy_s(links[j], links[j + 1]); 
       }
+
+      // make sure old end of the list is truly empty
       args[na] = NULL;
       links[na][0] = '\0';
     }
@@ -98,6 +110,7 @@ jhcNetNode::jhcNetNode ()
 {
   // basic configuration data
   *base = '\0';
+  *lex  = '\0';
   *nick = '\0';
   quote = NULL;
   inv = 0;
@@ -107,13 +120,16 @@ jhcNetNode::jhcNetNode ()
 
   // no arguments or properties, nothing else in list
   na = 0;
+  na0 = 0;
   np = 0;
   id = 0;
   next = NULL;
 
   // default bookkeeping
+  hash = 0;
   gen = 0;
   ref = 0;
+  vis = 1;
 
   // default status 
   top = 0;
@@ -170,8 +186,7 @@ int jhcNetNode::Actualize (int ver)
   if (blf == blf0)
     return 0;
   blf = blf0;
-  if (ver > 0)
-    gen = ver;
+  GenMax(ver);
   return 1;
 }
 
@@ -210,63 +225,14 @@ jhcNetNode *jhcNetNode::Val (const char *slot, int n) const
 }
 
 
-//= See if the node participates in the triple: <self> -slot-> val. 
-
-bool jhcNetNode::HasVal (const char *slot, const jhcNetNode *val) const
-{
-  int i;
-
-  if ((val == NULL) || (slot == NULL) || (*slot == '\0'))
-    return false;
-  for (i = 0; i < na; i++)
-    if ((args[i] == val) && (strcmp(links[i], slot) == 0))
-      return true;
-  return false;
-}
-
-
-//= See if two nodes shared exactly the same set of arguments.
-
-bool jhcNetNode::SameArgs (const jhcNetNode *ref) const
-{
-  int i;
-
-  if ((ref == NULL) || (ref->na != na))
-    return false;
-  for (i = 0; i < na; i++)
-    if (!ref->HasVal(links[i], args[i]))
-      return false;
-  return true;
-}
-
-
-//= See if given node has same arguments as the remapped arguments of this node.
-
-bool jhcNetNode::SameArgs (const jhcNetNode *ref, const jhcBindings *b) const
-{
-  const jhcNetNode *a, *a2;
-  int i;
-
-  if ((ref == NULL) || (ref->na != na))
-    return false;
-  for (i = 0; i < na; i++)
-  {
-    a = args[i];    
-    if ((b != NULL) && ((a2 = b->LookUp(a)) != NULL))
-      a = a2;
-    if (!ref->HasVal(links[i], a))
-      return false;
-  }      
-  return true;
-}
-
-
 //= Add some other node as an argument with the given link name.
 // generic arguments do not need any explicit name
 // returns 1 for success, 0 if something full, -1 for bad format
 
 int jhcNetNode::AddArg (const char *slot, jhcNetNode *val)
 {
+  int i;
+
   // check argument and make sure space exists
   if (val == NULL)
     return -1;
@@ -276,6 +242,13 @@ int jhcNetNode::AddArg (const char *slot, jhcNetNode *val)
     return jprintf(">>> More than %d arguments in jhcNetNode::AddArg !\n", amax);
   if (val->np >= pmax)
     return jprintf(">>> More than %d properties in jhcNetNode::AddArg !\n", pmax);
+
+  // see if a new kind of link (boosts arity)
+  for (i = 0; i < na; i++)
+    if (strcmp(links[i], slot) == 0)
+      break;
+  if ((na == 0) || (i >= na))
+    na0++;
 
   // add as argument to this node
   links[na][0] = '\0';
@@ -313,6 +286,38 @@ void jhcNetNode::SubstArg (int i, jhcNetNode *val)
   val->np += 1;
 }
 
+/*
+//= Make sure this node is at the end of the property list for given argument.
+// guarantees that this node will be the first retrieved
+
+void jhcNetNode::RefreshArg (int i) 
+{
+  jhcNetNode *val;
+  int last, now, j;
+
+  // see if this node is already the final property of the argument
+  if ((i < 0) || (i >= na))
+    return;
+  val = args[i];
+  last = val->np - 1;
+  if (val->props[last] == this)
+    return;
+  
+  // compact the argument's list of properties
+  for (now = 0; now < last; now++)
+    if (val->props[now] == this)
+      break;
+  for (j = now; j < last; j++)
+  {
+    val->props[j] = val->props[j + 1];
+    val->anum[j]  = val->anum[j + 1];
+  }
+
+  // tack self onto end
+  val->props[last] = this;
+  val->anum[last] = i;
+}
+*/
 
 ///////////////////////////////////////////////////////////////////////////
 //                          Property Functions                           //
@@ -326,26 +331,6 @@ bool jhcNetNode::RoleIn (int i, const char *v1, const char *v2, const char *v3,
 {
   return(RoleMatch(i, v1) || RoleMatch(i, v2) || RoleMatch(i, v3) || 
          RoleMatch(i, v4) || RoleMatch(i, v5) || RoleMatch(i, v6));
-}
-
-
-//= Return the n'th non-lexical property of the node.
-// most recently added properties returned first
-
-jhcNetNode *jhcNetNode::NonLex (int i) const
-{
-  jhcNetNode *n;
-  int j, cnt = 0;
-
-  if (i >= 0)
-    for (j = np - 1; j >= 0; j--)
-    {
-      n = props[j];
-      if (!n->LexNode())
-        if (cnt++ >= i)
-          return n;
-    }
-  return NULL;
 }
 
 
@@ -406,6 +391,25 @@ jhcNetNode *jhcNetNode::Fact (const char *role, int n) const
 }
 
 
+///////////////////////////////////////////////////////////////////////////
+//                          Simple Matching                              //
+///////////////////////////////////////////////////////////////////////////
+
+//= See if the node participates in the triple: <self> -slot-> val. 
+
+bool jhcNetNode::HasVal (const char *slot, const jhcNetNode *val) const
+{
+  int i;
+
+  if ((val == NULL) || (slot == NULL) || (*slot == '\0'))
+    return false;
+  for (i = 0; i < na; i++)
+    if ((args[i] == val) && (strcmp(links[i], slot) == 0))
+      return true;
+  return false;
+}
+
+
 //= See if the node participates in the triple: prop -role-> <self>. 
 
 bool jhcNetNode::HasFact (const jhcNetNode *fact, const char *role) const
@@ -416,223 +420,109 @@ bool jhcNetNode::HasFact (const jhcNetNode *fact, const char *role) const
 }
 
 
-///////////////////////////////////////////////////////////////////////////
-//                            Associated Words                           //
-///////////////////////////////////////////////////////////////////////////
+//= See if two nodes shared exactly the same set of arguments.
 
-//= See if this is a lexical tag node versus a normal property.
-
-bool jhcNetNode::LexNode () const 
+bool jhcNetNode::SameArgs (const jhcNetNode *ref) const
 {
-  return((na == 1) && (strcmp(links[0], "lex") == 0));
-}
-
-
-//= Make sure both are lexical tag nodes and that their intrincis words match.
-// returns false if neither is a lexical tag node (!LexConflict would return true)
-// NOTE: this is for checking lexical tagging nodes themselves
-
-bool jhcNetNode::LexMatch (const jhcNetNode *ref) const
-{
-  return(LexNode() && ref->LexNode() && (strcmp(base, ref->base) == 0));
-}
-
-
-//= If either is a lexical tag, make sure associated terms match.
-// returns false if neither is a lexical node (!LexMatch would return true)
-// NOTE: this is for checking lexical tagging nodes themselves (cf. SameWords)
-
-bool jhcNetNode::LexConflict (const jhcNetNode *ref) const
-{
-  if (!LexNode() && !ref->LexNode())
-    return false;
-  if (!LexNode() || !ref->LexNode())
-    return true;
-  return(_stricmp(base, ref->base) != 0);
-}
-
-
-//= Checks a particular property to see if it is a lexical tagging.
-// returns associated term if a tag, NULL otherwise
-
-const char *jhcNetNode::LexBase (int i) const
-{
-  if (strcmp(Role(i), "lex") == 0)
-    return Prop(i)->base;
-  return NULL;
-}
-
-
-//= Checks if particular word is one of the tags associated with this item.
-// can alternatively check if the node is definitely NOT associated with some word
-
-bool jhcNetNode::HasWord (const char *word, int tru_only) const
-{
-  const char *wd;
   int i;
 
-  if (word != NULL)
-    for (i = 0; i < np; i++)
-      if ((wd = LexBase(i)) != NULL)
-        if (_stricmp(wd, word) == 0)     
-          return((tru_only <= 0) || (props[i]->inv <= 0));  // ignores belief
-  return false;
-}
-
-
-//= Checks if lexical tag is one of several items.
-// largely for convenience in grounding commands
-
-bool jhcNetNode::WordIn (const char *v1, const char *v2, const char *v3, 
-                        const char *v4, const char *v5, const char *v6) const
-{
-  return(HasWord(v1) || HasWord(v2) || HasWord(v3) || HasWord(v4) || HasWord(v5) || HasWord(v6));
-}
-
-
-//= See how many of the properties are lexical tags.
-
-int jhcNetNode::NumWords () const
-{
-  int i, cnt = 0;
-
-  for (i = 0; i < np; i++)
-    if (LexBase(i) != NULL)
-      cnt++;
-  return cnt;
-}
-
-
-//= Get a specific tag out of all the words associated with this item.
-// if "bth" > 0.0 then only returns non-negated words with belief over threshold
-// most recently added terms returned first
-
-const char *jhcNetNode::Word (int i, double bth) const
-{
-  const char *wd;
-  int j, cnt = 0;
-
-  if (i >= 0)
-    for (j = np - 1; j >= 0; j--)
-      if ((wd = LexBase(j)) != NULL)
-        if ((bth <= 0.0) || ((inv <= 0) && (blf >= bth)))
-          if (cnt++ >= i)
-            return wd;
-  return NULL;
-}
-
-
-//= Return first word associated with this node, or node name if no words.
-// mostly for printing things
-
-const char *jhcNetNode::Tag () const
-{
-  const char *wd = Word(0);
-
-  return((wd != NULL) ? wd : nick);
-}
-
-
-//= Both nodes must have all the same lexical terms associated with them.
-// returns true if all terms match or neither node is a lexical tag
-// NOTE: this is for use with normal predicate nodes (cf. LexConflict)
-
-bool jhcNetNode::SameWords (const jhcNetNode *ref) const
-{
-  const char *wd;
-  int i;
-
-  if (NumWords() != ref->NumWords())
+  if ((ref == NULL) || (ref->na != na))
     return false;
-  for (i = 0; i < np; i++)
-    if ((wd = LexBase(i)) != NULL)
-      if (!ref->HasWord(wd))
-        return false;
+  for (i = 0; i < na; i++)
+    if (!ref->HasVal(links[i], args[i]))
+      return false;
   return true;
 }
 
 
-//= Nodes must share at least one word.
-// NOTE: this is for use with normal predicate nodes (cf. LexConflict)
+//= See if given node has same arguments as the remapped arguments of this node.
 
-bool jhcNetNode::SharedWord (const jhcNetNode *ref) const
+bool jhcNetNode::SameArgs (const jhcNetNode *ref, const jhcBindings *b) const
 {
-  const char *wd;
+  const jhcNetNode *a, *a2;
+  int i;
+
+  if ((ref == NULL) || (ref->na != na))
+    return false;
+  for (i = 0; i < na; i++)
+  {
+    a = args[i];    
+    if ((b != NULL) && ((a2 = b->LookUp(a)) != NULL))
+      a = a2;
+    if (!ref->HasVal(links[i], a))
+      return false;
+  }      
+  return true;
+}
+
+
+//= Find property node with lex "word" and argument "role" pointing to this node.
+// property node must have matching "neg" and belief above "bth"
+// returns NULL if no such property found (does not check properties of property)
+
+jhcNetNode *jhcNetNode::FindProp (const char *role, const char *word, int neg, double bth) const
+{
+  jhcNetNode *p;
   int i;
 
   for (i = 0; i < np; i++)
-    if ((wd = LexBase(i)) != NULL)
-      if (ref->HasWord(wd))
-        return true;
-  return false;
-}
-
-
-//= Nodes must either have no words or share one else they conflict.
-// differs from LexConflict since applies to nodes with labels not labels themselves
-
-bool jhcNetNode::WordConflict (const jhcNetNode *ref, double bth) const
-{
-  jhcNetNode *p, *rp;
-  int i, j, any = 0;
-
-  // no conflict if this node or reference has no properties (hence no labels)
-  if ((np <= 0) || (ref->np <= 0))
-    return false;
-
-  // look for some true label on this node (i.e. ignore "not Rick")
-  for (i = 0; i < np; i++)
   {
     p = props[i];
-    if ((p->inv == 0) && (p->blf >= bth) && p->LexNode())
-    {
-      // see if reference node has some true label that matches
-      for (j = 0; j < ref->np; j++)
-      {
-        rp = ref->props[j];
-        if ((rp->inv == 0) && (rp->blf >= bth) && rp->LexNode())
-        {
-          // any matching label means no conflict
-          if (_stricmp(p->base, rp->base) == 0)
-            return false;
-          any = 1;
-        }
-
-        // no problem if reference has no true labels
-        if (any <= 0)
-          return false;
-        any = 1;
-      }
-    }
+    if ((p->inv == neg) && (p->blf >= bth) && RoleMatch(i, role) && p->LexMatch(word)) 
+      return p;
   }
-
-  // no problem if this node had no true labels
-  return(any > 0);
-}
-
-
-//= Check if this node's i'th property is the assignment of some label.
-// assignment node must have matching "neg" and belief >= "bth"
-// returns associated word label if true, else NULL
-
-const char *jhcNetNode::ValidWord (int i, double bth, int neg) const
-{
-  const jhcNetNode *w = Prop(i);
-
-  if (w->LexNode() && (w->inv == neg) && (w->blf >= bth))
-    return w->base;
   return NULL;
 }
 
 
-//= Tells if the i'th property of this node is the assignment of "label".
-// assigment node must have matching "neg" and belief above "bth"
+///////////////////////////////////////////////////////////////////////////
+//                 Predicate Terms and Reference Names                   //
+///////////////////////////////////////////////////////////////////////////
 
-bool jhcNetNode::WordMatch (int i, const char *label, double bth, int neg) const
+//= Checks if predicate lexical term is one of several items.
+// largely for convenience in grounding commands
+
+bool jhcNetNode::LexIn (const char *v1, const char *v2, const char *v3, 
+                        const char *v4, const char *v5, const char *v6) const
 {
-  const char *wd = ValidWord(i, bth, neg);
+  return(LexMatch(v1) || LexMatch(v2) || LexMatch(v3) || LexMatch(v4) || LexMatch(v5) || LexMatch(v6));
+}
 
-  return((wd != NULL) && (strcmp(wd, label) == 0));    
+
+//= Get a specific name out of all the names associated with this item.
+// if "bth" > 0.0 then only returns non-negated words with belief over threshold
+// most recently added terms returned first
+
+const char *jhcNetNode::Name (int i, double bth) const
+{
+  const jhcNetNode *p;
+  int j, cnt = 0;
+
+  if (i >= 0)
+    for (j = np - 1; j >= 0; j--)
+    {
+      p = Prop(j);
+      if (RoleMatch(j, "ref") && ((bth <= 0.0) || ((p->inv <= 0) && (p->blf >= bth))))
+        if (cnt++ >= i)
+          return p->Lex();
+    }
+  return NULL;
+}
+
+
+//= Checks if particular name is one of the references associated with this item.
+// can alternatively check if the node is definitely NOT associated with some name
+
+bool jhcNetNode::HasName (const char *word, int tru_only) const
+{
+  int i;
+
+  if (word != NULL)
+    for (i = 0; i < np; i++)
+      if (strcmp(Role(i), "ref") == 0)
+        if (_stricmp(props[i]->lex, word) == 0)     
+          return((tru_only <= 0) || (props[i]->inv <= 0));     // ignores belief
+  return false;
 }
 
 
@@ -643,13 +533,11 @@ bool jhcNetNode::WordMatch (int i, const char *label, double bth, int neg) const
 //= Get text field sizes needed to represent this node.
 // can optionally get sizes for lex nodes (e.g. for bindings)
 
-void jhcNetNode::NodeSize (int& k, int& n, int bind) const
+void jhcNetNode::NodeSize (int& k, int& n) const
 {
   char num[20];
   int len;
 
-  if ((bind <= 0) && LexNode())
-    return;
   len = (int) strlen(base);
   k = __max(k, len);
   _itoa_s(abs(id), num, 10);
@@ -678,17 +566,13 @@ void jhcNetNode::TxtSizes (int& k, int& n, int& r) const
 
 //= Report all arguments of this node including tags (no CR on last line).
 // adds blank line and indents first line unless lvl < 0
-// detail: -1 show default belief, 0 no extras, 1 show belief, 2 show tags, 3 show both
+// detail: -2 belief + tags, -1 belief, 0 no extras, 1 default belief, 2 default belief + tags
 // always returns abs(lvl) for convenience (no check for file errors)
 
-int jhcNetNode::Save (FILE *out, int lvl, int k, int n, int r, const jhcGraphlet *acc, int detail) const
+int jhcNetNode::Save (FILE *out, int lvl, int k, int n, int r, int detail, const jhcGraphlet *acc) const
 {
   char arrow[80];
   int i, j, len, lvl2, kmax = k, nmax = n, rmax = r, ln = 0;
-
-  // term tagging nodes handled specially
-  if (LexNode())
-    return naked_lex(out, lvl, k, n, r, acc, detail);
 
   // write out main node identifier
   if ((k < 1) || (n < 1) || (r < 1))
@@ -698,8 +582,8 @@ int jhcNetNode::Save (FILE *out, int lvl, int k, int n, int r, const jhcGraphlet
   jfprintf(out, "%*s", kmax + nmax + 1, Nick());
   lvl2 = abs(lvl) + kmax + nmax + 1;
 
-  // tack on words, negation, and belief
-  ln = save_tags(out, lvl2, rmax, acc, detail);
+  // tack on words, negation, and belief 
+  ln = save_tags(out, lvl2, rmax, detail);
 
   // go through all arguments (keep rewriting arrow string)
   sprintf_s(arrow, " -%*s-> ", rmax, "");
@@ -715,22 +599,35 @@ int jhcNetNode::Save (FILE *out, int lvl, int k, int n, int r, const jhcGraphlet
     for (j = 0; j < len; j++)
       arrow[j + 2] = (links[i])[j];
     jfputs(arrow, out); 
-    jfprintf(out, "%*s", -(kmax + nmax + 1), args[i]->Nick());
+    jfprintf(out, "%s", args[i]->Nick());
+/*
+    // parens around arguments which are not in graphlet (for debugging mostly)
+    if ((acc != NULL) && !acc->InDesc(args[i]))
+      jfprintf(out, "(%s)", args[i]->Nick());
+    else
+      jfprintf(out, "%s", args[i]->Nick());
+*/
   }
   return abs(lvl);
 }
 
 
 //= Writes out lexical terms, negation, and belief (if they exist) for node.
-// detail: -1 show default belief, 0 no extras, 1 show belief, 2 show tags, 3 show both
+// detail: -2 belief + tags, -1 belief, 0 no extras, 1 default belief, 2 default belief + tags
 // returns number of lines written
 
-int jhcNetNode::save_tags (FILE *out, int lvl, int r, const jhcGraphlet *acc, int detail) const
+int jhcNetNode::save_tags (FILE *out, int lvl, int r, int detail) const
 {
   char txt[10];
-  const jhcNetNode *p;
-  const char *wd;
   int i, ln = 0;
+
+  // possibly add associated predicate term
+  if (*lex != '\0')
+  {
+    if (ln++ > 0)
+      jfprintf(out, "\n%*s", lvl, "");
+    jfprintf(out, " %*s %s", -(r + 3), "-lex-", lex);
+  }
 
   // possibly add literal (if exists, usually only part)
   if (quote != NULL)
@@ -738,24 +635,6 @@ int jhcNetNode::save_tags (FILE *out, int lvl, int r, const jhcGraphlet *acc, in
     if (ln++ > 0)
       jfprintf(out, "\n%*s", lvl, "");
     jfprintf(out, " %*s %s", -(r + 3), "-str-", quote);
-  }
-
-  // possibly add associated word(s) if they are part of graphlet
-  for (i = 0; i < np; i++)
-  {
-    p = Prop(i);
-    if ((acc == NULL) || acc->InDesc(p))
-      if ((wd = LexBase(i)) != NULL)
-      {
-        if (ln++ > 0)
-          jfprintf(out, "\n%*s", lvl, "");
-        jfprintf(out, " %*s %s%s", -(r + 3), "-lex-", 
-                 ((p->inv > 0) ? "* " : ""), wd);                  // lex never an event     
-        if (((detail == 1) || (detail == 3)) && (p->blf != 1.0))
-          jfprintf(out, " (%s)", bfmt(txt, p->blf));
-        else if ((detail == -1) && (p->blf0 != 1.0))               // largely for NOTEs
-          jfprintf(out, " (%s)", bfmt(txt, p->blf0));
-      }
   }
 
   // add event (success or failure) and negation lines
@@ -773,21 +652,29 @@ int jhcNetNode::save_tags (FILE *out, int lvl, int r, const jhcGraphlet *acc, in
   }
 
   // add belief line
-  if (((detail == 1) || (detail == 3)) && (blf != 1.0) && (quote == NULL))
+  if ((detail < 0) && (blf <= 0.0))
+  {
+    if (ln++ > 0)
+      jfprintf(out, "\n%*s", lvl, "");
+    jfprintf(out, " %*s 0", -(r + 3), "-ext-");            // add -ext- marker
+    if (blf0 != 1.0)
+      jfprintf(out, "\n%*s %*s %s", lvl, "", -(r + 3), "-blf-", bfmt(txt, blf0));    
+  }
+  else if ((detail < 0) && (blf != 1.0) && (quote == NULL))
   {
     if (ln++ > 0)
       jfprintf(out, "\n%*s", lvl, "");
     jfprintf(out, " %*s %s", -(r + 3), "-blf-", bfmt(txt, blf));
   }
-  else if ((detail == -1) && (blf0 != 1.0))
+  else if ((detail > 0) && (blf0 != 1.0))                  // normal mode shows blf0
   {
     if (ln++ > 0)
       jfprintf(out, "\n%*s", lvl, "");
-    jfprintf(out, " %*s %s", -(r + 3), "-blf-", bfmt(txt, blf0));    // largely for NOTEs
+    jfprintf(out, " %*s %s", -(r + 3), "-blf-", bfmt(txt, blf0));    
   }
 
   // add grammatical tags
-  if (((detail == 2) || (detail == 3)) && (tags != 0))
+  if ((abs(detail) >= 2) && (tags != 0))
   {
     if (ln++ > 0)
       jfprintf(out, "\n%*s", lvl, "");
@@ -797,42 +684,6 @@ int jhcNetNode::save_tags (FILE *out, int lvl, int r, const jhcGraphlet *acc, in
         jfprintf(out, " %s", JTAG_STR[i]);
   }
   return ln;
-}
-
-
-//= Decide what to print for a lexical tagging node (sometimes nothing).
-// detail: -1 show default belief, 0 no extras, 1 show belief, 2 show tags, 3 show both
-// detail: -2 special print of naked lex (hack for alias rules!)
-// always returns abs(lvl) for convenience 
-
-int jhcNetNode::naked_lex (FILE *out, int lvl, int k, int n, int r, const jhcGraphlet *acc, int detail) const
-{
-  char txt[10];
-  const jhcNetNode *named = args[0];
-  int kmax = k, nmax = n, rmax = r;
-
-  // check if thing being named is in graphlet somewhere else
-  if ((detail > -2) && ((acc == NULL) || acc->InDesc(named)))
-    return lvl;
-  if ((k < 1) || (n < 1) || (r < 1))
-  {
-    named->NodeSize(kmax, nmax);
-    rmax = __max(rmax, 3);
-  }
-
-  // print out thing being named
-  if (lvl >= 0)
-    jfprintf(out, "\n%*s", lvl, "");
-  jfprintf(out, "%*s", kmax + nmax + 1, named->Nick());
-
-  // print the associated lexical term (lex never an event)
-  jfprintf(out, " %*s %s%s", -(rmax + 3), "-lex-", ((inv > 0) ? "* " : ""), base);
-          
-  if (((detail == 1) || (detail == 3)) && (blf != 1.0))
-    jprintf(" (%s)", bfmt(txt, blf));
-  else if ((detail == -1) && (blf0 != 1.0))
-    jprintf(" (%s)", bfmt(txt, blf0));                               // largely for NOTEs
-  return abs(lvl);
 }
 
 

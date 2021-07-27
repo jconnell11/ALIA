@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -390,7 +390,7 @@ const char *jhcSlotVal::SlotVal (const char *pair) const
 }
 
 
-//= Extract the value a from pair if its slot name begins with the given prefix (if any).
+//= Extract the value from pair if its slot name begins with the given prefix (if any).
 // returns following value pointer into pair string (NULL if prefix does not match)
 
 const char *jhcSlotVal::SlotGet (char *pair, const char *prefix, int lower) const
@@ -406,6 +406,29 @@ const char *jhcSlotVal::SlotGet (char *pair, const char *prefix, int lower) cons
     all_lower(sep + 1);
   return(sep + 1);
 }
+
+
+//= Extract the slot name (possibly lowercased) from a pair and return its value.
+
+const char *jhcSlotVal::SplitPair (char *slot, const char *pair, int lower, int ssz) const
+{
+  const char *sep;
+
+  // sanity check
+  if ((slot == NULL) || (ssz <= 0))
+    return NULL;
+  *slot = '\0';
+  if (pair == NULL)
+    return NULL;
+
+  // copy just slot part and return pointer to tail of pair
+  if ((sep = strchr(pair, '=')) == NULL)
+    return NULL;
+  strncpy_s(slot, ssz, pair, sep - pair);        // always terminates
+  if (lower > 0)
+    all_lower(slot);
+  return(sep + 1);
+} 
 
 
 //= Convert a word (in place) to all lowercase characters.

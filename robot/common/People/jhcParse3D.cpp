@@ -61,9 +61,9 @@ jhcParse3D::jhcParse3D ()
   dbg = 0;
 
   // initial parameter values
-  SetChest(100.0, 38.0, 1.5, 180, 25.0, 700.0, 44.0, 74.0);
-  SetHead(7.0, 10.0, 4.0, 5.0, 13.0, 6.5, 2.0, 20);
-  SetShoulder(10.0, 40.0, 8.0, 8.0, 1.05, 10.0, 75.0);
+  SetChest(100.0, 30.0, 5.0, 50, 40.0, 300.0, 40.0, 74.0);   // trees
+  SetHead(7.0, 7.0, 5.0, 4.0, 13.0, 5.0, 2.0, 20);
+  SetShoulder(10.0, 20.0, 3.5, 8.0, 1.5, 8.0, 120.0);
   SetArm(30.0, 1.5, 180, 10.0, 0, 20.0, 50.0);
   SetHand(11, 0.1, 2.0, 0.9, 12.0, 16.0, 40.0, 0.0);
   SetAim(0.0, 1.0, 15.0, 4.0, 22.0);
@@ -189,7 +189,7 @@ int jhcParse3D::shoulder_params (const char *fname)
   int ok;
 
   ps->SetTag("p3d_shoulder", 0);
-  ps->NextSpecF( &shdn, "Shoulder slice drop (in)");       // was 12
+  ps->NextSpecF( &shdn, "Shoulder drop from eyes (in)");   // was 12
   ps->NextSpecF( &smin, "Min shoulder area (in^2)");       // was 80 then 50
   ps->NextSpecF( &secc, "Max shoulder elongation");   
   ps->NextSpecF( &sw0,  "Min shoulder width (in)");        // was 12

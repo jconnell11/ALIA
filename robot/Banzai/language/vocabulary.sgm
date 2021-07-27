@@ -1,7 +1,7 @@
 // OPEN CLASS WORDS
 // ================================================
 
-// singular noun
+// singular nouns
 
 =[AKO]
   tiger
@@ -25,7 +25,7 @@
 =[AKO-M]
 
 
-// adjective
+// adjectives
 
 =[HQ]
   orange
@@ -40,9 +40,13 @@
   dead
   tawny
   streaked
+  smart
+  ferocious
+  high
+  low
 
 
-// proper noun
+// proper nouns
 
 =[NAME]
   Rick
@@ -57,17 +61,17 @@
 
 // -----------------------------------------
 
-// modifier
+// modifiers
 
 =[MOD]
 
 
-// direction
+// directions
 
 =[DIR]
 
 
-// imperative verb
+// imperative verbs
 
 =[ACT]
   do something
@@ -81,6 +85,8 @@
   hit
   vet
   complain
+  look around
+  flee
 
 
 // ================================================
@@ -102,3 +108,4 @@
   see * vpast = saw
   catch * vpast = caught
   hit * vpast = hit
+  flee * vpast = fled

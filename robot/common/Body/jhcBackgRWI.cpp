@@ -286,6 +286,7 @@ int jhcBackgRWI::aux2_loop ()
 
 //= See if background loops are accepting command settings.
 // generally not allowed except between Update and Issue
+// sensor data accessible in this interval (no need for Readable/ReadDone)
 // NOTE: use this to sync grounding functions to perception loop
 
 bool jhcBackgRWI::Accepting ()

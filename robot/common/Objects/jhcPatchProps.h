@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ private:
   int cols[cmax], cvect[cmax];
   char cname[cmax][20];
   char main[80], mix[80];
+  int pels;
 
   // texture properties
   jhcImg thumb, ej, ejv, hcc, vcc;
@@ -102,23 +103,31 @@ public:
   // creation and initialization
   ~jhcPatchProps ();
   jhcPatchProps ();
+  int NumCols () const {return cmax;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
   int SaveVals (const char *fname) const;
+  void SetFind (int sm, int th, int s0, int i0, int i1, int wh, int bk);
+  void SetHue (int ro, int oy, int yg, int gb, int bp, int pr);
+  void SetPrimary (double p, double d, double s, double f);
 
   // configuration
   void SetSize (const jhcImg& ref) {SetSize(ref.XDim(), ref.YDim());}
   void SetSize (int x, int y);
+  void Reset ();
 
   // color functions
   int FindColors (const jhcImg& mask, const jhcImg& src);
+  void ForceVect (int *v);
   const char *ColorN (int n) const;
   const char *AltColorN (int n) const;
   const char *KnownColor (int n) const;
   int QuantColor (jhcArr& dest) const;
   int MainColors (char *dest, int ssz) const;
   int AltColors (char *dest, int ssz) const;
+  int DegColor (int cnum) const;
+  double AmtColor (int cnum) const;
 
   // color functions - convenience
   template <size_t ssz>

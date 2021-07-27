@@ -85,7 +85,7 @@ BEGIN
         MENUITEM "Open &Video ...",             ID_FILE_OPENVIDEO
         MENUITEM "&Explicit / URL ...",         ID_FILE_OPENEXPLICIT
         MENUITEM SEPARATOR
-        MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
+        MENUITEM "Recent File",                 ID_FILE_MRU_FILE1
         MENUITEM SEPARATOR
         MENUITEM "Save &Result ...",            ID_FILE_SAVE_AS
         MENUITEM "Save &Source ...",            ID_FILE_SAVESOURCE
@@ -94,11 +94,59 @@ BEGIN
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
     MENUITEM "|",                           0
-    POPUP "&People"
+    POPUP "&Room"
+    BEGIN
+        MENUITEM "&Person Map",                 ID_ROOM_PERSONMAP
+        MENUITEM "&Chest Cut",                  ID_PEOPLE_CHEST
+        MENUITEM "&Head Shape",                 ID_PEOPLE_HEAD
+        MENUITEM "&Shoulders",                  ID_PEOPLE_SHOULDER
+        MENUITEM "Head &Track",                 ID_ROOM_HEADTRACK
+        MENUITEM SEPARATOR
+        MENUITEM "&Navigation Map",             ID_NAVIGATION_UPDATING
+        MENUITEM "&Robot Size",                 ID_NAV_FOVLIMITS
+        MENUITEM "Con&fidence",                 ID_NAV_CONFIDENCE
+        MENUITEM "&Guidance",                   ID_NAV_GUIDANCE
+        MENUITEM SEPARATOR
+        MENUITEM "&Depth FOV",                  ID_NAV_DEPTHFOV
+        MENUITEM "&Floor Calib",                ID_NAV_CAMCALIB
+    END
+    POPUP "&Table"
+    BEGIN
+        MENUITEM "Table &Map",                  ID_OBJECTS_SURFACEMAP
+        MENUITEM "Surface &Zoom",               ID_OBJECTS_SURFACEZOOM
+        MENUITEM SEPARATOR
+        MENUITEM "&Plane Fitting",              ID_OBJECTS_PLANEFIT
+        MENUITEM "&Depth Detect",               ID_OBJECTS_DETECT
+        MENUITEM "&Color Detect",               ID_OBJECTS_COLORPARAMS
+        MENUITEM SEPARATOR
+        MENUITEM "&Shape Params",               ID_OBJECTS_SHAPE
+        MENUITEM "&Track Params",               ID_OBJECTS_TRACK
+        MENUITEM "&Filter Params",              ID_OBJECTS_FILTER
+    END
+    POPUP "Trape&zoid"
+    BEGIN
+        MENUITEM "&Neck Ramp",                  ID_RAMP_NECKRAMP
+        MENUITEM "&Lift Ramp",                  ID_PARAMETERS_LIFTRAMP
+        MENUITEM SEPARATOR
+        MENUITEM "&Arm Ramp",                   ID_PROFILING_ARMRAMP
+        MENUITEM "&Grab Ramp",                  ID_PARAMETERS_GRABRAMP
+        MENUITEM SEPARATOR
+        MENUITEM "&Base Ramp",                  ID_PARAMETERS_BASERAMP
+        MENUITEM SEPARATOR
+        MENUITEM "&Save Defaults",              ID_PARAMETERS_SAVEDEFAULTS
+        MENUITEM "Load &Defaults",              ID_PARAMETERS_LOADDEFAULTS
+    END
+    MENUITEM "|",                           0
+    POPUP "&Mood"
+    BEGIN
+        MENUITEM "&Activity Level",             ID_MOOD_ACTIVITYLEVEL
+        MENUITEM "&Interact Level",             ID_MOOD_INTERACTIONLEVEL
+        MENUITEM "&Energy Level",               ID_MOOD_ENERGYLEVEL
+    END
+    POPUP "&Social"
     BEGIN
         MENUITEM "&Watching",                   ID_PARAMETERS_WATCHING
         MENUITEM "&Orienting",                  ID_PARAMETERS_ORIENTING
-        MENUITEM "&Idle Timing",                ID_PARAMETERS_TARGETTIME
         MENUITEM "&Visibility",                 ID_PEOPLE_VISIBILITY
         MENUITEM SEPARATOR
         MENUITEM "&Social Attn",                ID_PEOPLE_SOCIALEVENTS
@@ -109,25 +157,14 @@ BEGIN
     END
     POPUP "&Objects"
     BEGIN
-        MENUITEM "Surface &Zoom",               ID_OBJECTS_SURFACEZOOM
-        MENUITEM "&Map Size",                   ID_OBJECTS_SURFACEMAP
-        MENUITEM "&Plane Fit",                  ID_OBJECTS_PLANEFIT
+        MENUITEM "&Range Bins",                 ID_VISUAL_DIST
+        MENUITEM "&Shape Bins",                 ID_OBJECTS_SHAPEBINS
+        MENUITEM "&Dims Bins",                  ID_VISUAL_DIMSBINS
+        MENUITEM "&Obj Compare",                ID_VISUAL_OBJCOMPARISON
         MENUITEM SEPARATOR
-        MENUITEM "&Detect Params",              ID_OBJECTS_DETECT
-        MENUITEM "&Shape Params",               ID_OBJECTS_SHAPE
-        MENUITEM SEPARATOR
-        MENUITEM "&Track Params",               ID_OBJECTS_TRACK
-        MENUITEM "&Filter Params",              ID_OBJECTS_FILTER
-    END
-    POPUP "&Nav"
-    BEGIN
-        MENUITEM "&Map Size",                   ID_NAVIGATION_UPDATING
-        MENUITEM "Robot &Size",                 ID_NAV_FOVLIMITS
-        MENUITEM "Con&fidence",                 ID_NAV_CONFIDENCE
-        MENUITEM "&Guidance",                   ID_NAV_GUIDANCE
-        MENUITEM SEPARATOR
-        MENUITEM "Depth &FOV",                  ID_NAV_DEPTHFOV
-        MENUITEM "&Cam Calib",                  ID_NAV_CAMCALIB
+        MENUITEM "&Color Finding",              ID_VISUAL_COLORFINDING
+        MENUITEM "&Hue Thresholds",             ID_VISUAL_HUETHRESHOLDS
+        MENUITEM "&Primary Colors",             ID_VISUAL_PRIMARYCOLORS
     END
     POPUP "&Ballistic"
     BEGIN
@@ -145,31 +182,19 @@ BEGIN
         MENUITEM "&Turn Cmd",                   ID_PARAMETERS_TURNCMD
         MENUITEM "Base &Progress",              ID_PARAMETERS_BASEPROGRESS
     END
-    POPUP "&Ramps"
-    BEGIN
-        MENUITEM "&Neck Ramp",                  ID_RAMP_NECKRAMP
-        MENUITEM "&Lift Ramp",                  ID_PARAMETERS_LIFTRAMP
-        MENUITEM SEPARATOR
-        MENUITEM "&Arm Ramp",                   ID_PROFILING_ARMRAMP
-        MENUITEM "&Grab Ramp",                  ID_PARAMETERS_GRABRAMP
-        MENUITEM SEPARATOR
-        MENUITEM "&Base Ramp",                  ID_PARAMETERS_BASERAMP
-        MENUITEM SEPARATOR
-        MENUITEM "&Save Defaults",              ID_PARAMETERS_SAVEDEFAULTS
-        MENUITEM "Load &Defaults",              ID_PARAMETERS_LOADDEFAULTS
-    END
     MENUITEM "|",                           ID_32839
-    POPUP "&Innate"
+    POPUP "&Detection"
     BEGIN
-        MENUITEM "&Limp",                       ID_ARM_LIMP
-        MENUITEM "&Neutral",                    ID_ANIMATION_NEUTRAL
-        MENUITEM "&Breathe",                    ID_ANIMATION_IDLE
-        MENUITEM SEPARATOR
         MENUITEM "&Track Head",                 ID_DEPTH_TRACKHEAD
         MENUITEM "&Head Gaze",                  ID_DEPTH_PERSONMAP
         MENUITEM "&Speaking",                   ID_PEOPLE_SPEAKING
+        MENUITEM SEPARATOR
+        MENUITEM "&Pick Table",                 ID_SURFACE_PICKTABLE
+        MENUITEM "&Depth Objs",                 ID_OBJECTS_TRACKOBJS
+        MENUITEM "&Color Objs",                 ID_SURFACE_COLOROBJS
+        MENUITEM "&Hybrid Seg",                 ID_SURFACE_HYBRIDSEG
     END
-    POPUP "&Environ"
+    POPUP "&Navigation"
     BEGIN
         MENUITEM "&Height Map",                 ID_ENVIRON_FLOORMAP
         MENUITEM "&Integrated",                 ID_ENVIRON_INTEGRATED
@@ -178,13 +203,12 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Seek Loc",                   ID_ENVIRON_GOTO
     END
-    POPUP "&Surface"
+    POPUP "&Motion"
     BEGIN
-        MENUITEM "&Pick Table",                 ID_SURFACE_PICKTABLE
-        MENUITEM "&Track Objs",                 ID_OBJECTS_TRACKOBJS
-    END
-    POPUP "&Arm"
-    BEGIN
+        MENUITEM "&Limp",                       ID_ARM_LIMP
+        MENUITEM "&Neutral",                    ID_ANIMATION_NEUTRAL
+        MENUITEM "&Breathe",                    ID_ANIMATION_IDLE
+        MENUITEM SEPARATOR
         MENUITEM "Swing &Params",               ID_ARM_SWINGPARAMS
         MENUITEM "&Swing Joint",                ID_ARM_SWINGJOINT
         MENUITEM "&Goto Pose",                  ID_ARM_GOTOPOSE
@@ -197,7 +221,7 @@ BEGIN
         MENUITEM "&Push Forward",               ID_ARM_PUSHFORWARD
     END
     MENUITEM "|",                           ID_
-    POPUP "&Demo"
+    POPUP "De&mo"
     BEGIN
         MENUITEM "Demo &Options",               ID_DEMO_DEMOOPTIONS
         MENUITEM "Attn + Time",                 ID_DEMO_ATTN
@@ -216,10 +240,11 @@ BEGIN
         MENUITEM "Play &Depth",                 ID_UTILITIES_PLAYDEPTH
         MENUITEM "&Play Both",                  ID_UTILITIES_PLAYBOTH
         MENUITEM SEPARATOR
+        MENUITEM "&Auto Values",                ID_UTILITIES_VALUERULES
         MENUITEM "&Extract Words",              ID_UTILITIES_EXTRACTWORDS
         MENUITEM "Chk &Grammar",                ID_UTILITIES_CHKGRAMMAR
         MENUITEM SEPARATOR
-        MENUITEM "Vivid View",                  ID_INTEREST_VIVIDVIEW
+        MENUITEM "&Battery Full",               ID_UTILITIES_BATTERYFULL
         MENUITEM "Test",                        ID_UTILITIES_TEST
     END
 END
@@ -259,7 +284,7 @@ CAPTION "About Banzai"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "Banzai Version 3.80",IDC_STATIC,47,11,119,8,SS_NOPREFIX
+    LTEXT           "Banzai Version 4.50",IDC_STATIC,47,11,119,8,SS_NOPREFIX
     LTEXT           "Copyright (C) 2015-2021, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
@@ -284,7 +309,7 @@ BEGIN
     EDITTEXT        IDC_JHC_TXT4,7,64,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
     EDITTEXT        IDC_JHC_TXT5,7,83,91,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
     EDITTEXT        IDC_JHC_TXT6,7,102,91,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    EDITTEXT        IDC_JHC_TXT7,7,129,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT7,7,131,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
     EDITTEXT        IDC_JHC_TXT8,7,148,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
     PUSHBUTTON      "Cancel",IDCANCEL,161,45,50,14
     DEFPUSHBUTTON   "OK",IDOK,161,7,50,14
@@ -434,6 +459,11 @@ END
 //
 
 IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_JHCARGS AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
@@ -667,9 +697,9 @@ BEGIN
     ID_NAV_CONFIDENCE       "Parameters governing minimal area and map fading"
     ID_PEOPLE_VISIBILITY    "Angular range where heads are likely to be detected"
     ID_DEMO_ATTN            "Adjust attention timing and thought rate"
-    ID_OBJECTS_TRACKOBJS    "Detect and track protrusions from a flat surface"
+    ID_OBJECTS_TRACKOBJS    "Detect protrusions from a flat surface"
     ID_OBJECTS_SURFACEMAP   "Map size and resolution for detecting objects on surface"
-    ID_OBJECTS_DETECT       "Parameters for finding objects on surface"
+    ID_OBJECTS_DETECT       "Parameters for finding objects protruding from surface"
     ID_OBJECTS_SHAPE        "Parameters for size compensation and temporal update rate"
     ID_OBJECTS_TRACK        "Set parameters for tracking objects on table"
     ID_OBJECTS_FILTER       "Set parameters for updating object tracks"
@@ -684,6 +714,32 @@ BEGIN
     ID_OBJECTS_SURFACEZOOM  "Parameters for mapping and filling support surface"
     ID_UTILITIES_TEST2      "Temporary item"
     ID_DEMO_STATICPOSE      "Neck angles and lift height to use if no physical robot"
+    ID_SURFACE_HYBRIDSEG    "Segment and track objects on table based on height and color"
+    ID_OBJECTS_COLORPARAMS  "Parameters for finding nearly flat objects on surfaces"
+    ID_SURFACE_COLOROBJS    "Find nearly flat objects based on color differences"
+    ID_UTILITIES_VALUERULES "Get preliminary rules and operators from a list of properties and values"
+    ID_VISUAL_DIST          "Set distance thresholds for categories and alerts"
+    ID_VISUAL_DIMSBINS      "Set object size thresholds for categories"
+    ID_VISUAL_COLORFINDING  "Parameters for analyzing hues and intensities"
+    ID_VISUAL_HUETHRESHOLDS "Hue value boundaries between colors"
+    ID_VISUAL_PRIMARYCOLORS "Threshold for qualitative color predicates"
+    ID_VISUAL_OBJCOMPARISON "Adjust value comparison and spatial zones"
+END
+
+STRINGTABLE
+BEGIN
+    ID_PEOPLE_CHEST         "Parameters controlling detection of separated people"
+    ID_PEOPLE_HEAD          "Characteristics needed for human heads"
+    ID_PEOPLE_SHOULDER      "Person verfication by shoulder analysis"
+    ID_ROOM_HEADTRACK       "Detections needed to validate and max movement distance"
+    ID_UTILITIES_BATTERYFULL 
+                            "Robot is fully charged so recalibrate battery capacity"
+    ID_OBJECTS_SHAPEBINS    "Set object shape thresholds for categories"
+    ID_ROOM_PERSONMAP       "Set the size and resolution of the area in which to look for people"
+    ID_MOOD_ACTIVITYLEVEL   "Adjust thresholds for boredom and overwhelmed"
+    ID_MOOD_ENERGYLEVEL     "Adjust threshold for tiredness"
+    ID_MOOD_INTERACTIONLEVEL "Adjust thresholds for loneliness"
+    ID_SOCIAL_FOOTCHECK     "Parameters for automatically re-checking ground in front of robot"
 END
 
 #endif    // English (United States) resources

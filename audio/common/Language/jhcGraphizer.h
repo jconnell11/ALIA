@@ -86,6 +86,7 @@ private:
   int cvt_attn (const char *alist);
   int append_ynq (jhcAliaChain *seq, jhcNodePool& pool) const;
   int append_whq (jhcAliaChain *seq, jhcNodePool& pool) const;
+  int append_exist (jhcAliaChain *seq, jhcNodePool& pool) const;
   jhcAliaChain *tell_step (const char *verb, jhcNodePool& pool) const;
 
   // rules
@@ -109,6 +110,7 @@ private:
   jhcAliaChain *dir_step (const char *kind) const;
   jhcNetNode *build_cmd (const char *head, const char *alist, jhcNodePool& pool);
   jhcNetNode *build_query (const char *alist, jhcNodePool& pool);
+  void demote_bind () const;
 
   // action phrases
   jhcNetNode *build_do (const char *alist, jhcNodePool& pool);
@@ -121,10 +123,14 @@ private:
 
   // object phrases
   jhcNetNode *build_obj (const char **after, const char *alist, jhcNodePool& pool, 
-                         jhcNetNode *f0 =NULL, int neg =0, double blf =1.0);
-  jhcNetNode *ref_props (jhcNetNode *n, jhcNodePool& pool, const char *pron, int neg) const;
+                         jhcNetNode *f0 =NULL, double blf =1.0, int qcnt =0);
+  jhcNetNode *ref_props (jhcNetNode *n, jhcNodePool& pool, const char *pron) const;
+  bool match_any (const char *txt, const char *val, const char *val2, const char *val3 =NULL, const char *val4 =NULL) const;
+
   jhcNetNode *obj_deg (const char **after, jhcNetNode *obj, const char *deg, const char *alist, 
-                       jhcNodePool& pool, int neg =0, double blf =1.0);
+                       jhcNodePool& pool, int neg, double blf =1.0);
+  jhcNetNode *obj_comp (const char **after, jhcNetNode *obj, const char *deg, const char *alist, 
+                        jhcNodePool& pool, int neg, double blf =1.0);
   jhcNetNode *add_place (const char **after, jhcNetNode *obj, char *pair, const char *alist, 
                          jhcNodePool& pool, int neg =0, double blf =1.0);
   jhcNetNode *obj_has (const char **after, jhcNetNode *obj, const char *prep, const char *alist, 

@@ -36,6 +36,8 @@
 #include "Reasoning/jhcProcMem.h"
 
 #include "Action/jhcAliaDLL.h"         // common robot
+#include "Action/jhcAliaMood.h"
+#include "Action/jhcAliaStats.h"
 #include "Action/jhcEchoFcn.h"     
 #include "Grounding/jhcTalkFcn.h"          
 
@@ -44,6 +46,48 @@
 // essentially contains the attentional buffer and several forms of memory
 // this environment gets passed to many things in their Run calls
 // which allows use of the halo processing and operator selection
+// <pre>
+// class tree overview (+ = member, > = pointer):
+//
+//   AliaCore
+//     +AssocMem             rule collection
+//       >AliaRule
+//         Situation         condition part
+//           NodePool
+//         +Graphlet         result part
+//     +ProcMem              operator collection
+//       >AliaOp
+//         Situation         trigger part
+//           NodePool
+//           +Graphlet   
+//         >AliaChain        response part
+//           +Bindings
+//           >AliaDir
+//             +Bindings
+//           >AliaPlay
+//             >AliaDir
+//               +Bindings
+//     +ActionTree           directive control
+//       WorkMem             main + halo facts
+//         NodePool
+//           >NetNode
+//     +GramExec             input parse
+//       TxtSrc
+//       >GramRule
+//         >GramStep
+//     +NetBuild             network assembly
+//       Graphizer
+//         SlotVal
+//         +MorphFcns
+//     +TalkFcn              text output
+//       TimedFcns
+//         AliaKernal
+//     +EchoFcn
+//       AliaKernel
+//     +AliaMood             operator preference
+//     +AliaStats
+// 
+// </pre>
 
 class jhcAliaCore
 {
@@ -59,7 +103,7 @@ private:
   int ndll;                    // number of DLLs added
   double ver;                  // current code version
 
-  double pth;                  // operator preference threshold
+  double pess;                 // preference threshold (pessimism)
   double wild;                 // respect for operator preference
 
   int svc;                     // which focus is being worked on
@@ -78,8 +122,10 @@ protected:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  jhcNetBuild net;             // language to network conversion
   jhcActionTree atree;         // working memory and call roots
+  jhcNetBuild net;             // language to network conversion
+  jhcAliaStats stat;           // monitor for various activities
+  jhcAliaMood mood;            // time varying goal preferences
   char cfile[80];              // preferred log file for conversions
   int noisy;                   // controls diagnostic messages
 
@@ -91,8 +137,15 @@ public:
   jhcAliaCore ();
   double Version () const {return ver;}
   double Wild () const    {return wild;}
-  double MinPref () const {return pth;}
+  double MinPref () const {return pess;}
   int NextBid () const    {return bid;}
+  int LastTop () const    {return topval;}
+
+  // processing parameter bundles 
+  int Defaults (const char *fname =NULL)       
+    {return mood.Defaults(fname);}
+  int SaveVals (const char *fname) const 
+    {return mood.SaveVals(fname);}
 
   // extensions
   void KernExtras (const char *kdir);
@@ -117,18 +170,17 @@ public:
       {return Response(out, ssz);}
 
   // directive functions
-  int MainMemOnly (jhcBindings& b);
+  int MainMemOnly (jhcBindings& b, int note =2);
   jhcAliaChain *CopyMethod (const jhcAliaOp *op, jhcBindings& b, const jhcGraphlet *ctx =NULL)
     {return (op->meth)->Instantiate(atree, b, ctx);}
   int GetChoices (jhcAliaDir *d)
-    {return pmem.FindOps(d, atree, pth, atree.MinBlf());}
+    {return pmem.FindOps(d, atree, pess, atree.MinBlf());}
   void SetPref (double pref)
     {bid = atree.ServiceWt(pref);}
   int HaltActive (jhcGraphlet& desc);
   jhcAliaOp *Probe () {return &(pmem.probe);}
 
   // halo control
-  void RecomputeHalo ();
   int Percolate (const jhcAliaDir& dir);
   int ZeroTop (const jhcAliaDir& dir);
 
@@ -143,7 +195,7 @@ public:
   int SayStop (const jhcGraphlet& g, int inst);
 
   // debugging
-  void ShowMem () const {atree.PrintMain();}
+  void ShowMem () {atree.PrintMain();}
   void LoadLearned ();
   void DumpLearned () const;
   void DumpSession () const;
@@ -155,6 +207,10 @@ private:
   // extensions
   int add_info (const char *dir, const char *base, int rpt, int level);
   bool readable (char *fname, int ssz, const char *msg, ...) const;
+
+  // main functions
+  void gather_stats ();
+
 
 };
 

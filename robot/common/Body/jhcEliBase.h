@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@
 #include "Geometry/jhcMotRamp.h"         // common robot
 #include "Peripheral/jhcSerialFTDI.h" 
 
+#include "Data/jhcArr.h"
 
 /** If condition occurs increment error count and return code, otherwise clear error count. **/
 #define BBARF(val, cond) if (cond) {berr++; return(val);} else berr = 0;
@@ -87,13 +89,18 @@ private:
   int mlock0, mlock;     /** Winning bid for movement command.     */
   int tlock0, tlock;     /** Winning bid for turn command.         */
   int stiff;             /** Whether base is under active control. */
-  int ice;               /** Whether base is already frozen.       */
+  int ice;               /** Whether moving is already frozen.     */
+  int ice2;              /** Whether turning is already frozen.    */
   int ms;                /** Blocking update rate (ms).            */
 
   // led command
   int llock0, llock;     /** Winning bid for attention light.  */
   int led0, led;         /** Attention LED state and previous. */
   
+  // instantaneous speed estimates
+  UL32 now;
+  double mvel, tvel, imv, itv;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
@@ -114,7 +121,7 @@ public:
 
   // geometric calibration
   jhcParam gps;
-  double wd, ws;
+  double wd, ws, vmax;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -139,6 +146,8 @@ public:
 
   // low level commands
   int Freeze (int doit =1, double tupd =0.033);
+  int FreezeMove (int doit =1, double tupd =0.033);
+  int FreezeTurn (int doit =1, double tupd =0.033);
   int Limp ();
 
   // core interaction
@@ -164,6 +173,10 @@ public:
   double StepX () const     {return dx;}
   double StepY () const     {return dy;}
   double StepMove () const  {return dm;}
+  double MoveCmdV () const  {return mvel;}
+  double TurnCmdV () const  {return tvel;}
+  double MoveIPS (int abs =0) const {return((abs > 0) ? fabs(imv) : imv);}
+  double TurnDPS (int abs =0) const {return((abs > 0) ? fabs(itv) : itv);}
   void AdjustXY (double& tx, double& ty, double tx0 =0.0, double ty0 =0.0) const;
   void AdjustTarget (jhcMatrix& pos) const;
 
@@ -178,6 +191,12 @@ public:
     {return MoveAbsolute(trav + dist, rate, bid);}
   int TurnTarget (double ang, double rate =1.0, int bid =10)
     {return TurnAbsolute(head + ang, rate, bid);}
+  int DriveStop (double rate =1.5, int bid =1)
+    {return DriveAbsolute(mctrl.SoftStop(trav, mdead, rate), tctrl.SoftStop(head, tdead, rate), rate, rate, bid);}
+  int MoveStop (double rate =1.5, int bid =1)
+    {return MoveAbsolute(mctrl.SoftStop(trav, mdead, rate), rate, bid);}
+  int TurnStop (double rate =1.5, int bid =1)
+    {return TurnAbsolute(tctrl.SoftStop(head, tdead, rate), rate, bid);}
   int SetMoveVel (double ips, int bid =10);
   int SetTurnVel (double dps, int bid =10);
 
@@ -196,8 +215,8 @@ public:
   // convert relative goal to absolute
   double MoveGoal (double dist) const {return(trav + dist);}
   double TurnGoal (double ang) const  {return(head + ang);}
-  double MoveIPS (double rate =1.0) const {return(rate * mctrl.vstd);}
-  double TurnDPS (double rate =1.0) const {return(rate * tctrl.vstd);}
+  double RateIPS (double rate =1.0) const {return(rate * mctrl.vstd);}
+  double RateDPS (double rate =1.0) const {return(rate * tctrl.vstd);}
 
   // base goal characteristics
   double DriveAbsTime (double tr2, double hd2, double tr1, double hd1, 
@@ -255,10 +274,12 @@ TurnTarget(ang, rate, bid);
 */
 
   // base read only access
-  double MoveCtrlVel () const  {return mctrl.RampVel();}
-  double TurnCtrlVel () const  {return tctrl.RampVel();}
-  double MoveCtrlGoal () const {return mctrl.RampCmd();}
-  double TurnCtrlGoal () const {return tctrl.RampCmd();}
+  double MoveCtrlVel () const {return mctrl.RampVel(mdead);}
+  double TurnCtrlVel () const {return tctrl.RampVel(tdead);}
+  double MoveAbsGoal () const {return mctrl.RampCmd();}
+  double TurnAbsGoal () const {return tctrl.RampCmd();}
+  double MoveIncGoal () const {return(mctrl.RampCmd() - trav);}
+  double TurnIncGoal () const {return norm_ang(tctrl.RampCmd() - head);}
   int DriveWin () const {return __max(mlock0, tlock0);}
   int MoveWin () const  {return mlock0;}
   int TurnWin () const  {return tlock0;}

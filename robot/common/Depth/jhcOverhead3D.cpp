@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,7 +85,7 @@ jhcOverhead3D::jhcOverhead3D (int ncam)
 
   // set up processing parameters (make sure some sensor is valid)
   SetMap(144.0, 144.0, 72.0, 72.0, 0.0, 8.0, 0.2, 42.0);
-  SetFit(4.0, 10000, 2.0, 3.0, 4.0, 2.0, 100);
+  SetFit(4.0, 10000, 1.0, 2.0, 2.0, 1.0, 100);             
   SrcSize();
   Defaults();
   Reset();
@@ -763,14 +763,39 @@ int jhcOverhead3D::Reproject (jhcImg& dest, const jhcImg& d16, double bot, doubl
 }
 
 
+//= Create overhead color and height maps from raw depth sensor inputs.
+
+int jhcOverhead3D::Reproject2 (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const jhcImg& d16, int cam, int clr)
+{
+  double bot = zlo, top = zhi, zcut = 84.0;                // ignore above this height
+  int i, n = __max(0, __min(cam, smax - 1));
+
+  if (!map.SameFormat(hts) || !map.SameSize(rgb, 3) || !col.Valid(3) || !col.SameSize(d16, 2))
+    return Fatal("Bad input to jhcOverhead3D::Reproject2");
+
+  // set static camera parameters
+  SetCamera(cx[n] + x0 - 0.5 * mw, cy[n] + y0, cz[n]);
+  SetView(p0[n] - 90.0, t0[n], ImgRoll(n));
+
+  // get projection from this camera 
+  SetProject(ztab + bot, ztab + top, zcut, ipp, rmax[n]);  // zcut was ztab + top
+  FloorColor(rgb, hts, col, d16, clr);
+
+  // remember which sensors have been used (for graphics)
+  for (i = 0; i < smax; i++)
+    used[i] = 0;
+  used[n] = 1;
+  rasa = 0;
+  return 1;  
+}
+
+
 //= Fill in missing parts of surface for highly oblique views.
 // call after Ingest done, image is stored in member variable "map2"
 
 void jhcOverhead3D::Interpolate (int sc, int pmin)
 {
-  NZBoxMax(map2, map, sc, sc, pmin);
-//  NZBoxAvg(map2, map, sc, sc, pmin);
-//  MaxFcn(map2, map2, map);
+  NZBoxFill(map2, map, sc, sc, pmin, 1);
 }
 
 
@@ -845,13 +870,13 @@ int jhcOverhead3D::PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax, doubl
   if (!devs.SameFormat(map) || !hts.SameFormat(map))
     return Fatal("Bad images to jhcOverhead3D::PlaneDev");
 
-  // get plane parameters and see if good fit found
+  // get plane parameters for heigths near expected surface 
   fit = 0;
   efit = CamCalib(tfit, rfit, hfit, hts, 0.0, sdev, zlo, zhi, ipp, 0.0, area);
   if ((Pts() < npts) || (efit > rough) || (fabs(tfit) > dt) || (fabs(rfit) > dr) || (fabs(hfit) > dh))
   {
     // for bad fit just assume plane is flat and at height ztab
-    RampOver(devs, map2, DI2Z(-dz), DI2Z(dz));
+    RampOver(devs, hts, DI2Z(-dz), DI2Z(dz));
     return 0;
   }
 
@@ -905,7 +930,7 @@ int jhcOverhead3D::z_err (jhcImg& devs, const jhcImg& hts, double dmax, double l
 
   for (y = rh; y > 0; y--, d += sk, m += sk, sum0 += dy)
    for (sum = sum0, x = rw; x > 0; x--, d++, m++, sum += dx)
-     if (*m == 0)
+     if (*m <= 1)                                                  // ht 1 is invalid
        *d = 0;
      else
      {
@@ -917,23 +942,35 @@ int jhcOverhead3D::z_err (jhcImg& devs, const jhcImg& hts, double dmax, double l
 }
 
 
-//= Look for planar region closest to given preferred height (in inches).
+//= Look for best planar region closest near preferred height (in inches).
+// generally picks closest plane below "hpref" unless beyond "flip"
 // returns plane height if good surface found, else original hpref 
 
-double jhcOverhead3D::PickPlane (double hpref, int amin, int bin)
+double jhcOverhead3D::PickPlane (double hpref, int amin, int bin, double flip)
 {
   jhcArr hhist0(256);
+  double h;
   int pk;
 
   // get nice histogram of all projection heights
   HistAll(hhist0, map, 1);
   hhist.Boxcar(hhist0, bin);
 
-  // pick closest peak to preferred height
-  pk = hhist.NearMassPeak(I2Z(hpref), amin);
-  if (hhist.ARef(pk) < amin)
-    return hpref;
-  return Z2I(pk);
+  // try to pick plane closest BELOW preferred height
+  if (flip > 0.0)
+  {
+    pk = hhist.NearMassPeak(I2Z(hpref), amin, 0);
+    h = Z2I(pk);
+    if ((hhist.ARef(pk) >= amin) && ((hpref - h) < flip))
+      return h;
+  }
+
+  // otherwise pick closest plane below or ABOVE given height
+  pk = hhist.NearMassPeak(I2Z(hpref), amin, 1);
+  h = Z2I(pk);
+  if (hhist.ARef(pk) >= amin)
+    return h;
+  return hpref;
 }
 
 

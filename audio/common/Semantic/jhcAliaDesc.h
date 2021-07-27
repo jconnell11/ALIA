@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,13 +27,34 @@
 /* CPPDOC_END_EXCLUDE */
 
 
-//= Simple external interface to ALIA semantic networks.
+//= Simple external read interface to ALIA semantic networks.
 // basically watered down version of jhcNetNode class
 
 class jhcAliaDesc
 {
 // PUBLIC MEMBER FUNCTIONS
 public:
+
+  //= Give pretty name for node (mostly for debugging).
+  virtual const char *Nick () const =0;
+
+  //= Tell whether node has been initialized for matching or is hidden.
+  virtual bool Visible () const =0;
+
+  //= Check if the node is negated.
+  virtual int Neg () const =0;
+
+  //= Get the (unique) lexical term associated with this predicate.
+  // some nodes have blank string (but not NULL)
+  virtual const char *Lex () const =0;
+
+  //= Checks if particular word is the lexical terms associated with this predicate.
+  virtual bool LexMatch (const char *txt) const =0;
+
+  //= Checks if predicate lexical term is one of several items.
+  // largely for convenience in grounding commands
+  virtual bool LexIn (const char *v1, const char *v2 =NULL, const char *v3 =NULL, 
+                      const char *v4 =NULL, const char *v5 =NULL, const char *v6 =NULL) const =0;
 
   //= Get the n'th filler for the given role.
   // returns NULL if invalid index
@@ -45,31 +66,26 @@ public:
   // returns NULL if invalid index
   virtual jhcAliaDesc *Fact (const char *role, int i =0) const =0;
 
-  //= Get a specific tag out of all the words associated with this item.
+  //= Get a specific name out of all the names associated with this item.
   // if "bth" > 0.0 then only returns non-negated words with belief over threshold
   // most recently added terms returned first
-  virtual const char *Word (int i =0, double bth =0.0) const =0;
+  virtual const char *Name (int i =0, double bth =0.0) const =0;
 
-  //= Checks if particular word is one of the tags associated with this item.
+  //= Checks if particular name is one of the references associated with this item.
   // can alternatively check if the node is definitely NOT associated with some word
-  virtual bool HasWord (const char *word, int tru_only =0) const =0;
-
-  //= Checks if lexical tag is one of several items.
-  // largely for convenience in grounding commands
-  virtual bool WordIn (const char *v1, const char *v2 =NULL, const char *v3 =NULL, 
-                       const char *v4 =NULL, const char *v5 =NULL, const char *v6 =NULL) const =0;
+  virtual bool HasName (const char *word, int tru_only =0) const =0;
 
   //= Get any literal text string associated with the item.
   virtual const char *Literal () const =0;
 
-  //= Check if the node is negated.
-  virtual int Neg () const =0;
-
   //= Check if the node has no arguments.
   virtual bool ObjNode () const =0;
 
-  //= Give pretty name for node (mostly for debugging).
-  virtual const char *Nick () const =0;
+  //= Give unique numeric index associated with node.
+  virtual int Inst () const =0;
+
+  //= Tell what cycle the node was last mentioned in conversation.
+  virtual int LastRef () const =0;
 
 
 };

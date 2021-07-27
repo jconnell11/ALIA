@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,7 +68,7 @@ CChatHist::CChatHist ()
 void CChatHist::AddTurn (const char *utterance, int rt)
 {
   jhcString guts;
-  int id;
+  int id, last;
 
   // check for real message then possibly purge an old entry
   if ((utterance == NULL) || (*utterance == '\0'))
@@ -84,6 +85,11 @@ void CChatHist::AddTurn (const char *utterance, int rt)
   id = InsertString(-1, guts.Txt());
   SetItemData(id, rt);
   SetCaretIndex(id, 1);
+
+  // scroll to bottom
+  last = GetCount() - 1;
+  SetCurSel(last);
+  SetTopIndex(last);
 }
 
 

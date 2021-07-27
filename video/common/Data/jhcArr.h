@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,6 +88,7 @@ public:
   void Copy (const jhcArr& src);
   void Copy (const int vals[], int n);
   void Push (int val);
+  void Scroll (int fill, int val);
   int Pop (int fill =0);
   void Shift (int amt, int fill =0);
   int Tail () const {return arr[sz - 1];};
@@ -99,8 +100,6 @@ public:
   int ARefChk (int n, int def =-1) const;
   int ASetChk (int n, int val);
   int AIncChk (int n, int amt);
-  int AMaxChk (int n, int val);
-  int AMinChk (int n, int val);
   int ARefX (int n, int def =-1) const;
   int ASetX (int n, int val);
   int AIncX (int n, int amt);
@@ -174,7 +173,7 @@ public:
   int FirstValley (int th, double tol =1.2) const;
   int LastValley (int th, double tol =1.2) const;
   int NearestPeak (int pos) const;
-  int NearMassPeak (int pos, int th =0) const;
+  int NearMassPeak (int pos, int th =0, int any =1) const;
   int AdjacentPeak (int pos, double drop =0.3) const;
   int DualPeak (int pos, int rng, double dip =0.1) const;
   int TruePeak (double lo, double hi, int bias =0) const;
@@ -240,8 +239,9 @@ private:
   int aref0 (int n) const {return arr[n];}      /** Primitive write access to array values.  */
   void aset0 (int n, int val) {arr[n] = val;}   /** Primitive read access to array values.   */
   void ainc0 (int n, int amt) {arr[n] += amt;}  /** Primitive modify access to array values. */
-  void amax0 (int n, int val) {arr[n] = __max(arr[n], val);}   /** Primitive max of array values.   */
-  void amin0 (int n, int val) {arr[n] = __min(arr[n], val);}   /** Primitive min of array values.   */
+  void amax0 (int n, int val) {arr[n] = __max(arr[n], val);}   /** Primitive max of array values. */
+  void amin0 (int n, int val) {arr[n] = __min(arr[n], val);}   /** Primitive min of array values. */
+
 };
 
 

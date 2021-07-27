@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2009-2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@
 jhcConsole::jhcConsole (const char *title, int x, int y)
 {
 	FILE *fpstdin = stdin, *fpstdout = stdout, *fpstderr = stderr;
+  HANDLE in;
+  DWORD prev_mode;
 
   // make console window and possibly customize
   AllocConsole();
@@ -56,24 +58,10 @@ jhcConsole::jhcConsole (const char *title, int x, int y)
 	freopen_s(&fpstdout, "CONOUT$", "w", stdout);
 	freopen_s(&fpstderr, "CONOUT$", "w", stderr);
 
-/*
-  int hand;        // VS2010 method of redirection
-
-  // redirect unbuffered STDOUT to the console
-  hand = _open_osfhandle((intptr_t) GetStdHandle(STD_OUTPUT_HANDLE), _O_TEXT);
-  *stdout = *(_fdopen(hand, "w"));
-  setvbuf(stdout, NULL, _IONBF, 0);
-
-  // redirect unbuffered STDIN to the console
-  hand = _open_osfhandle((intptr_t) GetStdHandle(STD_INPUT_HANDLE), _O_TEXT);
-  *stdin = *(_fdopen(hand, "r"));
-  setvbuf(stdin, NULL, _IONBF, 0);
-
-  // redirect unbuffered STDERR to the console
-  hand = _open_osfhandle((intptr_t) GetStdHandle(STD_ERROR_HANDLE), _O_TEXT);
-  *stderr = *(_fdopen(hand, "w"));
-  setvbuf(stderr, NULL, _IONBF, 0);
-*/
+  // prevent application lock-up on mouse selection in window
+  in = GetStdHandle(STD_INPUT_HANDLE);
+  GetConsoleMode(in, &prev_mode); 
+  SetConsoleMode(in, ENABLE_EXTENDED_FLAGS |  (prev_mode & ~ENABLE_QUICK_EDIT_MODE));
 }
 
 

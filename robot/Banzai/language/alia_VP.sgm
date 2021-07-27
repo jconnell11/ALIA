@@ -4,7 +4,7 @@
 // declarative sentence
 
 =[%fact]
-  <np> <vp> ((<np>) <np>)
+  <np> (<adv3>) <vp> ((<np>) <np>) (<vmod3>)
   you <ACT> ((<np>) <np>)
   <np> <vp> (<np>) to <cmd>
   <np> <vp> (<np>) <%fact-g>
@@ -39,11 +39,12 @@
 // action to take
 
 =[cmd]
-  <!do>
-  <!chk>
-  <!chk-t>
-  <!find>
-  <!find-t>
+  <!do> (<too>)
+  <!chk> (<too>)
+  <!chk-t> (<too>)
+  <!find> (<too>)
+  <!find-t> (<too>)
+  <!find-c> (<too>)
 
 
 // hypothetical action (not a command)
@@ -52,6 +53,13 @@
   <!do-s>
   <find-s>
   <!chk-s>
+
+
+// partial repeat indicator
+
+=[too]
+  too
+  also
 
 
 // --------------------------------------------------
@@ -120,12 +128,19 @@
   <query>
 
 
+// existence query like a CHK
+
+=[!find-c]
+  <be> there <np>
+
+
 // types of questions
 
 =[query]
   <$q-ako>
   <$q-hq>
-  <$q-lex>
+  <$q-desc>
+  <$q-ref>
   <$q-loc>
   <$q-cnt>
 
@@ -133,15 +148,22 @@
 // hypothetical FIND for prohibitions
 
 =[!find-s]
-  find (out) <$q-ako-s>
-  find (out) <$q-hq-s>
+  <find-v> <$q-ako-s>
+  <find-v> <$q-hq-s>
+
+
+// find verb phrase
+
+=[find-v]
+  find (out)
+  check
 
 
 // embedded question about type
 
 =[$q-ako]
-  what (is) <np> (is)
-  what <%n-super> (is) <np> (is)
+  what (<be>) <np> (<be>)
+  what <%n-super> (<be>) <np> (<be>)
 
 
 // hypothetical embedded question about type
@@ -154,9 +176,9 @@
 // embedded question about property
 
 =[$q-hq]
-  what <AKO> (is) <np> (is)
-  what (is) <np-poss> <AKO> (is)
+  what <AKO> (<be>) <np> (<be>)
   what (is) the <AKO> of <np> (is)
+  how <HQ> (<be>) <np> (<be>)
 
 
 // hypothetical embedded question about property
@@ -165,24 +187,34 @@
   what <AKO> <np-s> are
 
 
-// question about the identity of an item
+// question about the description of an item
 
-=[$q-lex]
-  who (is) <%obj> (is)
+=[$q-desc]
+  who (<be>) <np> (<be>)
   who <$add>
   what <$add>
+
+
+// question about the reference word for an item
+
+=[$q-ref]
+  what (<be>) <WRT> name (<be>)
+  what (<be>) <n-poss> name (<be>)
+  what (<be>) the name of <np> (<be>)
 
 
 // question about location of an item
 
 =[$q-loc]
-  where (is) <np> (is)
+  where (<be>) <np> (<be>)
 
 
 // question about number of items
 
 =[$q-cnt]
   how many <np-s> (are) there (are)
+  how many <np-s> (do) you see
+  how many <np-s>
 
 
 // --------------------------------------------------
@@ -193,18 +225,18 @@
   <check-v> <%fact>
 
 
-// implicit tell for answering yn-question
-
-=[!chk-t]
-  <be> <%fact>
-
-
 // check verb phrase
 
 =[check-v]
   check (if) 
   check that
   find (out) if
+
+
+// implicit tell for answering yn-question
+
+=[!chk-t]
+  <be> <%fact>
 
 
 // ==================================================
@@ -228,6 +260,8 @@
   <dir3>
   <manner>
   <$rel>
+  <$src>
+  <$dest>
 
 
 // possibly compound direction
@@ -247,5 +281,20 @@
 =[$rel]
   <place>
   with <np>
+
+
+// action starting place
+
+=[$src]
+  from <np>
+  from <place>
+
+
+// action ending place
+
+=[$dest]
+  to <np>
+  to <place>
+  
 
 

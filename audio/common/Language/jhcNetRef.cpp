@@ -34,7 +34,6 @@
 
 jhcNetRef::~jhcNetRef ()
 {
-
 }
 
 
@@ -80,7 +79,7 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int find, jhcNetNode *f0,
   if (dbg >= 1)
   {
     jprintf("\nNetref [%d] >= %4.2f\n", find, bth);
-    cond.Print(2, "pattern");
+    cond.Print("pattern", 2);
   }
 
   // must have some accumulator in order to find new assertions
@@ -108,17 +107,20 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int find, jhcNetNode *f0,
     if ((find == 0) || (find == 1))
     {
       // add a new FIND to chain instead of creating
-      var = append_find(n0, blf, skolem);
+      if ((var = append_find(n0, blf, skolem)) == NULL)
+        return NULL;
       jprintf(1, dbg, "  ==> %s from new FIND\n", var->Nick());
       return add.MarkRef(var);                   // user speech
     }
   }
+/*
   else if (skolem != NULL)
   {
     // any earlier FINDs not needed if reference resolved
     delete *skolem;
     *skolem = NULL;
   }
+*/
 
   // possibly tell result and source
   jprintf(1, dbg, " ==> %s %s %s\n", ((got > 0) ? "existing" : "created"), 
@@ -127,7 +129,7 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int find, jhcNetNode *f0,
 }
 
 
-//= Construct an appropriate FIND directive from newly added description.
+//= Construct an appropriate BIND directive from newly added description.
 // gets added to end of chain (if any), returns head of chain
 
 jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem)
@@ -136,29 +138,39 @@ jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem)
   jhcBindings mt;
   jhcAliaChain *ch;
   jhcAliaDir *dir;
-  jhcGraphlet *shell;
-  int n = partial->NumItems();
+  jhcGraphlet *shell, *dk;
+  const jhcNetNode *item;
+  int i, nc, n = partial->NumItems();
 
   // create a new FIND directive for list
   if ((skolem == NULL) || (n <= n0))
     return NULL;
   ch = new jhcAliaChain;
-  dir = new jhcAliaDir(JDIR_FIND);
-  dir->fass = 1;                       // allow creation if not found
+  dir = new jhcAliaDir(JDIR_BIND);     // allow creation if not found
   ch->BindDir(dir);
 
   // copy new parts of description (from Assert) to key of directive
-  shell = univ->BuildIn(&(dir->key));
+  dk = &(dir->key);
+  shell = univ->BuildIn(dk);
   partial->CutTail(trim, n0);
   univ->Assert(trim, mt, blf, 0, univ);      
   univ->BuildIn(shell);
+
+  // remove any originally external nodes from skolem directive key
+  nc = cond.NumItems();
+  for (i = 0; i < nc; i++)
+  {
+    item = cond.Item(i);
+    if (dk->InDesc(item))
+      dk->RemItem(item);
+  }
 
   // tack new FIND onto end of previous chain (if any)
   if (*skolem == NULL)
     *skolem = ch;
   else
     (*skolem)->Append(ch);
-  return (dir->key).Main();
+  return dk->Main();
 }
 
 
@@ -190,7 +202,7 @@ int jhcNetRef::match_found (jhcBindings *m, int& mc)
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                          Language Genration                           //
+//                          Language Generation                          //
 ///////////////////////////////////////////////////////////////////////////
 
 //= See how many matches there are to description in "cond" graphlet.
@@ -205,7 +217,7 @@ int jhcNetRef::NumMatch (const jhcNodeList *wmem, double mth, int retract)
   if (dbg >= 1)
   {
     jprintf("\nNumMatch >= %4.2f\n", mth);
-    cond.Print(2, "pattern");
+    cond.Print("pattern", 2);
   }
 
   // set up matching parameters

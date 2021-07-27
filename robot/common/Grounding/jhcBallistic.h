@@ -52,6 +52,7 @@ private:
   // reported events
   jhcAliaNote *rpt;
   UL32 kvetch;
+  double voltage;
   int pcnt, power, hold;
 
 
@@ -62,8 +63,8 @@ public:
 
   // event parameters
   jhcParam eps;
-  double hmin, nag;
-  int tired, fresh, psamp, ptest, hwait;
+  double hmin;
+  int hwait;
 
   // parameters for translation
   jhcParam tps;
@@ -141,7 +142,6 @@ private:
   int local_status (const jhcAliaDesc *desc, int i);
 
   // reported events
-  void power_state ();
   void hand_drop ();
 
   // overall poses

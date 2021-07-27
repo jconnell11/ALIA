@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,9 @@
 // limitations under the License.
 // 
 ///////////////////////////////////////////////////////////////////////////
+
+#include <ctype.h>
+#include <string.h>
 
 #include "Interface/jms_x.h"           // common video
 
@@ -41,10 +44,10 @@ jhcTalkFcn::~jhcTalkFcn ()
 
 jhcTalkFcn::jhcTalkFcn ()
 {
-  ver = 1.30;
+  ver = 1.50;
   strcpy_s(tag, "TalkFcn");
   SetSize(smax);
-  winner = NULL;
+  *winner = '\0';
   imp = 0;
 }
 
@@ -56,13 +59,13 @@ int jhcTalkFcn::Output (char *out, int ssz)
 {
   int imp0 = imp;
 
-  if (winner == NULL)                  // blank string means shutup
+  if (*winner == '\0')
   {
     *out = '\0';
     return 0;
   }
   strcpy_s(out, ssz, winner);
-  winner = NULL;                       // reset arbitration
+  *winner = '\0';                        // reset arbitration
   imp = 0;
   return imp0;
 }
@@ -102,7 +105,7 @@ int jhcTalkFcn::local_status (const jhcAliaDesc *desc, int i)
 //= Assembles utterance for output to user.
 // returns new instance number (>= 0) if success, -1 for problem, -2 for unknown
 
-int jhcTalkFcn::echo_wds_set (const jhcAliaDesc *desc, int i)
+int jhcTalkFcn::echo_wds0 (const jhcAliaDesc *desc, int i)
 {
   if (i >= smax)
     return -1;
@@ -162,8 +165,8 @@ int jhcTalkFcn::build_string (const jhcAliaDesc *desc, int inst)
     {
       // ?0 means user so see if proper name given or previously known
       if ((n = desc->Val("dest")) != NULL)   
-        ref = dg.LexRef(n);
-      else
+        ref = dg.NameRef(n);
+      else 
         ref = dg.UserRef();
     }
     else
@@ -186,18 +189,111 @@ int jhcTalkFcn::build_string (const jhcAliaDesc *desc, int inst)
 
   // clean up
   *txt = '\0';
+  fix_verb(full[inst]);
+  fix_det(full[inst]);
+  fix_abbrev(full[inst]);
   return 1;
 }
 
 
+//= Replaces obvious verb agreement problem like "I is".
+// assumes text string can always be extended by one character
+// only replaces first occurrence
+
+void jhcTalkFcn::fix_verb (char *txt)
+{
+  char *fix;
+  int i, n;
+
+  // "I is" -> "I am"
+  if ((fix = strstr(txt, "I is")) != NULL)
+  {
+    fix[2] = 'a';
+    fix[3] = 'm';
+    return;
+  }
+
+  // "you is" -> "you are" (tail of string shifted)
+  if ((fix = strstr(txt, "you is")) != NULL)
+  {
+    n = (int) strlen(fix);
+    for (i = n; i > 6; i--)
+      fix[i + 1] = fix[i];
+    fix[4] = 'a';
+    fix[5] = 'r';
+    fix[6] = 'e';
+    return;
+  }
+
+  // "are one" -> "is one" (for counting)
+  if ((fix = strstr(txt, "are one")) != NULL)
+  {
+    n = (int) strlen(fix);
+    for (i = 3; i < n; i++)
+      fix[i - 1] = fix[i];    
+    fix[0] = 'i';
+    fix[1] = 's';
+    fix[n - 1] = '\0';
+    return;
+  }
+}
+
+
+//= Replaces obvious wrong determiner problems like "a object".
+// assumes text string can always be extended by a few characters
+
+void jhcTalkFcn::fix_det (char *txt)
+{
+  int i, j, n = (int) strlen(txt), mid = 0;
+
+  // look for first occurrence of pattern
+  for (i = 2; i < n; i++)
+  {
+    if ((mid <= 0) && (tolower(txt[i - 2]) == 'a') && (txt[i - 1] == ' ') && 
+        (strchr("aeiou", tolower(txt[i])) != NULL))
+    {
+      // insert missing "n" after shifting other letters over
+      n++;
+      for (j = n; j >= i; j--) 
+        txt[j] = txt[j - 1];
+      txt[i - 1] = 'n';
+    }
+    mid = isalnum(txt[i - 2]);      
+  }
+}
+
+
+//= Convert discrete words to standard contractions (e.g. "it is" -> "it's").
+
+void jhcTalkFcn::fix_abbrev (char *txt)
+{
+  char *fix;
+  int i, n;
+
+  // "it is" -> "it's" (tail of string shifted)
+  if ((fix = strstr(txt, "it is")) != NULL)
+  {
+    n = (int) strlen(fix);
+    for (i = 5; i < n; i++)
+      fix[i - 1] = fix[i];
+    fix[n - 1] = '\0';
+    fix[2] = '\'';
+    fix[3] = 's';
+    return;
+  }
+}
+
+
 //= Assert already assembled utterance as a good thing to say.
+// saves utterance in member variable in case daydreaming
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTalkFcn::echo_wds_chk (const jhcAliaDesc *desc, int i)
+int jhcTalkFcn::echo_wds (const jhcAliaDesc *desc, int i)
 {
-  if ((cbid[i] >= imp) || (winner == NULL))
+jprintf("SAY: <%s> bid = %d (vs %d)\n", full[i], cbid[i], imp);
+  if ((cbid[i] >= imp) || (*winner == '\0'))
   {
-    winner = full[i];
+    strcpy_s(winner, full[i]);        
     imp = cbid[i];
   }
   return 1;

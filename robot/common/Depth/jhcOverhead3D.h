@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,12 +77,12 @@ protected:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  jhcImg map, map2;  /** Fused sensor map.  */
-  jhcArr hhist;      /** Height histogram.  */
-  char name[40];     /** Configuration tag. */
-  double ztab;       /** Table height now.  */
-  int rasa;          /** New ingest flag.   */
-  int *used;         /** Sensors combined.  */
+  jhcImg map, map2;          /** Fused height map.    */
+  jhcArr hhist;              /** Height histogram.    */
+  char name[40];             /** Configuration tag.   */
+  double ztab;               /** Table height now.    */
+  int rasa;                  /** New ingest flag.     */
+  int *used;                 /** Sensors combined.    */
 
   // camera parameters (multiple Kinects)
   jhcParam *cps;
@@ -123,6 +123,7 @@ public:
   // map parameters as functions
   double MX0 () const {return x0;}
   double MY0 () const {return y0;}
+  double MDX () const {return(x0 - 0.5 * mw);}
   double MSC (const jhcImg& dest) const 
     {return(dest.YDim() / (double) map.YDim());} 
   double ISC (const jhcImg& dest) const
@@ -174,9 +175,11 @@ public:
   int Reproject (jhcImg& dest, const jhcImg& d16, int cam =0, int zst =0, double zlim =0.0, int clr =1) 
     {return Reproject(dest, d16, zlo, zhi, cam, zst, zlim, clr);}
   int Reproject (jhcImg& dest, const jhcImg& d16, double bot, double top, int cam =0, int zst =0, double zlim =0.0, int clr =1);
+  int Reproject2 (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const jhcImg& d16, int cam =0, int clr =1);
   void Interpolate (int sc =9, int pmin =3);
 
   // pose correction from plane fitting
+  bool NoPlane () const   {return(fit <= 0);}
   double TiltDev () const {return((fit > 0) ? tfit : tavg);}
   double RollDev () const {return((fit > 0) ? rfit : ravg);}
   double HtDev () const   {return((fit > 0) ? hfit : havg);}
@@ -208,7 +211,7 @@ public:
   int EstDev (jhcImg& devs, double dmax =2.0, double ztol =4.0);
   int PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax =2.0, double search =0.0, const jhcRoi *area =NULL);
   void PlaneVals () const;
-  double PickPlane (double hpref, int amin =200, int bin =4);
+  double PickPlane (double hpref, int amin =200, int bin =4, double flip =0.0);
 
   // surface intersection
   int BeamFill (jhcImg& dest, double z =0.0, int r =255, int g =255, int b =255) const; 

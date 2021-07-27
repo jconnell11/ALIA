@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -281,7 +281,7 @@ void jhcBasicAct::dist_close ()
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_stop_set (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_stop0 (const jhcAliaDesc *desc, int i)
 {
   ct0[i] += ROUND(1000.0 * ftime);
   return 1;
@@ -292,7 +292,7 @@ int jhcBasicAct::base_stop_set (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_stop_chk (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_stop (const jhcAliaDesc *desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -318,7 +318,7 @@ int jhcBasicAct::base_stop_chk (const jhcAliaDesc *desc, int i)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_drive_set (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_drive0 (const jhcAliaDesc *desc, int i)
 {
   double off = 0.0;
 
@@ -340,7 +340,7 @@ int jhcBasicAct::base_drive_set (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_drive_chk (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_drive (const jhcAliaDesc *desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -384,18 +384,18 @@ int jhcBasicAct::get_vel (double& speed, const jhcAliaDesc *act) const
   if ((dir = act->Fact("dir")) != NULL)
   {
     // see if some standard direction term (checks halo also)
-    if (dir->WordIn("backward", "backwards"))
+    if (dir->LexIn("backward", "backwards"))
       speed = -speed;
-    else if (!dir->WordIn("forward", "forwards"))
+    else if (!dir->LexIn("forward", "forwards"))
       return -1;
   }
 
   // look for speed modifier(s)
   while ((rate = act->Fact("mod", w++)) != NULL)
   {
-    if (rate->WordIn("slowly"))
+    if (rate->LexMatch("slowly"))
       speed *= stf;
-    else if (rate->WordIn("quickly"))
+    else if (rate->LexMatch("quickly"))
       speed *= qtf;
   }
   return 1;
@@ -413,13 +413,13 @@ int jhcBasicAct::get_dist (double& dist, const jhcAliaDesc *act) const
     return -1;
 
   // set distance based on main verb
-  if (act->WordIn("step"))
+  if (act->LexMatch("step"))
     dist = step;
-  else if (act->WordIn("move"))
+  else if (act->LexMatch("move"))
     dist = move;
-  else if (act->WordIn("drive"))
+  else if (act->LexMatch("drive"))
     dist = drive;
-  else if (act->WordIn("cruise"))
+  else if (act->LexMatch("cruise"))
     dist = 30.0 * drive;               // nearly continuous (60 sec @ 8 ips)
   else
     return -1;
@@ -435,7 +435,7 @@ int jhcBasicAct::get_dist (double& dist, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_turn_set (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_turn0 (const jhcAliaDesc *desc, int i)
 {
   double f = radj;
 
@@ -457,7 +457,7 @@ int jhcBasicAct::base_turn_set (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_turn_chk (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_turn (const jhcAliaDesc *desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -501,18 +501,18 @@ int jhcBasicAct::get_spin (double& speed, const jhcAliaDesc *act) const
   if ((dir = act->Fact("dir")) != NULL)
   {
     // see if some standard direction term (checks halo also)
-    if (dir->WordIn("clockwise", "right"))
+    if (dir->LexIn("clockwise", "right"))
       speed = -speed;
-    else if (!dir->WordIn("counterclockwise", "left"))
+    else if (!dir->LexIn("counterclockwise", "left"))
       return -1;
   }
 
   // look for speed modifier(s)
   while ((rate = act->Fact("mod", w++)) != NULL)
   {
-    if (rate->WordIn("slowly"))
+    if (rate->LexMatch("slowly"))
       speed *= srf;                          // slower than 60 dps stalls
-    else if (rate->WordIn("quickly"))
+    else if (rate->LexMatch("quickly"))
       speed *= qrf;
   }
   return 1;
@@ -531,11 +531,11 @@ int jhcBasicAct::get_ang (double& ang, const jhcAliaDesc *act) const
   ang = turn;
 
   // get angle based on main verb
-  if (act->WordIn("spin"))
+  if (act->LexMatch("spin"))
     ang = spin;
-  else if (act->WordIn("rotate"))
+  else if (act->LexMatch("rotate"))
     ang = rot;
-  else if (!act->WordIn("turn"))
+  else if (!act->LexMatch("turn"))
     return -1;
   return 1;
 }
@@ -549,7 +549,7 @@ int jhcBasicAct::get_ang (double& ang, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_lift_set (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_lift0 (const jhcAliaDesc *desc, int i)
 {
   if (get_vert(csp[i], desc->Val("arg")) <= 0)
     return -1;
@@ -562,7 +562,7 @@ int jhcBasicAct::base_lift_set (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_lift_chk (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_lift (const jhcAliaDesc *desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -602,17 +602,17 @@ int jhcBasicAct::get_vert (double& speed, const jhcAliaDesc *act) const
 
   // get direction based on verb
   speed = zps;
-  if (act->WordIn("lower"))
+  if (act->LexMatch("lower"))
     speed = -speed;
-  else if (!act->WordIn("raise"))
+  else if (!act->LexMatch("raise"))
     return -1;
 
   // look for speed modifier(s)
   while ((rate = act->Fact("mod", w++)) != NULL)
   {
-    if (rate->WordIn("slowly"))
+    if (rate->LexMatch("slowly"))
       speed *= slf;            
-    else if (rate->WordIn("quickly"))
+    else if (rate->LexMatch("quickly"))
       speed *= qlf;
   }
   return 1;
@@ -627,7 +627,7 @@ int jhcBasicAct::get_vert (double& speed, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_grip_set (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_grip0 (const jhcAliaDesc *desc, int i)
 {
   if (get_hand(csp[i], desc->Val("arg")) <= 0)
     return -1;
@@ -640,7 +640,7 @@ int jhcBasicAct::base_grip_set (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_grip_chk (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_grip (const jhcAliaDesc *desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -683,9 +683,9 @@ int jhcBasicAct::get_hand (double &grab, const jhcAliaDesc *act) const
   grab = 1.0;
 
   // get hold status based on main verb
-  if (act->WordIn("open"))
+  if (act->LexMatch("open"))
     grab = -1.0;
-  else if (!act->WordIn("close"))
+  else if (!act->LexMatch("close"))
     return -1;
   return 1;
 }

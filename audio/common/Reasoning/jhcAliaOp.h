@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,22 @@
 
 
 //= Advice on what to do given some stimulus.
+//
+// overall OP has single preference
+//   used to both gate and order selection of competitors
+//   if OP is matched > current threshold then input belief irrelevant
+//
+// adjustment of preference:  
+//   if top level OP succeeds go backwards in time through NRI
+//     if success then make sure above default threshold
+//     if failure before success (needs one) then decrement 
+//
+// special terminations:
+//   if FIND or CHK succeeds then running OP is considered to succeed
+//   if no more OPs for ANTE or POST then they succeed
+//   if NOTE becomes invalidated (blf=0) then it succeeded
+//
+// alteration mostly performed in jhcAliaDir::alter_pref 
 
 class jhcAliaOp : public jhcSituation
 {
@@ -77,8 +93,8 @@ public:
 
   // file functions
   int Load (jhcTxtLine& in); 
-  int Save (FILE *out, int detail =0);
-  int Print (int detail =0) {return Save(stdout, detail);}
+  int Save (FILE *out, int detail =1);
+  int Print (int detail =1) {return Save(stdout, detail);}
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -88,7 +104,7 @@ private:
   jhcAliaOp (JDIR_KIND k =JDIR_NOTE);
  
   // main functions
-  int try_mate (jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f);
+  int try_mate (const jhcNetNode *focus, jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f);
 
   // file functions
   int load_pattern (jhcTxtLine& in);

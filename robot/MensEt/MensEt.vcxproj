@@ -300,6 +300,8 @@
     <ClCompile Include="MensEtFrm.cpp" />
     <ClCompile Include="MensEtView.cpp" />
     <ClCompile Include="jhcMensCoord.cpp" />
+    <ClCompile Include="..\common\Action\jhcAliaMood.cpp" />
+    <ClCompile Include="..\common\Action\jhcAliaStats.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp" />
     <ClCompile Include="..\..\audio\common\Acoustic\jhcSpeechWeb.cpp" />
     <ClCompile Include="..\..\audio\common\Semantic\jhcTxtAssoc.cpp" />
@@ -440,6 +442,8 @@
     <ClInclude Include="..\..\video\common\Processing\jhcTools.h" />
     <ClInclude Include="..\..\video\common\Processing\jhcVect.h" />
     <ClInclude Include="..\..\video\common\Processing\jhcWarp.h" />
+    <ClInclude Include="..\common\Action\jhcAliaMood.h" />
+    <ClInclude Include="..\common\Action\jhcAliaStats.h" />
     <ClInclude Include="..\common\Action\jhcTimedFcns.h" />
     <ClInclude Include="..\common\Body\jhcBackgRWI.h" />
     <ClInclude Include="..\common\Geometry\jhcMatrix.h" />
@@ -534,15 +538,23 @@
     <ClInclude Include="..\..\video\common\Video\jhcWmVSrc.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
     <None Include="res\MensEt.ico" />
     <None Include="res\MensEt.rc2" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets" Condition="Exists('packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets')" />
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
       <UserProperties RESOURCE_FILE="MensEt.rc" />
     </VisualStudio>
   </ProjectExtensions>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets'))" />
+  </Target>
 </Project>

@@ -17,7 +17,6 @@
 #define IDC_JHC_ARG1                    1001
 #define IDC_JHC_RATE                    1001
 #define IDC_JHC_TPROMPT1                1001
-#define IDC_OK                          1001
 #define IDC_QUIT                        1001
 #define IDC_JHC_TXT2                    1002
 #define IDC_JHC_PAUSE                   1002
@@ -157,14 +156,35 @@
 #define ID_OBJECTS_SURFACEZOOM          32883
 #define ID_UTILITIES_TEST2              32884
 #define ID_DEMO_STATICPOSE              32885
+#define ID_SURFACE_HYBRIDSEG            32886
+#define ID_OBJECTS_COLORPARAMS          32887
+#define ID_SURFACE_COLOROBJS            32888
+#define ID_UTILITIES_VALUERULES         32889
+#define ID_VISUAL_DIST                  32890
+#define ID_VISUAL_DIMSBINS              32891
+#define ID_VISUAL_COLORFINDING          32892
+#define ID_VISUAL_HUETHRESHOLDS         32893
+#define ID_VISUAL_PRIMARYCOLORS         32894
+#define ID_VISUAL_OBJCOMPARISON         32895
+#define ID_PEOPLE_CHEST                 32896
+#define ID_PEOPLE_HEAD                  32897
+#define ID_PEOPLE_SHOULDER              32898
+#define ID_ROOM_HEADTRACK               32899
+#define ID_UTILITIES_BATTERYFULL        32900
+#define ID_OBJECTS_SHAPEBINS            32901
+#define ID_ROOM_PERSONMAP               32902
+#define ID_MOOD_ACTIVITYLEVEL           32903
+#define ID_MOOD_ENERGYLEVEL             32904
+#define ID_MOOD_INTERACTIONLEVEL        32905
+#define ID_SOCIAL_FOOTCHECK             32906
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        131
-#define _APS_NEXT_COMMAND_VALUE         32886
+#define _APS_NEXT_RESOURCE_VALUE        133
+#define _APS_NEXT_COMMAND_VALUE         32907
 #define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

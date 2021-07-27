@@ -72,6 +72,8 @@ public:
   int AddReq (jhcAliaChain *act);
   int AddSimul (jhcAliaChain *act);
   void MarkSeeds ();
+  int MaxDepth () const;
+  int NumGoals (int leaf =0) const;
 
   // read only variables
   int NumReq () const   {return na;} 

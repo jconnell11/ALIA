@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,12 +84,12 @@ jhcEliNeck::jhcEliNeck ()
 void jhcEliNeck::std_geom ()
 {
   // pan-to-tilt link: pan angle at base of link (x to right, y is forward)
-  jt[0].SetServo(  10,   0,   10.0,  0.031, 90.0, 360.0, 360.0, -2.0 );
-  jt[0].SetGeom(    0.3, 1.8, 90.0, 90.0,    0.0,   0.0, -70.0, 70.0 );  
+  jt[0].SetServo(  10,   0,   10.0,  0.031, 180.0, 720.0, 360.0, -2.0 );
+  jt[0].SetGeom(    0.3, 1.8, 90.0, 90.0,     0.0,   0.0, -70.0, 70.0 );  
  
   // tilt-to-cam link: tilt angle at base of link (x toward camera, y backward)
-  jt[1].SetServo(  11,   0,   10.0,  0.031, 90.0, 360.0,  360.0, -2.0 );
-  jt[1].SetGeom(    0.5, 1.9, 90.0,  0.0,    0.0,   0.0, -100.0, 35.0 );  
+  jt[1].SetServo(  11,   0,   10.0,  0.031, 180.0, 720.0,  360.0, -2.0 );       
+  jt[1].SetGeom(    0.5, 1.9, 90.0,  0.0,     0.0,   0.0, -100.0, 35.0 );  
 }
 
 
@@ -239,9 +239,8 @@ void jhcEliNeck::Bind (jhcDynamixel *ctrl)
 int jhcEliNeck::Reset (int rpt, int chk)
 {
   double v;
-  int pct;
 
-  // announce entry
+  // announce entry and initialize state (e.g. for static images)
   if (rpt > 0)
     jprintf("\nNeck reset ...\n");
   clr_locks(1);
@@ -268,16 +267,8 @@ int jhcEliNeck::Reset (int rpt, int chk)
       jprintf("  battery ...\n");
     if ((v = Voltage()) <= 0.0)
       return fail(rpt);
-    pct = Power(v);
     if (rpt > 0)
-      jprintf("    %3.1f volts [%d pct]\n", v, pct);
-    if (pct < 20)
-    {
-      if (rpt >= 2)
-        Complain("jhcEliNeck - Low battery");
-      else if (rpt > 0)
-        jprintf(">>> jhcEliNeck - Low battery !\n");
-    }
+      jprintf("    %3.1f volts nominal\n", v);
 
     // possibly look for all servos
     if (rpt > 0)
@@ -304,6 +295,17 @@ int jhcEliNeck::Reset (int rpt, int chk)
   if (rpt > 0)
     jprintf("    pan %3.1f degs, tilt %3.1f degs\n", Pan(), Tilt());
   Freeze();
+
+  // instantaneous angular speed estimate
+  now = 0;
+  p0 = Pan();
+  t0 = Tilt();
+  ipv  = 0.0;
+  itv  = 0.0;
+
+  // control loop performance
+  pvel = 0.0;
+  tvel = 0.0;
 
   // finished
   if (rpt > 0)
@@ -368,16 +370,15 @@ double jhcEliNeck::Voltage ()
 }
 
 
-//= Returns rough percentage charge of lead-acid battery.
-// if called with 0 then talks to servos to find voltage first
+//= Set presumed pose of neck if no actual robot (e.g. for still images).
 
-int jhcEliNeck::Power (double vbat)
+void jhcEliNeck::Inject (double pan, double tilt) 
 {
-  double v = ((vbat > 0.0) ? vbat : Voltage());
-
-  if ((v > 0.0) && (dyn != NULL))
-    return dyn->Charge(v);
-  return -1;
+  jt[0].Inject(pan); 
+  jt[1].Inject(tilt); 
+  current_pose(pos0, dir); 
+  p0 = Pan(); 
+  t0 = Tilt();
 }
 
 
@@ -395,6 +396,7 @@ int jhcEliNeck::Freeze (int doit, double tupd)
   // tell ramp controllers to remember position
   if (doit <= 0)
     return nok;
+//  GazeStop(1.5, 2001);
   jt[0].rt = 0.0;
   jt[1].rt = 0.0;
 
@@ -447,10 +449,15 @@ int jhcEliNeck::Limp ()
 
 int jhcEliNeck::Update ()
 {
+  UL32 last = now;
+  double s, p, t, mix = 0.5;
+
   // make sure hardware is working
   if ((nok < 0) || (dyn == NULL))
     return nok;
   nok = 1;
+  p0 = dir.P();
+  t0 = dir.T();
 
   // do main work
   if (jt[0].GetState() <= 0)
@@ -458,6 +465,17 @@ int jhcEliNeck::Update ()
   if (jt[1].GetState() <= 0)
     nok = 0;
   current_pose(pos0, dir);
+
+  // estimate angular speeds
+  now = jms_now();
+  if (last != 0)
+    if ((s = jms_secs(now, last)) > 0.0)
+    {
+      p = (dir.P() - p0) / s;
+      t = (dir.T() - t0) / s;
+      ipv += mix * (p - ipv); 
+      itv += mix * (t - itv); 
+    }
 
   // set up for new target arbitration
   clr_locks(0);
@@ -507,7 +525,7 @@ void jhcEliNeck::clr_locks (int hist)
 
 int jhcEliNeck::Issue (double tupd, double lead, int send)
 {
-  double p, pvel, t, tvel;
+  double pnext, tnext, p, t;
 
   // check for working communication and reasonable arguments
   if (nok < 0)
@@ -522,8 +540,8 @@ int jhcEliNeck::Issue (double tupd, double lead, int send)
     Freeze((((plock <= 0) && (tlock <= 0)) ? 1 : 0), 0.0);
 
     // find next waypoint and speed along trajectory
-    jt[0].RampNext(Pan(), tupd, lead);
-    jt[1].RampNext(Tilt(), tupd, lead);
+    pnext = jt[0].RampNext(Pan(), tupd, lead);
+    tnext = jt[1].RampNext(Tilt(), tupd, lead);
 
     // smoothest if given final stop, profiling used for accel/decel
     p = jt[0].RampCmd();
@@ -531,6 +549,12 @@ int jhcEliNeck::Issue (double tupd, double lead, int send)
     pvel = jt[0].RampVel();
     tvel = jt[1].RampVel();
     servo_set(p, pvel, t, tvel);
+
+    // correct velocity signs for statistics
+    if (jt[0].RampAxis() < 0.0)
+      pvel = -pvel;
+    if (jt[1].RampAxis() < 0.0)
+      tvel = -tvel;
   }
 
   // send to servos
@@ -615,17 +639,16 @@ void jhcEliNeck::AimFor (double& p, double& t, const jhcMatrix& targ, double lif
 //= Copy parameters for motion target pose and slew speed.
 // if tilt rate = 0 then copies pan rate
 // bid value must be greater than previous command to take effect
-// returns 1 if newly set, 0 if pre-empted by higher priority
+// returns 1 if newly set (both parts), 0 if pre-empted by higher priority (perhaps partially)
 
 int jhcEliNeck::GazeTarget (double pan, double tilt, double p_rate, double t_rate, int bid)
 {
   double r = ((t_rate != 0.0) ? t_rate : p_rate);
+  int pok, tok;
 
-  if ((bid <= plock) || (bid <= tlock))
-    return 0;
-  PanTarget(pan, p_rate, bid);
-  TiltTarget(tilt, r, bid);
-  return 1;
+  pok = PanTarget(pan, p_rate, bid);
+  tok = TiltTarget(tilt, r, bid);
+  return __min(pok, tok);
 }
 
 

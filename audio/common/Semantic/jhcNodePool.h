@@ -46,7 +46,9 @@ class jhcNodePool : public jhcNodeList
 private:
   class jhcGraphlet *acc;
   jhcNetNode *pool;
-  int dn, psz, label;
+  jhcNetNode **bucket;
+  int *pop;
+  int dn, psz, label, ncnt, nbins;
   int rnum, arg, add, del, mod;
 
   // translation while loading
@@ -57,8 +59,8 @@ private:
 
 // PROTECTED MEMBER VARIABLES
 protected:
-  // useful for CHK directive
-  int ver; 
+  // version useful for FIND directive
+  int vis0, ver; 
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -66,54 +68,63 @@ public:
   // creation and initialization
   ~jhcNodePool ();
   jhcNodePool (); 
+  void MakeBins ();
   void NegID () {dn = 1;}
   int NodeMax () const   {return psz;}
   int LastLabel () const {return label;}
   int Version () const   {return ver;}
+  int VisDef () const    {return vis0;}
+  int BinCnt (int bin) const;
 
   // list functions
   void PurgeAll ();
-  jhcNetNode *Pool () const {return pool;}
-  jhcNetNode *Next (const jhcNetNode *ref) const 
-    {return((ref == NULL) ? pool : ref->next);}
+  jhcNetNode *Pool (int bin =-1) const;
+  jhcNetNode *Next (const jhcNetNode *ref, int bin =-1) const;
   int NodeCnt () const;
   int Changes ();
   void Dirty (int cnt =1) {mod += cnt;}
 
   // main functions
-  jhcGraphlet *BuildIn (jhcGraphlet *g) 
-    {jhcGraphlet *old = acc; acc = g; return old;}
+  jhcGraphlet *BuildIn (jhcGraphlet *g) {jhcGraphlet *old = acc; acc = g; return old;}
   jhcGraphlet *Accum () const {return acc;}
   int Assert (const jhcGraphlet& pat, jhcBindings& b, double conf =1.0, 
               int tval =0, const jhcNodeList *univ =NULL);
+  jhcNetNode *SetGen (jhcNetNode *n, int v =0) const;
   jhcNetNode *MarkRef (jhcNetNode *n);
+  int Refresh (jhcNetNode *n);
+  void Refresh (const jhcGraphlet& gr);
 
   // basic construction
   jhcNetNode *MakeNode (const char *kind, const char *word =NULL, int neg =0, double def =1.0, int done =0);
   jhcNetNode *AddProp (jhcNetNode *head, const char *role, const char *word,
-                       int neg =0, double def =1.0, const char *kind =NULL);
-  jhcNetNode *AddLex (jhcNetNode *head, const char *word, int neg =0, double blf =1.0);
+                       int neg =0, double def =1.0, int chk =0, int args =1);
+  jhcNetNode *AddDeg (jhcNetNode *head, const char *role, const char *word, const char *amt, 
+                      int neg =0, double def =1.0, int chk =0, int args =1);
+  void SetLex (jhcNetNode *n, const char *txt);
   bool InPool (const jhcNetNode *n) const {return InList(n);}
-  bool Recent (const jhcNetNode *n, int delay =0) const 
-    {return((n != NULL) && ((ver - n->gen) <= delay));}
   void MarkBelief (jhcNetNode *n, double blf) const 
-    {if (n == NULL) return; n->SetBelief(blf); n->gen = ver;}
+    {if (n == NULL) return; n->SetBelief(blf); n->GenMax(ver);}
 
   // searching
   jhcNetNode *FindName (const char *full) const;
-  jhcNetNode *FindNode (const char *desc, int make =0);
+  jhcNetNode *FindNode (const char *desc, int make =0, int omit =0);
   jhcNetNode *Wash (const jhcNetNode *ref) const;
 
   // list access (overrides virtual)
-  virtual jhcNetNode *NextNode (const jhcNetNode *prev =NULL) const
-    {return((prev == NULL) ? Pool() : Next(prev));}
+  virtual jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const
+    {return((prev == NULL) ? Pool(bin) : Next(prev, bin));}
   virtual int Length () const {return NodeCnt();}
   virtual bool InList (const jhcNetNode *n) const;
-
+  virtual int NumBins () const {return nbins;}
+  virtual int SameBin (const jhcNetNode& focus) const {return BinCnt(focus.Code());}
+    
   // writing functions
   int Save (const char *fname, int lvl =0) const;
   int Print (int lvl =0) const
     {return save_nodes(stdout, lvl);}
+  int SaveBin (const char *fname, int bin =-1, int lvl =0) const;
+  int PrintBin (int bin =-1, int lvl =0) const
+    {return save_bins(stdout, bin, lvl);}
 
   // reading functions
   void ClrTrans (int n =100);
@@ -137,12 +148,14 @@ private:
   jhcNetNode *lookup_make (jhcNetNode *n, jhcBindings& b, const jhcNodeList *univ); 
 
   // basic construction
-  jhcNetNode *create_node (const char *kind, int id);
+  jhcNetNode *create_node (const char *kind, int id, int chk, int omit);
   int parse_name (char *kind, const char *desc, int ssz);
   const char *extract_kind (char *kind, const char *desc, int ssz);
+  void update_lex (jhcNetNode *n, const char *wd);
 
   // writing functions
   int save_nodes (FILE *out, int lvl) const;
+  int save_bins (FILE *out, int bin, int lvl) const;
 
   // reading functions
   jhcNetNode *chk_topic (jhcNetNode *topic, jhcTxtLine& in, int tru);

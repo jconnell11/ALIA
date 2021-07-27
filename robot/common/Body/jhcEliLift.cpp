@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -192,6 +192,10 @@ int jhcEliLift::Reset (int rpt, int chk)
     jprintf("    %3.1f inches\n", ht);
   Freeze();
 
+  // speed estimate
+  now = 0;
+  ips = 0.0;
+
   // finished
   if (rpt > 0)
     jprintf("    ** good **\n");
@@ -265,6 +269,7 @@ int jhcEliLift::Freeze (int doit, double tupd)
   // tell ramp controller to remember position
   if (doit <= 0)
     return lok;
+//  LiftStop(1.5, 2001);
   rt = 0.0;
 
   // possibly talk to lift stage
@@ -338,7 +343,9 @@ int jhcEliLift::UpdateStart ()
 int jhcEliLift::UpdateFinish ()
 {
   UC8 pod[2];
-  int now;
+  UL32 last = now;
+  double s, i, h0 = ht, mix = 0.5;
+  int pos;
 
   // make sure hardware is working
   if (lok < 0)
@@ -348,11 +355,19 @@ int jhcEliLift::UpdateFinish ()
   // collect current position of stage
   if (lcom.RxArray(pod, 2) < 2)
     return lok;
-  now = (pod[1] << 8) | pod[0];
+  pos = (pod[1] << 8) | pod[0];
   lok = 1;
 
   // convert to inches and save
-  ht = bot + (top - bot) * now / 4095.0;
+  ht = bot + (top - bot) * pos / 4095.0;
+  now = jms_now();
+  if (last != 0)
+    if ((s = jms_secs(now, last)) > 0.0)
+    {
+      // instantaneous speed estimte
+      i = fabs(ht - h0) / s;
+      ips += mix * (i - ips);
+    }
 
   // set default command for next cycle
   clr_lock(0);

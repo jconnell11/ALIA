@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ jhcSocial::~jhcSocial ()
 
 jhcSocial::jhcSocial ()
 {
-  ver = 1.10;
+  ver = 1.40;
   strcpy_s(tag, "Social");
   Platform(NULL);
   rpt = NULL;
@@ -73,10 +73,12 @@ int jhcSocial::attn_params (const char *fname)
   int ok;
 
   ps->SetTag("soc_attn", 0);
-  ps->NextSpecF( &pnear, 40.0, "Person near alert (in)");
+  ps->NextSpecF( &pnear,  26.0, "Person near alert (in)");
+  ps->NextSpecF( &alone,   2.0, "Person alert reset (sec)");
+  ps->NextSpecF( &scare,  18.0, "Person very near (in)");
   ps->Skip();
-  ps->NextSpecF( &ltol,   2.0, "Look achieved (deg)");
-  ps->NextSpecF( &lquit,  2.0, "Look timeout (sec)");
+  ps->NextSpecF( &ltol,    2.0, "Look achieved (deg)");
+  ps->NextSpecF( &lquit,   2.0, "Look timeout (sec)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -91,12 +93,12 @@ int jhcSocial::move_params (const char *fname)
   int ok;
 
   ps->SetTag("soc_move", 0);
-  ps->NextSpecF( &cozy,   36.0, "Approach distance (in)");
+  ps->NextSpecF( &cozy,   28.0, "Approach front gap (in)");
+  ps->NextSpecF( &direct, 20.0, "Approach until within (deg)");
   ps->NextSpecF( &aquit,  10.0, "Timeout for approach (sec)");
-  ps->NextSpecF( &ideal,  36.0, "Following distance (in)");
-  ps->NextSpecF( &worry,  60.0, "Too far distance (in)");
-  ps->NextSpecF( &ttime,   1.0, "Turn response (sec)");
-  ps->NextSpecF( &orient, 60.0, "Alignment for move (deg)");
+  ps->NextSpecF( &ideal,  28.0, "Following distance (in)");
+  ps->NextSpecF( &worry,  48.0, "Too far distance (in)");
+  ps->NextSpecF( &orient, 60.0, "Rotate until aligned (deg)");
 
   ps->NextSpecF( &atime,   2.0, "Approach response (sec)");
   ps->NextSpecF( &ftime,   1.0, "Follow response (sec)");
@@ -143,8 +145,11 @@ int jhcSocial::SaveVals (const char *fname) const
 void jhcSocial::local_reset (jhcAliaNote *top)
 {
   rpt = top;
-  hwin = -1;
-  told = 0;
+  folks = 0;
+  seen = 0;
+  pal = 0;
+  prox = 0;
+  reco = 0;
   uid = 0;
 }
 
@@ -153,8 +158,9 @@ void jhcSocial::local_reset (jhcAliaNote *top)
 
 void jhcSocial::local_volunteer ()
 {
+  dude_seen();   
+  dude_close(); 
   vip_seen();   
-  vip_close(); 
   user_gone();
 }
 
@@ -168,6 +174,7 @@ int jhcSocial::local_start (const jhcAliaDesc *desc, int i)
 {
   JCMD_SET(soc_look);
   JCMD_SET(soc_approach);
+  JCMD_SET(soc_retreat);
   JCMD_SET(soc_follow);
   return -2;
 }
@@ -181,6 +188,7 @@ int jhcSocial::local_status (const jhcAliaDesc *desc, int i)
 {
   JCMD_CHK(soc_look);
   JCMD_CHK(soc_approach);
+  JCMD_CHK(soc_retreat);
   JCMD_CHK(soc_follow);
   return -2;
 }
@@ -190,53 +198,92 @@ int jhcSocial::local_status (const jhcAliaDesc *desc, int i)
 //                           Reported Events                             //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Inject NOTE saying a particular person's face has just been recognized.
-// states: "X hq visible"
+//= Note that at least one person is present.
+// does not trigger for all new arrivals, just first one after absence
+// states: "X is visible"
 
-void jhcSocial::vip_seen ()
+void jhcSocial::dude_seen ()
 {
-  int i;
+  UL32 prev = seen;
+  int t;
 
-  // lock to sensor cycle 
-  if ((rpt == NULL) || (rwi == NULL) || (rwi->body == NULL))
+  // see if now people when there were not before
+  if ((rpt == NULL) || (rwi == NULL) || !rwi->Readable())
     return;
-  if (!rwi->Accepting())
-    return;
+  t = (rwi->s3).Closest((rwi->nav).rfwd);
+  rwi->ReadDone();                               // release visual data
 
-  // generate message if new person just recognized 
-  if ((i = (rwi->fn).JustNamed()) < 0)
+  // generate event telling of presence
+  folks = 0;                                     // assume alone currently
+  if (t < 0) 
     return;
-  person_prop(i, "visible", 0);
+  folks = 1;
+  seen = jms_now();
+  if ((prev == 0) || (jms_secs(seen, prev) > alone))
+  {
+    rpt->StartNote();
+    agt_node(t);
+    rpt->FinishNote();
+  }
 }
 
 
-//= Generate an event whenever a person gets inside the robot's personal space.
+//= Generate an event whenever any person gets inside the robot's personal space.
+// pal is positive if "close" already signalled, prox is positive if "very close" signalled
 // states: "X is close" where X is a person and perhaps has a name
 
-void jhcSocial::vip_close ()
+void jhcSocial::dude_close ()
 {
-  jhcBodyData *p;
-  int old = hwin;
+  double front = (rwi->nav).rfwd, gone = 1.5 * pnear, dist = gone;
+  int t, id = 0;
 
-  // lock to sensor cycle 
-  if ((rpt == NULL) || (rwi == NULL) || (rwi->body == NULL))
+  // find distance of closest person to front of robot (if any)
+  if ((rpt == NULL) || (rwi == NULL) || !rwi->Readable())
     return;
-  if (!rwi->Accepting())
-    return;
+  if ((t = (rwi->s3).Closest(front)) >= 0)
+  {
+    id = (rwi->s3).PersonID(t);
+    dist = rwi->FrontDist((rwi->s3).RefPerson(t));   // defaults to gone
+  } 
+  rwi->ReadDone();                                   // release visual data
 
-  // see if a new person is the closest
-  if ((hwin = (rwi->s3).Closest()) < 0)
-    return;
-  if ((hwin == old) && (told > 0))
-    return;
-  told = 0;
+  // possibly generate event telling newly achieved degree of proximity
+  rpt->StartNote();
+  if ((dist < scare) && ((prox <= 0) || (id != pal)))
+    rpt->NewDeg(agt_node(t), "hq", "close", "very");
+  else if ((dist < pnear) && (id != pal))
+    rpt->NewProp(agt_node(t), "hq", "close");
+  rpt->FinishNote();
 
-  // if they are in personal space then generate message
-  p = (rwi->s3).RefPerson(hwin);
-  if (p->PlaneVec3() > pnear)
+  // adjust hysteretic signalling states
+  if (dist < scare)
+    prox = 1;                // "very" reported
+  if (dist >= pnear)
+    prox = 0;                // allow new "very" 
+  if (dist < pnear)
+    pal = id;                // "close" reported
+  if (dist >= gone)
+    pal = 0;                 // allow new "close"
+}
+
+
+//= Inject NOTE saying a particular person's face has just been recognized.
+// states: "X is Y"
+
+void jhcSocial::vip_seen ()
+{
+  int t, prev = reco;
+
+  if ((rpt == NULL) || (rwi == NULL) || !rwi->Readable())
     return;
-  person_prop(hwin, "close", 0);
-  told = 1;                            // only once per person
+  if ((t = (rwi->fn).JustNamed()) >= 0)
+    if ((reco = (rwi->s3).PersonID(t)) != prev)
+    {
+      rpt->StartNote();
+      agt_node(t);
+      rpt->FinishNote();
+    }
+  rwi->ReadDone();       
 }
 
 
@@ -248,81 +295,60 @@ void jhcSocial::user_gone ()
   jhcAliaDesc *user;
   int uid0 = uid;
 
-  // lock to sensor cycle 
-  if ((rpt == NULL) || (rwi == NULL) || (rwi->body == NULL))
+  // find face ID associated with user (if any) 
+  if (rpt == NULL) 
     return;
-  if (!rwi->Accepting())
-    return;
-
-  // see if user has just vanished
   user = rpt->User();
-  uid = (rwi->s3).NodeID((void *) user);
-  if ((uid0 <= 0) || (uid > 0))
-    return;
+  uid = rpt->VisID(user, 1);
+  if ((rwi->s3).TrackIndex(uid) < 0)   
+    uid = 0;                           // no longer tracked
 
-  // generate event
-  rpt->StartNote();
-  rpt->NewProp(user, "hq", "visible", 1);
-//  rpt->NewProp(user, "hq", "gone");
-  rpt->FinishNote();
-}
-
-
-//= Add some property to the semantic node for a person.
-
-void jhcSocial::person_prop (int i, const char *prop, int neg) const
-{
-  jhcBodyData *p = (rwi->s3).RefPerson(i);
-  jhcAliaDesc *n = (jhcAliaDesc *) p->node;
-  const char *name = (rwi->fn).FaceName(i);
-
-  // if needed, find or make semantic node for person
-  rpt->StartNote();
-  if (n == NULL)
+  // generate event if user has just vanished
+  if ((uid <= 0) && (uid0 > 0))
   {
-    if ((n = rpt->Person(name)) == NULL)
-      n = rpt->NewNode("dude", NULL, 0, -1.0);
-    p->node = (void *) n;
+    rpt->StartNote();
+    rpt->NewProp(user, "hq", "visible", 1, 1.0, 1);
+    rpt->FinishNote();
   }
-
-  // generate main message to core reasoner
-  rpt->NewProp(n, "hq", prop, neg);
-  add_name(n, name);
-  rpt->FinishNote();
 }
 
 
-//= Add both parts of face recognition name to some user node.
-// takes index of person (not ID)
+//= See if node already assigned to person, else create new one.
+// should be called inside rpt->StartNote to include "ako person" fact
 
-void jhcSocial::add_name (jhcAliaDesc *n, const char *name) const
+jhcAliaDesc *jhcSocial::agt_node (int t)
 {
   char first[80];
-  const jhcAliaDesc *kind;
+  jhcBodyData *p = (rwi->s3).RefPerson(t);
+  jhcAliaDesc *agt = rpt->NodeFor(p->id, 1);
+  const char *name = (rwi->fn).FaceName(t);
   char *end;
-  int i = 0;
 
-  // add personhood if missing
-  if (n == NULL) 
-    return;
-  while ((kind = n->Fact("ako", i++)) != NULL)
-    if (kind->HasWord("person"))
-      break;
-  if (kind == NULL)
-    rpt->NewProp(n, "ako", "person");
+  // make up new node with basic properties
+  if (agt == NULL)
+  {
+    agt = rpt->NewNode("dude");
+    rpt->NewProp(agt, "ako", "person");
+    rpt->NewProp(agt, "hq", "visible");
+    rpt->VisAssoc(p->id, agt, 1);
+    if (p->tag[0] == '\0')
+      strcpy_s(p->tag, agt->Nick());
+  }
 
-  // possibly add full name ("Jon Connell")
-  if ((name == NULL) || (*name == '\0'))
-    return;
-  if (!n->HasWord(name))
-    rpt->NewLex(n, name);
+  // possibly add name if face is recognized
+  if ((name != NULL) && (*name != '\0'))
+  {
+    rpt->NewProp(agt, "ref", name, 0, 1.0, 1);
+    strcpy_s(first, name);
+    if ((end = strchr(first, ' ')) != NULL)
+      *end = '\0';
+    rpt->NewProp(agt, "ref", first, 0, 1.0, 1);
+  }
 
-  // possibly add first name ("Jon")
-  strcpy_s(first, name);
-  if ((end = strchr(first, ' ')) != NULL)
-    *end = '\0';
-  if (!n->HasWord(first))
-    rpt->NewLex(n, first);
+  // make eligible for FIND
+  rpt->NewFound(agt);      
+  p->state = 1;                        // drawable
+  return agt;
 }
 
 
@@ -334,9 +360,9 @@ void jhcSocial::add_name (jhcAliaDesc *n, const char *name) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSocial::soc_look_set (const jhcAliaDesc *desc, int i)
+int jhcSocial::soc_look0 (const jhcAliaDesc *desc, int i)
 {
-  if ((cst[i] = get_dude(desc->Val("arg"))) <= 0)
+  if ((cst[i] = rpt->VisID(desc->Val("arg"), 1)) <= 0)
     return -1;
   ct0[i] += ROUND(1000.0 * lquit);
   return 1;
@@ -347,10 +373,10 @@ int jhcSocial::soc_look_set (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSocial::soc_look_chk (const jhcAliaDesc *desc, int i)
+int jhcSocial::soc_look (const jhcAliaDesc *desc, int i)
 {
   // lock to sensor cycle 
-  if ((rwi == NULL) || (rwi->body == NULL))
+  if ((rwi == NULL) || rwi->Ghost())
     return -1;
   if (!rwi->Accepting())
     return 0;
@@ -370,33 +396,19 @@ int jhcSocial::soc_look_chk (const jhcAliaDesc *desc, int i)
 }
 
 
-//= Find ID of person to track based on semantic node.
-// returns 0 if no good track found, -1 for rwi unbound
-
-int jhcSocial::get_dude (const jhcAliaDesc *agt) const
-{
-  if (agt == NULL) 
-    return 0;
-  if (rwi == NULL)
-    return -1;
-  return (rwi->s3).NodeID(agt);
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
-//                        Moving Toward People                           //
+//                      Moving Relative to People                        //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Start going toward a person.
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSocial::soc_approach_set (const jhcAliaDesc *desc, int i)
+int jhcSocial::soc_approach0 (const jhcAliaDesc *desc, int i)
 {
-  if ((cst[i] = get_dude(desc->Val("arg"))) <= 0)
+  if ((cst[i] = rpt->VisID(desc->Val("arg"), 1)) <= 0)
     return -1;
-//  ct0[i] += ROUND(1000.0 * aquit);
-ct0[i] += ROUND(10000.0 * aquit);
+  ct0[i] += ROUND(10000.0 * aquit);
   return 1;
 }
 
@@ -405,49 +417,98 @@ ct0[i] += ROUND(10000.0 * aquit);
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSocial::soc_approach_chk (const jhcAliaDesc *desc, int i)
+int jhcSocial::soc_approach (const jhcAliaDesc *desc, int i)
 {
-  jhcEliBase *b;
-  jhcStare3D *s3;
   const jhcMatrix *targ;
-  double dist, ang, goal = cozy - 2.0;
-  
+  double ms, td, ta, off, dtol = 2.0;
+
   // lock to sensor cycle 
-  if ((rwi == NULL) || (rwi->body == NULL))
+  if ((rwi == NULL) || rwi->Ghost())
     return -1;
   if (!rwi->Accepting())
     return 0;
-  b = rwi->base;
-  s3 = &(rwi->s3);
 
   // see if timeout then check if person is still there 
-  if (jms_diff(jms_now(), ct0[i]) > 0)
+  if ((ms = jms_diff(jms_now(), ct0[i])) > 0)
+  {
+    jprintf("{ soc_approach: timeout %3.1f secs [%3.1f] }\n", 1000.0 * ms, aquit);
     return -1;
-  if ((targ = s3->GetID(cst[i])) == NULL)
+  }
+  if ((targ = (rwi->s3).GetID(cst[i])) == NULL)
+  {
+    jprintf("{ soc_approach: lost target %s }\n", (desc->Val("arg"))->Nick()); 
     return -1;
+  }
 
   // get heading and distance to target, check if done
-  ang = targ->PanVec3() - 90.0;
-  if ((dist = targ->PlaneVec3()) <= cozy)
+  td = targ->PlaneVec3();
+  ta = targ->PanVec3() - 90.0;
+  off = rwi->FrontDist(td, ta);
+  if (fabs(off - cozy) <= dtol)
+{
+jprintf("soc_approach: off = %3.1f (vs %3.1f), ang = %3.1f (vs %3.1f)\n", off, cozy, ta, direct);
     return 1;
+}
 
   // re-issue basic command (drive forward if orientation okay)
   jprintf(1, dbg, ">> REQUEST %d: approach person %d\n", cbid[i], cst[i]);
   rwi->WatchPerson(cst[i], cbid[i]);
-  rwi->ServoPolar(dist - goal, ang, 1.0, cbid[i]);
+  rwi->ServoPolar(td, ta, 1.0, cbid[i], cozy);
+  return 0;
+}
 
-/*
-double trav, head;
-jprintf("TARGET: %3.1f in offset [%3.1f], %3.1f degs\n", dist, goal, ang);
-(rwi->nav).Swerve(trav, head, dist - goal, ang);
-b->TurnFix(head, ttime, 1.0, cbid[i] + 1);
-if (fabs(head) < orient)
-  b->MoveFix(trav, atime, 1.0, cbid[i]);   // slower than follow
-*/
 
-//  b->TurnFix(ang, ttime, 1.0, cbid[i]);
-//  if (fabs(ang) < orient)
-//    b->MoveFix(dist - goal, atime, 1.0, cbid[i]);   // slower than follow
+//= Start going away from a person.
+// instance number and bid already recorded by base class
+// returns 1 if okay, -1 for interpretation error
+
+int jhcSocial::soc_retreat0 (const jhcAliaDesc *desc, int i)
+{
+  if ((cst[i] = rpt->VisID(desc->Val("arg"), 1)) <= 0)
+    return -1;
+  ct0[i] += ROUND(10000.0 * aquit);
+  return 1;
+}
+
+
+//= Continue backing away from a person until far enough.
+// sets up continuing request to body if not finished
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcSocial::soc_retreat (const jhcAliaDesc *desc, int i)
+{
+  const jhcMatrix *targ;
+  double ms, td, ta, off, safe = 1.2 * cozy, dtol = 2.0;
+
+  // lock to sensor cycle 
+  if ((rwi == NULL) || rwi->Ghost())
+    return -1;
+  if (!rwi->Accepting())
+    return 0;
+
+  // see if timeout then check if person is still there 
+  if ((ms = jms_diff(jms_now(), ct0[i])) > 0)
+  {
+    jprintf("{ soc_retreat: timeout %3.1f secs [%3.1f] }\n", 1000.0 * ms, aquit);
+    return -1;
+  }
+  if ((targ = (rwi->s3).GetID(cst[i])) == NULL)
+  {
+    jprintf("{ soc_retreat: lost target %s }\n", (desc->Val("arg"))->Nick()); 
+    return -1;
+  }
+
+  // get heading and distance to target, check if done
+  td = targ->PlaneVec3();
+  ta = targ->PanVec3() - 90.0;
+  off = rwi->FrontDist(td, ta);
+  if ((fabs(off - safe) <= dtol) && (fabs(ta) <= direct))
+    return 1;
+
+  // re-issue basic command (drive forward if orientation okay)
+  jprintf(1, dbg, ">> REQUEST %d: retreat from person %d\n", cbid[i], cst[i]);
+  rwi->WatchPerson(cst[i], cbid[i]);
+  rwi->ServoPolar(td, ta, 1.0, cbid[i], safe);
   return 0;
 }
 
@@ -456,9 +517,9 @@ if (fabs(head) < orient)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSocial::soc_follow_set (const jhcAliaDesc *desc, int i)
+int jhcSocial::soc_follow0 (const jhcAliaDesc *desc, int i)
 {
-  if ((cst[i] = get_dude(desc->Val("arg"))) <= 0)
+  if ((cst[i] = rpt->VisID(desc->Val("arg"), 1)) <= 0)
     return -1;
   return 1;
 }
@@ -468,44 +529,38 @@ int jhcSocial::soc_follow_set (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSocial::soc_follow_chk (const jhcAliaDesc *desc, int i)
+int jhcSocial::soc_follow (const jhcAliaDesc *desc, int i)
 {
-  jhcEliBase *b;
-  jhcStare3D *s3;
+  jhcAliaDesc *agt = desc->Val("arg");
   const jhcMatrix *targ;
-  jhcAliaDesc *n;
-  double dist, ang;
+  double td, ta;
   
   // lock to sensor cycle 
-  if ((rpt == NULL) || (rwi == NULL) || (rwi->body == NULL))
+  if ((rpt == NULL) || (rwi == NULL) || rwi->Ghost())
     return -1;
   if (!rwi->Accepting())
     return 0;
-  b = rwi->base;
-  s3 = &(rwi->s3);
 
   // check if person is still there 
-  if ((targ = s3->GetID(cst[i])) == NULL)
+  if ((targ = (rwi->s3).GetID(cst[i])) == NULL)
+  {
+    jprintf("{ soc_follow: lost target %s }\n", (desc->Val("arg"))->Nick()); 
     return -1;
+  }
 
   // get heading and distance to target, complain if too far
-  ang = targ->PanVec3() - 90.0;
-  if ((dist = targ->PlaneVec3()) > worry)
-    if ((n = (jhcAliaDesc *) s3->GetNode(cst[i])) != NULL)
-    {
-      rpt->StartNote();
-      rpt->NewProp(n, "hq", "far away");
-      rpt->FinishNote();
-    }
+  ta = targ->PanVec3() - 90.0;
+  if ((td = rwi->FrontDist(targ)) > worry)
+  {
+    rpt->StartNote();
+    rpt->NewProp(agt, "hq", "far away");
+    rpt->FinishNote();
+  }
 
   // re-issue basic command (drive forward if orientation okay)
   jprintf(1, dbg, ">> REQUEST %d: follow person %d\n", cbid[i], cst[i]);
   rwi->WatchPerson(cst[i], cbid[i]);
-  rwi->ServoPolar(dist - ideal, ang, 1.5, cbid[i]);
-
-//  b->TurnFix(ang, ttime, 1.5, cbid[i]);
-//  if (fabs(ang) < orient)
-//    b->MoveFix(dist - ideal, ftime, 1.5, cbid[i]);   // quicker than approach
+  rwi->ServoPolar(td, ta, 1.5, cbid[i], ideal);
   return 0;
 }
 

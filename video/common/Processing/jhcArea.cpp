@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -456,8 +456,7 @@ int jhcArea::box_avg0 (jhcImg &dest, const jhcImg& src, int dx, int dy,
 // Height also as fraction of array width but then rescaled by aspect
 // if ht = 0.0 height is reset to match width (then aspect corrected)
 
-int jhcArea::BoxAvg (jhcImg& dest, const jhcImg& src, double wf, double hf, 
-                     double sc, jhcImg *vic)
+int jhcArea::BoxAvg (jhcImg& dest, const jhcImg& src, double wf, double hf, double sc, jhcImg *vic)
 {
   double wbox = wf * dest.XDim(), hbox = hf * dest.XDim();
 
@@ -469,9 +468,7 @@ int jhcArea::BoxAvg (jhcImg& dest, const jhcImg& src, double wf, double hf,
 
 //= Applies smoothing to all three color planes.
 
-int jhcArea::BoxAvgRGB (jhcImg& dest, const jhcImg& src, 
-                        int wid, int ht, double sc)
-                     
+int jhcArea::BoxAvgRGB (jhcImg& dest, const jhcImg& src, int wid, int ht, double sc)
 {
   if (!dest.Valid(3) || !dest.SameFormat(src))
     return Fatal("Bad images to jhcArea::BoxAvgRGB");
@@ -1219,17 +1216,18 @@ int jhcArea::NZBoxAvg (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
 
 //= Averages non-zero pixels in region then takes max with central pixel.
 // typically used for filling gaps in depth map (e.g. jhcOverhead3D::Interpolate)
+// only averages pixels > "zero" and <= "vmax", only substitutes for pixels <= "zero"
 
-int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int samps)
+int jhcArea::NZBoxFill (jhcImg &dest, const jhcImg& src, int wid, int ht, int samps, int zero, int vmax)
 {
   UL32 n = __max(1, samps);
   int dx = wid, dy = ((ht == 0) ? wid : ht);
 
   // check arguments
   if (!dest.Valid(1) || !dest.SameFormat(src))
-    return Fatal("Bad images to jhcArea::NZBoxMax");
+    return Fatal("Bad images to jhcArea::NZBoxFill");
   if ((dx > src.RoiW()) || (dy > src.RoiH()))
-    return Fatal("Mask too big (%d %d) vs. (%d %d) in jhcArea::NZBoxMax", 
+    return Fatal("Mask too big (%d %d) vs. (%d %d) in jhcArea::NZBoxFill", 
                  dx, dy, src.RoiW(), src.RoiH());
 
   // special cases
@@ -1244,7 +1242,6 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
   int rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
   int nx = dx / 2, px = dx - nx, xlim = rw - px;
   int ny = dy / 2, py = dy - ny, ylim = rh - py + 1, nyp = ny + 1;
-  UC8 avg;
   UL32 roff = dest.RoiOff(); 
   UL32 sum, cnt, roff4, line4 = dest.XDim();
   UC8 *a;
@@ -1285,7 +1282,7 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
     csum = c0;
     for (x = rw; x > 0; x--)
     {
-      if (*ahi > 0)
+      if ((*ahi > zero) && (*ahi <= vmax))
       {
         *bsum += *ahi;
         *csum += 1;
@@ -1311,10 +1308,10 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
     for (x = rw; x > 0; x--)
     {
       *b = *bsum++;               // init sum and count to vals from above
-      *c = *csum++;
-      if (*ahi > 0)               // add in head if not background
+      *c = *csum++;            
+      if ((*ahi > zero) && (*ahi <= vmax))   
       {
-        *b += *ahi;
+        *b += *ahi;               // add in head if not background
         *c += 1;
       }
       ahi++;
@@ -1338,15 +1335,15 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
     {
       *b = *bsum++;               // init sum and count to vals from above
       *c = *csum++;
-      if (*alo > 0)               // subtract off tail if not background
+      if ((*alo > zero) && (*alo <= vmax))   
       {
-        *b -= *alo;
+        *b -= *alo;               // subtract off tail if not background
         *c -= 1;
       }
       alo++;
-      if (*ahi > 0)               // add in head if not background
+      if ((*ahi > zero) && (*ahi <= vmax))
       {
-        *b += *ahi;
+        *b += *ahi;               // add in head if not background
         *c += 1;
       }
       ahi++;
@@ -1369,9 +1366,9 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
     {
       *b = *bsum++;               // init sum and count to vals from above
       *c = *csum++;
-      if (*alo > 0)               // subtract off tail if not background
+      if ((*alo > zero) && (*alo <= vmax))
       {
-        *b -= *alo;
+        *b -= *alo;               // subtract off tail if not background
         *c -= 1;
       }
       alo++;
@@ -1413,15 +1410,12 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
     // bhi and chi point to pixel dx in line afterwards
     for (x = 0; x < nx; x++)
     {
-      if (cnt < n)
+      if ((cnt < n) || (*m > zero))
         *a++ = *m;
       else if (cnt == 1)
-        *a++ = __max(*m, (UC8) sum);
+        *a++ = (UC8) sum; 
       else
-      {
-        avg = (UC8)(sum / cnt);
-        *a++ = __max(*m, avg);
-      }
+        *a++ = (UC8)(sum / cnt);
       sum += *bhi++;
       cnt += *chi++;
       m++;
@@ -1432,15 +1426,12 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
     clo = c;
     for (x = nx; x < xlim; x++)
     {
-      if (cnt < n)
+      if ((cnt < n) || (*m > zero))
         *a++ = *m;
       else if (cnt == 1)
-        *a++ = __max(*m, (UC8) sum);
+        *a++ = (UC8) sum; 
       else 
-      {
-        avg = (UC8)(sum / cnt);
-        *a++ = __max(*m, avg);
-      }
+        *a++ = (UC8)(sum / cnt);
       sum -= *blo++;
       sum += *bhi++;
       cnt -= *clo++;
@@ -1451,15 +1442,12 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
     // mask falls off right at end
     for (x = xlim; x < rw; x++)
     {
-      if (cnt < n)
+      if ((cnt < n) || (*m > zero))
         *a++ = *m;
       else if (cnt == 1)
-        *a++ = __max(*m, (UC8) sum);
+        *a++ = (UC8) sum; 
       else
-      {
-        avg = (UC8)(sum / cnt);
-        *a++ = __max(*m, avg);
-      }
+        *a++ = (UC8)(sum / cnt);
       sum -= *blo++;
       cnt -= *clo++;
       m++;
@@ -1471,6 +1459,32 @@ int jhcArea::NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht, int sam
     c += line4;
     m += rsk;
   }
+  return 1;
+}
+
+
+//= Applies interpolation over data droputs to all three color planes.
+
+int jhcArea::NZBoxFillRGB (jhcImg& dest, const jhcImg& src, int wid, int ht, int samps)
+{
+  if (!dest.Valid(3) || !dest.SameFormat(src))
+    return Fatal("Bad images to jhcArea::NZBoxFillRGB");
+  a1.SetSize(src, 1);                                      // make local array for field
+  
+  // do red 
+  a1.CopyField(src, 2, 0);
+  NZBoxFill(a1, a1, wid, ht, samps);
+  dest.CopyField(a1, 0, 2);
+
+  // do green
+  a1.CopyField(src, 1, 0);
+  NZBoxFill(a1, a1, wid, ht, samps);
+  dest.CopyField(a1, 0, 1);
+
+  // do blue
+  a1.CopyField(src, 0, 0);
+  NZBoxFill(a1, a1, wid, ht, samps);
+  dest.CopyField(a1, 0, 0);
   return 1;
 }
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ class jhcSurface3D : protected jhcPlaneEst
 // PRIVATE MEMBER VARIABLES
 private:
   jhcMatrix i2m;               // transform from image to map
+  jhcMatrix xform;             // refine matrix for floor projection
   int iw, ih, hw, hh;          // expected image size
 
 
@@ -93,6 +94,8 @@ public:
                 double pan, double tilt, double roll, double xcam, double ycam, double zcam);
   int FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr, 
                  double pan, double tilt, double roll, double xcam, double ycam, double zcam, int n =1);
+  int FloorColor (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const jhcImg& d16, int clr,
+                  double pan, double tilt, double roll, double xcam, double ycam, double zcam);
   double FloorHt (int pixel);
   int FloorPel (double ht);
 
@@ -111,6 +114,8 @@ public:
     {return FloorMap(dest, d16, 1, 0.0, tilt, roll, 0.0, 0.0, ht);}
   int FloorFwd2 (jhcImg& dest, const jhcImg& d16, double tilt, double roll, double ht, int n =1)
     {return FloorMap2(dest, d16, 1, 0.0, tilt, roll, 0.0, 0.0, ht, n);}
+  int FloorColor (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const jhcImg& d16, int clr =1)
+    {return FloorColor(rgb, hts, col, d16, clr, p0, t0, r0, cx, cy, cz);}
 
   // height analysis with back mapping
   int CacheXYZ (const jhcImg& d16, double cpan, double ctilt, double croll =0.0, double dmax =300.0);
@@ -120,6 +125,9 @@ public:
              double ipp =0.3, double yoff =0.0, int inc =255);
   int MapBack (jhcImg& dest, const jhcImg& src, double z0 =-500.0, double z1 =500.0, 
                double ipp =0.3, double yoff =0.0, int fill =0);
+
+  // reverse mapping (incremental)
+  int FrontMask (jhcImg& mask, const jhcImg& d16, double over, double under, const jhcImg& cc, int n);
 
   // coordinate transformations
   void ToCache (double& mx, double& my, double& mz, 
@@ -164,8 +172,6 @@ public:
   // debugging functions
   int Heights (jhcImg& dest, double zoff =0.0, double zrng =2.0, int pos =0);
   int Ground (jhcImg& dest, double th =1.0);
-  int OverlayBack (jhcImg& dest, const jhcImg& src, double z0 =-500.0, double z1 =500.0, 
-                   double ipp =0.3, double yoff =0.0);
 
 
 };

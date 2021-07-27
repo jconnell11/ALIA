@@ -51,7 +51,8 @@ private:
 // PUBLIC MEMBER VARIABLES
 public:
   jhcAliaOp probe;             // for jhcAliaDir::FindActive
-  int noisy;                   // controls diagnostic messages
+  int noisy;                   // controls general diagnostic messages
+  int detail;                  // show detailed for some operator
 
 
 // PUBLIC MEMBER FUNCTIONS

@@ -77,7 +77,7 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
   cs.x = 680;
   cs.y = 5;
   cs.cx = 710;
-  cs.cy = 500;
+  cs.cy = 635;
 
 	// JHC: change window title 
   cs.lpszName = _T("MensEt Application - IBM");

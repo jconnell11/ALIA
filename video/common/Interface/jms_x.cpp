@@ -32,7 +32,7 @@
 
 //= Persistent synchronization object for more precise sleep.
 
-static HANDLE wait = CreateWaitableTimer(NULL, TRUE, NULL);
+//static HANDLE wait = CreateWaitableTimer(NULL, TRUE, NULL);
 
 
 ///////////////////////////////////////////////////////////////////////////

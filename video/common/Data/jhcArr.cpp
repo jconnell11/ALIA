@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -296,6 +296,19 @@ void jhcArr::Push (int val)
   for (i = 0; i < lim; i++)
     arr[i] = arr[i + 1];
   arr[lim] = val;    
+}
+
+
+//= Write value to next open location, pushing data to left if needed.
+
+void jhcArr::Scroll (int fill, int val)
+{
+  int i = __max(0, fill);
+
+  if (i < sz)
+    arr[i] = val;
+  else
+    Push(val);
 }
 
 
@@ -637,13 +650,24 @@ int jhcArr::MinNZ (int all) const
 }
 
 
-
 //= Find the largest positive or negative value in array (or subrange).
-// useful for sacling graphs
+// useful for scaling graphs
 
 int jhcArr::MaxAbs (int all) const
 {
-  return __max(MaxVal(all), -MinVal(all));
+  int i, lo = i0, hi = i1, top = arr[i0], bot = top;
+
+  if (all > 0)
+  {
+    lo = 0;
+    hi = sz;
+  }
+  for (i = lo + 1; i < hi; i++)
+  {
+    top = __max(top, arr[i]);
+    bot = __min(bot, arr[i]);
+  }
+  return __max(top, -bot);
 }
 
 
@@ -1457,10 +1481,11 @@ int jhcArr::NearestPeak (int pos) const
 
 
 //= Divide array into regions above th and find maximum in each.
+// can optionally find only peaks below "pos" (any = 0)
 // respects subrange specifications
 // returns position of closest max or original reference position if no regions
 
-int jhcArr::NearMassPeak (int pos, int th) const
+int jhcArr::NearMassPeak (int pos, int th, int any) const
 {
   int i, top, dist, best, pk = -1, win = -1;
 
@@ -1478,12 +1503,13 @@ int jhcArr::NearMassPeak (int pos, int th) const
     else if (pk >= 0) 
     {
       // possibly finished region so check if closest
-      dist = abs(pk - pos);
-      if ((win < 0) || (dist < best))
-      {
-        best = dist;
-        win = pk;
-      }
+      dist = abs(pos - pk);
+      if ((any > 0) || (pos >= pk))
+        if ((win < 0) || (dist < best))
+        {
+          best = dist;
+          win = pk;
+        }
       pk = -1;
     }
   return((win < 0) ? pos : win);

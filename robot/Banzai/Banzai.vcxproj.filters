@@ -93,9 +93,6 @@
     <Filter Include="Header Files\common audio\Semantic">
       <UniqueIdentifier>{60ae58cf-1b8f-48ce-bd21-f92a3178729d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\common audio\Parse">
-      <UniqueIdentifier>{2c97c29a-f6a2-4f40-8454-b9487be49dd5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\common robot">
       <UniqueIdentifier>{23d2acb6-8f9a-4426-a619-f7d4b937d39f}</UniqueIdentifier>
     </Filter>
@@ -168,6 +165,9 @@
     </Filter>
     <Filter Include="Header Files\common robot\Environ">
       <UniqueIdentifier>{f158a761-e4db-4bdd-b17b-00923fbbefcb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio\Parse">
+      <UniqueIdentifier>{2c97c29a-f6a2-4f40-8454-b9487be49dd5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -453,9 +453,6 @@
     <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp">
       <Filter>Source Files\common video\Interface</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Eli\jhcManipFSM.cpp">
-      <Filter>Source Files\common robot\Eli</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Grounding\jhcBallistic.cpp">
       <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
@@ -566,6 +563,15 @@
     </ClCompile>
     <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp">
       <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaStats.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Eli\jhcEliWatch.cpp">
+      <Filter>Source Files\common robot\Eli</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaMood.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -887,9 +893,6 @@
     <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h">
       <Filter>Header Files\common audio\Acoustic</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\Eli\jhcManipFSM.h">
-      <Filter>Header Files\common robot\Eli</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Grounding\jhcBallistic.h">
       <Filter>Header Files\common robot\Grounding</Filter>
     </ClInclude>
@@ -1016,6 +1019,15 @@
     <ClInclude Include="..\..\audio\common\Reasoning\jhcActionTree.h">
       <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaStats.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Eli\jhcEliWatch.h">
+      <Filter>Header Files\common robot\Eli</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaMood.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\Banzai.ico">
@@ -1024,6 +1036,7 @@
     <None Include="res\Banzai.rc2">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Banzai.rc">

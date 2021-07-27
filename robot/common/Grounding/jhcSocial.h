@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,7 +56,8 @@ private:
   jhcAliaNote *rpt;
 
   // event state
-  int hwin, told, uid;
+  UL32 seen;
+  int folks, pal, prox, reco, uid;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -66,11 +67,11 @@ public:
 
   // attention parameters
   jhcParam aps;
-  double pnear, ltol, lquit;
+  double pnear, alone, scare, ltol, lquit;
 
   // motion parameters 
   jhcParam mps;
-  double cozy, aquit, ideal, worry, ttime, orient, atime, ftime;
+  double cozy, direct, aquit, ideal, worry, orient, atime, ftime;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -98,18 +99,18 @@ private:
   int local_status (const jhcAliaDesc *desc, int i);
 
   // reported events
+  void dude_seen ();
+  void dude_close ();
   void vip_seen ();
-  void vip_close ();
   void user_gone ();
-  void person_prop (int i, const char *prop, int neg) const;
-  void add_name (jhcAliaDesc *n, const char *name) const;
+  jhcAliaDesc *agt_node (int t);
 
   // looking at/for people
   JCMD_DEF(soc_look);
-  int get_dude (const jhcAliaDesc *agt) const;
 
   // moving toward people
   JCMD_DEF(soc_approach);
+  JCMD_DEF(soc_retreat);
   JCMD_DEF(soc_follow);
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -356,15 +356,25 @@ int jhcMorphFcns::SaveExcept (const char *fname) const
 // assumes original grammar file has some section labelled "=[XXX-morph]"
 // returns positive if successful, 0 or negative for problem
 
-int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname)
+int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname, int rpt)
 {
   const char deriv[80] = "jhc_temp.txt";
+  char strip[80];
+  char *end;
 
   // load basic grammar file like usual
   if ((p == NULL) || (fname == NULL) || (*fname == '\0'))
     return -3;
   if (p->LoadGrammar(fname) <= 0)
     return -2;
+  if (rpt > 0)
+  {
+    // list file as loaded
+    strcpy_s(strip, fname);
+    if ((end = strrchr(strip, '.')) != NULL)
+      *end = '\0';
+    jprintf("   %s\n", strip);
+  }
 
   // read and apply morphology to add derived forms as well
   if (LoadExcept(fname) <= 0)
@@ -381,15 +391,25 @@ int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname)
 // assumes original grammar file has some section labelled "=[XXX-morph]"
 // returns positive if successful, 0 or negative for problem
 
-int jhcMorphFcns::AddVocab (jhcSpeechX *p, const char *fname)
+int jhcMorphFcns::AddVocab (jhcSpeechX *p, const char *fname, int rpt)
 {
   const char deriv[80] = "jhc_temp.txt";
+  char strip[80];
+  char *end;
 
   // load basic grammar file like usual
   if ((p == NULL) || (fname == NULL) || (*fname == '\0'))
     return -3;
   if (p->LoadGrammar(fname) <= 0)
     return -2;
+  if (rpt > 0)
+  {
+    // list file as loaded
+    strcpy_s(strip, fname);
+    if ((end = strrchr(strip, '.')) != NULL)
+      *end = '\0';
+    jprintf("   %s\n", strip);
+  }
 
   // read and apply morphology to add derived forms as well
   if (LoadExcept(fname) <= 0)
@@ -904,6 +924,31 @@ UL32 jhcMorphFcns::gram_tag (const char *pair) const
 
   // unknown
   return 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                       Adjective Nominalization                        //
+///////////////////////////////////////////////////////////////////////////
+
+//= Convert an example adjective into a kind specifier for the property.
+// "large" -> "largeness", "skinny" -> "skinniness", "gray" -> "grayness"
+
+const char *jhcMorphFcns::PropKind (char *form, const char *adj, int ssz) const
+{
+  int end;
+ 
+  // append "-ness" to term
+  if ((adj == NULL) || (form == NULL))
+    return NULL;
+  sprintf_s(form, ssz, "%sness", adj);
+  end = (int) strlen(adj) - 1;
+
+  // possibly convert final "y" to "i"
+  if ((end >= 1) && (form[end] == 'y'))
+    if (!vowel(form[end - 1]))
+      form[end] = 'i';
+  return form;
 }
 
 

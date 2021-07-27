@@ -41,6 +41,31 @@
 
 
 //= Top level parsing, learning, and control for ELI robot.
+// <pre>
+// class tree overview (+ = member, > = pointer):
+//
+//   EliCoord         
+//     AliaSpeech
+//       AliaCore            reasoning (see header file)
+//       +SpeechX            TTS + local speech
+//         SpTextMS
+//         SpRecoMS
+//         +TxtSrc           pronunciation corrections
+//       +SpeechWeb
+//         +TxtAssoc         recognition corrections      
+//     +EliBody              robot hardware (see header file)
+//     +EliGrok              runs body and sensors (see header file)
+//     +Ballistic            net to basic movements
+//       TimedFcns
+//         AliaKernel
+//     +Social               net to person interaction
+//       TimedFcns
+//         AliaKernel
+//     +SceneVis             net to object perception
+//       TimedFcns
+//         AliaKernel
+// 
+// </pre>
 
 class jhcEliCoord : public jhcAliaSpeech
 {
@@ -62,7 +87,7 @@ public:
   // extra grounding kernels
   jhcBallistic ball; 
   jhcSocial soc;
-  jhcSceneVis vscn;
+  jhcSceneVis svis;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -78,19 +103,16 @@ public:
 
   // main functions
   int SetPeople (const char *fname, int append =0);
-  int Reset (int mech =0);
+  int Reset (int bmode =0);
   int Respond ();
-  void Done (int face =0);
-
-  // user identification
-  int SpkChange () const;
+  void Done (int face =0, int status =1);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // visual semantic linkage
   void check_user (int id);
-  void tag_tracks ();
+  void wmem_heads ();
 
 
 };

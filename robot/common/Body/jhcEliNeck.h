@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,6 +57,13 @@ private:
   int tlock0, tlock;                /** Winning bid for tilt command.         */
   int stiff;                        /** Whether neck is under active control. */
 
+  // angular speed estimate
+  UL32 now;
+  double p0, t0, ipv, itv;
+
+  // control loop performance
+  double pvel, tvel;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
@@ -88,9 +95,7 @@ public:
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
   double Voltage ();
-  int Power (double vbat =0.0);
-  void Inject (double pan, double tilt) 
-    {jt[0].Inject(pan); jt[1].Inject(tilt);}
+  void Inject (double pan, double tilt);
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);
@@ -115,8 +120,16 @@ public:
   double Tilt () const {return jt[1].Angle();}
   void Gaze (double& p, double& t) const {p = Pan(); t = Tilt();}
   void AimFor (double& p, double& t, const jhcMatrix& targ, double lift) const;
+  double PanCmdV () const  {return pvel;}
+  double TiltCmdV () const {return tvel;}
+  double PanDPS (int abs =0) const   {return((abs > 0) ? fabs(ipv) : ipv);}
+  double TiltDPS (int abs =0) const  {return((abs > 0) ? fabs(itv) : itv);}
+  double PanStep (int abs =0) const  {return((abs > 0) ? fabs(Pan() - p0)  : Pan() - p0);}
+  double TiltStep (int abs =0) const {return((abs > 0) ? fabs(Tilt() - t0) : Tilt() - t0);}
+  bool Saccade (double plim =3.5, double tlim =1.0) const 
+    {return((PanStep(1) > plim) || (TiltStep(1) > tlim));}
 
-  // viewing goal specification commands
+  // goal specifying commands for view
   void GazeClear () {jt[0].RampReset(); jt[1].RampReset();}
   int GazeTarget (double pan, double tilt, double p_rate =1.0, double t_rate =0.0, int bid =10);
   int PanTarget (double pan, double rate =1.0, int bid =10);
@@ -126,16 +139,28 @@ public:
   int GazeAt (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10);
   int GazeAt (const jhcMatrix *targ, double lift, double rate =1.0, int bid =10)
     {return((targ == NULL) ? 0 : GazeAt(*targ, lift, rate, bid));}
+  int GazeStop (double rate =1.5, int bid =1)
+    {return GazeTarget(jt[0].SoftStop(Pan(), ndone, rate), jt[1].SoftStop(Tilt(), ndone, rate), rate, bid);}
 
-  // profiled motion progress
+  // progress irrespective of controlling behavior
   double PanErr (double pan, int abs =1, int lim =1) const;
   double TiltErr (double tilt, int abs =1, int lim =1) const;
   double GazeErr (double pan, double tilt, int lim =1) const
     {return __max(PanErr(pan, 1, lim), TiltErr(tilt, 1, lim));}
   double GazeErr (const jhcMatrix& targ, double lift) const;
-  bool GazeClose (double tol =0.5) const {return(PanClose(tol) && TiltClose(tol));}
-  bool PanClose (double tol =0.5) const  {return(jt[0].RampDist(Pan()) <= tol);}
-  bool TiltClose (double tol =0.5) const {return(jt[1].RampDist(Tilt()) <= tol);}
+  bool PanDone (double p, double tol =2.0) const  
+    {return(PanErr(p) <= tol);}
+  bool TiltDone (double t, double tol =2.0) const 
+    {return(TiltErr(t) <= tol);}
+  bool GazeDone (double p, double t, double tol =2.0) const 
+    {return(PanDone(p, tol) && TiltDone(t, tol));}
+  bool GazeDone (const jhcMatrix& targ, double lift, double tol =2.0) const 
+    {return(GazeErr(targ, lift) <= tol);}
+
+  // profiled motion progress
+  bool GazeClose (double tol =1.0) const {return(PanClose(tol) && TiltClose(tol));}
+  bool PanClose (double tol =1.0) const  {return(jt[0].RampDist(Pan()) <= tol);}
+  bool TiltClose (double tol =1.0) const {return(jt[1].RampDist(Tilt()) <= tol);}
   bool GazeFail (double secs =0.5) const {return(PanFail(secs) && TiltFail(secs));}
   bool PanFail (double secs =0.5) const  {return(jt[0].RampDone() > secs);}
   bool TiltFail (double secs =0.5) const {return(jt[1].RampDone() > secs);}
@@ -172,19 +197,19 @@ public:
     {return GazeRate(p + dp, t + dt, p, t, secs, rmax);}
 
   // neck rates from current state
-  double GazeRate0 (double p, double t, double secs =0.5) const
-    {return GazeRate(p, t, Pan(), Tilt(), secs);}
-  double PanRate0 (double p, double secs =0.5) const
-    {return PanRate(p, Pan(), secs);}
-  double TiltRate0 (double t, double secs =0.5) const
-    {return TiltRate(t, Tilt(), secs);}
-  double ShiftRate0 (double dp, double dt, double secs =0.5) const
-    {return ShiftRate(dp, dt, Pan(), Tilt(), secs);}
+  double GazeRate0 (double p, double t, double secs =0.5, double rmax =1.0) const
+    {return GazeRate(p, t, Pan(), Tilt(), secs, rmax);}
+  double PanRate0 (double p, double secs =0.5, double rmax =1.0) const
+    {return PanRate(p, Pan(), secs, rmax);}
+  double TiltRate0 (double t, double secs =0.5, double rmax =1.0) const
+    {return TiltRate(t, Tilt(), secs, rmax);}
+  double ShiftRate0 (double dp, double dt, double secs =0.5, double rmax =1.0) const
+    {return ShiftRate(dp, dt, Pan(), Tilt(), secs, rmax);}
 
   // eliminate residual error
   int GazeFix (double pan, double tilt, double secs =0.5, int bid =10)
     {return GazeTarget(pan, tilt, PanRate0(pan, secs), TiltRate0(tilt, secs), bid);}
-  int PanFix (double pan, double secs =0.5, double rmax =1.0, int bid =10)
+  int PanFix (double pan, double secs =0.5, int bid =10)
     {return PanTarget(pan, PanRate0(pan, secs), bid);}
   int TiltFix (double tilt, double secs =0.5, int bid =10)
     {return TiltTarget(tilt, TiltRate0(tilt, secs), bid);}

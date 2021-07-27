@@ -60,6 +60,10 @@ jhcActionTree::jhcActionTree ()
   binc = 0.1;          
   bdec = 0.1;
 
+  // operator adjustment parameters
+  pinc = 0.1;          
+  pdec = 0.1;
+
   // parallel action status
   for (i = 0; i < imax; i++)
     focus[i] = NULL;
@@ -69,11 +73,7 @@ jhcActionTree::jhcActionTree ()
   now = 0;
 
   // external interface
-  ch0 = NULL;
   dir0 = NULL;
-
-  // mood default
-  surp = 0.0;
 
   // debugging
   noisy = 3;           // usually copied from jhcAliaCore (=1)
@@ -93,6 +93,34 @@ int jhcActionTree::Active () const
 }
 
 
+//= Determine the maximum subgoal depth across all active foci.
+
+int jhcActionTree::MaxDepth () const
+{
+  int i, deep, win = 0;
+
+  for (i = 0; i < fill; i++)
+    if (done[i] <= 0)
+      if ((deep = focus[i]->MaxDepth()) > win)
+        win = deep;
+  return win;
+}
+
+
+//= Determine number of activities (possibly subgoaled) across all active foci.
+// if leaf > 0 then only considers currently active goals not pass-thrus
+
+int jhcActionTree::NumGoals (int leaf) const
+{
+  int i, cnt = 0;
+
+  for (i = 0; i < fill; i++)
+    if (done[i] <= 0)
+      cnt += focus[i]->NumGoals(leaf);
+  return cnt;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                          List Manipulation                            //
 ///////////////////////////////////////////////////////////////////////////
@@ -103,17 +131,17 @@ int jhcActionTree::Active () const
 
 int jhcActionTree::NextFocus ()
 {
-  int i, nf = chock;
+  int i;
 
   // find next unselected active focus (tail first)
-  for (i = nf - 1; i >= 0; i--)
+  for (i = chock - 1; i >= 0; i--)
     if ((mark[i] <= 0) && (done[i] <= 0))
       break;
 
   // mark focus as used
   if (i >= 0)
     mark[i] = 1;
-  svc = i;
+  svc = i;                   // important for ServiceWt
   return svc;
 }
 
@@ -151,15 +179,21 @@ int jhcActionTree::BaseBid (int n) const
 
 //= Mark the given focus as active or finished at the current time.
 // this is typically when the chain verdict is zero
+// looks up index of given focus since original service number might change
 
-void jhcActionTree::SetActive (int n, int running)
+void jhcActionTree::SetActive (const jhcAliaChain *s, int running)
 {
-  if ((n < 0) || (n >= fill))
+  int i;
+
+  for (i = 0; i < fill; i++)
+    if (focus[i] == s)
+      break;
+  if (i >= fill)
     return;
   if (running > 0)
-    active[n] = now;
+    active[i] = now;
   else
-    done[n] = 1;
+    done[i] = 1;
 }
 
 
@@ -202,8 +236,7 @@ int jhcActionTree::ClrFoci (int init, const char *rname)
 
   // clear halo and working memory
   FinishNote(0);
-  ClearHalo();
-  PurgeAll();
+  Reset();
   InitPeople(rname);
   return 1;
 }
@@ -255,7 +288,7 @@ int jhcActionTree::AddFocus (jhcAliaChain *f, double pref)
     boost[fill] = boost[i] + 1;
 
   // timing (zero active marks beginning)
-  active[fill] = 0;          
+  active[fill] = 0;      
   return fill++;
 }
 
@@ -265,15 +298,13 @@ int jhcActionTree::AddFocus (jhcAliaChain *f, double pref)
 
 int jhcActionTree::drop_oldest ()
 {
-  UL32 t;
   int i, age, worst, drop = -1;
 
   // find complete focus that has been around longest
-  t = jms_now();
   for (i = 0; i < fill; i++)
     if (done[i] > 0)
     {
-      age = jms_diff(t, active[i]);
+      age = jms_diff(now, active[i]);
       if ((drop < 0) || (age > worst))
       {
         worst = age;
@@ -284,7 +315,7 @@ int jhcActionTree::drop_oldest ()
   // try to remove the focus
   if (drop < 0)
     return 0;
-  rem_compact(i);
+  rem_compact(drop);
   return 1;
 }
 
@@ -300,22 +331,19 @@ int jhcActionTree::drop_oldest ()
 
 int jhcActionTree::Update (int gc)
 {
-  UL32 prev = now;
-  double dt;
   int i;
 
-  // find current elapsed time and decay surprise value
+  // find current elapsed time
   now = jms_now();
-  dt = jms_secs(now, prev);
-  if (dt > 0.0)
-    surp -= surp * calm * dt;
 
   // clean up old foci and old nodes in main memory
-  prune_foci();
-  for (i = 0; i < fill; i++)
-    focus[i]->MarkSeeds();             // make sure to keep these
-  if (gc > 0)     
+  if (gc > 0)
+  {
+    prune_foci();
+    for (i = 0; i < fill; i++)
+      focus[i]->MarkSeeds();           // make sure to keep these
     CleanMem(noisy - 4);
+  }
 
   // update generation number and report 
   ver++; 
@@ -366,6 +394,8 @@ void jhcActionTree::rem_compact (int n)
   else if (noisy == 1)
     jprintf(">>> Removing inactive focus %d\n", Inactive());
   delete focus[n];
+  fill--;
+  chock--;
 
   // copy relevant part of each next focus to this focus
   for (i = n; i < fill; i++)
@@ -382,9 +412,9 @@ void jhcActionTree::rem_compact (int n)
     // timing
     active[i] = active[i + 1];
   }
-
-  // shrink list size
-  fill--;
+  focus[fill] = NULL;                  // for safety
+  if (svc > n)
+    svc--;                             // important for ServiceWt
 }
 
 
@@ -394,7 +424,8 @@ void jhcActionTree::rem_compact (int n)
 
 //= Determines how unexpected some situation is relative to halo expectation.
 // in jhcActionTree not jhcWorkMem because it can add new NOTE foci
-// returns fascination time for corresponding NOTE directive (in secs)
+// only looks at nodes with belief > 0 so ignores inferences based on hypotheticals
+// returns surprise encountered for matching graphlet
 
 double jhcActionTree::CompareHalo (const jhcGraphlet& key)
 {
@@ -404,7 +435,7 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key)
   const jhcAliaRule *r;
   const jhcBindings *b;
   double s, blf, blf2, blf3, lo, hi = 0.0;
-  int i, ni = key.NumItems();
+  int i, ni = key.NumItems(), detail = 1;
 
   // examine each element of the situation 
   for (i = 0; i < ni; i++)
@@ -420,13 +451,16 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key)
       blf2 = mate->Belief();
       if (((r = mate->hrule) != NULL) && ((b = mate->hbind) != NULL))
       {
+        // when new fact added to main memory
+        //   if belief in halo < current threshold and correct then increment 
+        //   if belief in halo > current threshold and wrong then decrement 
         fact = r->Wash(b->FindKey(mate));
         if ((blf2 >= MinBlf()) && (mate->Neg() != focus->Neg()))
           fact->SetBelief(blf2 - bdec);
         else if ((blf2 < MinBlf()) && (mate->Neg() == focus->Neg()))
           fact->SetBelief(blf2 + binc);
         if ((blf3 = fact->Belief()) != blf2)
-          jprintf(1, noisy, "ADJUST: rule %d --> %s %s to %4.2f\n", r->RuleNum(), 
+          jprintf(1, detail, "ADJUST: rule %d --> %s %s to %4.2f\n", r->RuleNum(), 
                   ((blf3 > blf2) ? "raise" : "lower"), fact->Nick(), blf3);
       }
 
@@ -452,14 +486,12 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key)
     }
     hi = __max(lo, hi);                              // combine across whole key
   }
-
-  // alter global "surprise" to affect things like facial expression
-  surp = __max(surp, hi);
-  return(0.5 * dwell * surp);                        // also boosts later NOTEs
+  return hi;
 }
 
 
 //= Look through halo to find some node with similar arguments.
+// only looks at nodes with belief > 0 so ignores inferences based on hypotheticals
 
 const jhcNetNode *jhcActionTree::halo_equiv (const jhcNetNode *n, const jhcNetNode *h0) const
 {
@@ -469,7 +501,7 @@ const jhcNetNode *jhcActionTree::halo_equiv (const jhcNetNode *n, const jhcNetNo
   // look for superficially similar node in halo portion
   while ((h = halo.Next(h)) != NULL)
     if ((h->Belief() > 0.0) && (h->Done() == n->Done()) && 
-        (h->NumArgs() == na) && !h->LexConflict(n) && h->SameWords(n))
+        (h->NumArgs() == na) && h->LexMatch(n))
     {
       // check that all arguments match exactly
       for (i = 0; i < na; i++)
@@ -491,6 +523,7 @@ const jhcNetNode *jhcActionTree::halo_equiv (const jhcNetNode *n, const jhcNetNo
 // select item = A so instantiate rule 1 and make NOTE (save B-halo = B-wmem in h2m)
 // next select item = B so instantiate rule 2 and make NOTE (use B-halo = B-wmem in NOTE)
 // in jhcActionTree not jhcWorkMem because it can add new NOTE foci
+// can generate no NOTEs (note = 0), for all facts (1), or only for directly relevant facts (2)
 // returns number of NOTEs generated (rules used)
 
 int jhcActionTree::ReifyRules (jhcBindings& b, int note)
@@ -499,15 +532,15 @@ int jhcActionTree::ReifyRules (jhcBindings& b, int note)
   jhcAliaChain *ch;
   jhcAliaDir *dir;
   jhcNetNode *item;
-  int fcnt = 0;
+  int step, fcnt = 0;
 
   // progressively find all halo nodes that need to move to wmem
-  while ((item = pick_halo(b, h2m, 0)) != NULL)
+  while ((item = pick_halo(step, b, h2m, 0)) != NULL)
   {
     // move halo nodes in precondition of rule that yielded this item
     PromoteHalo(h2m, item->hbind);
     b.ReplaceSubs(h2m);
-    if (note <= 0)
+    if ((note <= 0) || (step < note))
       continue;
 
     // instantiate result of rule using main memory nodes
@@ -516,6 +549,7 @@ int jhcActionTree::ReifyRules (jhcBindings& b, int note)
     (item->hrule)->Inferred(dir->key, b2);
 
     // embed NOTE in chain and add to attention queue
+    jprintf(1, noisy, "\n");
     ch = new jhcAliaChain;
     ch->BindDir(dir);
     AddFocus(ch);
@@ -527,37 +561,38 @@ int jhcActionTree::ReifyRules (jhcBindings& b, int note)
 
 //= Find some halo fact that needs to be moved to working memory.
 // assumes original bindings "b" already augmented by halo migrations in "h2m"
+// sets step = 2 if directly relevant, step = 1 if precursor to relevant
 // returns NULL when all substitutions are in wmem 
 
-jhcNetNode *jhcActionTree::pick_halo (const jhcBindings& b, const jhcBindings& h2m, int stop) const
+jhcNetNode *jhcActionTree::pick_halo (int& step, const jhcBindings& b, const jhcBindings& h2m, int stop) const
 {
   jhcBindings b2;
-  jhcNetNode *sub, *deep;
-  int i, j, lex, bcnt = b.NumPairs();
+  jhcNetNode *sub, *mid;
+  int i, d2, bcnt = b.NumPairs();
 
   // look for halo nodes among binding substitutions
   if (stop > 0)
     bcnt = __min(stop, bcnt);
-  for (j = 0; j <= 1; j++)
-    for (i = 0; i < bcnt; i++)
-    {
-      // try basic nodes first, lexical nodes later (if any left)
-      sub = b.GetSub(i);
-      if (!sub->Halo())
-        continue;
-      lex = ((sub->LexNode()) ? 1 : 0);
-      if (lex != j)
-        continue;
+  for (i = 0; i < bcnt; i++)
+  {
+    // check that substitution is in halo
+    sub = b.GetSub(i);
+    if (!sub->Halo())
+      continue;
 
-      // check if source rule itself used any halo facts to trigger
-      if (stop <= 0)
+    // check if source rule itself used any halo facts to trigger
+    if (stop <= 0)
+    {
+      b2.CopyReplace(sub->hbind, h2m);
+      if ((mid = pick_halo(d2, b2, h2m, (sub->hrule)->NumPat())) != NULL)
       {
-        b2.CopyReplace(sub->hbind, h2m);
-        if ((deep = pick_halo(b2, h2m, (sub->hrule)->NumPat())) != NULL)
-          return deep;
+        step = 1;
+        return mid;
       }
-      return sub;
     }
+    step = 2;
+    return sub;
+  }
   return NULL;
 }
 
@@ -572,9 +607,7 @@ jhcNetNode *jhcActionTree::pick_halo (const jhcBindings& b, const jhcBindings& h
 void jhcActionTree::StartNote ()
 {
   FinishNote(0);
-  ch0 = new jhcAliaChain;
   dir0 = new jhcAliaDir;
-  ch0->BindDir(dir0);
   BuildIn(&(dir0->key));
 }
 
@@ -584,22 +617,26 @@ void jhcActionTree::StartNote ()
 
 int jhcActionTree::FinishNote (int keep)
 {
+  jhcAliaChain *ch0;
   int ans = -2;
 
-  // rearrange items for nicer look  
-  if ((ch0 == NULL) || (dir0 == NULL))
+  // make sure something was started
+  if (dir0 == NULL)
     return ans;
-  (dir0->key).MainProp();
   
-  // add as focus or abort construction
-  if (keep > 0)
-    ans = AddFocus(ch0);
+  // abort construction or add as focus
+  if ((keep <= 0) || (dir0->key).Empty())
+    delete dir0; 
   else
-    delete ch0;              // automatically deletes dir0 also
+  {
+    ch0 = new jhcAliaChain;
+    ch0->BindDir(dir0);
+    (dir0->key).MainProp();            // rearrange for nicer look
+    ans = AddFocus(ch0);
+  }
 
   // general cleanup
   BuildIn(NULL);
-  ch0 = NULL;
   dir0 = NULL;
   return ans;
 }
@@ -696,7 +733,7 @@ int jhcActionTree::SaveFoci (FILE *out)
 
     // dump contents of focus
     s = FocusN(win);
-    if (s->Save(out, 0, NULL, 3) > 0)
+    if (s->Save(out, 0, NULL, 2) > 0)
       n++;
     jfprintf(out, "\n");
   }

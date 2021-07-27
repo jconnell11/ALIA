@@ -128,6 +128,43 @@ void jhcAliaPlay::MarkSeeds ()
 }
 
 
+//= Determine the maximum subgoal depth for this part of the tree.
+
+int jhcAliaPlay::MaxDepth () const
+{
+  int i, deep, win = 0;
+
+  // examine all parallel activities
+  for (i = 0; i < ng; i++)
+    if ((deep = guard[i]->MaxDepth()) > win)
+      win = deep;
+
+  // examine all required activities
+  for (i = 0; i < na; i++)
+    if ((deep = main[i]->MaxDepth()) > win)
+      win = deep;
+  return win;
+}
+
+
+//= Determine number of simultaneous activities (possibly subgoaled).
+// if leaf > 0 then only considers currently active goals not pass-thrus
+
+int jhcAliaPlay::NumGoals (int leaf) const
+{
+  int i, cnt = 0;
+
+  // examine all parallel activities
+  for (i = 0; i < ng; i++)
+    cnt += guard[i]->NumGoals(leaf);
+
+  // examine all required activities
+  for (i = 0; i < na; i++)
+    cnt += main[i]->NumGoals(leaf);
+  return cnt;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////

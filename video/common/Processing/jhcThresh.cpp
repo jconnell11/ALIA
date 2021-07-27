@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -601,7 +601,7 @@ int jhcThresh_0::SoftUnder (jhcImg& dest, const jhcImg& src, int th, double frac
 // ramps from 255 to 0 starting at hi - dev up to hi + dev
 // if lo greater than hi then values outside range are 255 instead of 0
 
-int jhcThresh_0::InRange (jhcImg& dest, const jhcImg& src, int lo, int hi, int dev) const 
+int jhcThresh_0::InRange (jhcImg& dest, const jhcImg& src, int lo, int hi, int dev, int nz) const 
 {
   if (!dest.SameFormat(src))
     return Fatal("Bad images to jhcThresh::InRange");
@@ -648,6 +648,8 @@ int jhcThresh_0::InRange (jhcImg& dest, const jhcImg& src, int lo, int hi, int d
   if (hi < lo)
     for (i = 0; i <= 255; i++)
       thv[i] = 255 - thv[i];
+  if (nz > 0)                          // zero input sometimes invalid
+    thv[0] = 0;                        
 
   // apply lookup table to image
   for (y = rh; y > 0; y--)

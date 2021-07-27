@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,35 +65,55 @@ jhcAliaOp::jhcAliaOp (JDIR_KIND k)
 
 int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth) 
 {
+  const jhcNetNode *item, *focus = cond.Main();
   jhcNetNode *mate = NULL;
-  int found, cnt = 0;
+  JDIR_KIND k = dir.kind;
+  int i, occ, bin, found, nc = cond.NumItems(), best = 0, cnt = 0;
+
+  // main node of NOTE not special, so pick most constrained instead
+  jprintf(2, dbg, "Operator %d matching (%4.2f) ...\n", id, mth);
+  if ((k == JDIR_NOTE) && (f.NumBins() > 1))
+  {  
+    for (i = 0; i < nc; i++) 
+    {
+      item = cond.Item(i);
+      if ((occ = f.SameBin(*item)) <= 0)
+        return 0;                                // pattern unmatchable!
+      if ((best <= 0) || (occ < best))
+      {
+        focus = item;
+        best = occ;
+      }
+    }
+  }
 
   // set control parameters
-  jprintf(2, dbg, "  try_mate: %s initial focus\n", cond.MainNick()); 
+  jprintf(2, dbg, "  try_mate: %s initial focus\n", focus->Nick()); 
+  bin = ((focus->Lex() == NULL) ? -1 : focus->Code());
   omax = dir.MaxOps();
   tval = dir.own;
-  bth = mth;
+  bth = (((k == JDIR_CHK) || (k == JDIR_FIND) || (k == JDIR_BIND)) ? -mth : mth);
 
   // generally require main nodes (i.e. verb) of directives to match
-  if (dir.kind == JDIR_CHK)
+  if (k == JDIR_CHK)
     while ((mate = (dir.key).NextNode(mate)) != NULL)
     {
       // CHK triggers can start matching anywhere in description
-      if ((found = try_mate(mate, dir, f)) < 0)
+      if ((found = try_mate(focus, mate, dir, f)) < 0)
         return found;
       cnt += found;
     }
-  else if (dir.kind == JDIR_NOTE)
-    while ((mate = f.NextNode(mate)) != NULL)
+  else if (k == JDIR_NOTE)
+    while ((mate = f.NextNode(mate, bin)) != NULL)
     {
       // NOTE triggers match anything in memory (including halo)
       // checks for relatedness at end (i.e. tval in match_found)
-      if ((found = try_mate(mate, dir, f)) < 0)
+      if ((found = try_mate(focus, mate, dir, f)) < 0)
         return found;
       cnt += found;
     }
   else                       // most directives (DO, FIND, ...)
-    cnt = try_mate((dir.key).Main(), dir, f);    
+    cnt = try_mate(focus, dir.KeyMain(), dir, f);    
   return cnt;
 }
 
@@ -101,23 +121,27 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth)
 //= Given some candidate for main condition node, find all bindings that let directive match.
 // returns total number of bindings filled, negative for problem
  
-int jhcAliaOp::try_mate (jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f) 
+int jhcAliaOp::try_mate (const jhcNetNode *focus, jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f) 
 {
-  const jhcNetNode *focus = cond.Main();
   const jhcGraphlet *trig = &(dir.key);
   jhcBindings *m = dir.match;
   int i, n = cond.NumItems();
 
   // sanity check
-  if (mate == NULL)
-    return -1;
-  jprintf(2, dbg, "   mate (%4.2f) = %s (%4.2f)", bth, mate->Nick(), mate->Belief());
+  if (mate == NULL) 
+    return -1;               // stops all OP matching
+  if (!mate->Visible())
+    return 0;
+  jprintf(2, dbg, "   mate = %s (%4.2f)", mate->Nick(), mate->Belief());
 
   // test main node compatibility (okay with blank nodes)
-  if ((mate->Neg() != focus->Neg()) || (mate->Done() != focus->Done()) || mate->LexConflict(focus))
-    return jprintf(2, dbg, " -> bad neg or done\n");
-  if (mate->NumArgs() < focus->NumArgs())                 
-    return jprintf(2, dbg, " -> bad num args\n");
+  if ((kind == JDIR_NOTE) && !mate->Sure(bth))
+    return jprintf(2, dbg, " -> bad belief\n");
+  if ((mate->Neg() != focus->Neg()) || (mate->Done() != focus->Done()) || 
+      ((focus->Lex() != NULL) && !focus->LexMatch(mate)))
+    return jprintf(2, dbg, " -> bad neg, done, or lex\n");
+  if (mate->Arity() != focus->Arity())
+    return jprintf(2, dbg, " -> different arity\n");
 
   // force binding of initial items and set trigger size
   jprintf(2, dbg, "\n");
@@ -141,31 +165,35 @@ int jhcAliaOp::try_mate (jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f)
 int jhcAliaOp::match_found (jhcBindings *m, int& mc) 
 {
   jhcBindings *b = &(m[mc - 1]);
-  const jhcNetNode *n;
+  const jhcNetNode *k, *n;
   int i, nb = b->NumPairs();
 
   // typically checking an unless clause
   if (mc <= 0)
     return 0;
 
-  // if NOTE trigger, check that at least one node has proper relevance
+  // if NOTE trigger, check that at least one non-object node has proper relevance
   if (tval > 0)
   {
     for (i = 0; i < nb; i++)
-      if ((n = b->GetSub(i)) != NULL)
-        if (n->top == tval)
-          break;
+    {
+      k = b->GetKey(i);
+      n = b->GetSub(i);
+      if (!k->ObjNode() && (n != NULL) && (n->top == tval))
+        break;
+    }
     if (i >= nb)
-      return 0;
+      return jprintf(3, dbg, "%*s reject - no trigger related to new NOTE\n", 2 * nb + 1, "");
   }
 
   // make sure proposed action not already in list ("first" set in try_match)
   // since this is within an operator, all pref's will be the same
   for (i = mc; i < first; i++)
     if (SameEffect(*b, m[i]))
-      return 0;
+      return jprintf(3, dbg, "%*s reject - same effect as a bindings[%d]\n", 2 * nb + 1, "", i);
   
   // accept bindings and shift to next set
+  jprintf(3, dbg, "%*s ... FULL MATCH = bindings[%d]\n", 2 * nb + 1, "", mc - 1);
   if (mc <= 1)
     jprintf(">>> More than %d applicable operators in jhcAliaOp::match_found !\n", omax);
   else
@@ -226,7 +254,7 @@ int jhcAliaOp::load_pattern (jhcTxtLine& in)
   if (!in.Begins("trig:"))
     return 0;
   in.Flush();
-  if ((ans = dir.Load(*this, in)) <= 0)
+  if ((ans = dir.Load(*this, in)) <= 0)         
     return ans;
   kind = dir.kind;
   cond.Copy(dir.key);
@@ -257,12 +285,12 @@ int jhcAliaOp::load_pattern (jhcTxtLine& in)
       return 0;
   }
 
-  // get associated action
+  // get associated action sequence
   if (!in.Begins("----"))
     return 0;
   in.Flush();
   meth = new jhcAliaChain;
-  if ((ans = meth->Load(*this, in)) <= 0)
+  if ((ans = meth->Load(*this, in)) <= 0)        
     return ans;
   return 1;
 }

@@ -1,11 +1,11 @@
-// jhcEliGrok.h : post-processed sensors and innate behaviors for ELI robot
+// jhcEliGrok.h : basic runtime loop with post-processed sensors and high level commands
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,8 +29,8 @@
 #include "jhcGlobal.h"
 
 #include "Body/jhcEliBody.h"           // common robot
+#include "Eli/jhcEliWatch.h"
 #include "Environ/jhcLocalOcc.h"
-#include "Objects/jhcPatchProps.h"
 #include "Objects/jhcSurfObjs.h"
 #include "People/jhcFaceName.h"
 #include "People/jhcSpeaker.h"
@@ -39,10 +39,44 @@
 #include "Body/jhcBackgRWI.h"
 
 
-//= Post-processed sensors and innate behaviors for ELI robot.
+//= Basic runtime loop with post-processed sensors and high level commands.
 // holds basic body control and sensors as well as follow-on processing modules
 // generally processing belongs here while links to FCNs are in a kernel class
 // allows attachment of different versions of body but assumes not shared
+// <pre>
+// class tree overview (+ = member, > = pointer):
+//
+//   EliGrok              
+//     BackgRWI
+//     +Stare3D              depth-based person finder
+//       Track3D
+//         Parse3D
+//       Overhead3D
+//         Surface3D
+//           PlaneEst
+//     +FaceName             face recognition
+//       HeadGaze
+//         Frontal
+//           +FFindOCV
+//       +FRecoDLL
+//       >Stare3D
+//     +Speaker              determine talking head
+//       >Stare3D
+//       >DirMic
+//     +LocalOcc             navigation
+//       Overhead3D
+//         Surface3D
+//           PlaneEst
+//     +SurfObjs             object detection
+//       Bumps
+//         Overhead3D
+//           Surface3D
+//             PlaneEst
+//         +SmTrack
+//       +PatchProps
+//     +EliWatch             gaze behaviors
+// 
+// </pre>
 
 class jhcEliGrok : public jhcBackgRWI
 {
@@ -50,18 +84,16 @@ class jhcEliGrok : public jhcBackgRWI
 private:
   jhcImg mark, mark2;
   UL32 tnow;
-  int phy, seen, reflex;
-
-  // target watching control
-  char wtarg[9][20];
-  jhcMatrix src;
-  double prand, trand;
-  int seek, slew, delay;
-  UL32 idle;
+  int phy, seen, reflex, batt;
 
   // high-level commands
-  double sx, sy, ssp, vd, va, vsp;
+  double sx, sy, ssp, vd, va, vsp, voff;
   int wlock, wwin, slock, vlock;
+
+  // navigation goal 
+  int approach, follow, feet;
+  double sweep;
+  char nmode[20];
 
 
 // PUBLIC MEMBER VARIABLES
@@ -80,24 +112,13 @@ public:
   jhcSpeaker tk;                       // sound location vs head
   jhcLocalOcc nav;                     // navigation obstacles
   jhcSurfObjs tab;                     // depth-based object detection
-  jhcPatchProps ext;                   // object color analysis
 
-  // watching behaviors bids
-  jhcParam wps;
-  int freeze, speak, close, sound, stare, face, twitch, rise;
-
-  // self-orientation parameters
-  jhcParam ops;
-  double edge, hnear, center, pdev, aimed, pdist, hdec;
-  int fmin;
-
-  // behavior timing parameters
-  jhcParam tps;
-  double bored, relax, rdev, gtime, ttime, rtime, side, btime;
+  // innate behaviors
+  jhcEliWatch watch;
   
-  // head visibiliy parameters
+  // head visibility parameters
   jhcParam vps;
-  double lvis, rvis, tvis, bvis;
+  double lvis, rvis, tvis, bvis, gtime, side, btime;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -108,8 +129,11 @@ public:
   void BindBody (jhcEliBody *b);
   const jhcImg *HeadView () const {return &mark;}
   const jhcImg *MapView () const  {return &mark2;}
-  const char *Watching () const;
-  bool Ghost () const {return(phy <= 0);}
+  const char *Watching (int dash =1) const   
+    {return watch.Behavior((phy <= 0) ? -1 : neck->GazeWin(), dash);}
+  const char *NavGoal ();
+  bool Ghost () const   {return(phy <= 0);}
+  UL32 CmdTime () const {return tnow;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -124,13 +148,17 @@ public:
 
   // high-level people commands
   int WatchPerson (int id, int bid =10);
+  void OrientToward (const jhcMatrix *targ, int bid);
   double PersonErr (int id) const;
 
   // high-level navigation commands
   int SeekLoc (double tx, double ty, double sp =1.0, int bid =10);
   int SeekLoc (const jhcMatrix& targ, double sp =1.0, int bid =10) 
     {return SeekLoc(targ.X(), targ.Y(), sp, bid);}
-  int ServoPolar (double td, double ta, double sp =1.0, int bid =10);
+  int ServoPolar (double td, double ta, double sp =1.0, int bid =10, double off =0.0);
+  double FrontDist (double td, double ta) const;
+  double FrontDist (const jhcMatrix *targ) const
+    {return((targ == NULL) ? -1.0 : FrontDist(targ->PlaneVec3(), targ->PanVec3() - 90.0));} 
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -139,18 +167,15 @@ private:
   void clr_ptrs ();
   
   // processing parameters
-  int watch_params (const char *fname);
-  int orient_params (const char *fname);
-  int time_params (const char *fname);
   int vis_params (const char *fname);
 
   // high-level people commands
   void assert_watch ();
-  void orient_toward (const jhcMatrix *targ, int bid);
 
   // high-level navigation commands
   void assert_seek ();
   void assert_servo ();
+  int quick_survey ();
 
   // interaction overrrides and helpers
   void body_update ();
@@ -159,18 +184,8 @@ private:
   void body_issue ();
   void adjust_heads ();
 
-  // innate behaviors
-  void cmd_freeze ();
-  void watch_talker ();
-  void watch_closest ();
-  void gaze_sound ();
-  void gaze_stare ();
-  void gaze_face ();
-  void gaze_random ();
-  void head_rise ();
-
   // debugging graphics
-  void head_img ();
+  void cam_img ();
   void nav_img ();
 
 

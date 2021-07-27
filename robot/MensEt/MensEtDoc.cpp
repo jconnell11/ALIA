@@ -133,7 +133,7 @@ CMensEtDoc::CMensEtDoc()
   // JHC: move console and chat windows
   prt.SetTitle("ALIA console", 1);
   SetWindowPos(GetConsoleWindow(), HWND_TOP, 5, 5, 673, 1000, SWP_SHOWWINDOW);
-  chat.Launch(1250, 505);              // was 1005
+  chat.Launch(1395, 505);              // was 1005 then 1250
 
   // direct pointers to useful parts
   fsm = (mc.rwi).fsm;
@@ -182,7 +182,7 @@ BOOL CMensEtDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = mc.Version(); 
-  LockAfter(6, 2021, 1, 2021);
+  LockAfter(12, 2021, 7, 2021);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -499,7 +499,7 @@ void CMensEtDoc::OnTestPlayvideo()
   const jhcImg *src;
   int specs[3] = {0, 0, 0};
 
-  if (!ChkStream())
+  if (ChkStream() <= 0)
     return;
   (mc.body).BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
@@ -957,6 +957,8 @@ void CMensEtDoc::OnDemoFilelocal()
 
   // announce start and input mode
   d.Clear(1, "File input (ESC to quit) ...");
+  d.ResetGrid(0, 640, 360);
+  d.StringGrid(0, 0, ">>> NO IMAGES <<<");
 
   // keep taking sentences until ESC
   try
@@ -975,6 +977,7 @@ void CMensEtDoc::OnDemoFilelocal()
       // show interaction
       if ((mc.body).NewFrame())
         d.ShowGrid((mc.body).View(), 0, 0, 0, "Robot view");
+      (mc.stat).Memory(&d, 0, 1);
       chat.Post(mc.NewInput(), 1);
       chat.Post(mc.NewOutput());
     }
@@ -982,11 +985,7 @@ void CMensEtDoc::OnDemoFilelocal()
   catch (...){Tell("Unexpected exit!");}
 
   // cleanup
-  jprintf("\n==========================================================\n");
-  mc.ShowMem();
   mc.Done();
-  jprintf("Done.\n\n");
-  jprintf("Think %3.1f Hz, Sense %3.1f Hz\n", mc.Thinking(), mc.Sensing()); 
   jprintf_close();
   fclose(f);
 
@@ -1051,6 +1050,8 @@ void CMensEtDoc::OnDemoInteract()
     d.Clear(1, "Voice input (ESC to quit) ...");
   else
     d.Clear(1, "Text input (ESC to quit) ...");
+  d.ResetGrid(0, 640, 360);
+  d.StringGrid(0, 0, ">>> NO IMAGES <<<");
   SetForegroundWindow(chat);
 
   // keep taking sentences until ESC
@@ -1068,6 +1069,7 @@ void CMensEtDoc::OnDemoInteract()
       // show interaction
       if ((mc.body).NewFrame())
         d.ShowGrid((mc.body).View(), 0, 0, 0, "Robot view");
+      (mc.stat).Memory(&d, 0, 1);
       chat.Post(mc.NewInput(), 1);
       chat.Post(mc.NewOutput());
     }
@@ -1077,11 +1079,7 @@ void CMensEtDoc::OnDemoInteract()
 #endif
 
   // cleanup
-  jprintf("\n==========================================================\n");
-  mc.ShowMem();
   mc.Done();
-  jprintf("Done.\n\n");
-  jprintf("Think %3.1f Hz, Sense %3.1f Hz\n", mc.Thinking(), mc.Sensing()); 
   jprintf_close();
 
   // window configuration

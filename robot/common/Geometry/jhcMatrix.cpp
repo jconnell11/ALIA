@@ -1441,7 +1441,7 @@ double jhcMatrix::DirVec3 (const jhcMatrix& a, const jhcMatrix& b, double homo)
 }
 
 
-//= Fill seld with "unit" vector pointing from pan. tilt, roll vector b to a.
+//= Fill seld with "unit" vector pointing from pan, tilt, roll vector b to a.
 // essentially divides through by largest component and saves ratios
 // returns absolute magnitude of biggest component
 

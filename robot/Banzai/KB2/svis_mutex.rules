@@ -1,0 +1,265 @@
+// Mutual exclusion of terms in "SceneVis" kernel
+// ================================================
+
+// RULE 1 - if something is close then it is not medium close
+  if: hq-1 -lex-  close
+           -hq--> obj-1
+then: hq-2 -lex-  medium close
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 2 - if something is close then it is not far
+  if: hq-1 -lex-  close
+           -hq--> obj-1
+then: hq-2 -lex-  far
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 3 - if something is medium close then it is not close
+  if: hq-1 -lex-  medium close
+           -hq--> obj-1
+then: hq-2 -lex-  close
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 4 - if something is medium close then it is not far
+  if: hq-1 -lex-  medium close
+           -hq--> obj-1
+then: hq-2 -lex-  far
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 5 - if something is far then it is not close
+  if: hq-1 -lex-  far
+           -hq--> obj-1
+then: hq-2 -lex-  close
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 6 - if something is far then it is not medium close
+  if: hq-1 -lex-  far
+           -hq--> obj-1
+then: hq-2 -lex-  medium close
+           -neg-  1
+           -hq--> obj-1
+
+// ================================================
+
+// RULE 7 - if something is small then it is not medium big
+  if: hq-1 -lex-  small
+           -hq--> obj-1
+then: hq-2 -lex-  medium big
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 8 - if something is small then it is not big
+  if: hq-1 -lex-  small
+           -hq--> obj-1
+then: hq-2 -lex-  big
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 9 - if something is medium big then it is not small
+  if: hq-1 -lex-  medium big
+           -hq--> obj-1
+then: hq-2 -lex-  small
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 10 - if something is medium big then it is not big
+  if: hq-1 -lex-  medium big
+           -hq--> obj-1
+then: hq-2 -lex-  big
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 11 - if something is big then it is not small
+  if: hq-1 -lex-  big
+           -hq--> obj-1
+then: hq-2 -lex-  small
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 12 - if something is big then it is not medium big
+  if: hq-1 -lex-  big
+           -hq--> obj-1
+then: hq-2 -lex-  medium big
+           -neg-  1
+           -hq--> obj-1
+
+// ================================================
+
+// RULE 13 - if something is compact then it is not medium long
+  if: hq-1 -lex-  compact
+           -hq--> obj-1
+then: hq-2 -lex-  medium long
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 14 - if something is compact then it is not long
+  if: hq-1 -lex-  compact
+           -hq--> obj-1
+then: hq-2 -lex-  long
+           -neg-  1
+           -blf-  0.7
+           -hq--> obj-1
+
+// RULE 15 - if something is medium long then it is not compact
+  if: hq-1 -lex-  medium long
+           -hq--> obj-1
+then: hq-2 -lex-  compact
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 16 - if something is medium long then it is not long
+  if: hq-1 -lex-  medium long
+           -hq--> obj-1
+then: hq-2 -lex-  long
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 17 - if something is long then it is not compact
+  if: hq-1 -lex-  long
+           -hq--> obj-1
+then: hq-2 -lex-  compact
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 18 - if something is long then it is not medium long
+  if: hq-1 -lex-  long
+           -hq--> obj-1
+then: hq-2 -lex-  medium long
+           -neg-  1
+           -hq--> obj-1
+
+// ================================================
+
+// RULE 19 - if something is narrow then it is not medium wide
+  if: hq-1 -lex-  narrow
+           -hq--> obj-1
+then: hq-2 -lex-  medium wide
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 20 - if something is narrow then it is not wide
+  if: hq-1 -lex-  narrow
+           -hq--> obj-1
+then: hq-2 -lex-  wide
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 21 - if something is medium wide then it is not narrow
+  if: hq-1 -lex-  medium wide
+           -hq--> obj-1
+then: hq-2 -lex-  narrow
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 22 - if something is medium wide then it is not wide
+  if: hq-1 -lex-  medium wide
+           -hq--> obj-1
+then: hq-2 -lex-  wide
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 23 - if something is wide then it is not narrow
+  if: hq-1 -lex-  wide
+           -hq--> obj-1
+then: hq-2 -lex-  narrow
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 24 - if something is wide then it is not medium wide
+  if: hq-1 -lex-  wide
+           -hq--> obj-1
+then: hq-2 -lex-  medium wide
+           -neg-  1
+           -hq--> obj-1
+
+// ================================================
+
+// RULE 25 - if something is thin then it is not medium thick
+  if: hq-1 -lex-  thin
+           -hq--> obj-1
+then: hq-2 -lex-  medium thick
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 26 - if something is thin then it is not thick
+  if: hq-1 -lex-  thin
+           -hq--> obj-1
+then: hq-2 -lex-  thick
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 27 - if something is medium thick then it is not thin
+  if: hq-1 -lex-  medium thick
+           -hq--> obj-1
+then: hq-2 -lex-  thin
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 28 - if something is medium thick then it is not thick
+  if: hq-1 -lex-  medium thick
+           -hq--> obj-1
+then: hq-2 -lex-  thick
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 29 - if something is thick then it is not thin
+  if: hq-1 -lex-  thick
+           -hq--> obj-1
+then: hq-2 -lex-  thin
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 30 - if something is thick then it is not medium thick
+  if: hq-1 -lex-  thick
+           -hq--> obj-1
+then: hq-2 -lex-  medium thick
+           -neg-  1
+           -hq--> obj-1
+
+// ================================================
+
+// RULE 31 - if something is short then it is not medium tall
+  if: hq-1 -lex-  short
+           -hq--> obj-1
+then: hq-2 -lex-  medium tall
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 32 - if something is short then it is not tall
+  if: hq-1 -lex-  short
+           -hq--> obj-1
+then: hq-2 -lex-  tall
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 33 - if something is medium tall then it is not short
+  if: hq-1 -lex-  medium tall
+           -hq--> obj-1
+then: hq-2 -lex-  short
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 34 - if something is medium tall then it is not tall
+  if: hq-1 -lex-  medium tall
+           -hq--> obj-1
+then: hq-2 -lex-  tall
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 35 - if something is tall then it is not short
+  if: hq-1 -lex-  tall
+           -hq--> obj-1
+then: hq-2 -lex-  short
+           -neg-  1
+           -hq--> obj-1
+
+// RULE 36 - if something is tall then it is not medium tall
+  if: hq-1 -lex-  tall
+           -hq--> obj-1
+then: hq-2 -lex-  medium tall
+           -neg-  1
+           -hq--> obj-1

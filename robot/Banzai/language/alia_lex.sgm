@@ -48,13 +48,6 @@
   (to the) right of
 
 
-// definite place
-
-=[LOC-0]
-  here
-  there
-
-
 // standalone view-dependent locations (but not superlatives)
 
 =[LOC-V]
@@ -140,6 +133,13 @@
   them
 
 
+// location pronoun
+
+=[REF-L]
+  here
+  there
+
+
 // possessive pronoun
 
 =[WRT]
@@ -149,15 +149,21 @@
   their
 
 
-// degree
+// degree for an adjective (generally an adverb)
 
 =[DEG]
-  very
+  extremely
   very very
+  very
   fairly
+  moderately
+  partly
+  somewhat
+  a little (bit)
+  slightly
 
 
-// amount
+// amount as a modifier for a verb
 
 =[AMT]
   a lot

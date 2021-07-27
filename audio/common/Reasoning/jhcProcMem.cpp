@@ -76,6 +76,8 @@ jhcProcMem::jhcProcMem ()
     resp[i] = NULL;
   np = 0;
   noisy = 2;
+  detail = 0;
+//detail = 85;               // show detailed matching for some operator 
 }
 
 
@@ -180,6 +182,8 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
   k = dir->kind;
   if ((k < 0) || (k >= JDIR_MAX))
     return -1;
+  if (k == JDIR_BIND)                  // BIND = FIND + assume
+    k = JDIR_FIND;
   p = resp[k];
 
   // set up to get up to bmax bindings using halo as needed
@@ -194,6 +198,7 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
     {
       // save operator associated with each group of bindings
       mc0 = dir->mc;
+      p->dbg = ((p->id == detail) ? 3 : 0);
       if (p->FindMatches(*dir, wmem, mth) < 0)
         break;
       for (i = mc0 - 1; i >= dir->mc; i--)
@@ -266,7 +271,7 @@ int jhcProcMem::Load (const char *fname, int add, int rpt, int level)
 
   // possibly announce result
   if (n > 0)
-    jprintf(2, rpt, "  %2d action operators from: %s\n", n, fname);
+    jprintf(2, rpt, "  %3d action operators from: %s\n", n, fname);
   else
     jprintf(2, rpt, "  -- no action operators from: %s\n", fname);
   return n;
@@ -332,7 +337,7 @@ int jhcProcMem::save_ops (FILE *out, int level) const
     // write selected operator (if any) to file
     if (low <= 0)            
       break;
-    if (p[win]->Save(out) > 0)
+    if (p[win]->Save(out, 2) > 0)
     {
       jfprintf(out, "\n");
       cnt++;
@@ -363,7 +368,7 @@ int jhcProcMem::save_cats (FILE *out, int level) const
         // possibly print category separator then always print operator itself
         if ((last > 0) && (any <= 0))
           jfprintf(out, "// ============================================================\n\n");
-        if (p->Save(out) > 0)
+        if (p->Save(out, 2) > 0)
         {
           jfprintf(out, "\n");
           cnt++;

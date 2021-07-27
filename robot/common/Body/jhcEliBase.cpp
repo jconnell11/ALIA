@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +63,7 @@ jhcEliBase::jhcEliBase ()
   clr_locks(1);
   stiff = 0;
   ice = 0;
+  ice2 = 0;
   ms = 33;             // blocking update time (ms)
 
   // current raw state
@@ -106,9 +108,9 @@ int jhcEliBase::ctrl_params (const char *fname)
   ps->SetTag("base_cfg", 0);
   ps->NextSpec4( &bport,     6,   "Serial port number");        // was 7
   ps->NextSpec4( &bbaud, 38400,   "Serial baud rate");
-  ps->NextSpecF( &ploop,    32.0, "Proportional factor");       // was 12M then 0x0200 
-  ps->NextSpecF( &iloop,     8.0, "Integral factor");           // was 4M  then 0x0100 then 4
-  ps->NextSpecF( &dloop,     8.0, "Derivative factor");         // was          0x0080 then 0
+  ps->NextSpecF( &ploop,     1.0, "Proportional factor");       // was 12M, 512, then 32 (ignored?)
+  ps->NextSpecF( &iloop,   100.0, "Integral factor");           // was 4M, 256, then 8 (important!)
+  ps->NextSpecF( &dloop,     0.0, "Derivative factor");         // was 128, 8, then 9 (not needed?)
   ps->NextSpec4( &pwm,       0,   "Use PWM mode instead");      // was 1 for old encoders
 
   ps->NextSpecF( &rpm,     150.0, "Max rotation rate (rpm)");
@@ -132,7 +134,7 @@ int jhcEliBase::move_params (const char *fname)
   ps->NextSpecF( &(mctrl.astd),  20.0, "Std move accel (ips^2)");  // 22.5" to full speed
   ps->NextSpecF( &(mctrl.dstd),  10.0, "Std move decel (ips^2)");  // 45" slow down zone 
   ps->NextSpecF( &(tctrl.vstd),  90.0, "Std turn speed (dps)");  
-  ps->NextSpecF( &(tctrl.astd), 180.0, "Std turn accel (dps^2)");  // 22.5 deg to full (was 360)
+  ps->NextSpecF( &(tctrl.astd), 360.0, "Std turn accel (dps^2)");  // 11.25 deg to full (was 180)
   ps->NextSpecF( &(tctrl.dstd),  90.0, "Std turn decel (dps^2)");  // 45.0 deg slow zone (was 180)
 
   ps->NextSpecF( &mdead,          0.5, "Move deadband (in)");
@@ -151,8 +153,10 @@ int jhcEliBase::geom_params (const char *fname)
   int ok;
 
   ps->SetTag("base_geom", 0);
-  ps->NextSpecF( &wd,  6.0, "Wheel diameter (in)");  
-  ps->NextSpecF( &ws, 13.0, "Wheel separation (in)");  
+  ps->NextSpecF( &wd,   6.0, "Wheel diameter (in)");  
+  ps->NextSpecF( &ws,  13.0, "Wheel separation (in)");  
+  ps->Skip();
+  ps->NextSpecF( &vmax, 0.0, "Full battery voltage");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -253,7 +257,7 @@ int jhcEliBase::Reset (int rpt, int chk)
     jprintf(1, rpt, "  battery ...\n");
     if ((v = Battery()) <= 0.0)
       return fail(-1, rpt);
-    jprintf(1, rpt, "    %3.1f volts\n", v);
+    jprintf(1, rpt, "    %3.1f volts nominal\n", v);
   }
 
   // clear wheel encoders to zero
@@ -264,7 +268,15 @@ int jhcEliBase::Reset (int rpt, int chk)
   // initialize targets and positions
   Update();
   ice = 0;
+  ice2 = 0;
   Freeze();
+
+  // instantaneous speed estimates
+  now = 0;
+  mvel = 0.0;
+  tvel = 0.0;
+  imv  = 0.0;
+  itv  = 0.0;
 
   // finished
   jprintf(1, rpt, "    ** good **\n");
@@ -555,6 +567,22 @@ bool jhcEliBase::fail_ack (int n)
 
 int jhcEliBase::Freeze (int doit, double tupd)
 {
+  // set soft stop goal positions (only)
+  FreezeMove(doit, 0.0);
+  FreezeTurn(doit, 0.0);
+
+  // possibly talk to wheel motor controller
+  stiff = 1;
+  if (tupd > 0.0)
+    Issue(tupd);
+  return CommOK();
+}
+
+
+//= Bring base translation to a gentle stop obeying max deceleration limit.
+
+int jhcEliBase::FreezeMove (int doit, double tupd)
+{
   // reset edge trigger
   if (doit <= 0)
   {
@@ -563,11 +591,38 @@ int jhcEliBase::Freeze (int doit, double tupd)
   }
 
   // remember position and heading at first call (prevents drift)
-//  if (ice <= 0)                                                  // bounces!
+//  if (ice <= 0)                                                   // bounces!
   {
+//    MoveStop(1.5, 2001);                                          // always
     mctrl.RampTarget(trav);
-    tctrl.RampTarget(head);
     ice = 1;
+  }
+
+  // possibly talk to wheel motor controller
+  stiff = 1;
+  if (tupd > 0.0)
+    Issue(tupd);
+  return CommOK();
+}
+
+
+//= Bring base rotation to a gentle stop obeying max deceleration limit.
+
+int jhcEliBase::FreezeTurn (int doit, double tupd)
+{
+  // reset edge trigger
+  if (doit <= 0)
+  {
+    ice2 = 0;
+    return CommOK();
+  }
+
+  // remember position and heading at first call (prevents drift)
+//  if (ice2 <= 0)                                                   // bounces!
+  {
+//    TurnStop(1.5, 2001);                                           // always
+    tctrl.RampTarget(head);
+    ice2 = 1;
   }
 
   // possibly talk to wheel motor controller
@@ -675,6 +730,9 @@ int jhcEliBase::UpdateContinue ()
 
 int jhcEliBase::UpdateFinish ()
 {
+  UL32 last = now;
+  double s, m, t, t0 = trav, h0 = head, mmix = 0.5, tmix = 0.3;
+
   // read in 32 bit value (only good to 10 bits --> work with bottom 8)
   BBARF(-1, bcom.RxArray(pod, 6 + c16) < (6 + c16));
   add_crc(pod, 5);
@@ -683,7 +741,19 @@ int jhcEliBase::UpdateFinish ()
 
   // all data gathered successfully so resolve odometry into robot motion
   cvt_cnts();
-  clr_locks(0);      // set up to receive new round of commands and bids
+  now = jms_now();
+  if (last != 0)
+    if ((s = jms_secs(now, last)) > 0.0)
+    {
+      // instantaneous estimate speeds
+      m = (trav - t0) / s;
+      t = (head - h0) / s;
+      imv += mmix * (m - imv); 
+      itv += tmix * (t - itv); 
+    }
+
+  // set up to receive new round of commands and bids
+  clr_locks(0);      
   return 1;
 }
 
@@ -780,24 +850,23 @@ double jhcEliBase::norm_ang (double degs) const
 
 int jhcEliBase::Issue (double tupd, double lead)
 {
-  double next, mvel, tvel;
-
   // check if base stage is under active command
   if (stiff > 0)
   {
     // set default if no base target specified
-    Freeze((((mlock <= 0) && (tlock <= 0)) ? 1 : 0), 0.0);
+    FreezeMove(((mlock <= 0) ? 1 : 0), 0.0);
+    FreezeTurn(((tlock <= 0) ? 1 : 0), 0.0);
 
     // continue with move profile to get signed speed
-    next = mctrl.RampNext(trav, tupd, lead);
+    mctrl.RampNext(trav, tupd, lead);
     mvel = mctrl.RampVel(mdead);
-    if (next < trav)
+    if (mctrl.RampAxis() < 0.0)
       mvel = -mvel;
 
     // continue with turn profile to get signed speed
-    next = tctrl.RampNext(head, tupd, lead);
+    tctrl.RampNext(head, tupd, lead);
     tvel = tctrl.RampVel(tdead);
-    if (next < head)
+    if (tctrl.RampAxis() < 0.0)
       tvel = -tvel;
     wheel_vels(mvel, tvel);
   }
@@ -1018,12 +1087,11 @@ void jhcEliBase::AdjustTarget (jhcMatrix& pos) const
 int jhcEliBase::DriveAbsolute (double tr, double hd, double m_rate, double t_rate, int bid)
 {
   double r = ((t_rate != 0) ? t_rate : m_rate);
+  int mok, tok;
 
-  if ((bid <= mlock) || (bid <= tlock))
-    return 0;
-  MoveAbsolute(tr, m_rate, bid);
-  TurnAbsolute(hd, r, bid);
-  return 1;
+  mok = MoveAbsolute(tr, m_rate, bid);
+  tok = TurnAbsolute(hd, r, bid);
+  return __min(mok, tok);
 }
 
 

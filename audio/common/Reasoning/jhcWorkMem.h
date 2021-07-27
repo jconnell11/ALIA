@@ -52,6 +52,10 @@ private:
   // mood variables
   double skep;               // global condition belief threshold (skepticism)
 
+  // external linkages
+  jhcNetNode *nref[20];
+  int ext[20];
+
 
 // PROTECTED MEMBER VARIABLES
 protected:
@@ -79,27 +83,37 @@ public:
   jhcNetNode *SetUser (jhcNetNode *n);
 
   // list access (overrides virtual)
-  jhcNetNode *NextNode (const jhcNetNode *prev =NULL) const;
+  jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const;
   int Length () const {return NodeCnt();}
   bool Prohibited (const jhcNetNode *n) const;
+  int SameBin (const jhcNetNode& focus) const;
 
   // halo functions
   void ClearHalo () {halo.PurgeAll();}
-  void AssertHalo (const jhcGraphlet& pat, jhcBindings& b, jhcAliaRule *r =NULL);
-  void MaxHalo (jhcNetNode *n);
+  void AssertHalo (const jhcGraphlet& pat, jhcBindings& b) 
+    {halo.Assert(pat, b, 0.0, 0, NULL);}    
 
   // truth maintenance
+  void RevealAll (const jhcGraphlet& desc);
   void Endorse (const jhcGraphlet& key, int dbg =0);
 
+  // external nodes
+  int ExtLink (int rnum, jhcNetNode *obj, int agt =0);
+  jhcNetNode *ExtRef (int rnum, int agt =0) const;
+  int ExtRef (const jhcNetNode *obj, int agt =0) const;
+
   // debugging
-  void PrintMain () const 
-    {jprintf("\nWMEM (%d nodes) =", Length()); Print(2); jprintf("\n");}
+  void PrintMain ()  
+    {jprintf("\nWMEM (%d nodes) =", Length()); SetMode(0); Print(2); jprintf("\n");}
   void PrintHalo () const 
     {jprintf("\nHALO (%d nodes) =", HaloSize()); halo.Print(2); jprintf("\n");}
 
 
 // PROTECTED MEMBER FUNCTIONS
 protected:
+  // creation and initialization
+  void Reset ();
+
   // conversation participants
   void InitPeople (const char *rname);
 
@@ -112,12 +126,16 @@ protected:
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  // conversation participants
-  void set_prons (int tru);
+  // creation and initialization
+  void clr_ext ();
 
   // garbage collection
-  void keep_from (jhcNetNode *anchor, int dbg);
+  void keep_party (jhcNetNode *anchor) const;
+  void keep_from (jhcNetNode *anchor, int dbg) const;
   int rem_unmarked (int dbg);
+
+  // external nodes
+  void rem_ext (const jhcAliaDesc *obj);
 
 
 };

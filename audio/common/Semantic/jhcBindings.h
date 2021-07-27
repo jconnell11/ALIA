@@ -64,6 +64,7 @@ public:
   bool Complete () const 
     {return((expect > 0) && (nb >= expect));}
   bool Empty () const {return(nb <= 0);}
+  int AnyHyp () const;
 
   // main functions
   jhcNetNode *LookUp (const jhcNetNode *k) const;
@@ -91,7 +92,8 @@ public:
   void ReplaceSubs (const jhcBindings& alt);
   void CopyReplace (const jhcBindings& ref, const jhcBindings& alt)
     {Copy(ref); ReplaceSubs(alt);}
-  void Print (int lvl =0, const char *prefix =NULL, int num =0) const;
+  void Print (const char *prefix =NULL, int lvl =0, int num =0) const;
+  void Print (int lvl, int num =0) const {Print(NULL, lvl, num);}
 
 
 // PRIVATE MEMBER FUNCTIONS

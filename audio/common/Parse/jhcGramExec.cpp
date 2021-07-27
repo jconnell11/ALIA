@@ -643,8 +643,7 @@ int jhcGramExec::NameSaid (const char *sent, int mode) const
     return 0;
 
   // strip off initial "Hey" if present
-  if ((_strnicmp(tail, "Hey", 3) == 0) &&
-      (isalpha(tail[3]) == 0))
+  if ((_strnicmp(tail, "Hey", 3) == 0) && (isalpha(tail[3]) == 0))
   {
     tail += 4;
     while ((*tail != '\0') && (isalpha(*tail) == 0))
@@ -655,8 +654,7 @@ int jhcGramExec::NameSaid (const char *sent, int mode) const
   for (i = 0; i < nn; i++)
   {
     len = (int) strlen(alert[i]);
-    if ((_strnicmp(tail, alert[i], len) == 0) && 
-        (isalpha(tail[len]) == 0)) 
+    if ((_strnicmp(tail, alert[i], len) == 0) && (isalpha(tail[len]) == 0)) 
     {
       // see if this is the ONLY thing said
       if (mode >= 3)

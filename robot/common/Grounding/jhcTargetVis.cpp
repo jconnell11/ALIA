@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -226,7 +227,7 @@ jhcAliaDesc *jhcTargetVis::obj_seen () const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcTargetVis::class_color_set (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_color0 (const jhcAliaDesc *desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -240,7 +241,7 @@ int jhcTargetVis::class_color_set (const jhcAliaDesc *desc, int i)
 // does not actually look for requested object but uses focus (if any)
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTargetVis::class_color_chk (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_color (const jhcAliaDesc *desc, int i)
 {
   if (rwi->Readable())
     return rwi->ReadDone(add_colors(desc->Val("arg"), focus, 1));
@@ -284,7 +285,7 @@ int jhcTargetVis::add_colors (jhcAliaDesc *obj, int id, int only)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcTargetVis::class_size_set (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_size0 (const jhcAliaDesc *desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -298,7 +299,7 @@ int jhcTargetVis::class_size_set (const jhcAliaDesc *desc, int i)
 // does not actually look for requested object but uses focus (if any)
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTargetVis::class_size_chk (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_size (const jhcAliaDesc *desc, int i)
 {
   if (rwi->Readable())
     return rwi->ReadDone(add_size(desc->Val("arg"), focus, 1));
@@ -339,7 +340,7 @@ int jhcTargetVis::add_size (jhcAliaDesc *obj, int id, int only)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcTargetVis::class_width_set (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_width0 (const jhcAliaDesc *desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -353,7 +354,7 @@ int jhcTargetVis::class_width_set (const jhcAliaDesc *desc, int i)
 // does not actually look for requested object but uses focus (if any)
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTargetVis::class_width_chk (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_width (const jhcAliaDesc *desc, int i)
 {
   if (rwi->Readable())
     return rwi->ReadDone(add_width(desc->Val("arg"), focus, 1));
@@ -394,7 +395,7 @@ int jhcTargetVis::add_width (jhcAliaDesc *obj, int id, int only)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcTargetVis::det_texture_set (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::det_texture0 (const jhcAliaDesc *desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -408,7 +409,7 @@ int jhcTargetVis::det_texture_set (const jhcAliaDesc *desc, int i)
 // does not actually look for requested object but uses focus (if any)
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTargetVis::det_texture_chk (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::det_texture (const jhcAliaDesc *desc, int i)
 {
   if (rwi->Readable())
     return rwi->ReadDone(add_striped(desc->Val("arg"), focus, 1));

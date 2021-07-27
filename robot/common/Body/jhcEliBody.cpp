@@ -59,8 +59,13 @@ jhcEliBody::jhcEliBody ()
   ch = 960;
   kin = 0;
   vid = NULL;
+  enh = 1;                             // automatically enhance color
   bnum = -1;
   tfill = 0;
+
+  // power state
+  volts = 13.8;
+  pct = 100;
 
   // default robot name
   *rname = '\0';
@@ -68,9 +73,24 @@ jhcEliBody::jhcEliBody ()
   loud = 0;
 
   // get standard processing values
+  *cfile = '\0';
   LoadCfg();
   Defaults();
   mic.SetGeom(0.0, 0.9, 44.5);         // position of mic (wrt wheel centers)
+}
+
+
+//= Tell remaining battery charge using last voltage reading acquired while runnning.
+
+void jhcEliBody::ReportCharge () const
+{
+  jprintf("Battery @ %3.1f volts [%d pct]", volts, pct);
+  if (pct < 50)
+  {
+    jprintf(" - CONSIDER RECHARGING");
+    Beep();
+  }
+  jprintf("\n\n");
 }
 
 
@@ -130,7 +150,7 @@ int jhcEliBody::static_params (const char *fname)
 
   ps->SetTag("body_static", 0);
   ps->NextSpecF( &pdef,   0.0, "Default neck pan (deg)");
-  ps->NextSpecF( &tdef, -53.6, "Default neck tilt (deg)");
+  ps->NextSpecF( &tdef, -51.2, "Default neck tilt (deg)");
   ps->NextSpecF( &hdef,  31.8, "Default lift height (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
@@ -148,9 +168,12 @@ int jhcEliBody::Defaults (const char *fname)
 {
   int ok = 1;
 
+  // load overall defaults
   ok &= body_params(fname);
   ok &= idle_params(fname);
   ok &= static_params(fname);
+
+  // load defaults for components
   ok &= arm.Defaults(fname);
   ok &= neck.Defaults(fname);
   ok &= base.Defaults(fname);
@@ -197,6 +220,9 @@ int jhcEliBody::LoadCfg (const char *fname)
   ok &= lift.LoadCfg(fname);
   ok &= mic.LoadCfg(fname);
   ok &= acc.LoadCfg(fname);
+
+  // record presumed battery capacity in case it changes
+  vmax0 = base.vmax;
   return ok;
 }
 
@@ -207,15 +233,22 @@ int jhcEliBody::SaveVals (const char *fname) const
 {
   int ok = 1;
 
+  // save overall parameters
   ok &= bps.SaveVals(fname);
   ok &= ips.SaveVals(fname);
   ok &= sps.SaveVals(fname);
+
+  // save parameters for components
   ok &= arm.SaveVals(fname);
   ok &= neck.SaveVals(fname);
   ok &= base.SaveVals(fname);
   ok &= lift.SaveVals(fname);
   ok &= mic.SaveVals(fname);
   ok &= acc.SaveVals(fname);
+
+  // adjust configuration if max battery voltage changed
+  if ((base.vmax != vmax0) && (*cfile != '\0'))
+    ok &= (base.gps).SaveVals(cfile);
   return ok;
 }
 
@@ -302,25 +335,20 @@ int jhcEliBody::SetKinect (int rpt)
 
 int jhcEliBody::Reset (int rpt, int full) 
 {
-  char fname[80];
   UL32 neg5 = jms_now() - 300000;      // idle 5 minutes
   int i;
 
+  // announce entry
+  jprintf(1, rpt, "BODY reset ...\n");
   if ((full > 0) || (CommOK(0) <= 0))
   {
-    // announce entry
-    if (rpt > 0)
-    {
-      jprintf("=========================\n");
-      jprintf("BODY reset ...\n");
-    }
-
     // possibly load configuration for a particular body
-    if (CfgFile(fname, 1, 80) > 0)
+    *cfile = '\0';
+    if (CfgFile(cfile, 1, 80) > 0)
     {
       if (rpt > 0)
         jprintf("  loading configuration for robot %d ...\n", __max(0, bnum));
-      LoadCfg(fname);
+      LoadCfg(cfile);
     }
 
     // connect to proper serial port (if needed) 
@@ -343,12 +371,11 @@ int jhcEliBody::Reset (int rpt, int full)
     mic.mport = 8;                 // serial port for sound direction
     mic.Reset(rpt);
   }
-
+  
   // finished with actuators
   if (rpt > 0)
   {
-    jprintf("\n");
-    jprintf("BODY -> %s\n", ((CommOK(0) > 0) ? "OK" : "FAILED !!!"));
+    jprintf("\nBODY -> %s\n", ((CommOK(0) > 0) ? "OK" : "FAILED !!!"));
     jprintf("=========================\n");
     jprintf("\n");
   }
@@ -523,6 +550,100 @@ const char *jhcEliBody::Problems ()
 }  
 
 
+//= Rough indication of battery charge state when under minimal load.
+// measured at 2.9A with robot on and program running  = C/15 roughly (44 AH)
+// eventually lead-acid drops to about 70% of capacity = C/10 instead (31 AH)
+// uses max recharge to figure out likely capacity of battery
+
+int jhcEliBody::Charge (double v, int running)
+{
+  double curve[5][11] = {{10.75, 11.05, 11.30, 11.50, 11.70, 11.85, 12.00, 12.10, 12.20, 12.25, 12.30},    // C/7.5
+                         {10.90, 11.15, 11.40, 11.60, 11.75, 11.90, 12.10, 12.15, 12.20, 12.30, 12.40},    // ELI?
+                         {11.00, 11.25, 11.50, 11.70, 11.85, 12.00, 12.20, 12.25, 12.30, 12.40, 12.50},    // C/10
+                         {11.25, 11.50, 11.75, 11.90, 12.05, 12.15, 12.25, 12.35, 12.45, 12.55, 12.60},    // C/15
+                         {11.45, 11.70, 11.90, 12.10, 12.20, 12.30, 12.40, 12.50, 12.55, 12.57, 12.65}};   // C/20
+  double diff, frac, mix = 0.2, mem = 0.5, best = -1.0;
+  int i, cap, p, dp;
+
+  // possibly update fully charged voltage
+  if (v < 0.0)
+    return -1;
+  if ((running > 0) && (v > base.vmax))          
+  {
+    if (base.vmax <= 0.0)          
+      base.vmax = v; 
+    else 
+      base.vmax += mix * (v - base.vmax);
+  }
+
+  // lookup remaining capacity based on measurement
+  for (i = 0; i < 5; i++)
+  {
+    diff = fabs(base.vmax - curve[i][10]);
+    if ((best < 0.0) || (diff < best))
+    {
+      cap = i;
+      best = diff;
+    }
+  }
+
+  // find relevant voltage interval and interpolate to get percentage
+  for (i = 10; i >= 0; i--)
+    if (v >= curve[cap][i])
+      break;
+  if (i >= 10)
+    p = 100;
+  else if (i < 0)
+    p = 0;
+  else 
+  {
+    frac = (v - curve[cap][i]) / (curve[cap][i + 1] - curve[cap][i]);
+    p = ROUND(10.0 * (i + frac));
+  }
+
+  // cache voltage and percentage in member variables (IIR smoothed)
+  volts += mem * (v - volts);                     
+  dp = ROUND(mem * (p - pct));
+  if ((dp == 0) && (p != pct))
+    dp = ((p > pct) ? 1 : -1);
+  pct += dp;
+  return p;                          
+}
+
+
+//= Determine battery capacity versus nominal based on max charged voltage.
+// returns percentage (e.g 70 means 0.7 * 44 WH = 30.8 WH true capacity)
+
+int jhcEliBody::Capacity () const
+{
+  double top[5] = { 11.75, 12.10, 12.30, 12.50, 12.60 };   // C/3 C/5 C/7.5 C/10 C/15
+  double cap[5] = {  0.20,  0.33,  0.50,  0.67,  1.00 };
+  double frac;
+  int i;
+
+  if (base.vmax >= top[4])
+    return 100;
+  if (base.vmax <= top[0])
+    return 20;
+  for (i = 3; i >= 1; i--)
+    if (base.vmax >= top[i])
+      break; 
+  frac = (base.vmax - top[i]) / (top[i + 1] - top[i]);
+  return ROUND(100.0 * (cap[i] + frac * (cap[i + 1] - cap[i])));
+}
+
+
+//= Set up to recalibrate maximum battery voltage after full charge.
+// top value will be set on next robot boot
+// could auto-reset if vnow - vlast > 0.3 volts (assumes fully charged)
+
+int jhcEliBody::ResetVmax ()
+{
+  base.vmax = 0.0;
+  return bnum;
+}
+
+
 //= Tell what percentage of mega-update packets failed.
 
 double jhcEliBody::MegaReport ()
@@ -618,12 +739,13 @@ int jhcEliBody::Depth16 (jhcImg& dest) const
 //= Stop all motion and hold current position.
 // generally should call Update just before this
 
-int jhcEliBody::Freeze ()
+int jhcEliBody::Freeze (int led)
 {
   lift.Freeze();
   base.Freeze();
   arm.Freeze();
   neck.Freeze();
+  base.ForceLED(led);
   return CommOK(0);
 }
 
@@ -649,11 +771,17 @@ int jhcEliBody::Limp ()
 
 int jhcEliBody::UpdateImgs ()
 {
+  int ans;
+
   if (vid == NULL)
     return -1;
   if (vid->Dual() > 0)
-    return vid->DualGet(col, rng);
-  return vid->Get(col);              // sometimes useful (e.g. face enroll)
+    ans = vid->DualGet(col, rng);
+  else
+    ans = vid->Get(col);               // sometimes useful (e.g. face enroll) 
+  if ((ans > 0) && (enh > 0))
+    Enhance(col, col);
+  return ans;
 }
 
 
@@ -768,9 +896,9 @@ int jhcEliBody::Issue (double lead)
 
 //= Make the robot beep (blocks).
 
-void jhcEliBody::Beep ()
+void jhcEliBody::Beep () const
 {
-  ::Beep(750, 300);
+  ::Beep(300, 300);
 }
 
 

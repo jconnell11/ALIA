@@ -26,6 +26,8 @@
 #include "Action/jhcAliaCore.h"        // common robot - only spec'd as class in header
 #include "Action/jhcAliaPlay.h"
 
+#include "Parse/jhcTxtLine.h"          // common audio
+
 #include "Language/jhcNetBuild.h"
 
 
@@ -124,12 +126,12 @@ void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) con
   else if (spact == 6)
     fprintf(log, "-- hail --\n\n");
   else if ((spact == 5) && (add != NULL) && (add->new_oper != NULL))
-    (add->new_oper)->Save(log);
+    (add->new_oper)->Save(log, 2);
   else if ((spact == 4) && (add != NULL) && (add->new_rule != NULL))
-    (add->new_rule)->Save(log);
+    (add->new_rule)->Save(log, 2);
   else if ((spact <= 3) && (spact >= 1) && (bulk != NULL))
   {
-    bulk->Save(log);
+    bulk->Save(log, 2);
     fprintf(log, "\n");
   }
   else if (nt > 0)
@@ -162,7 +164,6 @@ int jhcNetBuild::huh_tag () const
   n = atree->MakeNode("meta", "understand", 1);
   n->AddArg("agt", atree->Robot());               // in WMEM since NOTE
   n->AddArg("obj", atree->Human());               // in WMEM since NOTE
-//  n->SetDone(1);
 
   // add completed structure to attention buffer
   ch->BindDir(dir);
@@ -182,7 +183,7 @@ int jhcNetBuild::hail_tag () const
 
   // make a new NOTE directive
   ch = build_tag(&input, NULL);
-  atree->AddLex(input, "hail");
+  atree->SetLex(input, "hail");
 
   // add completed structure to attention buffer
   atree->AddFocus(ch);
@@ -201,7 +202,7 @@ int jhcNetBuild::greet_tag () const
 
   // make a new NOTE directive
   ch = build_tag(&input, NULL);
-  atree->AddLex(input, "greet");
+  atree->SetLex(input, "greet");
 
   // add completed structure to attention buffer
   atree->AddFocus(ch);
@@ -220,7 +221,7 @@ int jhcNetBuild::farewell_tag () const
 
   // make a new NOTE directive
   ch = build_tag(&input, NULL);
-  atree->AddLex(input, "dismiss");
+  atree->SetLex(input, "dismiss");
 
   // add completed structure to attention buffer
   atree->AddFocus(ch);
@@ -241,7 +242,7 @@ int jhcNetBuild::add_tag (int spact, const char *alist)
  
   // make a new NOTE directive
   ch = build_tag(&input, alist);
-  atree->AddLex(input, "give");
+  atree->SetLex(input, "give");
   r = atree->MakeNode("obj");
   input->AddArg("obj", r);
   atree->AddProp(r, "ako", ((spact == 4) ? "rule" : "operator"));
@@ -268,28 +269,25 @@ int jhcNetBuild::add_tag (int spact, const char *alist)
 
 
 //= Insert NOTE directive about source of command or fact before actual statement.
-// gives the opportunity to PUNT and disbelief fact or reject command
+// gives the opportunity to PUNT and disbelieve fact or reject command
 // returns 3 for question, 2 for command, 1 for fact, 0 for problem
 
 int jhcNetBuild::attn_tag (int spact, const char *alist) const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch;
-  jhcNetNode *input;
+  jhcNetNode *input, *dummy;
 
   // make a new NOTE directive before bulk
   ch = build_tag(&input, alist);
   ch->cont = bulk;
 
-  // specialize based on speech act
-  atree->AddLex(input, ((spact <= 2) ? "tell" : "ask"));
-  if (spact == 1)
-    input->AddArg("obj", atree->MakeNode("fact"));
-  else if (spact == 2)
-    input->AddArg("cmd", atree->MakeNode("cmd"));
-  else
-    input->AddArg("obj", atree->MakeNode("query"));
-
+  // specialize based on speech act then point to payload
+  atree->SetLex(input, ((spact <= 2) ? "tell" : "ask"));
+//  bulk->RefSteps(input, ((spact == 2) ? "cmd" : "obj"), *atree);
+  dummy = atree->MakeNode((spact == 2) ? "act" : "fact");
+  input->AddArg(((spact == 2) ? "cmd" : "obj"), dummy);
+ 
   // add completed structure to attention buffer
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
@@ -315,7 +313,6 @@ jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *alist) cons
   n->AddArg("dest", atree->Robot());                // in WMEM since NOTE
   if ((alist != NULL) && HasSlot(alist, "POLITE"))
     atree->AddProp(n, "mod", "polite");
-//  n->SetDone(1);
 
   // embed in chain then return pieces
   ch->BindDir(dir);
@@ -328,6 +325,267 @@ jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *alist) cons
 ///////////////////////////////////////////////////////////////////////////
 //                               Utilities                               //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Read a file of potentential property values and makes auxilliary files.
+// read from "kern.vals" with format:
+// <pre>
+// 
+//   =width : narrow wide    // value "width" with lo = "narrow" and hi = "wide" (exclusive)
+//     -skinny               // alias for lo value
+//      +fat                 // alias for hi value
+// 
+//   =color                  // "color" category
+//     red                   // one non-exclusive color value 
+//     yellow                // another non-exclusive value
+//     green
+// 
+// </pre>    
+// values for a property are: very <lo>, <lo>, medium <hi>, <hi>, very <hi>
+// for colloquial phrasing sometimes <lo> and <hi> have to be reversed, e.g. "medium close"
+// returns number of categories read and generates starter files "kern0.rules" and "kern0.ops"
+// Note: these output files can be further processed with HarvestLex to give a starter ".sgm" file
+
+int jhcNetBuild::AutoVals (const char *kern, const char *fcn) const
+{
+  jhcTxtLine txt;
+  char fname[200], hi[40], lo[40], cat[40] = "";
+  FILE *rules, *ops; 
+  const char *val, *base;
+  int nr = 0, np = 0, nc = 0;
+
+  // open input and output files
+  if (kern == NULL)
+    return 0;
+  sprintf_s(fname, "%s.vals", kern);
+  if (!txt.Open(fname))
+    return 0;
+  sprintf_s(fname, "%s0.rules", kern);
+  if (fopen_s(&rules, fname, "w") != 0)
+    return txt.Close();
+  sprintf_s(fname, "%s0.ops", kern);
+  if (fopen_s(&ops, fname, "w") != 0)
+  {
+    fclose(rules);
+    return txt.Close();
+  }
+
+  // write output file headers
+  if ((val = strrchr(kern, '\\')) == NULL)
+    val = kern;
+  if ((base = strrchr(val, '/')) == NULL)
+    base = val;
+  fprintf(rules, "// Standard inferences for \"%s\" kernel\n", base + 1);
+  fprintf(ops,   "// Basic interface to \"%s\" kernel\n", base + 1);
+
+  // look for non-comment input lines with category prefix
+  strcpy_s(fname, ((fcn != NULL) ? fcn : "vis"));
+  while (txt.NextContent() != NULL)
+  {
+    // see if new category, term alias, or possible value
+    if (txt.Begins("="))
+    {
+      // save category name and range limits (if any)
+      strcpy_s(cat, txt.Token(1) + 1);
+      txt.Token();                               // delimiter ignored
+      txt.Token(lo, 1);
+      txt.Token(hi, 1);
+      nc++;
+
+      // add delimiters to output files between categories
+      fprintf(rules, "// ================================================\n\n");
+      fprintf(ops,   "// ================================================\n\n");
+
+      // create basic rules and ops for category
+      if ((*lo != '\0') && (*hi != '\0'))
+      {
+        nr = range_rules(rules, cat, lo, hi, nr);
+        np = range_ops(ops, fname, cat, np);
+      }
+      else
+        np = list_ops(ops, fname, cat, np);
+    }
+    else if ((*lo == '\0') || (*hi == '\0'))
+      nr = value_rules(rules, cat, txt.Token(), nr);
+    else if (txt.Begins("-"))
+      nr = alias_rules(rules, cat, lo, txt.Token() + 1, nr);
+    else if (txt.Begins("+"))
+      nr = alias_rules(rules, cat, hi, txt.Token() + 1, nr);
+    txt.Next(1);  
+  }    
+
+  // cleanup
+  fclose(ops);
+  fclose(rules);
+  txt.Close();
+  return nc;
+}
+
+
+//= Create basic rules for interpreting values that are part of some category's range.
+
+int jhcNetBuild::range_rules (FILE *out, const char *cat, const char *lo, const char *hi, int n) const
+{
+  char mid[40];
+  int nr = n;
+
+  // make values member of the category
+  sprintf_s(mid, "medium %s", hi);
+  nr = value_rules(out, cat, lo,  nr);
+  nr = value_rules(out, cat, mid, -nr);
+  nr = value_rules(out, cat, hi,  nr);
+  fprintf(out, "// ------------------------------------------------\n\n");
+
+  // base values are mutually exclusive
+  nr = mutex_rule(out, lo,  mid, nr);
+  nr = mutex_rule(out, lo,  hi,  nr);
+  nr = mutex_rule(out, mid, lo,  nr);
+  nr = mutex_rule(out, mid, hi,  nr);
+  nr = mutex_rule(out, hi,  lo,  nr);
+  nr = mutex_rule(out, hi,  mid, nr);
+  return nr;
+}
+
+
+//= Assign value to this category and make category equivalent to "ness" version of value.
+// always skips "ness" part if n is negative (e.g. for "medium big")
+
+int jhcNetBuild::value_rules (FILE *out, const char *cat, const char *val, int n) const
+{
+  char ness[80];
+  int nr = abs(n);
+
+  // membership rule
+  fprintf(out, "// RULE %d - %c%s is a %s\n", nr + 1, toupper(val[0]), val + 1, cat);
+  fprintf(out, "  if:  hq-1 -lex-  %s\n", val);
+  fprintf(out, "            -hq--> obj-1\n");
+  fprintf(out, "then: ako-1 -lex-  %s\n", cat);
+  fprintf(out, "            -ako-> hq-1\n\n");
+
+  // create artificial category from value ("wide" -> "wideness")
+  if (n < 0)
+    return(nr + 1);
+  mf.PropKind(ness, val);
+  if (strcmp(ness, cat) == 0)
+    return(nr + 1);
+  
+  // search rule
+  fprintf(out, "// RULE %d - A %s is a %s\n", nr + 2, ness, cat);   
+  fprintf(out, "  if: ako-1 -lex-  %s\n", ness);
+  fprintf(out, "            -ako-> hq-1\n");
+  fprintf(out, "then: ako-2 -lex-  %s\n", cat);
+  fprintf(out, "            -ako-> hq-1\n\n");
+
+  // result conversion rule
+  fprintf(out, "// RULE %d - A %s is a %s\n", nr + 3, cat, ness);
+  fprintf(out, "  if: ako-1 -lex-  %s\n", cat);
+  fprintf(out, "            -ako-> hq-1\n");
+  fprintf(out, "then: ako-2 -lex-  %s\n", ness);
+  fprintf(out, "            -ako-> hq-1\n\n");
+  return(nr + 3);
+}
+
+
+//= Assert that if the property has this value it cannot be the alternative value.
+
+int jhcNetBuild::mutex_rule (FILE *out, const char *val, const char *alt, int n) const
+{
+  fprintf(out, "// RULE %d - If something is %s then it is not %s\n", n + 1, val, alt);
+  fprintf(out, "  if: hq-1 -lex-  %s\n", val);
+  fprintf(out, "           -hq--> obj-1\n");
+  fprintf(out, "then: hq-2 -lex-  %s\n", alt);
+  fprintf(out, "           -neg-  1\n");
+  fprintf(out, "           -hq--> obj-1\n\n");
+  return(n + 1);
+}
+
+
+//= Define two adjectival range terms as being equivalent.
+
+int jhcNetBuild::alias_rules (FILE *out, const char *cat, const char *val, const char *alt, int n) const
+{
+  int nr = n;
+
+  // add separator then basic membership rules for alternate
+  fprintf(out, "// ------------------------------------------------\n\n");
+  nr = value_rules(out, cat, alt, nr);
+
+  // affirm alternate term
+  fprintf(out, "// RULE %d - If something is %s then it is %s\n", nr + 1, val, alt);
+  fprintf(out, "  if: hq-1 -lex-  %s\n", val);
+  fprintf(out, "           -hq--> obj-1\n");
+  fprintf(out, "then: hq-2 -lex-  %s\n", alt);
+  fprintf(out, "           -hq--> obj-1\n\n");
+
+  // refute alternate term
+  fprintf(out, "// RULE %d - If something is not %s then it is not %s\n", nr + 2, val, alt);
+  fprintf(out, "  if: hq-1 -lex-  %s\n", val);
+  fprintf(out, "           -neg-  1\n");
+  fprintf(out, "           -hq--> obj-1\n");
+  fprintf(out, "then: hq-2 -lex-  %s\n", alt);
+  fprintf(out, "           -neg-  1\n");
+  fprintf(out, "           -hq--> obj-1\n\n");
+  return(nr + 2);
+}
+
+
+//= Add operators that call functions to determine the value of some range property.
+
+int jhcNetBuild::range_ops (FILE *out, const char *pre, const char *cat, int np) const
+{
+  // basic information finding
+  fprintf(out, "// OP %d - To find the %s of something ...\n", np + 1, cat);
+  fprintf(out, "trig:\n");
+  fprintf(out, "  FIND[  hq-1 -hq--> obj-1\n");
+  fprintf(out, "        ako-1 -lex-  %s\n", cat);
+  fprintf(out, "              -ako-> hq-1 ]\n"); 
+  fprintf(out, "  ----------\n");
+  fprintf(out, "   FCN[ fcn-1 -lex-  %s_value\n", pre);
+  fprintf(out, "              -str-  %s\n", cat);
+  fprintf(out, "              -arg-> obj-1 ]\n\n");
+
+  // indirect assertion testing (relies on mutexes)
+  fprintf(out, "// OP %d - To check if something is some %s ...\n", np + 2, cat);
+  fprintf(out, "trig:\n");
+  fprintf(out, "   CHK[  hq-1 -hq--> obj-1\n");
+  fprintf(out, "        ako-1 -lex-  %s\n", cat);
+  fprintf(out, "              -ako-> hq-1 ]\n"); 
+  fprintf(out, "  ----------\n");
+  fprintf(out, "   FCN[ fcn-1 -lex-  %s_value\n", pre);
+  fprintf(out, "              -str-  %s\n", cat);
+  fprintf(out, "              -arg-> obj-1 ]\n\n");
+  return(np + 2);
+}
+
+
+//= Add operators that call functions to determine the value of some category.
+
+int jhcNetBuild::list_ops (FILE *out, const char *pre, const char *cat, int np) const
+{
+  char abbr[40];
+
+  // basic information finding
+  fprintf(out, "// OP %d - To find the %s of something ...\n", np + 1, cat);
+  fprintf(out, "trig:\n");
+  fprintf(out, "  FIND[  hq-1 -hq--> obj-1\n");
+  fprintf(out, "        ako-1 -lex-  %s\n", cat);
+  fprintf(out, "              -ako-> hq-1 ]\n"); 
+  fprintf(out, "  ----------\n");
+  fprintf(out, "   FCN[ fcn-1 -lex-  %s_%s\n", pre, cat);
+  fprintf(out, "              -arg-> obj-1 ]\n\n");
+
+  // assertion testing
+  strncpy_s(abbr, cat, 3);
+  fprintf(out, "// OP %d - To check if something is some %s ...\n", np + 2, cat);
+  fprintf(out, "trig:\n");
+  fprintf(out, "   CHK[  hq-1 -hq--> obj-1\n");
+  fprintf(out, "        ako-1 -lex-  %s\n", cat);
+  fprintf(out, "              -ako-> hq-1 ]\n"); 
+  fprintf(out, "  ----------\n");
+  fprintf(out, "   FCN[ fcn-1 -lex-  %s_%s_ok\n", pre, abbr);
+  fprintf(out, "              -arg-> hq-1 ]\n\n");
+  return(np + 2);
+}
+
 
 //= Get potential lexicon used by a set of operators and rules.
 // examines files "kern.ops" and "kern.rules" (if they exist)

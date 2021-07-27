@@ -259,7 +259,6 @@ public:
   void RotationZ (double degs);
   void RotateZ (double degs);
   void Rotation (double xdegs, double ydegs, double zdegs, int clr =1);
-  void Rotate (double xdegs, double ydegs, double zdegs, int clr =1);
   void Translation (double dx, double dy, double dz, int clr =1);
   void Translation (const jhcMatrix& ref, int clr =1);
   void Translate (double dx, double dy, double dz);

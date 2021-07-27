@@ -96,10 +96,13 @@ public:
   bool Empty () const 
     {return((d == NULL) && (p == NULL));}
   bool StepDir (int kind) const;
+  void RefSteps (jhcNetNode *src, const char *slot, jhcNodePool& pool, int init =1);
   jhcAliaChain *StepN (int n);
   jhcAliaChain *Penult ();
   jhcAliaChain *Last ();
   jhcAliaChain *Append (jhcAliaChain *tackon);
+  int MaxDepth () const;
+  int NumGoals (int leaf =0) const;
 
   // building
   jhcAliaChain *Instantiate (jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx =NULL);
@@ -115,11 +118,11 @@ public:
 
   // file functions
   int Load (jhcNodePool& pool, jhcTxtLine& in, int play =0); 
-  int Save (FILE *out, int lvl =0, int *step =NULL, int detail =0);
-  int Print (int lvl =0, int detail =0)
+  int Save (FILE *out, int lvl =0, int *step =NULL, int detail =1);
+  int Print (int lvl =0, int detail =1)
     {return Save(stdout, lvl, NULL, detail);}
   int PrintStep (int lvl =0)
-    {return Save(stdout, -(lvl + 1), NULL, 0);}
+    {return Save(stdout, -(lvl + 1), NULL, 1);}
 
 
 // PRIVATE MEMBER FUNCTIONS

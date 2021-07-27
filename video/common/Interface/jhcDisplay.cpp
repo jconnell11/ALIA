@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -540,6 +540,29 @@ int jhcDisplay::BelowY (int n) const
 }
 
 
+//= Get a corner position for displaying the next item relative to grid.
+// use negative i for adjacent, negative j for below 
+
+void jhcDisplay::ScreenPos (int& x, int& y, int i, int j)
+{
+  if (i < 0)
+  {
+    x = AdjX();
+    y = AdjY();
+  }
+  else if (j < 0)
+  {
+    x = BelowX();
+    y = BelowY();
+  }
+  else
+  {
+    x = GridX(i);
+    y = GridY(j);
+  }
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 //                             Render Images                                //
 //////////////////////////////////////////////////////////////////////////////
@@ -709,6 +732,33 @@ int jhcDisplay::ShowBelow (const jhcImg& src, int mode, const char *title, ...)
 //////////////////////////////////////////////////////////////////////////////
 //                             Render Graphs                                //
 //////////////////////////////////////////////////////////////////////////////
+
+//= Create an empty graph with just a title bar.
+// can subsequently use GraphOver and GraphVal (use col = 8 for black)
+
+int jhcDisplay::Graph0 (int x, int y, const char *title, ...)
+{
+  va_list args;
+  char msg[200];
+
+  // make border around plot and label with given string
+  clear_rect(x, y, gwid, ght, 1);
+  frame(x, y, gwid, ght);
+  if (title != NULL) 
+  {
+    va_start(args, title); 
+    vsprintf_s(msg, title, args);
+    label(x, y, __max(cw, gwid), msg);
+  }
+
+  // record size and position for subsequent operations
+  imgx = x;
+  imgy = y;
+  imgw = gwid;
+  imgh = ght;
+  return 1;
+}
+
 
 //= Takes an array of values and draws it on the screen along x axis.
 // negative maxval makes graph symmetric around zero
@@ -1908,14 +1958,14 @@ int jhcDisplay::MouseRel2 (int& x, int& y)
 
 
 //= Given MouseRel0 return code tells whether to exit routine.
-// can optional abort on any keystroke also
+// often used with MouseRel0 to find clicks in a live image
 // returns 1 if main menu, or R click plus confirmation
 
 int jhcDisplay::MouseExit (int code)
 {
   if (code < -1)
     return 1;
-  if (code == 3)
+  if (code == 3) 
     if (Ask("Stop function?") > 0)
       return 1;
   return 0;

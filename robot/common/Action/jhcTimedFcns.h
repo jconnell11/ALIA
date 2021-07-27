@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,36 +38,38 @@
 ///////////////////////////////////////////////////////////////////////////
 
 //= Declares three procedures related to some function name.
-// foo_new sets up command parameters, foo_chk monitors status, foo_end kills command 
+// foo0() sets up command parameters, foo() monitors status, foo2() kills command 
 
 #define JCMD_DEF(name) \
-  int name ## _set (const jhcAliaDesc *act, int i); \
-  int name ## _chk (const jhcAliaDesc *act, int i); \
-  int name ## _end (const jhcAliaDesc *act, int i); 
+  int name ## 0 (const jhcAliaDesc *act, int i); \
+  int name (const jhcAliaDesc *act, int i); \
+  int name ## 2 (const jhcAliaDesc *act, int i); 
 
 
 //= Dispatch to analyzer and creator if name matches (local variables "desc" and "i" must be bound).
-// foo_set should return 1 for successful interpretation, 0 or negative for problem
+// foo0() should return 1 for successful interpretation, 0 or negative for problem
 
-#define JCMD_SET(name) if (_stricmp(desc->Word(), #name) == 0) return name ## _set(desc, i);
+#define JCMD_SET(name) if (desc->LexMatch(#name)) return name ## 0(desc, i);
 
 
 //= Dispatch to status checker if name matches (local variables "desc" and "i" must be bound).
-// foo_chk should return 1 for done, 0 for still working, -1 for problem
+// foo() should return 1 for done, 0 for still working, -1 for problem
 
-#define JCMD_CHK(name) if (_stricmp(desc->Word(), #name) == 0) return name ## _chk(desc, i);
+#define JCMD_CHK(name) if (desc->LexMatch(#name)) return name(desc, i);
 
 
 //= Dispatch to command processor if name matches (local variables "desc" and "i" must be bound).
-// foo_run can return any value (never checked)
+// foo2() can return any value (never checked)
 
-#define JCMD_END(name) if (_stricmp(desc->Word(), #name) == 0) return name ## _end(desc, i);
+#define JCMD_END(name) if (desc->LexMatch(#name)) return name ## 2(desc, i);
 
 
 ///////////////////////////////////////////////////////////////////////////
 
 //= Interface stub for connecting grounded procedures to ALIA system.
 // maintains a importance bid and starting time for each function instance
+// in derived class override functions like local_volunteer and local_start
+// Note: jhcNetBuild::ValRules can help generate rules for sensor values
 
 class jhcTimedFcns : public jhcAliaKernel
 {
@@ -79,6 +82,7 @@ private:
 protected:
   // call info
   char **cmd;                      /** Name of function called. */
+  char **sub;                      /** Extra command specifier. */
   int *cbid;                       /** Importance of instance.  */
   UL32 *ct0;                       /** Start time of instance.  */
 
@@ -99,7 +103,7 @@ public:
   void SetSize (int n);
   int MaxInst () const {return nc;}
   void AddFcns (jhcAliaKernel *pool);
-  void Reset (jhcAliaNote *attn);                
+  void Reset (jhcAliaNote *atree);                
 
   // main functions
   void Volunteer ();

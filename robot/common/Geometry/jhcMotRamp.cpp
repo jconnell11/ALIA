@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -61,9 +62,10 @@ double jhcMotRamp::RampNext (double now, double tupd, double lead)
 }
 
 
-//= Give a motion control target stop position and based on current real position.
+//= Give a motion control target stop position based on current real position.
 // "tupd" is the time since last call, presumed to be approximate time to next call also
 // special command of rt = 0 freezes control at pose where first issued (prevents drift)
+// sets member variable "drem" with remaining distance to goal
 
 void jhcMotRamp::RampNext (jhcMatrix& stop, const jhcMatrix& now, double tupd, double lead) 
 {
@@ -86,12 +88,12 @@ void jhcMotRamp::RampNext (jhcMatrix& stop, const jhcMatrix& now, double tupd, d
   }
 
   // update velocity based on current position and accelerations
-  goal_dir(dir, now, tupd);
-  alter_vel(dir, dist, tupd);
+  drem = goal_dir(dir, now, tupd);
+  alter_vel(dir, drem, tupd);
 
   // get stopping position along vector to goal (not along velocity)
   amt = sp * tupd * lead;
-  amt = __min(amt, dist);
+  amt = __min(amt, drem);
   stop.RelFrac3(now, dir, amt);
   if (done < 0)
     stop.CycNorm3();
@@ -100,10 +102,12 @@ void jhcMotRamp::RampNext (jhcMatrix& stop, const jhcMatrix& now, double tupd, d
 
 //= Find vector in direction of target from current position.
 // also monitors whether progress is being made (distance is decreasing)
-// sets member variable "dist" to remaining distance to target
+// returns remaining distance to target (unsigned)
 
-void jhcMotRamp::goal_dir (jhcMatrix& dir, const jhcMatrix& now, double tupd)
+double jhcMotRamp::goal_dir (jhcMatrix& dir, const jhcMatrix& now, double tupd)
 {
+  double dist;
+
   // find direction to target and remaining distance 
   if (done < 0)
     dist = dir.RotDir3(cmd, now);
@@ -121,6 +125,7 @@ void jhcMotRamp::goal_dir (jhcMatrix& dir, const jhcMatrix& now, double tupd)
     d0 = __max(d0, dist);
     stuck += tupd;
   }
+  return dist;
 }
 
 
@@ -138,26 +143,35 @@ void jhcMotRamp::goal_dir (jhcMatrix& dir, const jhcMatrix& now, double tupd)
 // </pre>
 // if goal suddenly becomes closer, will cut speed instantly or by dmax (safer)
 // sets member variable "sp" to scalar speed of new velocity vector
+// sets member variable "rev" positive to indicate travel in wrong direction
 
 void jhcMotRamp::alter_vel (const jhcMatrix& dir, double dist, double tupd) 
 {
-  double a, d, vmax, vstop, v2;
+  double a, d, vmax, dot, vstop, v2;
 
   // compute commanded accelerations and cruise speed
   a = ((rt < 0.0) ? astd : rt * rt * astd);
   d = ((rt < 0.0) ? dstd : rt * rt * dstd);
   vmax = fabs(rt) * vstd;
 
-  // accelerate in direction of target and find resulting speed
-  vel.AddFrac3(dir, a * tupd);
+  // if going wrong way decelerate toward zero
+  if ((dot = dir.DotVec3(vel)) < 0.0)
+    vel.AddFrac3(dir, d * tupd);
+  else
+    vel.AddFrac3(dir, a * tupd);
+
+  // find resulting unsigned scalar speed
   if (done < 0)
     sp = vel.MaxAbs3();
   else
     sp = vel.LenVec3();
 
   // determine final deceleration limited target speed
-  vstop = sqrt(2.0 * d * dist);
-  vmax = __min(vstop, vmax);                               
+  if (dot >= 0.0)
+  {
+    vstop = sqrt(2.0 * d * dist);
+    vmax = __min(vstop, vmax);    
+  }                           
   if (sp <= vmax)
     return;
 
@@ -191,6 +205,46 @@ void jhcMotRamp::RampErr (jhcMatrix& err, const jhcMatrix& loc, int abs) const
 ///////////////////////////////////////////////////////////////////////////
 //                          Trajectory Queries                           //
 ///////////////////////////////////////////////////////////////////////////
+
+//= compute a goal command value that can be reached at maximum deceleration.
+// uses infinite deceleration when within "skid" of endpoint (to stop drift)
+// sometimes a good default if no other commands - gradual vs sudden stop
+
+double jhcMotRamp::SoftStop (double now, double skid, double rate) 
+{
+  jhcMatrix loc(4), stop(4);
+
+  loc.SetVec3(now, 0.0, 0.0);
+  SoftStop(stop, loc, skid, rate);
+  return stop.X();
+}
+
+
+//= Compute a goal command vector that can be reached at maximum deceleration.
+// uses infinite deceleration when within "skid" of endpoint (to stop drift)
+// sometimes a good default if no other commands - gradual vs sudden stop
+
+void jhcMotRamp::SoftStop (jhcMatrix& stop, const jhcMatrix& now, double skid, double rate) 
+{
+  jhcMatrix dir(4);
+  double d = ((rate < 0.0) ? dstd : rate * rate * dstd), dist = 0.5 * sp * sp / d;
+
+  // check arguments and simple cases
+  if (!stop.Vector(4) || !now.Vector(4))
+    Fatal("Bad input to jhcMotRamp::SoftStop");
+  if (dist <= skid)
+  {
+    stop.Copy(now);
+    return;
+  }
+
+  // set goal a short distance along current vector
+  dir.UnitVec3(vel);
+  stop.RelFrac3(now, dir, dist - skid);
+  if (done < 0)
+    stop.CycNorm3();
+}
+
 
 //= Estimate time (in secs) to move a certain distance using given rate.
 // if rate < 0 then does not scale acceleration (for snappier response)

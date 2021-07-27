@@ -67,6 +67,7 @@ int jhcAliaRule::AssertMatches (jhcWorkMem& f, double mth, int add, int noisy)
   int i, mc, nh0, ni = cond.NumItems();
 
   // possibly preserve bindings from previous round (e.g. halo-1)
+  jprintf(2, dbg, "Rule %d matching (%4.2f) ...\n", id, -mth);
   if (add <= 0)
     nh = 0;
   mc = hmax - nh;
@@ -82,7 +83,7 @@ int jhcAliaRule::AssertMatches (jhcWorkMem& f, double mth, int add, int noisy)
   // do matching (wmem passed to match_found in member variable)
   wmem = &f;
   show = noisy;
-  bth = -mth;                              // blf = 0 for cond is ok
+  bth = -mth;                              // hypothetical for cond is ok
   nh += MatchGraph(hinst, mc, cond, f);     
   wmem = NULL;
   return(nh - nh0);
@@ -97,53 +98,127 @@ int jhcAliaRule::match_found (jhcBindings *m, int& mc)
 {
   jhcGraphlet inf;
   jhcBindings *b = &(m[mc - 1]);
+  const jhcNetNode *n;
+  int i, dup, nb = b->NumPairs(), h = b->AnyHyp(), tval = 0, ver = 0;
 
-  // reject if same result already asserted by another instantiation
-  // otherwise build network for result (no arbitration with other halo facts)
-  if ((wmem == NULL) || same_result(m, mc))
-    return 0;
-  wmem->AssertHalo(result, *b, this);
+  // find most recent NOTE associated with preconditions (if any)
+  // then see if this same result has already been posted by some other rule
+  hyp[mc - 1] = h;
+  for (i = 0; i < nb; i++)
+    if ((n = b->GetSub(i)) != NULL)
+    {
+      ver  = __max(ver, n->Generation());
+      tval = __max(tval, n->top);   
+    }
+  if ((dup = same_result(m, mc, tval)) < 0)
+    return jprintf(2, dbg, "%*s ignore - same effect as bindings[%d]\n", 2 * nb + 2, "", -dup);
+
+  // same result but this set of bindings has more relevant tval for some precondition 
+  if (dup > 0)
+  {
+    for (i = 0; i < nb; i++)
+      m[dup].SetSub(i, b->LookUp(m[dup].GetKey(i)));       // in case order is different
+    init_result(&(m[dup]), tval, ver, h);
+    return jprintf(2, dbg, "%*s substitute - same effect as bindings[%d]\n", 2 * nb + 2, "", dup);
+  }
+
+  // otherwise create new result nodes in halo 
+  jprintf(2, dbg, "%*s ... FULL MATCH = new bindings[%d]\n", 2 * nb + 1, "", mc - 1);
+  wmem->AssertHalo(result, *b);
+  init_result(b, tval, ver, h);
 
   // possibly show accepted rule result 
   if (show > 0) 
   {
     jprintf("  RULE %d%c ==>", id, 'a' + (hmax - mc));
     Inferred(inf, b);
-    inf.Print(4, 1);
+    inf.Print(4, -1);
     jprintf("\n\n");
   }
 
   // shift to next set of bindings (this set preserved)
   if (mc <= 1)
-    jprintf(">>> More than %d halo instantiations in jhcAliaRule::match_found !\n", hmax);
+    jprintf(">>> More than %d halo instantiations of Rule %d in jhcAliaRule::match_found !\n", hmax, id);
   else
-    mc--;                    
+    mc--;    
   return 1;                  
 }
 
 
 //= Whether most recent binding set gives a halo result identical to some earlier binding set.
+// generally "b" has only precondition variables while m[j] also has (halo) result bindings 
+// returns 0 if no duplicate, negative index if earlier has better tval, positive if lower tval
 
-bool jhcAliaRule::same_result (const jhcBindings *m, int mc) const
+int jhcAliaRule::same_result (const jhcBindings *m, int mc, int t0) const
 {
   const jhcBindings *b = &(m[mc - 1]);
-  const jhcNetNode *key;
-  int i, j, n0 = b->NumPairs();
+  const jhcNetNode *pn, *n;
+  int i, j, nb = b->NumPairs(), h = hyp[mc - 1], tval = 0;
 
   // reject if same result already asserted by another instantiation
   for (j = hmax - 1; j >= mc; j--)
-  {
-    for (i = 0; i < n0; i++)
+    if (hyp[j] == h)
     {
-      // look for some result variable bound to a different substitution
-      key = b->GetKey(i);
-      if (result.InDesc(key) && (b->GetSub(i) != m[j].LookUp(key))) 
-        break;
+      // look for some variable used in result but bound to a different substitution
+      for (i = 0; i < nb; i++)
+      {
+        pn = b->GetKey(i);
+        n = m[j].LookUp(pn);
+        if ((b->GetSub(i) != n) && result_uses(pn))
+          break;
+        tval = __max(tval, n->top);    // get max "top" over preconditions
+      }
+
+      // if all relevants vars the same, check if some better top value
+      if (i >= nb)       
+        return((tval >= t0) ? -j : j); 
     }
-    if (i >= n0)             // all relevants vars the same
+  return 0;                            // nothing gave identical result
+}
+
+
+//= See if instantiated result will use the binding for some pattern node.
+
+bool jhcAliaRule::result_uses (const jhcNetNode *key) const
+{
+  const jhcNetNode *item;
+  int i, j, na, nr = result.NumItems();
+
+  for (i = 0; i < nr; i++)
+  {
+    if ((item = result.Item(i)) == key)
       return true;
+    na = item->NumArgs();
+    for (j = 0; j < na; j++)
+      if (item->Arg(j) == key)
+        return true;
   }
-  return false;              // nothing gave identical result
+  return false;
+}
+
+
+//= Update top marker and generation number, set initial belief, and record provenance.
+
+void jhcAliaRule::init_result (jhcBindings *b, int tval, int ver, int zero) 
+{
+  const jhcNetNode *pn;
+  jhcNetNode *n;
+  int i, nr = result.NumItems();
+
+  for (i = 0; i < nr; i++)
+  {
+    pn = result.Item(i);
+    if ((n = b->LookUp(pn)) != NULL)
+      if (n->Halo() && !cond.InDesc(n))
+      {
+        wmem->SetGen(n, ver);                    // inferred result recency
+        n->TopMax(tval);                         // associate with some NOTE
+        n->SetDefault(pn->Default());
+        n->TmpBelief((zero > 0) ? 0.0 : n->Default());
+        n->hrule = this;
+        n->hbind = b;
+      }
+  }
 }
 
 
@@ -171,6 +246,7 @@ void jhcAliaRule::Inferred (jhcGraphlet& key, const jhcBindings& b) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Augment consolidated rule based on a rule used as one of the first steps.
+// basically copies cond of step1 to cond of new rule, making equivalent nodes as needed
 // also keeps a mapping "m2c" of correspondence between old and new nodes
 
 void jhcAliaRule::AddCombo (jhcBindings& m2c, const jhcAliaRule& step1, const jhcBindings& b1)
@@ -179,97 +255,107 @@ void jhcAliaRule::AddCombo (jhcBindings& m2c, const jhcAliaRule& step1, const jh
   const jhcNetNode *mem;
   int i, nc = c1->NumItems();
 
-  // check each halo node used in rule instantiation
   for (i = 0; i < nc; i++)
     if ((mem = b1.LookUp(c1->Item(i))) != NULL)  
-      add_equiv(m2c, cond, mem);
+      cond.AddItem(get_equiv(m2c, mem, 0));
 }
 
 
-//= Finish off consolidated rule based on rule used as the second step.
+//= Finish off consolidated rule based on single rule used as the second step.
 
 void jhcAliaRule::LinkCombo (jhcBindings& m2c, const jhcAliaRule& step2, const jhcBindings& b2)
 {
   const jhcGraphlet *c2 = &(step2.cond), *r2 = &(step2.result);
-  const jhcNetNode *mem;
+  const jhcNetNode *mem, *fact;
   jhcNetNode *combo;
-  double cf = 0.0;
+  double cf = -1.0;
   int i, nc = c2->NumItems(), nr = r2->NumItems();
 
-  // add non-halo step2 cond nodes and find most fragile intermediate
+  // add non-halo step2 cond nodes and find most fragile intermediate (cf)
   for (i = 0; i < nc; i++)
     if ((mem = b2.LookUp(c2->Item(i))) != NULL) 
+    {
+      // see if a required combo precondition (not from step1 result)
       if (!mem->Halo())
-        add_equiv(m2c, cond, mem);
-      else if ((cf <= 0.0) || (mem->Belief() < cf))
-        cf = mem->Belief();
-  insert_args(m2c, cond);
+        cond.AddItem(get_equiv(m2c, mem, 0));              
+      else
+      {
+        // get result belief from step1 rule (might have been applied to hyp)       
+        fact = (mem->hbind)->FindKey(mem);
+        if ((cf < 0.0) || (fact->Belief() < cf))
+          cf = fact->Belief();
+        get_equiv(m2c, mem, 1);        // might be an arg in combo result      
+      }
+    }
+  connect_args(cond, m2c);
 
-  // copy step2 result (note that insert_args may change nr)
+  // copy step2 result and link in needed arguments
   for (i = 0; i < nr; i++)
     if ((mem = b2.LookUp(r2->Item(i))) != NULL)  
-      add_equiv(m2c, result, mem);
-  insert_args(m2c, result);
+      result.AddItem(get_equiv(m2c, mem, 1));
+  connect_args(result, m2c);
+  result.RemAll(cond);
 
-  // no result can be more sure than most fragile intermediate 
+  // no result fact can be more sure than most fragile intermediate (cf) 
   nr = result.NumItems();
   for (i = 0; i < nr; i++)
   {
     combo = result.Item(i);
-    if (!combo->LexNode() && (combo->Belief() > cf))
+    if (combo->Belief() > cf)
       combo->SetBelief(cf);
   }
 }
 
 
-//= Add nodes to description if some argument (or lex property) of a node is missing.
-// builds "m2c" translation from original to newly created nodes
+//= Get equivalent rule node (if exists) for main memory node, otherwise make up new one.
+// new node has belief copied from original (for result confidences) or set to 1 (preconditions)
+// incrementally builds "m2c" translation from original to any newly created nodes
+// returns pointer to new (or old) node which can optionally be added to some description
 
-void jhcAliaRule::insert_args (jhcBindings& m2c, jhcGraphlet& desc)
+jhcNetNode *jhcAliaRule::get_equiv (jhcBindings& m2c, const jhcNetNode *probe, int bcpy)
 {
-  const jhcNetNode *mem, *lex;
-  jhcNetNode *combo;
-  int i, j, np, na;
+  const jhcNetNode *fact;
+  jhcNetNode *equiv;
+  double blf = 1.0;
+
+  if ((bcpy > 0) && probe->Halo())
+  {
+    fact = (probe->hbind)->FindKey(probe);       // rule might have been applied to hyp
+    blf = fact->Belief();
+  }
+  if ((equiv = m2c.LookUp(probe)) == NULL)
+  {
+    equiv = MakeNode(probe->Kind(), probe->Lex(), probe->Neg(), -blf);   
+    m2c.Bind(probe, equiv);
+  }
+  return equiv;
+}
+
+
+//= Makes sure newly created rule nodes are connected in same pattern as original memory nodes.
+// adds missing arguments to description (e.g. from intermediate results)
+
+void jhcAliaRule::connect_args (jhcGraphlet& desc, const jhcBindings& m2c) const
+{
+  const jhcNetNode *mem;
+  jhcNetNode *combo, *carg;
+  int i, j, na;
 
   // check all items in description (more might be added during loop)
   for (i = 0; i < desc.NumItems(); i++)
   {
-    // add argument links inside rule if node is known (should always be)
+    // check arguments of associated main memory node 
     combo = desc.Item(i);
     mem = m2c.FindKey(combo);
-
-    // make sure lex property is copied
-    np = mem->NumProps();
-    for (j = 0; j < np; j++)
-    {
-      lex = mem->Prop(j);
-      if (lex->LexNode())
-        add_equiv(m2c, desc, lex);
-    }
-
-    // make sure all arguments are copied
     na = mem->NumArgs();
     for (j = 0; j < na; j++)
-      combo->AddArg(mem->Slot(j), add_equiv(m2c, desc, mem->Arg(j)));
+      if ((carg = m2c.LookUp(mem->Arg(j))) != NULL)
+      {
+        // link the description node to a corresponding argument
+        combo->AddArg(mem->Slot(j), carg);             
+        desc.AddItem(carg);
+      }
   }
-}
-
-
-//= Get equivalent rule node (if exists) for main memory node, otherwise make up new one.
-// builds "m2c" translation from original to newly created nodes
-// node always added to "desc" graphlet 
-
-jhcNetNode *jhcAliaRule::add_equiv (jhcBindings& m2c, jhcGraphlet& desc, const jhcNetNode *probe)
-{
-  jhcNetNode *equiv;
-
-  if ((equiv = m2c.LookUp(probe)) == NULL)
-  {
-    equiv = MakeNode(probe->Kind(), NULL, probe->Neg(), -(probe->Belief()));
-    m2c.Bind(probe, equiv);
-  }
-  desc.AddItem(equiv);
-  return equiv;
 }
 
 
@@ -309,7 +395,7 @@ bool jhcAliaRule::same_struct (const jhcNetNode *focus, const jhcNetNode *mate) 
 {
   int i, na = focus->NumArgs();
 
-  if ((mate->Neg() != focus->Neg()) || mate->LexConflict(focus) || (mate->NumArgs() != na))   
+  if ((mate->Neg() != focus->Neg()) || !focus->LexMatch(mate) || (mate->NumArgs() != na))   
     return false;
   for (i = 0; i < na; i++)
     if (((focus->Arg(i))->Inst() != (mate->Arg(i))->Inst()) ||   // assumes same numbering!
@@ -317,6 +403,31 @@ bool jhcAliaRule::same_struct (const jhcNetNode *focus, const jhcNetNode *mate) 
       return false;
   return true;
 }    
+
+
+//= Determine if rule uselessly infers X -> X (sometimes from consolidation).
+// sees if result satisfies condition (and no more)
+
+bool jhcAliaRule::Tautology () 
+{
+  jhcSituation sit;
+  jhcBindings m;
+  int n = cond.NumItems(), mc = 1;
+
+  // if result is a different size then infers more or less than cond
+  if (result.NumItems() != n)
+    return false;
+
+  // copy just precondition nodes to a new situation
+  sit.BuildCond();
+  sit.Assert(cond, m);
+  m.Clear();
+
+  // see if situation gets a match with rule result
+  m.expect = n;
+  sit.bth = -1.0;
+  return(sit.MatchGraph(&m, mc, *(sit.Pattern()), result) > 0);
+}
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -373,6 +484,7 @@ int jhcAliaRule::load_clauses (jhcTxtLine& in)
   in.Skip("then:");
   if ((ans = LoadGraph(&result, in, 1)) <= 0)
     return ans;
+  result.ActualizeAll(0);              // needed for match_found
   return 1;
 }
 
@@ -406,7 +518,7 @@ int jhcAliaRule::Save (FILE *out, int detail) const
 
   // save consequent and add blank line
   jfprintf(out, "  then: ");
-  result.Save(out, -8, detail | 0x01);
+  result.Save(out, -8, detail);
   jfprintf(out, "\n\n");
   return((ferror(out) != 0) ? -1 : 1);
 }

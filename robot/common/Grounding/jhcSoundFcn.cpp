@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ int jhcSoundFcn::local_status (const jhcAliaDesc *desc, int i)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSoundFcn::play_snd_set (const jhcAliaDesc *desc, int i)
+int jhcSoundFcn::play_snd0 (const jhcAliaDesc *desc, int i)
 {
   return find_file(fname.ch, desc->Val("arg"), 200);
 }
@@ -98,7 +98,7 @@ int jhcSoundFcn::play_snd_set (const jhcAliaDesc *desc, int i)
 // plays sound synchronously in a background thread
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSoundFcn::play_snd_chk (const jhcAliaDesc *desc, int i)
+int jhcSoundFcn::play_snd (const jhcAliaDesc *desc, int i)
 {
   // request sound or wait for completion
   if (cst[i] <= 0)
@@ -137,7 +137,7 @@ int jhcSoundFcn::find_file (char *fn, const jhcAliaDesc *n, int ssz)
   FILE *in;
   const char *spec;
 
-  if ((spec = n->Word()) == NULL)
+  if ((spec = n->Lex()) == NULL)
     return 0;
   sprintf_s(fn, ssz, "%s%s.wav", sdir, spec);
   if (fopen_s(&in, fn, "rb") != 0)

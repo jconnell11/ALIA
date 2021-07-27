@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -185,7 +186,8 @@ void jhcEchoFcn::fcn_args (const jhcAliaDesc *desc)
 
   if ((n = dynamic_cast<const jhcNetNode *>(desc)) == NULL)
     return;
-  jprintf("\"%s(", n->Word());
+//  jprintf("\"%s(", n->Word());
+  jprintf("\"%s(", n->Lex());
   na = n->NumArgs();
   for (i = 0; i < na; i++)
   {

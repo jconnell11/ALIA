@@ -39,9 +39,8 @@ class jhcDegrapher
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  const jhcGraphlet *gr;
   char phrase[500];
-
+  const jhcGraphlet *gr;
   jhcWorkMem *wmem;
 
 
@@ -58,23 +57,38 @@ public:
   void Bind (jhcAliaNote *m) 
     {Bind(dynamic_cast<jhcWorkMem *>(m));}
  
-  // main functions
-  const char *Generate (const jhcGraphlet& graph, jhcWorkMem& mem);
-
   // formatted output
+  const char *NameRef (const jhcNetNode *n) const
+    {return(((n == NULL) || (wmem == NULL)) ? NULL : n->Name(0, wmem->MinBlf()));}
   const char *NodeRef (const jhcNetNode *n, int nom =1)
     {return node_ref(phrase, 500, n, nom);}
+  const char *UserRef () const
+    {return((wmem == NULL) ? NULL : NameRef(wmem->Human()));}
+
+  // alternative input type
+  const char *NameRef (const jhcAliaDesc *n) const
+    {return NameRef(dynamic_cast<const jhcNetNode *>(n));}
   const char *NodeRef (const jhcAliaDesc *n, int nom =1)
     {return NodeRef(dynamic_cast<const jhcNetNode *>(n), nom);}
-  const char *LexRef (const jhcNetNode *n) const;
-  const char *LexRef (const jhcAliaDesc *n) const
-    {return LexRef(dynamic_cast<const jhcNetNode *>(n));}
-  const char *UserRef () const 
-    {return((wmem == NULL) ? NULL : LexRef(wmem->Human()));}
+
+  // main functions
+  const char *Generate (const jhcGraphlet& graph, jhcWorkMem& mem);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
+  // formatted output
+  const char *node_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
+  const char *obj_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
+  const char *pron_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
+  bool chk_prop (const jhcNetNode *n, const char *role, const char *label, 
+                 const jhcGraphlet *desc) const;
+  const char *name_ref (jhcNetRef& nr, const jhcNetNode *n) const;
+  const char *add_kind (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n) const;
+  const char *add_adj (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n) const;
+  const char *pred_ref (char *txt, int ssz, const jhcNetNode *n) const;
+  const char *full_pred (char *txt, int ssz, const jhcNetNode *n) const;
+
   // main functions
   int follow_args (jhcNetNode *n) const;
   const char *form_sent (char *txt, int ssz, const jhcNetNode *n, int top) const;
@@ -92,17 +106,6 @@ private:
   const char *form_noun (char *txt, int ssz, const jhcNetNode *n, UL32 tags) const;
 
   const char *add_sp (char *txt, int ssz, const char *w, const char *suf =NULL) const;
-
-  // formatted output
-  const char *node_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
-  const char *obj_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
-  const char *pron_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
-  bool chk_prop (const jhcNetNode *n, const char *role, const char *label, 
-                 const jhcGraphlet *desc) const;
-  const char *name_ref (jhcNetRef& nr, const jhcNetNode *n) const;
-  const char *add_kind (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n) const;
-  const char *add_adj (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n) const;
-  const char *pred_ref (char *txt, int ssz, const jhcNetNode *n) const;
 
 
 };

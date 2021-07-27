@@ -455,6 +455,18 @@ void jhcRoi::GrowRoi (int dw2, int dh2)
 }
 
 
+//= Grow region by the given number of pixels on each side.
+
+void jhcRoi::PadRoi (int lf, int bot, int rt, int top)
+{
+  rx -= lf;
+  ry -= bot;
+  rw += (lf + rt);
+  rh += (bot + top);
+  fix_roi();
+}
+
+
 //= Make region be given size, still centered at original location.
 // if either parameter is less than zero, that dimension is unchanged
 

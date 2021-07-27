@@ -30,7 +30,7 @@
 
 #include "jhcGlobal.h"
 
-#include <windows.h>                // instead of stdafx.h
+#include <windows.h>                   // instead of stdafx.h
 #include <VfW.h>
 
 #include "Video/jhcVideoSink.h"

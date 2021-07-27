@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,7 +77,8 @@ public:
                  int bg =128, int def =0, int samps =1);
   int NZBoxAvg (jhcImg &dest, const jhcImg& src, int wid, int ht =0, int samps =1);
   int NZBoxAvg (jhcImg &dest, const jhcImg& src, double wf, double hf =0.0, int samps =1);
-  int NZBoxMax (jhcImg &dest, const jhcImg& src, int wid, int ht =0, int samps =1);
+  int NZBoxFill (jhcImg &dest, const jhcImg& src, int wid, int ht =0, int samps =1, int zero =0, int vmax =255);
+  int NZBoxFillRGB (jhcImg &dest, const jhcImg& src, int wid, int ht =0, int samps =1);
 
   // center surround operations
   int ClipCS (jhcImg& dest, const jhcImg& src, 
@@ -111,7 +112,6 @@ public:
 
   // rank order filtering
   int BoxFracOver (jhcImg& dest, const jhcImg& src, int wid, int ht =0, double frac =0.5);
-  int BoxFracUnder (jhcImg& dest, const jhcImg& src, int wid, int ht =0, double frac =0.5);
   int BoxRankLin (jhcImg& dest, const jhcImg& src, int wid, int ht =0, double frac =0.5);
   int BoxMedian (jhcImg& dest, const jhcImg& src, int sc);
 

@@ -84,15 +84,15 @@
   <$add>
 
 
-// term redefinition (for verb related elements)
+// term redefinition (for modifiers of various sorts)
 
 =[$macro]
-  <ACT> <equiv> <ACT>
+  (<DEG>) <HQ> <equiv> (<DEG>) <HQ>
   <DIR> <equiv> <DIR>
   <MOD> <equiv> <MOD>
 
 
-// directional equivalence relation 
+// modifier equivalence relation 
 
 =[equiv]
   means
@@ -104,6 +104,7 @@
 
 =[%Operator]
   <$trig> (<then>) <$proc> (<$trig>)
+  <$trig> <equiv> <$proc> (<$trig>)
   <$proc> <$trig>
   <$trig-n> ((<conj>) instead <$proc> (<$trig>))
  
@@ -111,7 +112,7 @@
 // operator trigger goal
 
 =[$trig]
-  <inf> <cmd> (<situation>)
+  (<inf>) <cmd> (<situation>)
   <BEFORE> <cmd-g> (<situation>) 
   <AFTER> <cmd-g> (<situation>)
   <situation> then <BEFORE> <cmd-g> 

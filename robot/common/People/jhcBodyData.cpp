@@ -248,11 +248,15 @@ int jhcBodyData::InitAll (const jhcBodyData& d, int suggest)
   vel.Clear();
   clr_hand(0);
   clr_hand(1);
+
+  // clear all labelling and state data
   *tag = '\0';
   node = NULL;
   id = 0;                         // speculative track
+  vis = 0;
+  state = 0;     
 
-  // gaze data
+  // initialize gaze data
   gest.Zero();
   gn = 0;
 

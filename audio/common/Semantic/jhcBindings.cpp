@@ -70,6 +70,21 @@ jhcBindings *jhcBindings::Copy (const jhcBindings& ref)
 }
 
 
+//= See if any substitution node has a belief of zero.
+// returns 1 if something is hypothetical, 0 if none are
+
+int jhcBindings::AnyHyp () const
+{
+  int i;
+
+  for (i = 0; i < nb; i++)
+//    if (sub[i]->Belief() <= 0.0)
+    if (sub[i]->Hyp())
+      return 1;
+  return 0;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                              List Functions                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -260,12 +275,12 @@ void jhcBindings::ReplaceSubs (const jhcBindings& alt)
 }
 
 
-//= List bindings in format "key = subst".
+//= List bindings in format "key = subst" where subst can be NULL.
 // can optionally write header "<prefix> bindings:" instead of "bindings:"
 // can optionally show only first "num" bindings instead of all
 // if num < 0 then shows everything except the first bindings
 
-void jhcBindings::Print (int lvl, const char *prefix, int num) const
+void jhcBindings::Print (const char *prefix, int lvl, int num) const
 {
   int start = ((num < 0) ? -num : 0);
   int stop  = ((num > 0) ? __min(num, nb) : nb);
@@ -274,8 +289,9 @@ void jhcBindings::Print (int lvl, const char *prefix, int num) const
   // get print field widths
   for (i = start; i < stop; i++)
   {
-    key[i]->NodeSize(k, n, 1);
-    sub[i]->NodeSize(k2, n2, 1);
+    key[i]->NodeSize(k, n);
+    if (sub[i] != NULL)
+      sub[i]->NodeSize(k2, n2);
   }
 
   // print header (even if nothing to show)
@@ -284,9 +300,14 @@ void jhcBindings::Print (int lvl, const char *prefix, int num) const
   else
     jprintf("%*sBindings:\n", lvl, "");
 
-  // print key-sub pairs (might be none)
+  // print key-sub pairs (might be no pairs)
   for (i = start; i < stop; i++)
-    jprintf("%*s  %*s = %*s\n", lvl, "", 
-            (k + n + 1), key[i]->Nick(), -(k2 + n2 + 1), sub[i]->Nick());
+  {
+    jprintf("%*s  %*s = ", lvl, "", (k + n + 1), key[i]->Nick());
+    if (sub[i] != NULL)
+      jprintf("%*s\n", -(k2 + n2 + 1), sub[i]->Nick());
+    else
+      jprintf("NULL\n");
+  }
 }
 

@@ -659,7 +659,7 @@ int jhcImg::RoiSkip (const jhcRoi& ref) const
 
 
 //= Tells how many bytes to advance from start of buffer to get to ROI.
-// can use different range than recorded internally if cx or cy nonzero
+// can use different range than recorded internally if cx or cy non-negative
 // Note: used to use rx and ry if cx and cy were zero
 
 int jhcImg::RoiOff (int cx, int cy) const

@@ -104,7 +104,10 @@ int jhcSituation::MatchGraph (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   // returns negative if no candidate, 0 if no matches to picked candidate
   if ((cnt = try_props(m, mc, pat, f, f2)) < 0)
     if ((cnt = try_args(m, mc, pat, f, f2)) < 0)
-      cnt = try_bare(m, mc, pat, f, f2);
+      if (f.NumBins() > 1)
+        cnt = try_hash(m, mc, pat, f, f2);
+      else      
+        cnt = try_bare(m, mc, pat, f, f2);
   if (cnt > 0)
     return cnt;
 
@@ -154,7 +157,7 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
 
   // consider properties of anchor's binding as candidates (np might change during loop)
   for (i = 0; i < val->NumProps(); i++)
-    if (strcmp(val->Role(i), role) == 0)
+    if (val->RoleMatch(i, role))
     {
       // continue matching with selected mate for focus
       n = TryBinding(focus, val->Prop(i), m, mc, pat, f, f2);
@@ -232,8 +235,8 @@ int jhcSituation::try_bare (jhcBindings *m, int& mc, const jhcGraphlet& pat,
       // scan: 0 = has literal argument, 1 = has literal property, 2 = has lexical term, 3 = any
       focus = pat.Item(i);
       if (!b->InKeys(focus))
-        if (((scan <= 0) && pat.ArgOut(*focus)) || ((scan == 1) && pat.PropOut(*focus)) ||
-            ((scan == 2) && !focus->Blank())    ||  (scan >= 3))
+        if (((scan <= 0) && pat.ArgOut(focus))      || ((scan == 1) && pat.PropOut(focus)) ||
+            ((scan == 2) && (focus->Lex() != NULL)) ||  (scan >= 3))
           break;
       focus = NULL;
     }
@@ -256,6 +259,52 @@ int jhcSituation::try_bare (jhcBindings *m, int& mc, const jhcGraphlet& pat,
 }
 
 
+//= Picks the pattern node with the least possible matches and tries only those.
+// returns -1 if no proper focus, else total number of matches that caused invocations
+
+int jhcSituation::try_hash (jhcBindings *m, int& mc, const jhcGraphlet& pat, 
+                            const jhcNodeList& f, const jhcNodeList *f2) 
+{
+  jhcBindings *b = m + __max(0, mc - 1);
+  const jhcNetNode *item, *focus = NULL;
+  jhcNetNode *mate = NULL;
+  int i, occ, best, bin, n = pat.NumItems(), cnt = 0;
+
+  // find the unbound node with fewest potential matches to start
+  for (i = 0; i < n; i++)
+  {
+    item = pat.Item(i);
+    if (!b->InKeys(item))
+    {
+      if ((occ = f.SameBin(*item)) <= 0)         
+        break;                                   // pattern unmatchable!
+      if ((focus == NULL) || (occ < best))
+      {
+        focus = item;
+        best = occ;
+      }
+    }
+  }
+
+  // make sure some node to be bound and some possibiliites exist
+  if ((focus == NULL) || (occ <= 0))
+    return -1;
+  jprintf(2, dbg, "%*s  try_hash: %s initial focus (%d)\n", b->NumPairs() * 2, "", focus->Nick(), best);
+
+  // only consider nodes with matching hashes as candidate matches
+  bin = ((focus->Lex() == NULL) ? -1 : focus->Code());
+  while ((mate = f.NextNode(mate, bin)) != NULL)
+  {
+    // continue matching with selected mate for focus
+    n = TryBinding(focus, mate, m, mc, pat, f, f2);
+    if (n < 0)
+      return 1;
+    cnt += n;
+  }
+  return cnt;
+}
+
+
 //= Binds focus to mate then continues to try to find full match of pattern.
 // useful matcher entry point for jhcFindGuess to check basic instantiation
 // returns number of matches found, -1 if "unless" clause is matched 
@@ -265,22 +314,26 @@ int jhcSituation::TryBinding (const jhcNetNode *focus, jhcNetNode *mate, jhcBind
 {
   int rc, i, nb = 0, n = __max(0, mc - 1), lvl = 2 * m[n].NumPairs(), cnt = 0;
 
+  // sanity check
+  if (!mate->Visible())
+    return 0;
+
   // make sure superficial pairing is okay
   if (f2 != NULL)
   {
     // matching operator condition against directive
     if (!f.InList(mate))
-      return jprintf(3, dbg, "%*s   mate = %s not in list\n", lvl, "", mate->Nick());
-    if ((rc = consistent(mate, focus, pat, m + n, 0.0)) <= 0)
-      return jprintf(3, dbg, "%*s   mate = %s --> fails %d\n", lvl, "", mate->Nick(), rc);
+      return jprintf(3, dbg, "%*s   mate = %s (%4.2f) not in list\n", lvl, "", mate->Nick(), mate->Blf(bth));
+    if ((rc = consistent(mate, focus, pat, m + n, -fabs(bth))) <= 0)
+      return jprintf(3, dbg, "%*s   mate = %s (%4.2f) --> fails %d\n", lvl, "", mate->Nick(), mate->Blf(bth), rc);
   }
   else if (f.Prohibited(mate))
-    return jprintf(3, dbg, "%*s   mate = %s prohibited\n", lvl, "", mate->Nick());
+    return jprintf(3, dbg, "%*s   mate = %s (%4.2f) prohibited\n", lvl, "", mate->Nick(), mate->Blf(bth));
   else if ((rc = consistent(mate, focus, pat, m + n, bth)) <= 0)     // min belief value
-    return jprintf(3, dbg, "%*s   mate (%4.2f) = %s --> fails %d\n", lvl, "", bth, mate->Nick(), rc);
+    return jprintf(3, dbg, "%*s   mate = %s (%4.2f) --> fails %d\n", lvl, "", mate->Nick(), mate->Blf(bth), rc);
 
   // add pair to all remaining bindings (all nb are the same)
-  jprintf(3, dbg, "%*s   mate = %s (%4.2f)\n", lvl, "", mate->Nick(), mate->Belief());
+  jprintf(3, dbg, "%*s   mate = %s (%4.2f)\n", lvl, "", mate->Nick(), mate->Blf(bth));
   for (i = 0; i <= n; i++)
     nb = m[i].Bind(focus, mate);    
 
@@ -288,7 +341,7 @@ int jhcSituation::TryBinding (const jhcNetNode *focus, jhcNetNode *mate, jhcBind
   cnt = MatchGraph(m, mc, pat, f, f2);
   if ((cnt > 0) && (mc <= 0))      
     return -1;                
-  
+
   // remove pair for backtrack (mc might change if successful match)
   // nb - 1 used since jhcAliaRule adds bindings during AssertHalo
   n = __max(0, mc - 1);  
@@ -305,36 +358,41 @@ int jhcSituation::TryBinding (const jhcNetNode *focus, jhcNetNode *mate, jhcBind
 int jhcSituation::consistent (const jhcNetNode *mate, const jhcNetNode *focus, const jhcGraphlet& pat, const jhcBindings *b, double th) const
 {
   const jhcNetNode *arg, *val, *fact;
-  int i, n = focus->NumArgs();
+  int i, n;
 
-  // prevent use of same term for different "variables" then check node instrinsic characteristics
+  // prevent use of same term for different "variables" 
   if (b->InSubs(mate))                         
-    return -8;
-  if (n > 0)                                                   // only for non-object nodes
+    return -9;
+
+  // sense of predicate should be the same and belief must be high enough (or hypothetical) 
+  if (!focus->ObjNode())  
   {
-    if ((chkmode <= 0) && (mate->Neg() != focus->Neg()))       // ignore "neg" for CHK 
+    if ((chkmode <= 0) && (mate->Neg() != focus->Neg()))             // ignore "neg" for CHK 
+      return -8;
+    if (!mate->Sure(th))
       return -7;
-    if ((mate->Done() != focus->Done()) || mate->LexConflict(focus))   
+    if (focus->Arity() != mate->Arity())
       return -6;
   }
 
-  // belief must be high enough (or hypothetical) and lexical labels should overlap
-  if ((mate->Belief() < fabs(th)) && ((th > 0.0) || (mate->Belief() != 0.0)))
+  // any action must be in the same state and actual predicate terms must be the same 
+  if (mate->Done() != focus->Done())
     return -5;
-  if (mate->WordConflict(focus, fabs(th)))
+  if ((focus->Lex() != NULL) && !focus->LexMatch(mate))
     return -4;
   
   // see if finding referents inside a rule or operator
   if (refmode > 0)
   {
     // conversation participants are special ("you" can match "someone" but "someone" cannot match "you")
-    if (mate->HasWord("you", 1) && !focus->HasWord("you", 1))
+    if (mate->LexMatch("you") && !focus->LexMatch("you"))
       return -3;
-    if ((mate->HasWord("me", 1) || mate->HasWord("I", 1)) && !focus->HasWord("me", 1) && !focus->HasWord("I", 1))
+    if (mate->LexMatch("me") && !focus->LexMatch("me"))
       return -2;
   }
 
   // check that mate is consistent with all arguments (even externals)
+  n = focus->NumArgs();
   for (i = 0; i < n; i++)
   {
     arg = focus->Arg(i);

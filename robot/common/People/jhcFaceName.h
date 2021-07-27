@@ -40,7 +40,7 @@
 // continues after ID established to enhance database of mugshots
 // uses jhcHeadGaze to look for faces associated with all tracks
 // <pre>
-// class tree:
+// class tree (+ = member, > = pointer):
 //
 //   jhcFaceName
 //     jhcHeadGaze

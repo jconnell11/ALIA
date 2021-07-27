@@ -67,7 +67,6 @@ public:
 
   // system status
   double Voltage (int id);
-  int Charge (double volts) const;
   double RunAX12 (double volts) const {return(6.6 * volts);}    /** 6 kg-cm torque @ 12.6V. */
   double HoldAX12 (double volts) const {return(17.4 * volts);}  /** 15 kg-cm torque @ 12V.  */
  

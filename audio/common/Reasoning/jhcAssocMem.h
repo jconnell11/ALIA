@@ -49,7 +49,8 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int noisy;                    // controls diagnostic messages
+  int noisy;                    // controls general diagnostic messages
+  int detail;                   // show detailed matching for some rule
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -68,7 +69,7 @@ public:
   void Remove (const jhcAliaRule *rem);
 
   // main functions
-  int RefreshHalo (jhcWorkMem& wmem, double mth, int dbg =0) const;
+  int RefreshHalo (jhcWorkMem& wmem, int dbg =0) const;
   int Consolidate (const jhcBindings& b, int dbg =1);
 
   // file functions
@@ -81,11 +82,6 @@ public:
 private:
   // creation and initialization
   int clear ();
-
-  // list functions
-  int similar_rule (const jhcAliaRule& add) const;
-  bool similar_args (const jhcNetNode *focus, const jhcNetNode *mate) const;
-
 
   // main functions
   int next_halo (jhcAliaRule **r, jhcBindings **b, jhcBindings& list, int start) const;

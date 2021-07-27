@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "Interface/jhcMessage.h"      // common video
+#include "Interface/jms_x.h"
 
 #include "Environ/jhcLocalOcc.h"
 
@@ -44,9 +45,11 @@ jhcLocalOcc::~jhcLocalOcc ()
 jhcLocalOcc::jhcLocalOcc ()
 {
   strcpy_s(name, "occ");
-  dbg = 0;
+  SetFit(4.0, 10000, 2.0, 3.0, 4.0, 2.0, 100);             
   Defaults();
   Reset();
+  dbg = 0;
+dbg = 3;
 }
 
 
@@ -87,7 +90,7 @@ int jhcLocalOcc::geom_params (const char *fname)
 
   ps->SetTag("occ_geom", 0);
   ps->NextSpecF( &rside,  8.0, "Robot half width (in)");
-  ps->NextSpecF( &rfwd,  15.0, "Fwd robot protrusion (in)");
+  ps->NextSpecF( &rfwd,  14.0, "Fwd robot protrusion (in)");   // was 15
   ps->NextSpecF( &rback, 14.0, "Rear robot extension (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
@@ -103,15 +106,15 @@ int jhcLocalOcc::conf_params (const char *fname)
   int ok;
 
   ps->SetTag("occ_conf", 0);
-  ps->NextSpecF( &wmat, 36.0,  "Doormat width (in)");
-  ps->NextSpecF( &hmat, 24.0,  "Doormat height (in)");
-  ps->NextSpecF( &tmat,  2.0,  "Minimum before forget (sec)");
-  ps->NextSpecF( &umat,  0.80, "Min fraction known");
-  ps->NextSpecF( &kmat,  0.85, "Max fraction known");
-  ps->Skip();
+  ps->NextSpecF( &wmat,  36.0,  "Doormat width (in)");
+  ps->NextSpecF( &hmat,  24.0,  "Doormat height (in)");
+  ps->NextSpecF( &tmat0,  5.0,  "Minimum before forget (sec)");
+  ps->NextSpecF( &tmat2,  5.0,  "Minimum since sense (sec)");
+  ps->NextSpecF( &umat,   0.80, "Min fraction known");
+  ps->NextSpecF( &kmat,   0.95, "Max fraction known");      // was 0.85
 
-  ps->NextSpecF( &temp,  5.0,  "Moving obj decay (sec)");
-  ps->NextSpecF( &fade, 30.0,  "Confidence decay (sec)");
+  ps->NextSpecF( &temp,  5.0,   "Moving obj decay (sec)");
+  ps->NextSpecF( &fade, 30.0,   "Confidence decay (sec)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -129,9 +132,9 @@ int jhcLocalOcc::nav_params (const char *fname)
   ps->NextSpecF( &pad,     1.5, "Robot clearance (in)");
   ps->NextSpecF( &lead,   18.0, "Path scan length (in)");
   ps->NextSpecF( &veer,   15.0, "Veer search (deg)");
-  ps->Skip();
   ps->NextSpecF( &block,   4.0, "Min path length (in)");
   ps->NextSpecF( &detour,  2.0, "Min goal advance (in)");
+  ps->NextSpecF( &hem,   6.0,  "Tight motion distance (in)");
 
   ps->NextSpecF( &stime,   0.3, "Backup delay (sec)");
   ps->NextSpecF( &btime,   2.0, "Max backup time (sec)");
@@ -221,6 +224,7 @@ void jhcLocalOcc::Reset ()
   set_spin(veer);
   stuck = 0;
   trip = 1;
+  box = 0;
 }
 
 
@@ -298,7 +302,8 @@ void jhcLocalOcc::adj_hist (double fwd, double lf, double dr)
 // floor is within "fbump" of fitted plane and is generally traversable area 
 // walls are map >= "zhi" (up to "hat" over camera) and define shape of environment
 // other non-zero map areas are likely obstacles (permanent or temporary)
-// takes about 8.9ms at 2.7GHz
+// should skip if camera is slewing rapidly (esp. tilt) like during a saccade
+// takes about 8.9ms at 2.7GHz - need to call ComputePaths
 
 int jhcLocalOcc::RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcMatrix& dir) 
 {
@@ -331,22 +336,16 @@ int jhcLocalOcc::RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcM
   }
   RemSmall(bad, bad, 0.0, drop);                   
   
-  // combine new scan with existing map and robot footprint
+  // do basic combination of new scan with existing map 
   mixin_scan(obst, conf, bad, dev);
-  block_bot(obst, conf);
-  RemSmall(bad, obst, 0.0, drop, 100);           // erase small problems
-  erase_blips(obst, bad);
-
-  // analyze travel directions and check doormat
-  build_spin(obst);
-  fresh = known_ahead(conf);
   return 1;
 }
+
 
 /*
 //= Find expected floor area and set height to lowest value (i.e. missing floor).
 // finds corners of sensing area at floor height, assumes roll = 0
-// similar to jhcOverhead3D::Footprint but more accurate
+// similar to jhcOverhead3D::Footprint but more accurate, superceded by BeamFill
 
 void jhcLocalOcc::expect_floor (jhcImg& dest) const
 {
@@ -460,6 +459,22 @@ void jhcLocalOcc::mixin_scan (jhcImg& obs, jhcImg& cf, const jhcImg& junk, const
 }
 
 
+//= Find allowable travel distances at various orientations.
+
+void jhcLocalOcc::ComputePaths ()
+{
+  // clean up new version of map
+  block_bot(obst, conf);
+  RemSmall(bad, obst, 0.0, drop, 100);      
+  erase_blips(obst, bad);
+
+  // analyze travel directions and check doormat
+  build_spin(obst);
+  known_ahead(known, fresh, conf);
+  status_vars();
+}
+
+
 //= Set area corresponding to robot (with padding) in rotated map to be floor.
 // needs 1 pixel extra padding all around to guarantee clr_paths succeeds 
 
@@ -486,6 +501,25 @@ void jhcLocalOcc::erase_blips (jhcImg& obs, const jhcImg& junk) const
     for (x = rw; x > 0; x--, m++, j++)
       if ((*m > 100) && (*j < 255))
         *m = 0;
+}
+
+
+//= Update overall situational status of sensing and motion potential.
+
+void jhcLocalOcc::status_vars ()
+{
+  // determine whether area directly in front of robot is known
+  if ((trip > 0) && (known >= kmat))
+    trip = 0;
+  else if ((trip <= 0) && (known < umat))
+    trip = 1;
+
+  // see if nearly no movement forward possible and doormat stale
+  if ((box > 0) && (fresh >= kmat))
+    box = 0;
+  else if ((box <= 0) && (fresh < umat))
+    if ((dist[ndir - 1] < hem) && (dist[ndir] < hem) && (dist[ndir + 1] < hem)) 
+      box = 1;
 }
 
 
@@ -533,6 +567,32 @@ double jhcLocalOcc::Ahead (double end) const
 double jhcLocalOcc::Behind (double end) const
 {
   return __max(0.0, dist[0] - end);
+}
+
+
+//= Determine what range of motion directions (within +/- hspan) is blocked.
+// returns 1 if some are blocked, 0 if none are (leaves lf and rt unchanged)
+
+int jhcLocalOcc::TightRng (double& lf, double& rt, double hspan) const
+{
+  double step = 180.0 / ndir;
+  int lo, hi, dev, hd = ROUND(hspan / step);
+ 
+  // look for first blocked direction
+  for (lo = -hd; lo <= hd; lo++)
+    if (dist[ndir + lo] < hem)
+      break;
+  if (lo > hd)
+    return 0;
+
+  // look for last blocked direction
+  for (dev = lo; dev <= hd; dev++)
+    if (dist[ndir + dev] < hem)
+      hi = dev;
+  rt = lo * step;
+  lf = hi * step;
+jprintf("TightRng: dev %d (%3.1f) to %d (%3.1f)\n", lo, rt, hi, lf);
+  return 1;
 }
 
 
@@ -591,6 +651,10 @@ void jhcLocalOcc::build_spin (const jhcImg& env)
   }
   dist[ndir] = __max(0.0, dist[ndir]);
   dist[0]    = __max(0.0, dist[0]);
+
+// can always turn in place
+for (int i = 0; i < nd2; i++)
+  dist[i] = __max(0.0, dist[i]);
 
   // find range of reachable orientations (deviations rt0 to lf1 are okay)
   for (rt0 = -1; rt0 >= -ndir; rt0--)
@@ -671,13 +735,14 @@ int jhcLocalOcc::clr_paths (double& fwd, double& rev, jhcImg& view) const
 //= See what fraction of pixels in front of robot are relatively fresh.
 // variant of jhcResize::Rigid without source pixel check or scaling
 
-double jhcLocalOcc::known_ahead (const jhcImg& cf) const
+void jhcLocalOcc::known_ahead (double& any, double& recent, const jhcImg& cf) const
 {
-  double cx = 0.5 * wmat, cy = 0.5 * hmat, off = rfwd + cy, rads = -D2R * raim;
+  double area, cx = 0.5 * wmat, cy = 0.5 * hmat, off = rfwd + cy, rads = -D2R * raim;
   double c = cos(rads), s = sin(rads), px = rx + x0 + off * s, py = ry + y0 + off * c; 
   int x, isx, isx0 = ROUND(65536.0 * (px - cx * c - cy * s) / ipp), is = ROUND(65536.0 * s);
   int y, isy, isy0 = ROUND(65536.0 * (py + cx * s - cy * c) / ipp), ic = ROUND(65536.0 * c);
-  int w = ROUND(wmat / ipp), h = ROUND(hmat / ipp), th = ROUND(rate * tmat / cwait), cnt = 0;
+  int v, th0 = ROUND(rate * tmat0 / cwait), th2 = ROUND(rate * (fade - tmat2) / cwait);
+  int w = ROUND(wmat / ipp), h = ROUND(hmat / ipp), cnt0 = 0, cnt2 = 0;
 
   // find closest source pixel and check against threshold
   for (y = h; y > 0; y--, isx0 += is, isy0 += ic)
@@ -685,10 +750,17 @@ double jhcLocalOcc::known_ahead (const jhcImg& cf) const
     isx = isx0;
     isy = isy0;
     for (x = w; x > 0; x--, isx += ic, isy -= is)
-      if (cf.ARef((isx + 32768) >> 16, (isy + 32768) >> 16) >= th)
-        cnt++;
+    {
+      v = cf.ARef((isx + 32768) >> 16, (isy + 32768) >> 16);
+      if (v >= th0)
+        cnt0++;
+      if (v >= th2)
+        cnt2++;
+    }
   }
-  return(cnt / (double)(w * h));
+  area = w * h;
+  any = cnt0 / area;
+  recent = cnt2 / area;
 }
 
 
@@ -732,19 +804,6 @@ double jhcLocalOcc::MoveLimit (double desired, double stop) const
   }
   lim = Behind(stop);
   return __max(desired, -lim);
-}
-
-
-//= Determine whether area directly in front of robot is known.
-// generally block motion until sure this is clear
-
-bool jhcLocalOcc::Blind () 
-{
-  if ((trip > 0) && (fresh >= kmat))
-    trip = 0;
-  else if ((trip <= 0) && (fresh < umat))
-    trip = 1;
-  return(trip > 0);
 }
 
 
@@ -846,91 +905,53 @@ double jhcLocalOcc::pick_dir (double td, double ta) const
 }
 
 
-//= Pick alternate direction and motion to achieve goal (forward or reverse).
-// tries to backup if distance "td" is negative and uses sensors in opposite direction
-// returns 1 if good heading found, 0 if no good choices
+//= Pick travel direction and distance to achieve given stopping offset from target.
+// target is "td" (in) away at angle "ta" (deg) relative to center of robot
+// "stop" is the desired distance (in) from the front of the robot to the target
 
-int jhcLocalOcc::Swerve (double& trav, double& head, double td, double ta) const
+void jhcLocalOcc::Swerve (double& trav, double& head, double td, double ta, double stop) 
 {
-  double prog[36];
-  double trads = D2R * ta, dr = PI / ndir, step = 180.0 / ndir;
-  double rd, len, sum, adv, diff, off, best = 0.0;
-  int dev, i, nd2 = 2 * ndir;
+  double rads = D2R * ta, tx = -td * sin(rads), ty = td * cos(rads), prog = 12.0, orient = 60.0;
+  double len, dx, dy, off, rem = td - stop, dr = PI / ndir, step = 180.0 / ndir, best = td;
+  int dev, aim, win;
 
-int dbg = 3;
-
-  // find progress toward goal possible by traveling along each beam
-  jprintf(2, dbg, "target %3.1f in @ %3.1f deg : search [%3.1f %3.1f]\n", td, ta, rt0 * step, lf1 * step);
-  for (dev = rt0; dev <= lf1; dev++)
-  {
-    // adjust sensor number for backward travel but store progress at forward orientation 
-    i = ndir + dev;
-    if (td < 0.0)
-      i = (nd2 + dev) % nd2;
-    rd = __max(0.0, dist[i]);
-    len = rd * cos(dev * dr - trads);
-    prog[ndir + dev] = __min(len, fabs(td));
-  }
-
-  // search reachable directions for suitably long paths
-  head = 0.0;
-  trav = 0.0;
-  for (dev = rt0; dev <= lf1; dev++)
-  {
-    // adjust sensor number for backward travel then check minimums
-    i = ndir + dev;
-    if (td < 0.0)
-      i = (nd2 + dev) % nd2;
-    if ((dist[i] < block) || (prog[ndir + dev] < detour))
-    {
-      jprintf(3, dbg, "  %4.0f: prog %5.1f beam %5.1f\n", dev * step, prog[ndir + dev], dist[i]); 
-      continue;
-    }
-
-    // smooth progress over adjacent three beams (if reachable)
-    sum = 2.0 * prog[ndir + dev];
-    if (dev > rt0)
-      sum += prog[ndir + dev - 1];    
-    if (dev < lf1)
-      sum += prog[ndir + dev + 1];  
-    sum /= 4.0;
-    jprintf(3, dbg, "  %4.0f: prog %5.1f, avg %5.1f ***\n", dev * step, prog[ndir + dev], sum);
-
-    // figure out heading deviation from direct path
-    diff = fabs(dev * step - ta);
-    if (diff > 180.0)
-      diff = 360.0 - diff;
-
-    // keep beam direction with most progress (or closest toward goal)
-    if ((trav == 0.0) || (sum > best) || 
-        ((sum == best) && (prog[ndir + dev] > adv)) ||
-        ((sum == best) && (prog[ndir + dev] == adv) && (diff < off)))
-    {
-      best = sum;
-      adv = prog[ndir + dev];
-      off = diff;
-      head = dev * step;  
-      trav = dist[i];
-    }
-  }
-
-  // possibly restore full distance (for speed control)
-  if (trav == 0.0)
-    return 0;
-  trav = __min(trav, fabs(td));
-  if (trav >= lead)
-    trav = td;
-  else if (td < 0.0)
-    trav = -trav;
-
-  // possibly restore exact heading if close to winner
-  diff = fabs(head - ta);
-  if (diff > 180.0)
-    diff = 360.0 - diff;
-  if (diff < (90.0 / ndir))              
+  // pick heading - go direct if final leg 
+  aim = ROUND(fabs(ta) / step);
+  if (ta < 0.0)
+    aim = -aim;
+  if ((dist[ndir + aim] + rfwd) >= rem)
     head = ta;
-  jprintf(2, dbg, "  pick_dir = %3.1f degs -> avg %3.1f [prog %3.1f], go %3.1f\n", head, best, adv, trav);
-  return 1;
+  else 
+  {
+    // find beam end (= robot middle) closest to target
+    win = aim;
+    for (dev = rt0; dev < lf1; dev++) 
+    {
+      rads = dev * dr;
+      len = dist[ndir + dev];
+      dx = tx + len * sin(rads);
+      dy = ty - len * cos(rads);
+      off = sqrt(dx * dx + dy * dy);
+      if (off <= best)
+      {
+        win = dev;
+        best = off;
+      }
+    }
+
+    // aim direct if choice is close or no progress will be made
+    if ((win == aim) || (dist[ndir + win] < prog))
+      head = ta;
+    else
+      head = win * step;
+  }
+
+  // pick travel - reduce distance based on alignment
+  trav = dist[ndir];
+  if (fabs(head) > orient)
+    trav = 0.0;
+  else if (head == ta)
+    trav = __max(0.0, __min(trav, rem));
 }
 
 
@@ -1055,20 +1076,33 @@ int jhcLocalOcc::Dists (jhcImg& dest, int rot) const
 
 //= Show distance robot can move in various directions that it can actually achieve.
 // skips all directions the robot cannot turn in place to reach
+// if half > 0 then only shows forward +/- 90 and reverse +/- 75 degs
 
-int jhcLocalOcc::Paths (jhcImg& dest, int rot) const
+int jhcLocalOcc::Paths (jhcImg& dest, int half, int rot) const
 {
   const jhcImg *ref = ((rot > 0) ? &dest : NULL);
   double d, c, s, len, off = rside / ipp, dr = D2R * 180.0 / ndir;
-  double rx0, ry0, rads, rads0 = robot_pose(rx0, ry0, ref) + rt0 * dr;
-  int i, dev, dev2, nd2 = 2 * ndir;
+  double rx0, ry0, rads, rads0 = robot_pose(rx0, ry0, ref);
+  int i, dev, dev2, f0 = rt0, f1 = lf1, b0 = f0, b1 = f1, nd2 = 2 * ndir, fcol = 230;
 
   if (!dest.Valid(1, 3))
     return Fatal("Bad images to jhcLocalOcc::Paths");
 
+  // adjust for partial display of paths
+  if (half > 0)
+  {
+    f0 = -ndir / 2;
+    f1 =  ndir / 2;
+    f0 = __max(f0, rt0);
+    f1 = __min(f1, lf1);
+    b0 = f0 + 1;
+    b1 = f1 - 1;
+    fcol = 180;
+  }
+
   // backward travel (might duplicate forward at 180 degs opposite)
-  rads = rads0;
-  for (dev = rt0; dev <= lf1; dev++, rads += dr)
+  rads = rads0 + b0 * dr;
+  for (dev = b0; dev <= b1; dev++, rads += dr)
   {
     i = (nd2 + dev) % nd2;
     dev2 = i - ndir;
@@ -1082,16 +1116,56 @@ int jhcLocalOcc::Paths (jhcImg& dest, int rot) const
   }
 
   // forward travel (preferred, so yellow takes precedence)  
-  rads = rads0;
-  for (dev = rt0; dev <= lf1; dev++, rads += dr)
-    if ((d = dist[ndir + dev]) > 0.0)
+  rads = rads0 + f0 * dr;
+  for (dev = f0; dev <= f1; dev++, rads += dr)
+    if (((d = dist[ndir + dev]) > 0.0) || (half > 0))
     {
       c = cos(rads);
       s = sin(rads);
       len = (rfwd + d) / ipp;
-      DrawLine(dest, rx0 + off * c, ry0 + off * s, rx0 + len * c, ry0 + len * s, 3, 230);
+      DrawLine(dest, rx0 + off * c, ry0 + off * s, rx0 + len * c, ry0 + len * s, 3, fcol);
     }
   return 1;
+}
+
+
+//= Show commanded motion as a line emanating from robot to where front will end up.
+
+int jhcLocalOcc::RobotCmd (jhcImg& dest, double head, double trav) const
+{
+  double c, s, rx0, ry0, off = rside / ipp, rads = D2R * head, len = (trav + rfwd) / ipp;
+
+  if (!dest.Valid(1, 3))
+    return Fatal("Bad images to jhcLocalOcc::RobotCmd");
+  if (trav == 0.0)
+    return 1;
+
+  if (trav < 0.0)
+    rads += PI;
+  c = cos(rads);
+  s = sin(rads);
+  robot_pose(rx0, ry0, &dest);
+  return DrawLine(dest, rx0 - off * s, ry0 + off * c, rx0 - len * s, ry0 + len * c, 3, 230);
+}
+
+
+//= Figures out coordinates for robot center and returns heading in radians.
+// if dest is non-null then centers robot in image with direction of travel being upward
+
+double jhcLocalOcc::robot_pose (double& rx0, double& ry0, const jhcImg *ref) const
+{ 
+  // adjusted position and angle of robot in big map
+  if (ref == NULL)
+  {
+    rx0 = (rx + x0) / ipp;
+    ry0 = (ry + y0) / ipp;
+    return(D2R * (raim + 90.0));
+  }
+
+  // center of image pointed up (typically for spin)
+  rx0 = 0.5 * ref->XLim();
+  ry0 = 0.5 * ref->YLim();
+  return(D2R * 90.0);
 }
 
 
@@ -1143,23 +1217,28 @@ int jhcLocalOcc::ScanBeam (jhcImg& dest) const
 }
 
 
-//= Figures out coordinates for robot center and returns heading in radians.
-// if dest is non-null then centers robot in image with direction of travel being upward
+//= Draw a circle on map for some sort of target the robot is trying to reach.
+// (tx ty) is the target location in inches relative to the robot (y is forward)
+// if polar >= 0 then tx is distance to target and ta is angle (in degs)
+// only configured to work for large fixed map images (not spin)
 
-double jhcLocalOcc::robot_pose (double& rx0, double& ry0, const jhcImg *ref) const
+int jhcLocalOcc::Target (jhcImg& dest, double tx, double ty, int polar) const 
 {
-  // adjusted position and angle of robot in big map
-  if (ref == NULL)
-  {
-    rx0 = (rx + x0) / ipp;
-    ry0 = (ry + y0) / ipp;
-    return(D2R * (raim + 90.0));
-  }
+  double trads, cx = 0.5 * dest.XLim(), cy = 0.5 * dest.YLim(), dx = tx, dy = ty;
 
-  // center of image pointed up (typically for spin)
-  rx0 = 0.5 * ref->XLim();
-  ry0 = 0.5 * ref->YLim();
-  return(D2R * 90.0);
+  if (!dest.Valid(1, 3) || !dest.SameSize(map))
+    return Fatal("Bad images to jhcLocalOcc::Target");
+  if (polar > 0)
+  {
+    trads = D2R * (ty + 90.0);
+    dx = tx * cos(trads);
+    dy = tx * sin(trads);
+  }
+  cx += dx / ipp;
+  cy += dy / ipp;
+  CircleEmpty(dest, cx, cy, 6.0 / ipp, 3, -8);   // black circle
+  Cross(dest, cx, cy, 17, 17, 3, -5);            // magenta cross
+  return 1;
 }
 
 

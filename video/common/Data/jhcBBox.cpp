@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2017 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2201,7 +2202,7 @@ int jhcBBox::DrawPatch (jhcImg& dest, int sth) const
 
 //= Draws a rectangular frame for each bbox over top of another image.
 // Can restrict to bboxes with status at or above specified value.
-// color of box determined by index value
+// color of box determined by index value (avoids black and white)
 // returns number of boxes drawn
 // NOTE: for tight contour around object see jhcGroup::DrawBorder
 
@@ -2215,7 +2216,7 @@ int jhcBBox::DrawOutline (jhcImg& dest, int sth, double mag) const
     {
       items[i].RoiSpecs(&x, &y, &w, &h);
       jd.RectEmpty(dest, ROUND(mag * x), ROUND(mag * y), 
-                   ROUND(mag * w), ROUND(mag * h), 3, -i);
+                   ROUND(mag * w), ROUND(mag * h), 3, -((i % 6) + 1));
       n++;
     }
   return n;

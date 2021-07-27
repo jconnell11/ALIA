@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,11 +42,12 @@ jhcBumps::~jhcBumps ()
 
 jhcBumps::jhcBumps (int n)
 {
-  double noise = P2I(4.0);           // 4 pixels 
+  double noise = P2I(4.0);             // 4 pixels 
 
   // size detection and tracking
   strcpy_s(name, "bump");
   total = 0;
+  alt_blob = NULL;                     // for jhcSurfObjs  
   SetCnt(n);
 
   // surface height histogram and peak histogram
@@ -55,7 +56,7 @@ jhcBumps::jhcBumps (int n)
 
   // set default tracking values
   pos.SetName("bump");
-  pos.SetTrack(6.0, 6.0, 6.0, 0.25, 0.0, 0.0, 2.0);            // was 8", 2", 1", then 12" (12Hz) 
+  pos.SetTrack(1.0, 1.0, 1.0, 0.5, 0.0, 0.0, 2.0, 0.1);        // was 8", 2", 1", 12" (12Hz), then 6" 
   pos.SetFilter(noise, noise, noise, 0.8, 0.8, 0.2, 10, 30);   // was all 0.1 then 0.2
 
   // background thread parameter
@@ -83,6 +84,8 @@ void jhcBumps::SetCnt (int n)
   total = n;
   pos.SetSize(total);
   blob.SetSize(2 * total);
+  if (alt_blob != NULL)
+    alt_blob->SetSize(2 * total);
 
   // make up shape smoothing arrays for tracks
   shp = new double * [total];
@@ -94,6 +97,10 @@ void jhcBumps::SetCnt (int n)
   raw = new double * [rlim];
   for (i = 0; i < rlim; i++)
     raw[i] = new double [11];     // x, y, z, w, l, h, maj, min, ang, ex, ey 
+
+  // record detection method and raw component number
+  ralt = new int [rlim];
+  rlab = new int [rlim];
 
   // auxiliary object-person array
   touch = new int [total];
@@ -108,6 +115,10 @@ void jhcBumps::dealloc ()
 
   // auxiliary object-person array
   delete [] touch;
+
+  // detection method and raw component label
+  delete [] rlab; 
+  delete [] ralt;
 
   // frame-by-frame detections
   if (raw != NULL)
@@ -142,14 +153,14 @@ int jhcBumps::detect_params (const char *fname)
   sprintf_s(tag, "%s_det", name);
   ps->SetTag(tag, 0);
   ps->NextSpec4( &sm,     5,    "Map interpolation (pel)");    // was 9 then 11 then 7
-  ps->NextSpec4( &pmin,  10,    "Min averaging (pel)");        // was 3, 0 then 22
+  ps->NextSpec4( &pmin,   4,    "Min averaging (pel)");        // was 3, 0, 22 then 10
   ps->NextSpecF( &hobj,   0.75, "Object ht threshold (in)");   // was 0.5 then 1.0
   ps->NextSpecF( &htol,   0.25, "Object ht tolerance (in)");   
-  ps->NextSpec4( &sc,     5,    "Evidence smoothing (pel)");   // was 7
-  ps->NextSpec4( &sth,   80,    "Shape binary threshold");
+  ps->NextSpec4( &sc,     7,    "Evidence smoothing (pel)");   // was 5
+  ps->NextSpec4( &sth,   60,    "Shape binary threshold");     // was 80
 
-  ps->NextSpec4( &amin,  50,    "Min blob area (pel)");        // was 50, 20, 200, then 100
-  ps->NextSpecF( &hmix,   1.0,  "Height estimate mixing");     // was 0.05
+  ps->NextSpec4( &amin, 150,    "Min blob area (pel)");        // was 50, 20, 200, then 100
+  ps->NextSpecF( &hmix,   0.0,  "Height estimate mixing");     // was 0.05 then 1.0
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -167,7 +178,7 @@ int jhcBumps::shape_params (const char *fname)
   sprintf_s(tag, "%s_size", name);
   ps->SetTag(tag, 0);
   ps->NextSpecF( &xyf,   0.85, "Shrink lateral sizes");
-  ps->NextSpecF( &zf,    0.9,  "Shrink height");
+  ps->NextSpecF( &zf,    0.96, "Shrink height");           // was 0.9
   ps->Skip();
   ps->NextSpecF( &xymix, 0.1,  "Lateral update rate");
   ps->NextSpecF( &zmix,  0.1,  "Height update rate");
@@ -197,7 +208,7 @@ int jhcBumps::target_params (const char *fname)
   ps->NextSpecF( &tht1,  2.5, "Max target height (in)");
   ps->NextSpecF( &tht0,  0.7, "Min target height (in)");
 
-  ps->NextSpec4( &tcnt,    1, "Max number to detect");
+  ps->NextSpec4( &tcnt,    0, "Max number to detect");     // "target"
   ps->NextSpec4( &hold,    0, "Track while holding");    
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
@@ -344,7 +355,9 @@ int jhcBumps::Analyze (int trk)
 {
   // detect clearly separated objects
   raw_objs(trk);
-  obj_boxes();
+  nr = 0;
+  obj_boxes(&blob, 0);                 // depth
+  obj_boxes(alt_blob, 1);              // color (from jhcSurfObjs)
 
   // match detections to tracks then salvage grabbed objects
   pos.MatchAll(raw, nr, 0, shp);
@@ -366,6 +379,7 @@ int jhcBumps::Analyze (int trk)
 
 //= Find candidate object pixels in overhead map.
 // uses image "map" to yield info in "cc" image and "blob" analyzer
+// overridden by jhcSurfObjs
 
 void jhcBumps::raw_objs (int trk)
 {
@@ -387,7 +401,7 @@ void jhcBumps::raw_objs (int trk)
   // thin out then get properties
   BoxAvg(obj, obj, sc);
   CComps4(cc, obj, amin, 180);
-  blob.FindParams(cc);           
+  blob.FindParams(cc);
 
   // suppress components extending beyond table
   if (surf > 0)
@@ -397,48 +411,57 @@ void jhcBumps::raw_objs (int trk)
 
 //= Get real coordinates of bounding boxes for all detections.
 // detections stored in "raw" (xyz[11]) array (x, y, z, w, l, h, maj, min, ang, ex, ey)
+// if "flat" is positive, assumes flat object and is not fussy about measured height
 
-void jhcBumps::obj_boxes ()
+void jhcBumps::obj_boxes (jhcBlob *b, int flat)
 {
-  jhcRoi area;
   double *xyz;
-  double ht;
-  int i, n = blob.Active();
+  double ht, hdef = 0.5 * (hobj - htol);
+  int i, n;
+
+  // assumes nr set to zero outside
+  if (b == NULL) 
+    return;
+  n = b->Active();
 
   // collect bounding boxes centers and sizes
-  nr = 0;
   for (i = 0; i < n; i++)
-    if (blob.GetStatus(i) > 0)
+    if (b->GetStatus(i) > 0)
     {
-      // determine true object height (apply shrinking)
-      blob.GetRoi(area, i);
-      ht = zf * find_max(map2, cc, i, area);    
-      if (ht <= 0.0)
+      // determine true object height then apply shrinking (zf)
+      ht = zf * find_hmax(i, b->ReadRoi(i));
+      if (flat > 0)
+        ht = __max(hdef, ht);                    // for flat objects
+      else if (ht <= 0.0)
       {
-        // punt if just noise
-        blob.SetStatus(i, 0);
+        // punt if just noise instead of protrusion
+        b->SetStatus(i, 0);
         continue;
       }
 
       // make new entry and record position (bounding box center, not centroid)
       xyz = raw[nr];
-      xyz[0] = P2I(blob.BoxAvgX(i)) - x0;
-      xyz[1] = P2I(blob.BoxAvgY(i)) - y0;
+      xyz[0] = P2I(b->BoxAvgX(i)) - x0;
+      xyz[1] = P2I(b->BoxAvgY(i)) - y0;
       xyz[2] = 0.5 * ht + ztab;
 
       // record dimensions (compensate for bloat)
-      xyz[3] = xyf * P2I(blob.BoxW(i));
-      xyz[4] = xyf * P2I(blob.BoxH(i));
+      xyz[3] = xyf * P2I(b->BoxW(i));
+      xyz[4] = xyf * P2I(b->BoxH(i));
       xyz[5] = ht;
 
       // record equivalent ellipse (compensate for bloat)
-      xyz[6] = xyf * P2I(blob.BlobLength(i));
-      xyz[7] = xyf * P2I(blob.BlobWidth(i));
-      xyz[8] = blob.BlobAngle(i, 1);        
+      xyz[6] = xyf * P2I(b->BlobLength(i));
+      xyz[7] = xyf * P2I(b->BlobWidth(i));
+      xyz[8] = b->BlobAngle(i, 1);        
 
       // assume no fingertip point needed
-      xyz[9]  = -1;
-      xyz[10] = -1;
+      xyz[9]  = -1.0;
+      xyz[10] = -1.0;
+
+      // record source image and which component used 
+      ralt[nr] = flat;
+      rlab[nr] = i;
       if (++nr >= rlim)
         break;
     }
@@ -449,17 +472,17 @@ void jhcBumps::obj_boxes ()
 // used to find single max, now uses histogram for noise robustness
 // returns converted height value in inches (relative to table)
 
-double jhcBumps::find_max (const jhcImg& val, const jhcImg& comp, int i, const jhcRoi& area) 
+double jhcBumps::find_hmax (int i, const jhcRoi *area) 
 {
-  int vsk = val.RoiSkip(area), csk = comp.RoiSkip(area) >> 1;
-  int x, y, rw = area.RoiW(), rh = area.RoiH();
-  const US16 *c = (const US16 *) comp.RoiSrc(area);
-  const UC8 *v = val.RoiSrc(area);
+  int vsk = map.RoiSkip(*area), csk = cc.RoiSkip(*area) >> 1;
+  int x, y, rw = area->RoiW(), rh = area->RoiH();
+  const US16 *c = (const US16 *) cc.RoiSrc(*area);
+  const UC8 *v = map.RoiSrc(*area);                        // was map2
 
   pks.Fill(0);
-  for (y = rh; y > 0; y--, v += vsk, c += csk)
-    for (x = rw; x > 0; x--, v++, c++)
-      if (*c == i)
+  for (y = rh; y > 0; y--, c += csk, v += vsk)
+    for (x = rw; x > 0; x--, c++, v++)
+      if ((*c == i) && (*v > 0))
         pks.AInc(*v, 1);
   return DZ2I(pks.MaxBinN(pcnt));
 }
@@ -529,6 +552,7 @@ void jhcBumps::adj_shapes ()
 
 //= Generate fake detections for tracked objects under presumed arms.
 // assumes nr2 = nr at start
+// overridden by jhcSurfObjs
 
 void jhcBumps::occluded ()
 {
@@ -907,6 +931,21 @@ int jhcBumps::ObjID (int i, int trk) const
 }
 
 
+//= Given an identifier figure out if it is associated with any current track.
+// returns track number if found, negative for none
+
+int jhcBumps::ObjTrack (int id) const
+{
+  int t, n = pos.Limit();
+
+  if (id > 0)
+    for (t = 0; t < n; t++)
+      if (pos.Valid(t) == id)
+        return t; 
+  return -1;
+}
+
+
 //= Text tag associated with object.
 
 const char *jhcBumps::ObjDesc (int i, int trk) const
@@ -996,6 +1035,7 @@ double jhcBumps::Minor (int i, int trk) const
 
 
 //= Orientation of major axis of equivalent ellipse for object.
+// returns degrees from 0 to 180
 
 double jhcBumps::Angle (int i, int trk) const 
 {
@@ -1047,81 +1087,65 @@ bool jhcBumps::Contact (int i, int trk) const
 }
 
 
-///////////////////////////////////////////////////////////////////////////
-//                        Image Region Selection                         //
-///////////////////////////////////////////////////////////////////////////
+//= Whether track with given index came from height (0) or color (1) detector.
 
-//= Get binary mask for whole object relative to color image.
-// pads by one black pixel all around and sets destination ROI
-// can optionally clear whole original image for prettier debugging
-
-int jhcBumps::ObjMask (jhcImg& dest, int i, int clr) const
+int jhcBumps::Flat (int i) const
 {
-  // set default and sanity check
-  if (clr > 0)
-    dest.FillMax(0);
-  if ((i < 0) || (i >= pos.Limit()))
-    return 0;
-
-//look at all object pixels in map and convert to source image
-//  return oblob.TightMask(dest, occ, n, 1);
-  return 0;
+  return((ObjOK(i, 1)) ? ralt[i] : -1);
 }
 
 
-//= Get binary mask for top portion of object relative to color image.
-// pads by one black pixel all around and sets destination ROI
-// can optionally clear whole original image for prettier debugging
+//= Tell the label in the connect component image for most recent raw detection.
 
-int jhcBumps::TopMask (jhcImg& dest, int i, double frac, int clr) const
+int jhcBumps::Component (int i) const
 {
-  // set default and sanity check
-  if (clr > 0)
-    dest.FillMax(0);
-  if ((i < 0) || (i >= pos.Limit()))
-    return 0;
+  int det = pos.DetectFor(i);
 
-  return 0;
+  return((det >= 0) ? rlab[det] : -1);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                       Semantic Network Functions                      //
+//                            Display Helpers                            //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Associate some track index (not ID) with a particular semantic network node.
+//= Set the display string for the object with the given index.
 
-void jhcBumps::SetNode (int i, void *n)
+void jhcBumps::SetTag (int i, const char *txt)
 {
   if ((i >= 0) && (i < pos.Limit()))
-    pos.node[i] = n;
+    strcpy_s(pos.tag[i], 80, txt);
 }
 
 
-//= Retrieve the semantic network node associated with some track index (not ID).
+//= Retrieve tag associated with object have given index.
 
-void *jhcBumps::GetNode (int i) const
+const char *jhcBumps::GetTag (int i) const
 {
   if ((i >= 0) && (i < pos.Limit()))
-    return pos.node[i];
+    return pos.tag[i];
   return NULL;
 }
 
 
-//= Find the track index (not ID) linked to a particular semantic nework node.
-// only considers valid tracks (ID assigned and not retracted)
-// returns negative if nothing found
+//= Set state value for the object with the given index.
 
-int jhcBumps::NodeIndex (void *n) const
+int jhcBumps::SetState (int i, int val)
 {
-  int i, lim = pos.Limit();
+  if ((i >= 0) && (i < pos.Limit()))
+    pos.state[i] = val;
+  return val;
+}
 
-  if (n != NULL)
-    for (i = 0; i < lim; i++)
-      if ((pos.Valid(i) > 0) && (pos.node[i] == n))
-        return i;
+
+//= Retrieve state value associated with object have given index.
+
+int jhcBumps::GetState (int i) const
+{
+  if ((i >= 0) && (i < pos.Limit()))
+    return pos.state[i];
   return -1;
-} 
+}
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1321,6 +1345,37 @@ int jhcBumps::MinID (int trk) const
        win = i;
      }
   return win;
+}
+
+
+//= For a given position in map find out associated object index (not ID).
+// assumes (mx my) wrt overhead "map" at normal scale
+// returns index of first containing box (may be several) or negative for none
+
+int jhcBumps::ClickN (int mx, int my, int trk) const
+{
+  jhcRoi box;
+  double *xyz, *wlh;
+  int i, n = pos.Limit();
+
+  if (trk == 0)
+    for (i = 0; i < nr2; i++)
+    {
+      xyz = raw[i];
+      box.SetCenter(W2X(xyz[0]), W2Y(xyz[1]), I2P(xyz[3]), I2P(xyz[4]));
+      if (box.RoiContains(mx, my) > 0)
+        return i;
+    }
+  else
+    for (i = 0; i < n; i++)
+      if (pos.Valid(i) > 0)
+      {
+        wlh = shp[i];
+        box.SetCenter(W2X(pos.TX(i)), W2Y(pos.TY(i)), I2P(wlh[0]), I2P(wlh[1]));
+        if (box.RoiContains(mx, my) > 0)
+          return i;
+      }
+  return -1;
 }
 
 
@@ -1559,7 +1614,7 @@ int jhcBumps::RawBox (jhcImg& dest, int i, int num, int invert)
 
 //= Show current object locations and numbers on color or depth input image.
 // needs to know which sensor input to plot relative to
-// can optionally show raw or tracked version 
+// can optionally show raw or tracked version (trk < 0 is multi-color tracked)
 
 int jhcBumps::ObjsCam (jhcImg& dest, int cam, int trk, int rev, int style)
 {
@@ -1576,12 +1631,11 @@ int jhcBumps::ObjsCam (jhcImg& dest, int cam, int trk, int rev, int style)
 
   // find projection of oriented flat rectangle for detection
   // then draw box on image, red if touched
-  if (trk <= 0)
+  if (trk == 0)
     for (i = 0; i < nr2; i++)
     {
       xyz = raw[i];
       ImgPrism(box, xyz[0] + dx, xyz[1] + y0, xyz[2], xyz[8], xyz[6], xyz[7], xyz[5], sc); 
-      box.ScaleRoi(sc);
       if (rev > 0)
         box.MirrorRoi(w);
       col = ((i > nr) ? 1 : 2); 
@@ -1594,10 +1648,12 @@ int jhcBumps::ObjsCam (jhcImg& dest, int cam, int trk, int rev, int style)
       {
         wlh = shp[i];
         ImgPrism(box, pos.TX(i) + dx, pos.TY(i) + y0, pos.TZ(i), wlh[5], wlh[3], wlh[4], wlh[2], sc); 
-        box.ScaleRoi(sc);
         if (rev > 0)
           box.MirrorRoi(w);
-        col = ((Contact(i)) ? 1 : 2);
+        if (trk > 0)
+          col = ((Contact(i)) ? 1 : 2);                    // red if touched, otherwise green       
+        else
+          col = ((id % 6) + 1);                            // color depends on ID
         RectEmpty(dest, box, 3, -col);
         LabelBox(dest, box, label(i, style), -16, -col);
       }

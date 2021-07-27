@@ -52,6 +52,7 @@ public:
   // creation and initialization
   ~jhcNetRef ();
   jhcNetRef (jhcNodePool *u =NULL, double bmin =0.5);
+  void RefMode (int mode) {refmode = mode;}
 
   // language interpretation
   jhcNetNode *FindMake (jhcNodePool& add, int find =0, jhcNetNode *f0 =NULL, 

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +39,7 @@
 // handles fusion of sensors into a unified overhead view
 // links sensors to detection and tracking part
 // <pre>
-// class tree and parameters:
+// class tree and parameters (+ = member, > = pointer):
 //
 //   Stare3D         
 //     Track3D       tps tps2
@@ -79,6 +80,7 @@ public:
   int PersonLim (int trk =1) const;
   bool PersonOK (int i, int trk =1) const;
   int PersonID (int i, int trk =1) const;
+  int PersonState (int i, int trk =1) const;
   bool Named (int i, int trk =1) const;
   const jhcBodyData *GetPerson (int i, int trk =1) const;
   jhcBodyData *RefPerson (int i, int trk =1);
@@ -88,7 +90,9 @@ public:
   int PersonTouch (double wx, double wy, int trk =1);
 
   // useful analysis data
-  int Closest (int trk =1) const;
+  int Closest (double front =0.0, int trk =1) const;
+  int ClosestID (double front =0.0) const 
+    {return PersonID(Closest(front));}
   int Head (jhcMatrix& full, int i, int trk =1) const;
   double Height (int i, int trk =1) const;
   int Hand (jhcMatrix& full, int i, int rt =1, int trk =1) const;

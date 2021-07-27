@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2018 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ jhcSmTrack::jhcSmTrack (int n)
 
   // processing values
   bin_sz = 0.5;
-  SetTrack(1.0, 1.0, 1.0, 0.2, 0.0, 0.0, 2.0);
+  SetTrack(1.0, 1.0, 1.0, 0.2, 0.0, 0.0, 2.0, 0.1);
   SetFilter(3.0, 3.0, 3.0, 0.1, 0.1, 0.1, 5, 5);
 
   // assume direction of x and y axes is meaningful
@@ -116,10 +116,6 @@ int jhcSmTrack::SetSize (int n)
       ok = 0;
   }
 
-  // semantic network bindings
-  if ((node = new void * [n]) == NULL)
-    ok = 0;
-
   // check for success
   if (ok > 0)
     total = n;
@@ -132,9 +128,6 @@ int jhcSmTrack::SetSize (int n)
 void jhcSmTrack::dealloc ()
 {
   int i;
-
-  // semantic network bindings
-  delete [] node;
 
   // get rid of coordinate and matching arrays
   if (tag != NULL)
@@ -228,6 +221,7 @@ int jhcSmTrack::track_params (const char *fname)
   ps->NextSpecF( &daf,      "Angle diff wt (deg/in)");
 
   ps->NextSpecF( &rival,    "Elder preference ratio");
+  ps->NextSpecF( &fermi,    "Max overlap for new");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -236,7 +230,7 @@ int jhcSmTrack::track_params (const char *fname)
 
 //= Set tracking parameters in same order as in configuration file line.
 
-void jhcSmTrack::SetTrack (double dx, double dy, double dz, double f, double sw, double aw, double rv)
+void jhcSmTrack::SetTrack (double dx, double dy, double dz, double f, double sw, double aw, double rv, double lap)
 {
   close[0] = dx;
   close[1] = dy;
@@ -245,6 +239,7 @@ void jhcSmTrack::SetTrack (double dx, double dy, double dz, double f, double sw,
   dsf = sw;
   daf = aw;
   rival = rv;
+  fermi = lap;
 }
 
 
@@ -374,9 +369,9 @@ void jhcSmTrack::MatchAll (const double * const *detect, int n, int rem, const d
   if (rem > 0)
     Prune();
 
-  // make new track entries for all remaining detections
+  // make new track entries for most remaining detections
   for (j = 0; j < nt; j++)
-    if (back[j] < 0)
+    if ((back[j] < 0) && !disputed(detect[j], shp))
     {
       i = add_track(detect[j]);
       back[j] = i;
@@ -606,6 +601,74 @@ void jhcSmTrack::greedy_pair (const double * const *detect, int n, int solid)
 }
 
 
+//= Says whether raw detection describes space that is already claimed by some track.
+// helps stop "sparkling" when a big object is sometimes broken into smaller pieces
+// index j references "pos" (trk[3]) is (x, y, z) after Kalman smoothing
+// "shp[6]" is track shape info                  (w, l, h, maj, min, ang)
+// "item[9]" is the detection candidate (x, y, z, w, l, h, maj, min, ang)
+
+bool jhcSmTrack::disputed (const double *item, const double * const *shp) const
+{
+  const double *xyz, *wlh;
+  double idx, idy, idz, ix0, ix1, iy0, iy1, iz0, iz1;
+  double tx0, tx1, ty0, ty1, tz0, tz1, span, f;
+  int i;
+
+  // get limits of detection blob (but only if track info to compare it to)
+  if ((shp == NULL) || (fermi >= 1.0))
+    return false;
+  idx = item[3];
+  idy = item[4];
+  idz = item[5];
+  ix0 = item[0] - 0.5 * idx; 
+  ix1 = item[0] + 0.5 * idx;
+  iy0 = item[1] - 0.5 * idy;
+  iy1 = item[1] + 0.5 * idy;
+  iz0 = item[2] - 0.5 * idz; 
+  iz1 = item[2] + 0.5 * idz;
+
+  // look at all tracks that were bound to raw detections this cycle
+  for (i = 0; i < valid; i++)
+    if ((id[i] >= 0) && (back[i] >= 0))
+    {
+      // get position and axis-parallel cube dimensions of track
+      xyz = pos[i];
+      wlh = shp[i];
+
+      // compute overlap in x direction
+      tx0 = xyz[0] - 0.5 * wlh[0];
+      tx1 = xyz[0] + 0.5 * wlh[0];
+      span = __min(ix1, tx1) - __max(ix0, tx0);
+      if (span <= 0.0)
+        continue;
+      f = span / idx;
+      if (f <= fermi)
+        continue;
+
+      // compute overlap in y direction
+      ty0 = xyz[1] - 0.5 * wlh[1];
+      ty1 = xyz[1] + 0.5 * wlh[1];
+      span = __min(iy1, ty1) - __max(iy0, ty0);
+      if (span <= 0.0)
+        continue;
+      f *= span / idy;
+      if (f <= fermi)
+        continue;
+
+      // compute overlap in z direction
+      tz0 = xyz[2] - 0.5 * wlh[2];
+      tz1 = xyz[2] + 0.5 * wlh[2];
+      span = __min(iz1, tz1) - __max(iz0, tz0);
+      if (span <= 0.0)
+        continue;
+      f *= span / idz;
+      if (f > fermi)
+        return true;         // too much overlap
+  }
+  return false;
+}
+
+
 //= Force pairing of some detection to a particular track.
 // remove items from further consideration
 
@@ -692,7 +755,6 @@ int jhcSmTrack::add_track (const double *item)
 
   // clear text description and reset state
   (tag[i])[0] = '\0';
-  node[i] = NULL;
   state[i] = 0;
 
   // assign brand new track to item (probationary at start)
@@ -782,7 +844,7 @@ void jhcSmTrack::Penalize (int i)
 
 
 //= Increment miss count and possibly remove some track. 
-// always returns 0 for oconvenience
+// always returns 0 for convenience
 
 int jhcSmTrack::mark_miss (int i)
 {

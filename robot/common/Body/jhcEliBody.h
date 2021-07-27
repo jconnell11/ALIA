@@ -31,6 +31,7 @@
 #include "Data/jhcImg.h"                   // common video
 #include "Data/jhcParam.h"
 #include "Interface/jms_x.h"
+#include "Processing/jhcHist.h"
 #include "Processing/jhcLUT.h"
 #include "Processing/jhcResize.h"
 #include "Video/jhcVideoSrc.h"
@@ -46,15 +47,50 @@
 
 //= Controls all mechanical aspects of Eli Robot (arm, neck, base, lift).
 // also interfaces to Kinect depth camera and array microphone
+// <pre>
+// class tree overview (+ = member, > = pointer):
+//
+//   EliBody
+//     +EliArm
+//       +Joint (7)
+//         MotRamp
+//         >Dynamixel
+//       +MotRamp (3)        coordinated motion
+//       >Dynamixel            
+//     +EliNeck
+//       +Joint (2)
+//         MotRamp
+//         >Dynamixel
+//       >Dynamixel
+//     +EliBase
+//       +MotRamp (2)
+//       +SerialFTDI         port 6
+//     +EliLift
+//       MotRamp
+//       +Serial             port 7
+//     +DirMic
+//       +Serial             port 8
+//     +AccelXY
+//       >Dynamixel
+//     +Dynamixel            AX-12 servos (port 5)
+//       SerialFTDI
+//     >VideoSrc             Kinect depth + color
+//       ExpVSrc
+//         GenVSrc
+//           +KinVSrc
+// 
+// </pre>
 
-class jhcEliBody : private jhcLUT, private jhcResize
+class jhcEliBody : private jhcHist, private jhcLUT, private jhcResize
 {
 // PRIVATE MEMBER VARIABLES
 private:
   jhcImg col, rng, col2;                   // images from Kinect sensor
   DWORD tcmd[10];
+  char cfile[80];
+  double vmax0, volts;
   UL32 ntime, ltime, atime, gtime, ttime, mtime;
-  int bnum, cw, ch, iw, ih, kin, mok, tstep, tfill;
+  int bnum, cw, ch, iw, ih, kin, mok, tstep, tfill, pct;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -76,6 +112,7 @@ public:
   // sound direction - Kinect (or video) plus audio is external
   jhcVideoSrc *vid;
   jhcDirMic mic;
+  int enh;
 
   // AX-12 communication parameters
   jhcParam bps;
@@ -95,6 +132,9 @@ public:
   // creation and initialization
   ~jhcEliBody ();
   jhcEliBody ();
+  double Voltage () const {return volts;}
+  int Percent () const    {return pct;}
+  void ReportCharge () const;
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);
@@ -111,6 +151,11 @@ public:
   int VideoOK () const {if ((vid == NULL) || !vid->Valid()) return 0; return 1;}
   int BodyNum () const {return __max(0, bnum);}
   const char *Problems ();
+  int Charge (double v, int running =0);
+  int Charge (int running =0) 
+    {return Charge(neck.Voltage(), running);}
+  int Capacity () const;
+  int ResetVmax ();
   double MegaReport ();
   void StaticPose () 
     {neck.Inject(pdef, tdef); lift.Inject(hdef);}
@@ -168,7 +213,7 @@ public:
   const jhcImg *View () const {return &col;}
   
   // basic actions
-  int Freeze ();
+  int Freeze (int led =0);
   int Limp ();
 
   // main functions
@@ -178,7 +223,7 @@ public:
   int Issue (double lead =3.0);
 
   // ballistic functions
-  void Beep ();
+  void Beep () const;
   int InitPose (double ht =0.0); 
 
 

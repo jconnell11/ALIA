@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,8 +71,8 @@ public:
   int SaveExcept (const char *fname) const;
   
   // main functions
-  int AddVocab (class jhcGenParse *p, const char *fname);
-  int AddVocab (class jhcSpeechX *p, const char *fname);
+  int AddVocab (class jhcGenParse *p, const char *fname, int rpt =0);
+  int AddVocab (class jhcSpeechX *p, const char *fname, int rpt =0);
  
   // derived forms
   const char *SurfWord (const char *base, UL32 tags);
@@ -84,6 +84,12 @@ public:
   const char *NounLex (UL32& tags, char *pair) const;
   const char *VerbLex (UL32& tags, char *pair) const;
   const char *AdjLex (UL32& tags, char *pair) const;
+
+  // adjective nominalization
+  const char *PropKind (char *form, const char *adj, int ssz) const;
+  template <size_t ssz> 
+    const char *PropKind (char (&form)[ssz], const char *adj) const
+      {return PropKind(form, adj, ssz);}
 
   // debugging tools
   int LexDeriv (const char *gram, int chk =1, const char *deriv =NULL);

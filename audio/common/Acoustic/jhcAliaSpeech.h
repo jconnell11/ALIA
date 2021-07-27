@@ -38,6 +38,7 @@
 
 
 //= Speech and loop timing interface for ALIA reasoner
+// largely funnels speech back and forth from reasoning engine
 
 class jhcAliaSpeech : public jhcAliaCore
 {
@@ -89,9 +90,9 @@ public:
   int SenseCnt ()   const {return sense;}
   int ThoughtCnt () const {return think;}
   double Sensing () const 
-    {return(sense / jms_secs(last, start));}
+    {return((sense <= 0) ? 0.0 : sense / jms_secs(last, start));}
   double Thinking () const 
-    {return(think / jms_secs(last, start));}
+    {return((think <= 0) ? 0.0 : think / jms_secs(last, start));}
   UL32 NextSense () const
     {return(start + ROUND((1000.0 * sense) / shz));}
   int Attending () const {return((awake != 0) ? 1 : 0);}

@@ -40,10 +40,12 @@ class jhcNodeList
 // PUBLIC MEMBER FUNCTIONS
 public:
   // main functions (override in derived classes)
-  virtual jhcNetNode *NextNode (const jhcNetNode *prev =NULL) const =0;
+  virtual jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const =0;
   virtual int Length () const =0;
   virtual bool InList (const jhcNetNode *n) const =0;
   virtual bool Prohibited (const jhcNetNode *n) const {return(n == NULL);}
+  virtual int NumBins () const {return 1;}
+  virtual int SameBin (const jhcNetNode& focus) const {return 1;}
 
 
 };

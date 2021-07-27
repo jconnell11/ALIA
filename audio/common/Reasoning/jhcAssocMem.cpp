@@ -70,6 +70,8 @@ jhcAssocMem::jhcAssocMem ()
   rules = NULL;
   nr = 0;
   noisy = 2;
+  detail = 0;
+//detail = 14;               // show detailed matching for some rule 
 }
 
 
@@ -87,9 +89,11 @@ int jhcAssocMem::AddRule (jhcAliaRule *r, int ann)
   // check for likely duplication
   if (r == NULL)
     return 0;
+  if (r->Tautology())
+    return jprintf(1, ann, "  ... new rule rejected as a tautology\n\n");
   while ((prev = NextRule(prev)) != NULL)
     if (r->Identical(*prev))
-      return jprintf(2, ann, "  ... new rule rejected as identical to rule %d\n\n", prev->RuleNum());
+      return jprintf(1, ann, "  ... new rule rejected as identical to rule %d\n\n", prev->RuleNum());
 
   // add to end of list
   if (r0 == NULL)
@@ -155,20 +159,25 @@ void jhcAssocMem::Remove (const jhcAliaRule *rem)
 // will not match conditions with blf < mth, or even try weak rules
 // returns number of invocations
 
-int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, double mth, int dbg) const
+int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, int dbg) const
 {
   jhcAliaRule *r = NULL;
+  double mth = wmem.MinBlf();
   int cnt = 0, cnt2 = 0;
 
-//dbg = 2;                         // quick way to show inferences
+//dbg = 2;                         // quick way to show halo inferences
 
+jtimer(13, "RefreshHalo");
   // PASS 1 - erase all previous halo deductions
   jprintf(1, dbg, "HALO refresh ...\n");
   wmem.ClearHalo();
   wmem.SetMode(0);                 // only match to nodes in main pool
   jprintf(2, dbg, "1-step:\n");
   while ((r = NextRule(r)) != NULL)
+  {
+    r->dbg = ((r->id == detail) ? 3 : 0);
     cnt += r->AssertMatches(wmem, mth, 0, dbg - 1);
+  }
 
   // PASS 2 - mark start of 2-step inferences
   wmem.Horizon();
@@ -176,15 +185,20 @@ int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, double mth, int dbg) const
   r = NULL;
   jprintf(2, dbg, "2-step:\n");
   while ((r = NextRule(r)) != NULL)
+  {
+    r->dbg = ((r->id == detail) ? 3 : 0);
     cnt2 += r->AssertMatches(wmem, mth, 1, dbg - 1);
+  }
 
   // report result
   jprintf(1, dbg, "  %d + %d rule invocations\n\n", cnt, cnt2);
+//wmem.PrintHalo();
+jtimer_x(13);
   return cnt;
 }
 
 
-//= If a two rule series used to infer and essential fact then combine the two rules.
+//= If a two rule series used to infer an essential fact then combine the two rules.
 // needs raw bindings before halo migration (i.e. before modification by ReifyRules)
 // returns number of new rules created
 
@@ -193,17 +207,17 @@ int jhcAssocMem::Consolidate (const jhcBindings& b, int dbg)
   jhcBindings list, list2, m2c;
   jhcAliaRule *r2, *r1, *mix = NULL;
   jhcBindings *b2, *b1;
-  int j, nc, nb = b.NumPairs(), i = 0, cnt = 0;
+  int j, nc, nb = b.NumPairs(), i = -1, cnt = 0;
 
   // search through main fact inference bindings (length may change)
   list.Copy(b);
-  while ((i = next_halo(&r2, &b2, list, i)) < nb)
+  while ((i = next_halo(&r2, &b2, list, i + 1)) < nb)
   {
     // look for halo facts used to trigger this step-2 halo rule
     list2.Copy(b2);
     nc = r2->NumPat();
-    j = 0;
-    while ((j = next_halo(&r1, &b1, list2, j)) < nc)
+    j = -1;
+    while ((j = next_halo(&r1, &b1, list2, j + 1)) < nc)
     {
       // merge step-1 halo rule into consolidated rule (possibly create)
       if (mix == NULL)
@@ -258,7 +272,7 @@ int jhcAssocMem::next_halo (jhcAliaRule **r, jhcBindings **b, jhcBindings& list,
           list.SetSub(j, NULL);
     break;
   }
-  return(i + 1);
+  return i;                  // start next at index after this
 }
 
 
@@ -313,7 +327,7 @@ int jhcAssocMem::Load (const char *fname, int add, int rpt, int level)
 
   // possibly announce result
   if (n > 0)
-    jprintf(2, rpt, "  %2d inference rules  from: %s\n", n, fname);
+    jprintf(2, rpt, "  %3d inference rules  from: %s\n", n, fname);
   else
     jprintf(2, rpt, "  -- no inference rules  from: %s\n", fname);
   return n;
@@ -348,7 +362,7 @@ int jhcAssocMem::save_rules (FILE *out, int level) const
   while (r != NULL)
   {
     if (r->lvl >= level)
-      if (r->Save(out) > 0)
+      if (r->Save(out, 2) > 0)
         cnt++;
     r = r->next;
   }

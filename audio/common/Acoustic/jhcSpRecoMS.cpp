@@ -1422,8 +1422,13 @@ int jhcSpRecoMS::add_option (const char *fname, const char *rule, const char *op
   fclose(in);
 
   // copy altered temp file back to main grammar file
-  fopen_s(&in, tname, "r");
-  fopen_s(&out, fname, "w");
+  if (fopen_s(&in, tname, "r") != 0)
+    return 0;
+  if (fopen_s(&out, fname, "w") != 0)
+  {
+    fclose(in);
+    return 0;
+  }
   while (fgets(line, 200, in) != NULL)
     fputs(line, out);
   fclose(out);

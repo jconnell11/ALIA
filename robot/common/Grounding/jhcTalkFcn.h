@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ private:
   char full[smax][500];
 
   // output arbitration
-  const char *winner;
+  char winner[500];
   int imp;
 
 
@@ -81,6 +81,9 @@ private:
   // user literal output
   JCMD_DEF(echo_wds);
   int build_string (const jhcAliaDesc *desc, int inst);
+  void fix_verb (char *txt);
+  void fix_det (char *txt);
+  void fix_abbrev (char *txt);
 
 
 };

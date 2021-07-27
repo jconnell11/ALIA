@@ -103,6 +103,9 @@
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkIncremental>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Banzai_d</TargetName>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -303,7 +306,10 @@
     <ClCompile Include="BanzaiDoc.cpp" />
     <ClCompile Include="BanzaiFrm.cpp" />
     <ClCompile Include="BanzaiView.cpp" />
+    <ClCompile Include="..\common\Action\jhcAliaMood.cpp" />
+    <ClCompile Include="..\common\Eli\jhcEliWatch.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp" />
+    <ClCompile Include="..\common\Action\jhcAliaStats.cpp" />
     <ClCompile Include="..\common\Grounding\jhcSceneVis.cpp" />
     <ClCompile Include="..\common\Objects\jhcSurfObjs.cpp" />
     <ClCompile Include="..\common\Objects\jhcPatchProps.cpp" />
@@ -338,7 +344,6 @@
     <ClCompile Include="..\common\People\jhcStare3D.cpp" />
     <ClCompile Include="..\common\People\jhcTrack3D.cpp" />
     <ClCompile Include="..\common\Body\jhcBackgRWI.cpp" />
-    <ClCompile Include="..\common\Eli\jhcManipFSM.cpp" />
     <ClCompile Include="..\common\Grounding\jhcBallistic.cpp" />
     <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp" />
     <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp" />
@@ -441,6 +446,7 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\video\common\stdafx.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcChatBox.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcChatHist.h" />
@@ -494,14 +500,16 @@
     <ClInclude Include="..\common\Action\jhcAliaDir.h" />
     <ClInclude Include="..\common\Action\jhcAliaDLL.h" />
     <ClInclude Include="..\common\Action\jhcAliaKernel.h" />
+    <ClInclude Include="..\common\Action\jhcAliaMood.h" />
     <ClInclude Include="..\common\Action\jhcAliaPlay.h" />
+    <ClInclude Include="..\common\Action\jhcAliaStats.h" />
     <ClInclude Include="..\common\Action\jhcEchoFcn.h" />
     <ClInclude Include="..\common\Action\jhcTimedFcns.h" />
     <ClInclude Include="..\common\Body\jhcBackgRWI.h" />
     <ClInclude Include="..\common\Depth\jhcOverhead3D.h" />
     <ClInclude Include="..\common\Depth\jhcSurface3D.h" />
     <ClInclude Include="..\common\Eli\jhcEliGrok.h" />
-    <ClInclude Include="..\common\Eli\jhcManipFSM.h" />
+    <ClInclude Include="..\common\Eli\jhcEliWatch.h" />
     <ClInclude Include="..\common\Environ\jhcLocalOcc.h" />
     <ClInclude Include="..\common\Geometry\jhcKalVec.h" />
     <ClInclude Include="..\common\Geometry\jhcPlaneEst.h" />
@@ -526,7 +534,6 @@
     <ClInclude Include="BanzaiView.h" />
     <ClInclude Include="jhcEliCoord.h" />
     <ClInclude Include="Resource.h" />
-    <ClInclude Include="..\..\video\common\stdafx.h" />
     <ClInclude Include="..\..\video\common\jhcGlobal.h" />
     <ClInclude Include="..\..\video\common\Data\jhcArr.h" />
     <ClInclude Include="..\..\video\common\Data\jhcBitMacros.h" />
@@ -592,15 +599,23 @@
     <ClInclude Include="..\common\Geometry\jhcMotRamp.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
     <None Include="res\Banzai.ico" />
     <None Include="res\Banzai.rc2" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets" Condition="Exists('packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets')" />
   </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
       <UserProperties RESOURCE_FILE="Banzai.rc" />
     </VisualStudio>
   </ProjectExtensions>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets'))" />
+  </Target>
 </Project>

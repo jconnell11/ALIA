@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,12 +68,14 @@ bool jhcTxtLine::Open (const char *fname)
 
 
 //= Close the currently connected file (if any).
+// returns 0 always for convenience
 
-void jhcTxtLine::Close ()
+int jhcTxtLine::Close ()
 {
   if (in != NULL)
     fclose(in);
   init();
+  return 0;
 }
 
 
@@ -185,7 +188,7 @@ const char *jhcTxtLine::Next (int force)
 }
 
 
-//= Trim N chara characters off the front of the current line.
+//= Trim N characters off the front of the current line.
 // returns pointer to remainder of string (possibly empty)
 
 const char *jhcTxtLine::Skip (int n)
@@ -216,12 +219,13 @@ char *jhcTxtLine::strip_wh ()
 
 
 //= Extract front part of string up until next whitepace.
+// can optionally replace internal underscore by spaces
 // returns pointer to word found, NULL if nothing found
 // NOTE: internal result string re-used, copy if Token called again
 
-char *jhcTxtLine::Token ()
+char *jhcTxtLine::Token (int under)
 {
-  char *end;
+  char *end, *scan;
 
   // check that file is open
   if (bad_ln())
@@ -238,9 +242,33 @@ char *jhcTxtLine::Token ()
     end++;
   }
 
-  // copy to tken and leave string pointer at next token
+  // copy to token and possibly cleanup
   strncpy_s(token, head, end - head);                      // always adds terminator
+  scan = token;
+  if (under > 0)
+    while (*scan != '\0')
+    {
+      if (*scan == '_')
+        *scan = ' ';
+      scan++;
+    }
+
+  // leave string pointer at next token
   head = end;
   strip_wh();
   return token;
 }
+
+
+//= Extract next whitespace-delimited token and copy to a string.
+// returns pointer to input string (set to blank if no token found)
+
+char *jhcTxtLine::Token (char *txt, int under, int ssz)
+{
+  char *t = Token(under);
+
+  if (txt != NULL)
+    strcpy_s(txt, ssz, ((t != NULL) ? t : ""));
+  return txt;
+}
+    

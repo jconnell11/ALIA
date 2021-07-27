@@ -37,7 +37,7 @@
 //= Computes direction using offset of face from head center.
 // derived from jhcStare3D so can add gaze to list of jhcBodyData
 // <pre>
-// class tree and parameters:
+// class tree and parameters (+ = member, > = pointer):
 //
 //   HeadGaze          zps vps
 //     Frontal         dps

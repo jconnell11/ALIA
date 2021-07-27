@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@
 class jhcTxtLine
 {
 // PRIVATE MEMBER VARIABLES
+private:
   FILE *in;
   char line[200], token[80];
   char *head;
@@ -48,7 +50,7 @@ public:
   ~jhcTxtLine ();
   jhcTxtLine ();
   bool Open (const char *fname);
-  void Close ();
+  int Close ();
   int Last () const {return read;}
   bool End () const 
     {return((in == NULL) || (feof(in) != 0));}
@@ -75,9 +77,13 @@ public:
     {return Skip((int) strlen(head) + extra);}
   const char *Clean () 
     {return((bad_ln()) ? NULL : strip_wh());}
-  char *Token ();
   int Flush (int ret =1) 
     {*line = '\0'; head = NULL; return ret;};
+  char *Token (int under =0);
+  char *Token (char *txt, int under, int ssz);
+  template <size_t ssz>
+    char *Token (char (&txt)[ssz], int under =0)           // for convenience
+      {return Token(txt, under, ssz);}
 
 
 // PRIVATE MEMBER FUNCTIONS

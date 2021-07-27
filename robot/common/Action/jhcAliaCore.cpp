@@ -47,7 +47,7 @@ jhcAliaCore::~jhcAliaCore ()
 jhcAliaCore::jhcAliaCore ()
 {
   // global variables
-  ver = 2.30;
+  ver = 2.65;
   noisy = 1;
 
   // add literal text output to function repertoire
@@ -133,21 +133,27 @@ int jhcAliaCore::Baseline (const char *list, int add, int rpt)
   // read list of local file names
   while (fgets(line, 80, in) != NULL)
   {
-    // ignore commented out lines and blank ones
+    // ignore commented out lines 
     if (strncmp(line, "//", 2) == 0)
       continue;
-    if ((n = (int) strlen(line)) <= 0)
+
+    // trim trailing whitespace
+    n = 0;
+    end = line;
+    while (line[n] != '\0')
+      if (strchr(" \t\n", line[n++]) == NULL)
+        end = line + n;
+    if (end == line)
       continue;
+    *end = '\0';
 
     // read various types of input (1 = extras level)
-    if (line[n - 1] == '\n')
-      line[n - 1] = '\0';
     cnt += add_info(dir, line, rpt, 1);        
   } 
 
   // clean up
   fclose(in);
-  jprintf(1, rpt, "  TOTAL = %d operators, %d rules\n\n", 
+  jprintf(1, rpt, " TOTAL = %d operators, %d rules\n\n", 
           pmem.NumOperators() - op0, amem.NumRules() - r0);
   return cnt;
 }
@@ -276,11 +282,17 @@ int jhcAliaCore::Accept (jhcAliaRule *r, jhcAliaOp *p)
   if ((r == NULL) && (p == NULL))
     return -2;
   if (r != NULL)
+  {
     if (amem.AddRule(r, 1) <= 0)
       return -2;
+    mood.Infer();
+  }
   if (p != NULL)
+  {
     if (pmem.AddOperator(p, 1) <= 0)
       return -2;
+    mood.React();
+  }
   return 1;
 }
 
@@ -303,16 +315,16 @@ int jhcAliaCore::MainGrammar (const char *gfile, const char *top, const char *rn
   if ((rname != NULL) && (*rname != '\0'))   
   {
     // add robot full name as attention word ("Eli Banzai")
-    gr.ExtendRule("atree", rname); 
-    atree.AddLex(atree.Robot(), rname, 0, -1.0);
+    gr.ExtendRule("ATTN", rname); 
+    atree.AddProp(atree.Robot(), "ref", rname, 0, -1.0);
 
     // possibly add just first name also ("Eli")
     strcpy_s(first, rname);
     if ((sep = strchr(first, ' ')) != NULL)
     {
       *sep = '\0';
-      gr.ExtendRule("atree", first); 
-      atree.AddLex(atree.Robot(), first, 0, -1.0);
+      gr.ExtendRule("ATTN", first); 
+      atree.AddProp(atree.Robot(), "ref", first, 0, -1.0);
     }
   }
   gr.MarkRule(top);
@@ -331,6 +343,8 @@ void jhcAliaCore::Reset (int forget, const char *rname, int spact)
   StopAll();
   atree.ClrFoci(1, rname);
   kern.Reset(&atree);
+  stat.Reset();
+  mood.Reset();
   topval = 0;
 
   // possibly forget all rules and operators
@@ -342,8 +356,8 @@ void jhcAliaCore::Reset (int forget, const char *rname, int spact)
 
   // reset affective modulation
   atree.InitSkep(0.5);
-  pth = 0.5;
-  wild = 0.0;
+  pess = 0.5;
+  wild = 0.5;
 
   // communicate debugging level
   atree.noisy = noisy;
@@ -384,7 +398,10 @@ int jhcAliaCore::Interpret (const char *input, int awake, int amode)
   // show parsing steps then generate semantic nets 
   gr.PrintInput();
   if (nt > 0)
+  {
+    mood.Hear((int) strlen(input));      // reduces "lonely" (even if not understood)
     gr.PrintResult(3, 1);
+  }
   spact = net.Convert(alist);            // nt = 0 gives huh? response
   net.Summarize(log, sent, nt, spact);
   return((attn > 0) ? 2 : 1);
@@ -405,10 +422,16 @@ int jhcAliaCore::RunAll (int gc)
   // get any observations, check expired attentional foci, and recompute halo
   jprintf(3, noisy, "\nSTEP %d ----------------------------------------------------\n\n", atree.Version());
   kern.Volunteer();
-  if (atree.Update(gc) > 0)
-    RecomputeHalo();                   // might also be needed if bth or node blfs change
+  if (atree.Update(gc) > 0)                      // also if bth or node blfs change?
+    amem.RefreshHalo(atree, noisy - 1);
+  if (gc > 0)
+  {
+    mood.Update(atree);                          // status NOTEs
+    gather_stats();                              // build graphs
+  }
   if (atree.Active() > 0)
     jprintf(2, noisy, "============================= %s =============================\n\n", jms_elapsed(time, t0));
+
 
   // go through the foci from newest to oldest
   while ((svc = atree.NextFocus()) >= 0)
@@ -420,7 +443,7 @@ int jhcAliaCore::RunAll (int gc)
       res = s->Start(this, 0);
     else
       res = s->Status();
-    atree.SetActive(svc, ((res == 0) ? 1 : 0));
+    atree.SetActive(s, ((res == 0) ? 1 : 0));    // replacement might have occurred
     cnt++;
   }
 
@@ -432,6 +455,16 @@ int jhcAliaCore::RunAll (int gc)
     jprintf("\n\n");
   }
   return cnt;
+}
+
+
+//= Accumulate data of various sorts for potential graphing later.
+// data for robot-dependent peripherals entered previously by coordination class
+
+void jhcAliaCore::gather_stats ()
+{
+  stat.Thought(atree);                        
+  stat.Shift();
 }
 
 
@@ -467,16 +500,17 @@ void jhcAliaCore::CloseCvt ()
 //= Converts any halo facts into wmem facts and posts NOTEs about them.
 // updates bindings "b" to point to equivalent wmem nodes instead of halo
 // generates new rule if a two step inference was used for some halo fact
-// returns number of NOTEs generated
+// returns number of NOTEs generated (better not to notice explicitly?)
 
-int jhcAliaCore::MainMemOnly (jhcBindings& b) 
+int jhcAliaCore::MainMemOnly (jhcBindings& b, int note) 
 {
   jhcBindings b2;
-  int n;
+  int n, r;
 
   b2.Copy(b);
-  n = atree.ReifyRules(b);             // NOTEs come first in log
-  amem.Consolidate(b2);                // new rules come last in log
+  n = atree.ReifyRules(b, note);       // any NOTEs come first in log
+  r = amem.Consolidate(b2);            // new rules come last in log
+  mood.Infer(r);
   return n;
 }
 
@@ -514,15 +548,6 @@ int jhcAliaCore::HaltActive (jhcGraphlet& desc)
 //                             Halo Control                              //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Re-derive all halo inferences based on current working memory contents.
-
-void jhcAliaCore::RecomputeHalo () 
-{
-  amem.RefreshHalo(atree, atree.MinBlf(), noisy - 1);
-//atree.PrintHalo();
-}
-
-
 //= Assign all nodes from this NOTE a unique source marker.
 
 int jhcAliaCore::Percolate (const jhcAliaDir& dir) 
@@ -537,10 +562,10 @@ int jhcAliaCore::Percolate (const jhcAliaDir& dir)
   tval = ++topval;
 
   // mark all nodes in graphlet with special NOTE id
-  // ignore objects and names which are re-used a lot
+  // ignore objects becaue they carry no intrinsic semantic value
   for (i = 0; i < ni; i++)
     if ((n = key->Item(i)) != NULL)
-      if (!n->ObjNode() && !n->LexNode() && (n->top < tval))   
+      if (!n->ObjNode() && (n->top < tval))
       {
         n->top = tval;
         atree.Dirty();        // queue recomputation of halo
@@ -549,7 +574,7 @@ int jhcAliaCore::Percolate (const jhcAliaDir& dir)
 }
 
 
-//= Deselect nodes in NOTE and rederive halo without them.
+//= Deselect nodes in NOTE and re-derive halo without them.
 // Note: derived nodes take max of ids (current id may have masked older one)
 //       but each time lower priority focus tried, halo refreshed by Percolate
 
@@ -576,7 +601,7 @@ int jhcAliaCore::ZeroTop (const jhcAliaDir& dir)
 
 int jhcAliaCore::FcnStart (const jhcNetNode *fcn)
 {
-  const char *fname = fcn->Word();
+  const char *fname = fcn->Lex();
 
   jprintf(2, noisy, "F-START %s \"%s\" @ %d\n\n", fcn->Nick(), fname, bid);
   return kern.Start(fcn, bid);
@@ -589,7 +614,7 @@ int jhcAliaCore::FcnStart (const jhcNetNode *fcn)
 
 int jhcAliaCore::FcnStatus (const jhcNetNode *fcn, int inst) 
 {
-  const char *fname = fcn->Word();
+  const char *fname = fcn->Lex();
   int res = -2;
 
   jprintf(2, noisy, "\nF-STATUS %s \"%s\"\n", fcn->Nick(), fname);
@@ -605,7 +630,7 @@ int jhcAliaCore::FcnStatus (const jhcNetNode *fcn, int inst)
 
 int jhcAliaCore::FcnStop (const jhcNetNode *fcn, int inst)
 {
-  const char *fname = fcn->Word();
+  const char *fname = fcn->Lex();
 
   jprintf(2, noisy, "\nF-STOP %s \"%s\"\n\n", fcn->Nick(), fname);
   kern.Stop(fcn, inst);

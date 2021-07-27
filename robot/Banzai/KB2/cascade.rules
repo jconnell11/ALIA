@@ -1,9 +1,0 @@
-// RULE 1 - combined orange and color
-    if: ako-2 -lex-  tiger
-              -ako-> obj-1
-  then:  hq-4 -lex-  orange    
-              -blf-  0.8
-              -hq--> obj-1
-  also: ako-5 -lex-  color    
-              -blf-  0.9
-              -ako-> hq-4 

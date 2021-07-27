@@ -35,6 +35,16 @@
 
 
 //= Declarative implication in ALIA System.
+// 
+// each result fact has its own implied belief
+//   if rule is matched > current threshold then input belief irrelevant
+//
+// adjustment of result beliefs:
+//   when new fact added to main memory
+//     if belief in halo < current threshold and correct then increment 
+//     if belief in halo > current threshold and wrong then decrement 
+// 
+// alteration mostly performed in jhcActionTree::CompareHalo
 
 class jhcAliaRule : public jhcSituation
 {
@@ -44,7 +54,7 @@ friend class jhcGraphizer;             // creation
 
 // PRIVATE MEMBER VARIABLES
 private:
-  static const int hmax = 20;          /** Max halo instantiations. */
+  static const int hmax = 50;          /** Max halo instantiations. */
 
   // core information
   jhcGraphlet result;
@@ -53,6 +63,7 @@ private:
 
   // run-time status
   jhcBindings hinst[hmax];
+  int hyp[hmax];
   jhcWorkMem *wmem;
   int nh, show;
 
@@ -70,11 +81,12 @@ public:
   void AddCombo (jhcBindings& m2c, const jhcAliaRule& step1, const jhcBindings& b1);
   void LinkCombo (jhcBindings& m2c, const jhcAliaRule& step2, const jhcBindings& b2);
   bool Identical (const jhcAliaRule& ref) const;
+  bool Tautology ();
 
   // file functions
   int Load (jhcTxtLine& in);
-  int Save (FILE *out, int detail =0) const;
-  int Print (int detail =0) const {return Save(stdout, detail);}
+  int Save (FILE *out, int detail =1) const;
+  int Print (int detail =1) const {return Save(stdout, detail);}
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -85,15 +97,22 @@ private:
 
   // main functions (incl. virtual override)
   int match_found (jhcBindings *m, int& mc); 
-  bool same_result (const jhcBindings *m, int mc) const;
+  int same_result (const jhcBindings *m, int mc, int t0) const;
+  bool result_uses (const jhcNetNode *key) const;
+  void init_result (jhcBindings *b, int tval, int ver, int zero);
 
   // halo consolidation
-  void insert_args (jhcBindings& m2c, jhcGraphlet& desc);
-  jhcNetNode *add_equiv (jhcBindings& m2c, jhcGraphlet& desc, const jhcNetNode *probe);
+  jhcNetNode *get_equiv (jhcBindings& m2c, const jhcNetNode *probe, int bcpy);
+  void connect_args (jhcGraphlet& desc, const jhcBindings& m2c) const;
   bool same_struct (const jhcNetNode *focus, const jhcNetNode *mate) const;
 
   // file functions
   int load_clauses (jhcTxtLine& in);
+
+int TryBinding0 (const jhcNetNode *focus, jhcNetNode *mate, jhcBindings *m, int& mc, 
+                 const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
+int try_bare0 (jhcBindings *m, int& mc, const jhcGraphlet& pat, 
+               const jhcNodeList& f, const jhcNodeList *f2);
 
 
 };

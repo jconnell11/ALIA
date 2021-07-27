@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ public:
   int SoftOver (jhcImg& dest, const jhcImg& src, int th, double frac =0.2) const;
   int SoftUnder (jhcImg& dest, const jhcImg& src, int th, int dev) const;
   int SoftUnder (jhcImg& dest, const jhcImg& src, int th, double frac =0.2) const;
-  int InRange (jhcImg& dest, const jhcImg& src, int lo, int hi, int dev =0) const;
+  int InRange (jhcImg& dest, const jhcImg& src, int lo, int hi, int dev =0, int nz =0) const;
 
   // direct soft threshold combination
   int MinUnder (jhcImg& dest, const jhcImg& old, const jhcImg& src, int th, int soft =0) const;
@@ -114,6 +114,7 @@ protected:
   int CompositeBW (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, const jhcImg& awt) const;
   int OverlayNZ_RGB (jhcImg& dest, const jhcImg& src, const jhcImg& marks) const;
   int OverlayNZ_BW (jhcImg& dest, const jhcImg& src, const jhcImg& marks) const;
+
 
 // PRIVATE MEMBER FUNCTIONS
 private:

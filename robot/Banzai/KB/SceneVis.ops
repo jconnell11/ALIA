@@ -1,176 +1,211 @@
-// basic interface to ELI's object finder
+// Basic interface to "SceneVis" kernel
 // ================================================
 
-// OP 000 - "Check if a thing is located relative to another thing.
+// OP 1 - To find some measurement of something visible ...
 trig:
-   CHK[ loc-1 -loc-> obj-1
-              -wrt-> obj-2 ]
-----------
-   FCN[ fcn-1 -lex-  vis_layout 
-              -arg-> loc-1 ]
-
-
-// OP 00 - "Find all visible things"
-//trig:
-//  FIND[ obj-1
-//         hq-1 -lex-  visible
-//              -hq--> obj-1 ]
-//pref: 0.5
-//----------
-//   FCN[ fcn-1 -lex-  vis_dummy ]
-
-
-// OP 0 - "Find all visible things"
-trig:
-  FIND[ obj-1
-         hq-1 -lex-  visible
+  FIND[  hq-1 -hq--> obj-1
+        ako-1 -lex-  measurement
+              -ako-> hq-1 
+         hq-2 -lex-  visible
               -hq--> obj-1 ]
-----------
-   FCN[ fcn-1 -lex-  vis_enum ]
+-----------------
+   FCN[ fcn-1 -lex-  vis_value
+              -arg-> hq-1 ]
 
-
-// --------------------------------------
-
-
-// OP 1 - "To find something visible ..."
+// OP 2 - To check if something visible has some measurement ...
 trig:
-  FIND[  hq-1 -lex-  visible
-              -obj-> obj-1 ]
-----------
-   FCN[ fcn-1 -lex-  vis_enum 
-              -arg-> obj-1 ]         
+   CHK[  hq-1 -hq--> obj-1
+        ako-1 -lex-  measurement
+              -ako-> hq-1 
+         hq-2 -lex-  visible
+              -hq--> obj-1 ]
+-----------------
+   FCN[ fcn-1 -lex-  vis_val_ok
+              -arg-> hq-1 ]
 
-
-// OP 2 - "To check if something is visible ..."
+// OP 3 - To find the color of something visible ...
 trig:
-   CHK[  hq-1 -lex-  visible
-              -obj-> obj-1 ]
-----------
-   FCN[ fcn-1 -lex-  vis_look         
+  FIND[  hq-1 -hq--> obj-1
+        ako-1 -lex-  color
+              -ako-> hq-1 
+         hq-2 -lex-  visible
+              -hq--> obj-1 ]
+-----------------
+   FCN[ fcn-1 -lex-  vis_color
               -arg-> obj-1 ]
 
-
-// --------------------------------------
-
-// OP 3 - "To find the color of something ..."
-trig:
-  FIND[  hq-1 -hq--> obj-1
-        ako-1 -lex-  color
-              -ako-> hq-1 ]
-----------
-   FCN[ fcn-1 -lex-  vis_color        
-              -arg-> hq-1 ]
-
-
-// OP 4 - "To see if something is some color ..."
+// OP 4 - To check if something visible is some color ...
 trig:
    CHK[  hq-1 -hq--> obj-1
         ako-1 -lex-  color
-              -ako-> hq-1 ]
-----------
-   FCN[ fcn-1 -lex-  vis_col_ok        
-              -arg-> hq-1 ] 
+              -ako-> hq-1 
+         hq-2 -lex-  visible
+              -hq--> obj-1 ]
+-----------------
+   FCN[ fcn-1 -lex-  vis_col_ok
+              -arg-> hq-1 ]
 
+// ================================================
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// OP 5 - To compare somehow a visible thing to another visible thing ...
+trig: 
+   CHK[  hq-1 -hq--> obj-1
+              -wrt-> obj-2 
+         hq-2 -lex-  visible
+              -hq--> obj-1
+         hq-3 -lex-  visible
+              -hq--> obj-2 ]
+-----------------
+   FCN[ fcn-1 -lex-  vis_comp_ok
+              -arg-> hq-1 ]  
 
-// OP 4B - "To see if something is red ..."
-//trig:
-//   CHK[  hq-1 -lex-  red
-//              -hq--> obj-1 ]
-//----------
-//   FCN[ fcn-1 -lex-  vis_col_ok        
-//              -arg-> hq-1 ] 
+// OP 6 - To find the location of something visible to another thing ...
+trig: 
+  FIND[ loc-1 -loc-> obj-1
+              -wrt-> obj-2 
+         hq-1 -lex-  visible
+              -hq--> obj-1 ]
+-----------------
+   FCN[ fcn-1 -lex-  vis_position
+              -arg-> loc-1 ]  
 
+// OP 7 - To check if some visible thing has some location relative to another visible thing ...
+trig: 
+   CHK[ loc-1 -loc-> obj-1
+              -wrt-> obj-2 
+         hq-1 -lex-  visible
+              -hq--> obj-1
+         hq-2 -lex-  visible
+              -hq--> obj-2 ]
+-----------------
+   FCN[ fcn-1 -lex-  vis_pos_ok
+              -arg-> loc-1 ]  
 
-// OP 4C - "To see if something is red ..."
-//trig:
-//   CHK[  hq-1 -lex-  red
-//              -hq--> obj-1 ]
-//----------
-//   FCN[ fcn-1 -lex-  vis_enum 
-//              -arg-> obj-1 ]      
+// ================================================
 
-
-// OP 4D - "To see if something is a box ..."
+// OP 8 - To find out how many objects there are ...
 trig:
-   CHK[ ako-1 -lex-  box
+  FIND[ cnt-1 -cnt-> obj-1
+        ako-1 -lex-  object
               -ako-> obj-1 ]
 ----------
-   FCN[ fcn-1 -lex-  vis_shp_ok        
-              -arg-> ako-1 ] 
+   FCN[ fcn-1 -lex-  vis_subit 
+              -arg-> obj-1 ]
 
-
-// OP 4E - "To see if something is some shape ..."
-//trig:
-//   CHK[ ako-1 -ako-> obj-1
-//        ako-2 -lex-  shape
-//              -ako-> ako-1 ]
-//----------
-//   FCN[ fcn-1 -lex-  vis_shp_ok        
-//              -arg-> ako-1 ] 
-
-// --------------------------------------
-
-// OP 5 - "To find the size of something ..."
+// OP 9 - To find out how many things there are with some measurement ...
 trig:
-  FIND[  hq-1 -hq--> obj-1
-        ako-1 -lex-  size
-              -ako-> hq-1 ] 
-----------
-   FCN[ fcn-1 -lex-  vis_size        
-              -arg-> hq-1 ]
-
-
-// OP 6 - "To see if something is some size ..."
-trig:
-   CHK[  hq-1 -hq--> obj-1
-        ako-1 -lex-  size
-              -ako-> hq-1 ] 
-----------
-   FCN[ fcn-1 -lex-  vis_sz_ok        
-              -arg-> hq-1 ]
-
-
-// --------------------------------------
-
-// OP 7 - "To find the width of something ..."
-trig:
-  FIND[  hq-1 -hq--> obj-1
-        ako-1 -lex-  width
-              -ako-> hq-1 ] 
-----------
-   FCN[ fcn-1 -lex-  vis_width        
-              -arg-> hq-1 ]
-
-
-// OP 8 - "To see if something has some width ..."
-trig:
-   CHK[  hq-1 -hq--> obj-1
-        ako-1 -lex-  width
-              -ako-> hq-1 ] 
-----------
-   FCN[ fcn-1 -lex-  vis_wid_ok        
-              -arg-> hq-1 ]
-
-
-// --------------------------------------
-
-// OP 9 - "To find the height of something ..."
-trig:
-  FIND[  hq-1 -hq--> obj-1
-        ako-1 -lex-  height
+  FIND[ cnt-1 -cnt-> obj-1 
+         hq-1 -hq--> obj-1 
+        ako-1 -lex-  measurement
               -ako-> hq-1 ]
 ----------
-   FCN[ fcn-1 -lex-  vis_height        
-              -arg-> hq-1 ]
+   FCN[ fcn-1 -lex-  vis_subit
+              -arg-> obj-1 ] 
 
-
-// OP 10 - "To see if something has some height ..."
+// OP 10 - To find out how many things there are with some color ...
 trig:
-   CHK[  hq-1 -hq--> obj-1
-        ako-1 -lex-  height
+  FIND[ cnt-1 -cnt-> obj-1 
+         hq-1 -hq--> obj-1 
+        ako-1 -lex-  color
               -ako-> hq-1 ]
 ----------
-   FCN[ fcn-1 -lex-  vis_ht_ok        
-              -arg-> hq-1 ]
+   FCN[ fcn-1 -lex-  vis_subit
+              -arg-> obj-1 ] 
+
+// OP 11 - To find out how many things there are with some measurement relative to something ...
+trig:
+  FIND[ cnt-1 -cnt-> obj-1 
+         hq-1 -hq--> obj-1
+              -wrt-> obj-2
+        ako-1 -lex-  measurement
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_subit
+              -arg-> obj-1 ] 
+
+// OP 12 - To find out how many things there are with some color relative to something ...
+trig:
+  FIND[ cnt-1 -cnt-> obj-1 
+         hq-1 -hq--> obj-1 
+              -wrt-> obj-2
+        ako-1 -lex-  color
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_subit
+              -arg-> obj-1 ] 
+ 
+// OP 13 - To find out how many things there are with location relative to something visible ...
+trig:
+  FIND[ cnt-1 -cnt-> obj-1 
+        loc-1 -loc-> obj-1 
+              -wrt-> obj-2
+         hq-1 -lex-  visible
+              -hq--> obj-2 ]
+----------
+   FCN[ fcn-1 -lex-  vis_subit 
+              -arg-> obj-1 ] 
+
+// ================================================
+
+// OP 14 - To find some object ...
+trig:
+  FIND[ obj-1 
+        ako-1 -lex-  object
+              -ako-> obj-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_enum 
+              -arg-> obj-1 ] 
+    
+// OP 15 - To find something with some measurement ...
+trig:
+  FIND[ obj-1 
+         hq-1 -hq--> obj-1 
+        ako-1 -lex-  measurement
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_enum 
+              -arg-> obj-1 ]
+
+// OP 16 - To find something with some color ...
+trig:
+  FIND[ obj-1 
+         hq-1 -hq--> obj-1 
+        ako-1 -lex-  color
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_enum 
+              -arg-> obj-1 ]
+
+// OP 17 - To find something with some measurement relative to something ...
+trig:
+  FIND[ obj-1
+         hq-1 -hq--> obj-1 
+              -wrt-> obj-2
+        ako-1 -lex-  measurement 
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_enum 
+              -arg-> obj-1 ] 
+
+// OP 18 - To find something with some color relative to something ...
+trig:
+  FIND[ obj-1
+         hq-1 -hq--> obj-1 
+              -wrt-> obj-2 
+        ako-1 -lex-  color
+              -ako-> hq-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_enum 
+              -arg-> obj-1 ] 
+
+// OP 19 - To find something with a location relative to something visible ...
+trig:
+  FIND[ obj-1
+        loc-1 -loc-> obj-1 
+              -wrt-> obj-2
+         hq-1 -lex-  visible
+              -hq--> obj-2 ]
+----------
+   FCN[ fcn-1 -lex-  vis_enum 
+              -arg-> obj-1 ] 
+

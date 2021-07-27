@@ -252,7 +252,8 @@ static FILE *jtimer_file (const char *fname, int full)
     // make up name based on time
     sprintf_s(fn, "timing/%s_%s.txt", ((fname != NULL) ? fname : "timing"), jms_date(tmp));
   }
-  fopen_s(&out, fn, "w");
+  if (fopen_s(&out, fn, "w") != 0)
+    out = NULL;
   return out;
 }
 

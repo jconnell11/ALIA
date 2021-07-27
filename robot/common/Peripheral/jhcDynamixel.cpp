@@ -119,51 +119,6 @@ double jhcDynamixel::Voltage (int id)
 }
 
 
-//= Rough indication of battery charge state when under minimal load.
-
-int jhcDynamixel::Charge (double volts) const
-{
-//  double curve[11] = {10.90, 11.15, 11.40, 11.60, 11.75, 11.90, 12.10, 12.15, 12.20, 12.30, 12.40};  // ELI?
-//  double curve[11] = {11.00, 11.25, 11.50, 11.70, 11.85, 12.00, 12.20, 12.25, 12.30, 12.40, 12.50};  // C/10
-  double curve[11] = {11.45, 11.70, 11.90, 12.10, 12.20, 12.30, 12.40, 12.50, 12.55, 12.57, 12.60};    // C/20
-  double frac;
-  int i;
-
-  if (volts < 0.0)
-    return -1;
-  for (i = 10; i >= 0; i--)
-    if (volts >= curve[i])
-      break;
-  if (i >= 10)
-    return 100;
-  if (i < 0)
-    return 0;
-  frac = (volts - curve[i]) / (curve[i + 1] - curve[i]);
-  return ROUND(10.0 * (i + frac));
-}
-
-/*
-//= Rough indication of battery charge state when under minimal load.
-// replicates C/20 load curve of lead-acid in piecewise linear fashion
-
-int jhcDynamixel::Charge (double volts) const
-{
-  if (volts < 0.0)
-    return -1;
-  if (volts >= 12.7)
-    return 100;
-  if (volts >= 12.5)
-    return ROUND(150.0 * (volts - 12.5) + 70.0);    
-  if (volts >= 12.2)
-    return ROUND(100.0 * (volts - 12.2) + 40.0);    
-  if (volts >= 12.0)
-    return ROUND(75.0 * (volts - 12.0) + 25.0);    
-  if (volts > 11.45)
-    return ROUND(45.0 * (volts - 11.45));
-  return 0;
-}
-*/
-
 ///////////////////////////////////////////////////////////////////////////
 //                              Mode Commands                            //
 ///////////////////////////////////////////////////////////////////////////

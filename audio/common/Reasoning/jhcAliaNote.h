@@ -29,7 +29,7 @@
 #include "Semantic/jhcAliaDesc.h"       // common audio
 
 
-//= Interface for asserting facts in ALIA architecture.
+//= Write interface for asserting facts in ALIA architecture.
 // basically watered down version of jhcActionTree class
 
 class jhcAliaNote
@@ -46,15 +46,25 @@ public:
   virtual jhcAliaDesc *NewNode (const char *kind, const char *word =NULL, int neg =0, double blf =1.0, int done =0) =0;
 
   //= Create a new node to represent a property of this node.
-  // returns a pointer to the new node or NULL if error
+  // can optionally check if such a node already exists and return it instead 
+  // returns a pointer to the appropriate node or NULL if error
   virtual jhcAliaDesc *NewProp (jhcAliaDesc *head, const char *role, const char *word,
-                                int neg =0, double blf =1.0, const char *kind =NULL) =0;
+                                int neg =0, double blf =1.0, int chk =0, int args =1) =0;
+
+  //= Create a new node to represent a property of this node having some degree.
+  // can optionally check if such a node already exists and return it instead 
+  // returns a pointer to the appropriate degree node or NULL if error
+  virtual jhcAliaDesc *NewDeg (jhcAliaDesc *head, const char *role, const char *word, const char *amt, 
+                               int neg =0, double blf =1.0, int chk =0, int args =1) =0;
 
   //= Make some other node be an named argument of the head.
-  virtual void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val) =0;
+  virtual void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val) const =0;
 
-  //= Create a new node to represent linguistic term associated with this node.
-  virtual void NewLex (jhcAliaDesc *head, const char *word, int neg =0, double blf =1.0) =0;
+  //= Pretend the node was just added on this cycle (needed for FIND).
+  virtual void NewFound (jhcAliaDesc *obj) const =0;
+
+  //= Add morphological tag to aid in verbal response generation.
+  virtual void GramTag (jhcAliaDesc *prop, int t) const =0;
 
   //= Locate most recent existing node with compatible person name.
   virtual jhcAliaDesc *Person (const char *name) const =0;
@@ -64,6 +74,15 @@ public:
 
   //= Reference to the current user.
   virtual jhcAliaDesc *User () const =0;
+
+  //= Associate a visual object ID (not track) with some semantic network node.
+  virtual int VisAssoc (int tid, jhcAliaDesc *obj, int agt =0) =0;
+
+  //= Conversion from semantic network node to associated visual object ID (not track).
+  virtual int VisID (const jhcAliaDesc *obj, int agt =0) const =0;
+
+  //= Conversion from visual object ID (not track) to associated semantic network node.
+  virtual jhcAliaDesc *NodeFor (int tid, int agt =0) const =0;
 
   //= Add current note as a focus or delete it.
   // return number of focus if added, -2 if deleted

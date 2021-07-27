@@ -61,15 +61,15 @@ int jhcTrack3D::htrk_params (const char *fname)
   int ok;
 
   ps->SetTag("t3d_htrk", 0);
-  ps->NextSpecF( &dmax0, 18.0, "Max match distance (in)");     // was 24 then 6 then 12
-  ps->NextSpecF( &pmix0,  0.9, "Position update rate");        // was 0.2
-  ps->NextSpec4( &hit0,   5,   "Hits to add person");          // was 20
-  ps->NextSpec4( &miss0, 15,   "Misses to remove person");     // was 30
-  ps->NextSpec4( &anchor, 1,   "No penalty if person blob");     
+  ps->NextSpecF( &dmax0,  18.0, "Max match distance (in)");     // was 24, 12, then 6
+  ps->NextSpecF( &pmix0,   0.9, "Position update rate");        // was 0.2
+  ps->NextSpec4( &hit0,    5,   "Hits to add person");          // was 20
+  ps->NextSpec4( &miss0,  60,   "Misses to remove person");     // was 15, 30, then 45
+  ps->NextSpec4( &anchor,  0,   "No penalty if person blob");     
   ps->Skip();
 
-  ps->NextSpec4( &hit2,   5, "Hits to add gaze");  
-  ps->NextSpec4( &miss2,  5, "Misses to remove gaze");  
+  ps->NextSpec4( &hit2,    5,   "Hits to add gaze");  
+  ps->NextSpec4( &miss2,   5,   "Misses to remove gaze");  
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;

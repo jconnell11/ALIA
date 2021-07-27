@@ -459,6 +459,12 @@
     <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp">
       <Filter>Source Files\common audio\Reasoning</Filter>
     </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaStats.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaMood.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MensEtDoc.h">
@@ -824,6 +830,12 @@
     <ClInclude Include="..\..\audio\common\Reasoning\jhcActionTree.h">
       <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaStats.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaMood.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\MensEt.ico">
@@ -832,6 +844,7 @@
     <None Include="res\MensEt.rc2">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MensEt.rc">

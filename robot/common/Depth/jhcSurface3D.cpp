@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@
 jhcSurface3D::jhcSurface3D ()
 {
   i2m.SetSize(4, 4);
+  xform.SetSize(4, 4);
   m2i.SetSize(4, 4);
   SetSize();
   SetCamera();
@@ -179,7 +180,6 @@ int jhcSurface3D::FloorMap (jhcImg& dest, const jhcImg& d16, int clr,
                             double pan, double tilt, double roll, 
                             double xcam, double ycam, double zcam)
 {
-  jhcMatrix xform(4, 4);
   double a0, b0, c0, d0, a1, b1, c1, d1, a2, b2, c2, d2, abc0, abc1, abc2;
   int zlim = __min(ROUND(dmax * 101.6 / ksc), 40000);  // max = 10m (32.8')    
   int zcut = (int)(1.0 + 253.0 * (zmax - z0) / (z1 - z0));
@@ -267,7 +267,6 @@ int jhcSurface3D::FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr,
                              double pan, double tilt, double roll, 
                              double xcam, double ycam, double zcam, int n)
 {
-  jhcMatrix xform(4, 4);
   double a0, b0, c0, d0, a1, b1, c1, d1, a2, b2, c2, d2, abc0, abc1, abc2;
   double sc = 7.1e-7, sc2 = 0.5 * sc, grid = 101.6 * ipp, gr2 = 0.5 * grid + 0.5;
   int dev, top, alt, gstep = ROUND(n * grid), rth = ROUND(sqrt((n + 1) * grid / sc));
@@ -354,6 +353,106 @@ int jhcSurface3D::FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr,
             }
          }
        }
+  }
+  return 1;
+}
+
+
+//= Plot camera depth and color as height from some plane and color on that plane.
+// generally need to call SetMap first to describe destination image
+// right limbs of objects tend to bleed onto edge of surface shadow (Kinect 360)
+// Note: does NOT do CacheXYZ so functions like MapBack and Ground will not work
+
+int jhcSurface3D::FloorColor (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const jhcImg& d16, int clr,
+                              double pan, double tilt, double roll, double xcam, double ycam, double zcam)
+{
+  double a0, b0, c0, d0, a1, b1, c1, d1, a2, b2, c2, d2, abc0, abc1, abc2;
+  int zlim = __min(ROUND(dmax * 101.6 / ksc), 40000);                          // max = 10m (32.8')    
+  int zcut = (int)(1.0 + 253.0 * (zmax - z0) / (z1 - z0));
+  int dw = hts.XDim(), dh = hts.YDim(), ln2 = d16.Line(), ln3 = col.Line();
+  int zstep = ((hw == iw) ? 1 : 2), zln = ((hw == iw) ? ln2 >> 1 : ln2);
+  int sstep = ((hw == iw) ? 3 : 6), sln = ((hw == iw) ? ln3: ln3 << 1);
+  int x, y, ix, iy, iz;
+  const US16 *z, *zrow = (const US16 *) d16.PxlSrc();
+  const UC8 *s, *srow = col.PxlSrc();
+  UC8 *h;
+
+  // check for proper sized input and clear output images
+  if (!rgb.Valid(3) || !rgb.SameSize(hts, 1) || !col.SameFormat(iw, ih, 3) || !d16.SameFormat(iw, ih, 2))
+    return Fatal("Bad images to jhcSurface3D::FloorColor");
+  if (clr > 0)
+  {
+    rgb.FillArr(0);
+    hts.FillArr(0);
+  }
+
+  // figure out transform (enables coordinate mapping functions)
+  // 0 degs is camera horizontal
+  BuildMatrices(pan, tilt + 90.0, roll, xcam, ycam, zcam);           
+
+  // add in conversion to overhead map with x = 0 in middle and z0 -> 1
+  xform.Copy(i2m);
+  xform.Translate(-32768.0, -32768.0, -32768.0 - 50.0 * z0);
+  xform.Magnify(0.02 / ipp, 0.02 / ipp, 0.02 * 253.0 / (z1 - z0));
+  xform.Translate(0.5 * hts.XDim(), 0.0, 1.0);
+
+  // extract factors: ix = (a0 * x + b0 * y + c0) * z + d0
+  a0 = xform.MRef(0, 0);
+  b0 = xform.MRef(1, 0);
+  c0 = xform.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
+  d0 = xform.MRef(3, 0);
+
+  // extract factors: iy = (a1 * x + b1 * y + c1) * z + d1
+  a1 = xform.MRef(0, 1);
+  b1 = xform.MRef(1, 1);
+  c1 = xform.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
+  d1 = xform.MRef(3, 1);
+
+  // extract factors: iz = (a2 * x + b2 * y + c2) * z + d2
+  a2 = xform.MRef(0, 2);
+  b2 = xform.MRef(1, 2);
+  c2 = xform.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
+  d2 = xform.MRef(3, 2);
+
+  // apply coordinate transform to depth pixels
+  for (y = 0; y < hh; y++, srow += sln, zrow += zln)
+  {
+    // compute beginning values for row
+    s = srow;
+    z = zrow;
+    abc0 = b0 * y + c0;
+    abc1 = b1 * y + c1;
+    abc2 = b2 * y + c2;
+
+    // remap pixels in a row of the depth image
+    for (x = 0; x < hw; x++, s += sstep, z += zstep, abc0 += a0, abc1 += a1, abc2 += a2)
+      if ((*z >= 1760) && (*z <= zlim))
+      {
+        // find map location for pixel and check if in valid region
+        iz = (int)(abc2 * (*z) + d2);
+        if (iz >= zcut)                             // need iz < 0 sometimes
+          continue;
+        iy = (int)(abc1 * (*z) + d1);
+        if ((iy < 0) || (iy >= dh))
+          continue;
+        ix = (int)(abc0 * (*z) + d0);
+        if ((ix < 0) || (ix >= dw))
+          continue;
+
+        // only change output pixels only if height is greater than map
+        iz = __min(iz, 255);       
+        h = hts.APtr(ix, iy); 
+        if (iz > *h)
+        {
+          *h = (UC8) iz;                           // iz always positive
+          rgb.ASetCol(ix, iy, s[2], s[1], s[0]);   // copy color of top
+        }
+        else if (*h == 0)
+        {
+          *h = 1;                                  // clamp negative iz 
+          rgb.ASetCol(ix, iy, s[2], s[1], s[0]);   // sample color of ditch
+        }
+      }
   }
   return 1;
 }
@@ -590,6 +689,102 @@ int jhcSurface3D::MapBack (jhcImg& dest, const jhcImg& src, double z0, double z1
         // copy floor pixel
         *d = (UC8) src.ARef(fx, fy, 0);
       }
+  return 1;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                            Reverse Mapping                            //
+///////////////////////////////////////////////////////////////////////////
+
+//= Create binary mask showing where overhead (map) blob comes from in frontal view.
+// recomputes map (x y) and ensures ht in range [over under] to lookup blob number in cc image 
+// assumes mapping parameters (xform) already set by one of main functions (e.g. FloorMap2)
+// to make searching more efficient can supply frontal ROI by presetting dest
+// mask only written inside this ROI so clear all of mask first if displaying
+// adjusts mask ROI at exit to contain just marked pixels (add any border externally)
+// does incremental back-projection without need for CacheXYZ to be valid
+// useful for anaylzing color of objects (more pixels visible in frontal image)
+
+int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, double under, const jhcImg& cc, int n)
+{
+  double a0, b0, c0, d0, a1, b1, c1, d1, a2, b2, c2, d2, abc0, abc1, abc2;
+  int zlim = __min(ROUND(dmax * 101.6 / ksc), 40000);                          // max = 10m (32.8')    
+  int zbot = (int)(1.0 + 253.0 * (over  - z0) / (z1 - z0));
+  int zcut = (int)(1.0 + 253.0 * (under - z0) / (z1 - z0));
+  int dw = cc.XDim(), dh = cc.YDim(), sk = mask.RoiSkip(), sk2 = d16.RoiSkip(mask) >> 1;
+  int x0 = mask.RoiX(), xlim = mask.RoiLimX(), y0 = mask.RoiY(), ylim = mask.RoiLimY();
+  int x, y, ix, iy, iz, lf = iw, rt = 0, bot = ih, top = 0;
+  const US16 *z = (const US16 *) d16.RoiSrc(mask);
+  UC8 *d = mask.RoiDest();
+
+  // sanity check
+  if (!mask.SameFormat(iw, ih, 1) || !mask.SameSize(d16, 2))
+    return Fatal("Bad images to jhcSurface3D::FrontMask");
+
+  // extract factors: ix = (a0 * x + b0 * y + c0) * z + d0
+  a0 = xform.MRef(0, 0);
+  b0 = xform.MRef(1, 0);
+  c0 = xform.MRef(2, 0) - 0.5 * (a0 * (iw - 1) + b0 * (ih - 1));
+  d0 = xform.MRef(3, 0);
+
+  // extract factors: iy = (a1 * x + b1 * y + c1) * z + d1
+  a1 = xform.MRef(0, 1);
+  b1 = xform.MRef(1, 1);
+  c1 = xform.MRef(2, 1) - 0.5 * (a1 * (iw - 1) + b1 * (ih - 1));
+  d1 = xform.MRef(3, 1);
+
+  // extract factors: iz = (a2 * x + b2 * y + c2) * z + d2
+  a2 = xform.MRef(0, 2);
+  b2 = xform.MRef(1, 2);
+  c2 = xform.MRef(2, 2) - 0.5 * (a2 * (iw - 1) + b2 * (ih - 1));
+  d2 = xform.MRef(3, 2);
+
+  // adjust for left edge
+  c0 += a0 * x0;
+  c1 += a1 * x0;
+  c2 += a2 * x0;
+
+  // project pixels in ROI to find map pixel
+  for (y = y0; y <= ylim; y++, d += sk, z += sk2)
+  {
+    // compute beginning values for this line (prevent round-off drift)
+    abc0 = b0 * y + c0;
+    abc1 = b1 * y + c1;
+    abc2 = b2 * y + c2;
+
+    // remap pixels in a row of the depth image
+    for (x = x0; x <= xlim; x++, d++, z++, abc0 += a0, abc1 += a1, abc2 += a2)
+      if ((*z >= 1760) && (*z <= zlim))
+      {
+        // find map location for pixel and check if in valid map region
+        iz = (int)(abc2 * (*z) + d2);
+        if ((iz < zbot) || (iz >= zcut))
+          continue;
+        iy = (int)(abc1 * (*z) + d1);
+        if ((iy < 0) || (iy >= dh))
+          continue;
+        ix = (int)(abc0 * (*z) + d0);
+        if ((ix < 0) || (ix >= dw))
+          continue;
+
+        // see if component at this surface location matches desired
+        if (cc.ARef16(ix, iy) != n)
+          *d = 0;
+        else
+        {
+          // mark pixel and expand binary mask zone in output
+          *d = 255;
+          lf  = __min(lf, x);
+          rt  = __max(rt, x);
+          bot = __min(bot, y);
+          top = __max(top, y);
+        }
+      }
+  }
+
+  // adjust output ROI so it encloses just mask pixels
+  mask.SetRoiLims(lf, bot, rt, top);
   return 1;
 }
 

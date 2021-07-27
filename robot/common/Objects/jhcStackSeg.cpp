@@ -275,8 +275,6 @@ enh.CopyArr(src);
 
 void jhcStackSeg::floor_area ()
 {
-  jhcArr hist(256);
-
   // get color statistics of main reference patch
   HistRegion8(fhist[0], rg, p1);
   HistRegion8(fhist[1], yb, p1);

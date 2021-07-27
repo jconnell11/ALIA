@@ -31,6 +31,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 //= Default destructor does necessary cleanup.
+// nodes themselves continue to exist until garbage collected
 
 jhcGraphlet::~jhcGraphlet ()
 {
@@ -43,6 +44,20 @@ jhcGraphlet::jhcGraphlet ()
 {
   *blank = '\0';
   ni = 0;
+}
+
+
+//= Check whether any item in description has been overridden.
+// useful for bored -> not(bored) following changes by jhcWorkMem::Endorse
+
+bool jhcGraphlet::Moot () const
+{
+  int i;
+
+  for (i = 0; i < ni; i++)
+    if (desc[i]->Belief() <= 0.0)  
+      return true;
+  return false;
 }
 
 
@@ -153,6 +168,19 @@ int jhcGraphlet::RemItem (const jhcNetNode *item)
 }
 
 
+//= Make sure no nodes from reference list appear in description.
+// returns the number of items remaining in description
+
+int jhcGraphlet::RemAll (const jhcGraphlet& ref)
+{
+  int i;
+
+  for (i = 0; i < ref.ni; i++)
+    RemItem(ref.desc[i]);
+  return ni;
+}
+
+
 //= Designate which node in graphlet is the most important.
 // returns main node if successful, NULL if not enough space to add
 
@@ -213,9 +241,9 @@ jhcNetNode *jhcGraphlet::MainProp ()
   int i;
 
   if (main != NULL)
-    if (main->LexNode() || (!main->VerbTag() && (main->NumArgs() <= 0)))
+    if (!main->VerbTag() && (main->NumArgs() <= 0))
       for (i = 0; i < ni; i++)
-        if (!desc[i]->LexNode() && (desc[i]->VerbTag() || (desc[i]->NumArgs() > 0)))
+        if (desc[i]->VerbTag() || (desc[i]->NumArgs() > 0))
           return SetMain(desc[i]);
   return main;
 }
@@ -236,26 +264,34 @@ bool jhcGraphlet::InDesc (const jhcNetNode *item) const
 
 
 //= Check if any argument of given node falls outside description.
+// returns false if item has no arguments
 
-bool jhcGraphlet::ArgOut (const jhcNetNode& item) const
+bool jhcGraphlet::ArgOut (const jhcNetNode *item) const
 {
-  int anum, na = item.NumArgs();
+  int anum, na;
 
+  if (item == NULL)
+    return false;
+  na = item->NumArgs();
   for (anum = 0; anum < na; anum++)
-    if (!InDesc(item.Arg(anum)))
+    if (!InDesc(item->Arg(anum)))
       return true;
   return false;
 }
 
 
 //= Check if any property of given node falls outside description.
+// returns false if item has no properties
 
-bool jhcGraphlet::PropOut (const jhcNetNode& item) const
+bool jhcGraphlet::PropOut (const jhcNetNode *item) const
 {
-  int pnum, np = item.NumProps();
+  int pnum, np;
 
+  if (item == NULL)
+    return false;
+  np = item->NumProps();
   for (pnum = 0; pnum < np; pnum++)
-    if (!InDesc(item.Prop(pnum)))
+    if (!InDesc(item->Prop(pnum)))
       return true;
   return false;
 }
@@ -274,25 +310,14 @@ int jhcGraphlet::ActualizeAll (int ver) const
 }
 
 
-//= Set belief of all nodes to some specific value.
-
-void jhcGraphlet::Believe (double blf) const
-{
-  int i;
-
-  for (i = 0; i < ni; i++)
-    desc[i]->SetBelief(blf);
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //                              List Access                              //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Returns next node in list, transitioning from halo to main if needed.
-// call with prev = NULL to get first node
+// call with prev = NULL to get first node, bin parameter ignored
 
-jhcNetNode *jhcGraphlet::NextNode (const jhcNetNode *prev) const
+jhcNetNode *jhcGraphlet::NextNode (const jhcNetNode *prev, int bin) const
 {
   int i;
 
@@ -334,35 +359,18 @@ int jhcGraphlet::Save (FILE *out, int lvl, int detail) const
   for (i = 0; i < ni; i++)
   {
     n = desc[i];
-    if ((i == 0) || (n->Literal() != NULL) || (n->NumArgs() > 0) ||
-        has_lex_in(n) || ((n->tags != 0) && (detail >= 2)))
-      lvl2 = n->Save(out, lvl2, kmax, nmax, rmax, this, detail);   
+    if ((i == 0) || (n->Literal() != NULL) || (n->NumArgs() > 0) || 
+        (n->Lex() != NULL) || ((n->tags != 0) && (detail >= 2)))
+      lvl2 = n->Save(out, lvl2, kmax, nmax, rmax, detail, this);   
   }
   return((ferror(out) != 0) ? -1 : 1);
-}
-
-
-//= Check if any of a node's words are part of this graphlet.
-
-bool jhcGraphlet::has_lex_in (const jhcNetNode *n) const
-{
-  jhcNetNode *p;
-  int i, np = n->NumProps();
-
-  for (i = 0; i < np; i++)
-  {
-    p = n->Prop(i);
-    if (p->LexNode() && InDesc(p))
-      return true;
-  }
-  return false;
 }
 
 
 //= Print the graphlet with some header line preceeding it.
 // largely for debugging
 
-void jhcGraphlet::Print (int lvl, const char *tag, int detail) const
+void jhcGraphlet::Print (const char *tag, int lvl,  int detail) const
 {
   if ((tag == NULL) || (*tag == '\0'))
     jprintf("%*sdescription:", lvl, "");
@@ -375,14 +383,21 @@ void jhcGraphlet::Print (int lvl, const char *tag, int detail) const
 
 //= Just print out the names of all the nodes in the graphlet.
 
-void jhcGraphlet::ListAll (int lvl, int blf) const
+void jhcGraphlet::ListAll (const char *tag, int lvl, int blf) const
 {
   int i;
 
+  if ((tag == NULL) || (*tag == '\0'))
+    jprintf("%*snodes:\n", lvl, "");
+  else
+    jprintf("%*s%s:\n", lvl, "", tag);
   if (blf > 0)
     for (i = 0; i < ni; i++)
-      jprintf("%*s%s = %4.2f\n", lvl, "", desc[i]->Nick(), desc[i]->Belief());
+      jprintf("%*s%s def = %4.2f\n", lvl + 2, "", desc[i]->Nick(), desc[i]->Default());
+  else if (blf < 0)
+    for (i = 0; i < ni; i++)
+      jprintf("%*s%s blf = %4.2f\n", lvl + 2, "", desc[i]->Nick(), desc[i]->Belief());
   else
     for (i = 0; i < ni; i++)
-      jprintf("%*s%s\n", lvl, "", desc[i]->Nick());
+      jprintf("%*s%s\n", lvl + 2, "", desc[i]->Nick());
 }

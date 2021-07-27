@@ -53,8 +53,8 @@ public:
   // other head information (including label)
   jhcKalVec vel; 
   char tag[80];
-  void *node;
-  int id, vis; 
+  void *node;                // no longer used in ALIA
+  int id, vis, state; 
 
   // raw arm blob components
   int bnum, alt;

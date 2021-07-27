@@ -39,8 +39,8 @@
 // indefinite plural noun phrase
 
 =[%obj-s]
-  (<desc>) <AKO-S>
-  (<desc>) things
+  (<desc>) <AKO-S> ((<be>) <comp>)
+  (<desc>) things ((<be>) <comp>)
 
 
 // definite noun phrase
@@ -51,6 +51,7 @@
   (<desc>) <NAME> (<comp>)
   <REF-D>
   <REF>
+  <REF-L>
 
 
 // noun
@@ -79,8 +80,10 @@
 // one modifiying term
 
 =[nmod]
-  (<DEG>) <HQ>
+  (<NEG>) (<DEG>) <HQ>
+  <HQ-EST>
   <ACT-G>
+  <AKO>
 
 
 // complementing term (usually PP)
@@ -89,6 +92,7 @@
   <HAS> <np>
   that <be> <HQ>
   <place>
+  <HQ-ER> than <%obj>
  
 
 // types of location phrases
@@ -96,7 +100,6 @@
 =[place]
   (<DEG>) <LOC> <np>
   <LOC-2> <np> and <np>
-  <LOC-0>
   <LOC-V>
 
 
@@ -105,33 +108,20 @@
 // copula verb phrase ("be" optional for yn-questions)
 
 =[$add]
-  (<cop>) <NAME>
+  (<cop>) (<NEG>) <NAME>
   (<cop>) <desc> 
   (<cop>) <comp>
   (<cop>) <%obj-i>
-  (<cop-p>) <%obj-s>
+  (<cop>) <%obj-s>
   (<cop>) a <%n-super>
 
 
 // copula core
  
 =[cop]
-  <cop-p>
-  <cop-n>
-
-
-// positive copula
-
-=[cop-p]
   <be> (<BLF>) 
   <BLF> <be>
 
-
-// negated copula
-
-=[cop-n]
-  <be> (<BLF>) <NEG>
-  <BLF> <NEG> <be>
 
 
 

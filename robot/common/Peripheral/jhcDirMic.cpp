@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2020 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,15 +86,15 @@ int jhcDirMic::geom_params (const char *fname)
 
   // set up parameters
   ps->SetTag(tag, 0);
-  ps->NextSpecF( &x0,     -1.0, "X location (in)");
-  ps->NextSpecF( &y0,     16.0, "Y location (in)");
-  ps->NextSpecF( &z0,    104.0, "Z location (in)");
-  ps->NextSpecF( &pan,     0.0, "Pan of connector end (deg)");
-  ps->NextSpecF( &tilt,    0.0, "Tilt of connector end (deg)");
+  ps->NextSpecF( &x0,     0.0, "X location (in)");
+  ps->NextSpecF( &y0,     0.9, "Y location (in)");
+  ps->NextSpecF( &z0,    44.5, "Z location (in)");
+  ps->NextSpecF( &pan,    0.0, "Pan of connector end (deg)");
+  ps->NextSpecF( &tilt,   0.0, "Tilt of connector end (deg)");
   ps->Skip();
 
-  ps->NextSpec4( &mport,   0,   "Serial port (0 if invalid)"); 
-  ps->NextSpec4( &light,   0,   "Controls LED");   
+  ps->NextSpec4( &mport,  8,   "Serial port (0 if invalid)"); 
+  ps->NextSpec4( &light,  0,   "Controls LED");   
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -258,22 +259,20 @@ int jhcDirMic::Update (int voice)
 {
   int dir, up = 100;
 
-  if (mok <= 0)
-    return 0;
-
   // clear histogram and final smooth version (for display)
   snd.Fill(0);
   raw.Fill(0);
   pk = 125;
   cnt = 0;
 
-  // fill histogram with responses since last call
-  while (mcom.Check() > 0)
-    if ((dir = mcom.Rcv()) <= 250)   // 255 = invalid
-    {
-      raw.AInc(dir, up);
-      cnt++;
-    }
+  // fill histogram with responses since last call (if mic connected)
+  if (mok > 0)
+    while (mcom.Check() > 0)
+      if ((dir = mcom.Rcv()) <= 250)   // 255 = invalid
+      {
+        raw.AInc(dir, up);
+        cnt++;
+      }
 
   // smooth and find mode else assume straight forward
   if (cnt > 0)

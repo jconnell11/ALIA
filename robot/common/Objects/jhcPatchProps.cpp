@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,11 +44,7 @@ jhcPatchProps::~jhcPatchProps ()
 
 jhcPatchProps::jhcPatchProps ()
 {
-  int i;
-
   // shared list of color names
-  for (i = 0; i < cmax; i++)
-    cname[i][0] = '\0';
   strcpy_s(cname[0], "red");
   strcpy_s(cname[1], "orange");
   strcpy_s(cname[2], "yellow");
@@ -63,7 +59,13 @@ jhcPatchProps::jhcPatchProps ()
   hhist.SetSize(256);
 
   // processing parameters
+  SetFind(9, 200, 25, 60, 245, 170, 80);
+  SetHue(17, 32, 49, 120, 175, 250);
+  SetPrimary(0.2, 2.0, 0.3, 0.05);
+
+  // processing parameters
   Defaults();
+  Reset();
 }
 
 
@@ -79,18 +81,32 @@ int jhcPatchProps::cfind_params (const char *fname)
   int ok;
 
   ps->SetTag("prop_cfind", 0);
-  ps->NextSpec4( &csm,     9, "Mask shrinkage (pel)");  
-  ps->NextSpec4( &cth,   200, "Shrink shape threshold");  
+  ps->NextSpec4( &csm,   "Mask shrinkage (pel)");  
+  ps->NextSpec4( &cth,   "Shrink shape threshold");  
   ps->Skip(); 
-  ps->NextSpec4( &smin,   25, "Min saturation for color");   // was 30, 50, then 35
-  ps->NextSpec4( &imin,   60, "Min channel for color");      // was 50, 80, then 120
-  ps->NextSpec4( &imax,  245, "Max channel for color");      // was 240
+  ps->NextSpec4( &smin,  "Min saturation for color");   // was 30, 50, then 35
+  ps->NextSpec4( &imin,  "Min intensity for color");    // was 50, 80, then 120
+  ps->NextSpec4( &imax,  "Max intensity for color");    // was 240
 
-  ps->NextSpec4( &white, 170, "White intensity threshold");  // was 180 then 150
-  ps->NextSpec4( &dark,   80, "Black intensity threshold");  // was 90 then 100
+  ps->NextSpec4( &white, "White intensity threshold");  // was 180 then 150
+  ps->NextSpec4( &dark,  "Black intensity threshold");  // was 90 then 100
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
+}
+
+
+//= Set color extraction parameters in same order as in configuration file line.
+
+void jhcPatchProps::SetFind (int sm, int th, int s0, int i0, int i1, int wh, int bk)
+{
+  csm   = sm;
+  cth   = th;
+  smin  = s0;
+  imin  = i0;
+  imax  = i1;
+  white = wh;
+  dark  = bk;
 }
 
 
@@ -102,15 +118,28 @@ int jhcPatchProps::hue_params (const char *fname)
   int ok;
 
   ps->SetTag("prop_hue", 0);
-  ps->NextSpec4( clim,        17, "Red-orange boundary");     // was 13, 7, 2, 25, 10, 12, then 18
-  ps->NextSpec4( clim + 1,    32, "Orange-yellow boundary");  // was 26, 33, then 30
-  ps->NextSpec4( clim + 2,    49, "Yellow-green boundary");   // was 45, 47, then 55, then 50
-  ps->NextSpec4( clim + 3,   120, "Green-blue boundary");  
-  ps->NextSpec4( clim + 4,   175, "Blue-purple boundary");    // was 170
-  ps->NextSpec4( clim + 5,   250, "Purple-red boundary");     // was 234
+  ps->NextSpec4( clim,     "Red-orange boundary");     // was 13, 7, 2, 25, 10, 12, then 18
+  ps->NextSpec4( clim + 1, "Orange-yellow boundary");  // was 26, 33, then 30
+  ps->NextSpec4( clim + 2, "Yellow-green boundary");   // was 45, 47, then 55, then 50
+  ps->NextSpec4( clim + 3, "Green-blue boundary");  
+  ps->NextSpec4( clim + 4, "Blue-purple boundary");    // was 170
+  ps->NextSpec4( clim + 5, "Purple-red boundary");     // was 234
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
+}
+
+
+//= Set hue boundaries for naming in same order as in configuration file line.
+
+void jhcPatchProps::SetHue (int ro, int oy, int yg, int gb, int bp, int pr)
+{
+  clim[0] = ro;
+  clim[1] = oy;
+  clim[2] = yg;
+  clim[3] = gb;
+  clim[4] = bp;
+  clim[5] = pr;
 }
 
 
@@ -122,13 +151,24 @@ int jhcPatchProps::cname_params (const char *fname)
   int ok;
 
   ps->SetTag("prop_cname", 0);
-  ps->NextSpecF( &cprime, 0.2,  "Min primary fraction");  
-  ps->NextSpecF( &cdom,   2.0,  "Primary dominance");  
-  ps->NextSpecF( &csec,   0.3,  "Secondary wrt max");  
-  ps->NextSpecF( &cmin,   0.05, "Min fraction for any");  
+  ps->NextSpecF( &cprime, "Min primary fraction");  
+  ps->NextSpecF( &cdom,   "Primary dominance");  
+  ps->NextSpecF( &csec,   "Secondary wrt max");  
+  ps->NextSpecF( &cmin,   "Min fraction for any");  
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
+}
+
+
+//= Set color name parameters in same order as in configuration file line.
+
+void jhcPatchProps::SetPrimary (double p, double d, double s, double f)
+{
+  cprime = p;
+  cdom   = d;
+  csec   = s;
+  cmin   = f;
 }
 
 
@@ -231,6 +271,20 @@ void jhcPatchProps::SetSize (int x, int y)
 }
 
 
+//= Clear some internal stuff in case it is displayed.
+
+void jhcPatchProps::Reset ()
+{
+  int i;
+
+  for (i = 0; i < cmax; i++)
+  {
+    cols[i]  = 0;
+    cvect[i] = 0;
+  }
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                             Color Functions                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -308,16 +362,17 @@ void jhcPatchProps::color_bins (const jhcImg& src, const jhcImg& gate)
 
 void jhcPatchProps::qual_col ()
 {
-  int i, cp, cm, th, hi, chi, sum = 0, most = -1;
+  int i, cp, cm, th, hi, chi, most = -1;
 
   // clear all colors and find total pixel count
+  pels = 0;
   for (i = 0; i < 9; i++)
   {
-    sum += cols[i];
+    pels += cols[i];
     cvect[i] = 0;
   }
-  cm = ROUND(cmin * sum);
-  cp = ROUND(cprime * sum);
+  cm = ROUND(cmin * pels);
+  cp = ROUND(cprime * pels);
 
   // find highest color bin percentage 
   hi = cm;
@@ -341,7 +396,7 @@ void jhcPatchProps::qual_col ()
 
   // if still no single color selected, pick all that are close
   if (most >= 0)
-    cvect[most] = 2;
+    cvect[most] = 3;
   else if (hi >= cp)
     for (i = 0; i < 9; i++)
       if (cols[i] > th)
@@ -356,6 +411,18 @@ void jhcPatchProps::qual_col ()
 }
 
 
+//= Overwrite local cvec array to allow properties function to work on cached data.
+// assumes v has at least cmax entries
+
+void jhcPatchProps::ForceVect (int *v)
+{
+  int i;
+
+  for (i = 0; i < cmax; i++)
+    cvect[i] = v[i];
+}
+
+
 //= Return semantic color name for dominant color of object.
 // must call FindColors first, start with n = 0 
 // returns answer in lowercase, NULL if end of list
@@ -365,7 +432,7 @@ const char *jhcPatchProps::ColorN (int n) const
   int i, cnt = 0;
 
   for (i = 0; i < cmax; i++)
-    if (cvect[i] == 2)
+    if (cvect[i] >= 2)
       if (cnt++ == n)
         return cname[i];
   return NULL;
@@ -465,6 +532,26 @@ int jhcPatchProps::AltColors (char *dest, int ssz) const
     cnt++;
   }
   return cnt;
+}
+
+
+//= For a color 0-8 (ROYGBP-KXW) tell if it is prime(3), main (2), alt (1), or none (0).
+
+int jhcPatchProps::DegColor (int cnum) const
+{
+  if ((cnum >= 0) && (cnum <= 8))
+    return cvect[cnum];
+  return 0;
+}
+
+
+//= For a color 0-8 (ROYGBP-KXW) tell fraction of pixels that are that color.
+
+double jhcPatchProps::AmtColor (int cnum) const
+{
+  if ((cnum >= 0) && (cnum <= 8))
+    return(cols[cnum] / (double) pels);
+  return 0;
 }
 
 

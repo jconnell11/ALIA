@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ jhcMensCoord::~jhcMensCoord ()
 jhcMensCoord::jhcMensCoord ()
 {
   // current software version
-  ver = 4.20;
+  ver = 4.50;
 
   // connect processing to basic robot I/O
   rwi.BindBody(&body);
@@ -137,11 +137,23 @@ int jhcMensCoord::Respond ()
 
 //= Call at end of run to put robot in stable state and possibly save knowledge.
 
-void jhcMensCoord::Done ()
+void jhcMensCoord::Done (int status)
 {
+  // stop real time interaction
   body.Stop();
   rwi.Stop();
+
+  // save learned items
+  DumpSession();
   jhcAliaSpeech::Done();
+
+  // possibly report session status
+  if (status > 0)
+  {
+    jprintf("\n==========================================================\n");
+    ShowMem();
+    jprintf("DONE - Think %3.1f Hz, Sense %3.1f Hz\n", Thinking(), Sensing()); 
+  }
 }
 
 

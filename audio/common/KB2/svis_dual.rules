@@ -1,0 +1,364 @@
+// Opposite exclusion of terms in "SceneVis" kernel
+// ================================================
+
+// RULE 1 - if something is closer than something then that something is farther than it
+  if: hq-1 -lex-  closer
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  farther
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 2 - if something is closer than something then it is not farther than that thing
+  if: hq-1 -lex-  closer
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  farther
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// RULE 3 - if something is farther than something then that something is closer than it
+  if: hq-1 -lex-  farther
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  closer
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 4 - if something is farther than something then it is not closer than that thing
+  if: hq-1 -lex-  farther
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  closer
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// ====================== SIZE ==========================
+
+// RULE 5 
+  if: hq-1 -lex-  smaller
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  bigger
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 6 
+  if: hq-1 -lex-  smaller
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  bigger
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// RULE 7 
+  if: hq-1 -lex-  bigger
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  smaller
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 8 
+  if: hq-1 -lex-  bigger
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  smaller
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// ======================== LENGTH ========================
+
+// RULE 9 
+  if: hq-1 -lex-  compacter
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  longer
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 10 
+  if: hq-1 -lex-  compacter
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  longer
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// RULE 11 
+  if: hq-1 -lex-  longer
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  compacter
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 12 
+  if: hq-1 -lex-  longer
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  compacter
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// ========================= WIDTH =======================
+
+// RULE 13 
+  if: hq-1 -lex-  narrower
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  wider
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 14 
+  if: hq-1 -lex-  narrower
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  wider
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// RULE 15 
+  if: hq-1 -lex-  wider
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  narrower
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 16 
+  if: hq-1 -lex-  wider
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  narrower
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// ========================== THICKNESS ======================
+
+// RULE 17 
+  if: hq-1 -lex-  thinner
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  thicker
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 18 
+  if: hq-1 -lex-  thinner
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  thicker
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// RULE 19 
+  if: hq-1 -lex-  thicker
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  thinner
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 20 
+  if: hq-1 -lex-  thicker
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  thinner
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// ========================= HEIGHT =======================
+
+// RULE 21 
+  if: hq-1 -lex-  shorter
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  taller
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 22 
+  if: hq-1 -lex-  shorter
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  taller
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// RULE 23 
+  if: hq-1 -lex-  taller
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  shorter
+           -hq--> obj-2
+           -wrt-> obj-1
+
+// RULE 24 
+  if: hq-1 -lex-  taller
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  shorter
+           -neg-  1
+           -hq--> obj-1
+           -wrt-> obj-2
+
+// ========================= LEFT OF =======================
+
+// RULE 25 
+  if: loc-1 -lex-  left of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  right of
+            -loc-> obj-2
+            -wrt-> obj-1
+
+// RULE 26
+  if: loc-1 -lex-  left of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  right of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// RULE 27 
+  if: loc-1 -lex-  left of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  in front of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// RULE 28 
+  if: loc-1 -lex-  left of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  behind
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// ========================= RIGHT OF =======================
+
+// RULE 29
+  if: loc-1 -lex-  right of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  left of
+            -loc-> obj-2
+            -wrt-> obj-1
+
+// RULE 30 
+  if: loc-1 -lex-  right of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  left of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// RULE 31 
+  if: loc-1 -lex-  right of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  in front of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// RULE 32 
+  if: loc-1 -lex-  right of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  behind
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// ========================= IN FRONT OF =======================
+
+// RULE 33 
+  if: loc-1 -lex-  in front of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  behind
+            -loc-> obj-2
+            -wrt-> obj-1
+
+// RULE 34 
+  if: loc-1 -lex-  in front of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  left of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// RULE 35 
+  if: loc-1 -lex-  in front of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  right of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// RULE 36 
+  if: loc-1 -lex-  in front of
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  behind
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// ========================= BEHIND =======================
+
+// RULE 37 
+  if: loc-1 -lex-  behind
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  in front of
+            -loc-> obj-2
+            -wrt-> obj-1
+
+// RULE 38 
+  if: loc-1 -lex-  behind
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  left of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// RULE 39 
+  if: loc-1 -lex-  behind
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  right of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2
+
+// RULE 40 
+  if: loc-1 -lex-  behind
+            -loc-> obj-1
+            -wrt-> obj-2
+then: loc-2 -lex-  in front of
+            -neg-  1
+            -loc-> obj-1
+            -wrt-> obj-2

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,6 +129,7 @@ public:
   int AdjY () const;
   int BelowX () const;
   int BelowY (int n =1) const;
+  void ScreenPos (int& x, int& y, int i =0, int j =-1);
 
   // image rendering
   int Show (const jhcImg& src, int x =0, int y =0, 
@@ -142,6 +143,7 @@ public:
   int ShowBelow (const jhcImg& src, int mode =0, const char *title =NULL, ...);
   
   // graph rendering
+  int Graph0 (int x, int y, const char *title, ...);
   int Graph (const jhcArr& h, int x =0, int y =0, int maxval =0, 
              int col =0, const char *title =NULL, ...);
   int GraphV (const jhcArr& h, int x =0, int y =0, int maxval =0, 

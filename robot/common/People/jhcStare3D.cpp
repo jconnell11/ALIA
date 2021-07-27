@@ -5,7 +5,8 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-//
+// Copyright 2021 Etaoin Systems
+// 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -137,6 +138,7 @@ bool jhcStare3D::PersonOK (int i, int trk) const
 
 
 //= Get the numeric label associated with a particular index number.
+// returns -1 (not 0) if bad track 
 
 int jhcStare3D::PersonID (int i, int trk) const
 {
@@ -145,6 +147,19 @@ int jhcStare3D::PersonID (int i, int trk) const
   if (trk <= 0) 
     return((i >= NumRaw()) ? -1 : raw[i].id);
   return((i >= NumPotential()) ? -1 : dude[i].id);
+}
+
+
+//= Get the arbitrary state variable associated with a particular index number.
+// returns -1 (not 0) if bad track 
+
+int jhcStare3D::PersonState (int i, int trk) const
+{
+  if (i < 0)
+    return -1;
+  if (trk <= 0) 
+    return((i >= NumRaw()) ? -1 : raw[i].state);
+  return((i >= NumPotential()) ? -1 : dude[i].state);
 }
 
 
@@ -269,19 +284,23 @@ int jhcStare3D::PersonTouch (double wx, double wy, int trk)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Find person closest in 3D to camera origin in projection space.
+// can optionally take a forward offset from robot origin
 // returns tracker index not person ID
 
-int jhcStare3D::Closest (int trk) const
+int jhcStare3D::Closest (double front, int trk) const
 {
   jhcMatrix pos(4);
-  double d2, best;
+  const jhcBodyData *item = ((trk > 0) ? dude : raw);
+  double dx, dy, d2, best;
   int i, n = PersonLim(trk), win = -1;
 
   for (i = 0; i < n; i++)
-    if (PersonOK(i, trk))
+    if (PersonOK(i, trk) && (item[i].vis > 0))
     {
       Head(pos, i, trk);
-      d2 = pos.Len2Vec3();
+      dx = pos.X();
+      dy = pos.Y() - front;
+      d2 = dx * dx + dy * dy;
       if ((win < 0) || (d2 < best))
       {
         win = i;
@@ -447,6 +466,7 @@ int jhcStare3D::SetName (int id, const char *name, int trk)
 
 
 //= Convenience function to get the semantic node associated with some ID.
+// ALIA system uses jhcWorkMem::ExtRef(id) or jhcNote::NodeFor(id) instead
 
 const void *jhcStare3D::GetNode (int id, int trk) const
 {
@@ -459,6 +479,7 @@ const void *jhcStare3D::GetNode (int id, int trk) const
 
 
 //= Convenience function to set the semantic node associated with some ID.
+// ALIA system uses jhcWorkMem::ExtLink(id, n) or jhcNote::VisAssoc(id, n) instead
 
 int jhcStare3D::SetNode (void *n, int id, int trk)
 {
@@ -472,6 +493,7 @@ int jhcStare3D::SetNode (void *n, int id, int trk)
 
 
 //= Find tracking ID number for person whose node matches the one given.
+// ALIA system uses jhcWorkMem::ExtRef(node) or jhcNote::VisID(node) instead
 
 int jhcStare3D::NodeID (const void *node, int trk) const
 {
@@ -494,7 +516,7 @@ int jhcStare3D::NodeID (const void *node, int trk) const
 //= In overhead view, draw a box of some color around a head having a particular ID.
 
 int jhcStare3D::ShowID (jhcImg& dest, int id, int trk,  
-                        int invert, int col, double sz, int style) 
+                        int invert, int col, double sz, int style)
 {
   jhcRoi box;
   jhcMatrix pos(4);
@@ -517,8 +539,7 @@ int jhcStare3D::ShowID (jhcImg& dest, int id, int trk,
 
 
 //= In frontal view, draw a box of some color around a head having a particular ID.
-// negative color skips building projection matrices again
-// sz control head box size
+// sz control head box size, negative size skips building projection matrices again
 
 int jhcStare3D::ShowIDCam (jhcImg& dest, int id, int cam, int trk, int rev, 
                            int col, double sz, int style) 
@@ -622,7 +643,6 @@ int jhcStare3D::HandsCam (jhcImg& dest, int cam, int trk, int rev, double sz)
 
   // set up projection from a particular camera
   AdjGeometry(cam);
-
   for (i = 0; i < n; i++)
   {
     // find image location of left fingertip and draw as X

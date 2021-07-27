@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,6 +116,7 @@ public:
   char *SlotRef (char *pair) const;
   const char *SlotVal (const char *pair) const;
   const char *SlotGet (char *pair, const char *prefix =NULL, int lower =1) const;
+  const char *SplitPair (char *slot, const char *pair, int lower, int ssz) const;
 
   // slot functions - convenience
   template <size_t ssz>
@@ -124,6 +125,9 @@ public:
   template <size_t ssz, size_t vsz>
     const char *NextSlot (const char *alist, char (&slot)[ssz], char (&val)[vsz], int local =0) const
       {return NextSlot(alist, slot, val, local, ssz, vsz);}
+  template <size_t ssz>
+    const char *SplitPair (char (&slot)[ssz], const char *pair, int lower =1) const
+      {return SplitPair(slot, pair, lower, ssz);}
 
   // fragment functions
   bool HasFrag (const char *alist, const char *frag) const;
