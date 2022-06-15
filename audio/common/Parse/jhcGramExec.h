@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -137,8 +137,9 @@ private:
   char frag[80];             /** Temporary string results.         */
 
   // cleaned up source
-  jhcTxtSrc txt2;            /** Nice version of input word list.  */       
-  char norm[200];            /** Input with proper capitalization. */ 
+  jhcTxtSrc txt2;            /** Nice version of input word list.  */     
+  char full[500];            /** Input with contractions removed.  */  
+  char norm[500];            /** Input with proper capitalization. */ 
 
   // robot names
   char alert[10][40];        /** Phrases referring to robot.  */
@@ -171,7 +172,7 @@ public:
   virtual int ExtendRule (const char *name, const char *phrase);
 
   // main functions
-  int Parse (const char *sent);
+  int Parse (const char *sent, int fix);
   int NumTrees () const {return nt;}
   int Selected () const {return tree;}
   int WildCards (int n) const;
@@ -233,6 +234,8 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // main functions
+  const char *expand (const char *sent, int fix);
+  void subst_all (const char *pat, const char *rep);
   int normalize (int n0, const jhcGramRule *r);
   int wild_cnt (const jhcGramRule *s) const;
   int dict_cnt (const jhcGramRule *s) const;

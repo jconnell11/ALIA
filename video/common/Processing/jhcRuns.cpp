@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -3399,5 +3399,83 @@ int jhcRuns::SmallGapH (jhcImg& dest, const jhcImg& src, int wmax) const
       while (n-- > 0)            
         *d++ = 0;
   }
+  return 1;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                         Object Accomodation                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Mark centers where a wid by ht box will cover pixels all above threshold.
+// since needs integer center coords, forces wid and ht to be odd
+
+int jhcRuns::FitsBox (jhcImg& dest, const jhcImg& src, int wid, int ht, int th ) const
+{
+  FitsH(dest, src,  wid, th);
+  FitsV(dest, dest, ht,  0); 
+  return 1;
+}
+
+
+//= Mark centers where a horizontal span of wid will cover pixels all above threshold.
+// since needs a integer center, forces wid to be odd
+
+int jhcRuns::FitsH (jhcImg& dest, const jhcImg& src, int wid, int th) const
+{
+  if (!dest.Valid(1) || !dest.SameFormat(src))
+    return Fatal("Bad images to jhcRuns::FitsH");
+  dest.CopyRoi(src);
+
+  // generic ROI case
+  int rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  int x, y, run, odd = wid | 0x01, half = odd >> 1;
+  const UC8 *s = src.RoiSrc();
+  UC8 *d = dest.RoiDest();
+
+  for (y = rh; y > 0; y--, d += rsk, s += rsk)
+  {
+    run = 0;
+    for (x = rw; x > 0; x--, d++, s++)
+    {
+      if (*s <= th)
+        run = 0;
+      else if (++run >= odd)
+        *(d - half) = 255;             // center of span (to left)
+      *d = 0;                          // in case src = dest
+    }  
+  }
+  return 1;
+}
+
+
+//= Mark centers where a vertical span of ht will cover pixels all above threshold.
+// since needs a integer center, forces ht to be odd
+
+int jhcRuns::FitsV (jhcImg& dest, const jhcImg& src, int ht, int th) const
+{
+  if (!dest.Valid(1) || !dest.SameFormat(src))
+    return Fatal("Bad images to jhcRuns::FitsV");
+  dest.CopyRoi(src);
+
+  // generic ROI case
+  int rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  int x, y, odd = ht | 0x01, half = (odd >> 1) * dest.Line();
+  int *runs = new int[rw];
+  const UC8 *s = src.RoiSrc();
+  UC8 *d = dest.RoiDest();
+
+  for (x = 0; x < rw; x++)            // initialize all columns
+    runs[x] = 0;        
+  for (y = rh; y > 0; y--, d += rsk, s += rsk)
+    for (x = 0; x < rw; x++, d++, s++)
+    {
+      if (*s <= th)
+        runs[x] = 0;
+      else if (++(runs[x]) >= odd)
+        *(d - half) = 255;             // center of span (below)
+      *d = 0;                          // in case src = dest
+    }  
+  delete [] runs;                      // clean up
   return 1;
 }

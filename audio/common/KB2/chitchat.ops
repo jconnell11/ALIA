@@ -1,25 +1,25 @@
 // Respond to speech acts posted by jhcGraphizer
 // ================================================
 
-// OP 1 - "If someone hails you then acknowledge that"
-trig:
+OP 1 - "If someone hails you then acknowledge that"
+  trig:
   NOTE[ input-1 -lex-   hail
                 -agt--> obj-1  
                 -dest-> obj-2  
-          obj-2 -lex-   you ]
+          obj-2 -lex-   me ]
 -----------------
     DO[ act-1 -lex-  acknowledge
               -obj-> input-1 ]
 
 
-// OP 2 - "To acknowledge when someone hails you say to them I'm here whoever"
-trig:
+OP 2 - "To acknowledge when someone hails you say to them I'm here whoever"
+  trig:
     DO[   act-1 -lex-   acknowledge
                 -obj--> input-1
         input-1 -lex-   hail
                 -agt--> obj-1  
                 -dest-> obj-2  
-          obj-2 -lex-   you ]
+          obj-2 -lex-   me ]
 -----------------
     DO[ act-2 -lex-   say
               -dest-> obj-1
@@ -27,14 +27,14 @@ trig:
         txt-1 -str-   I'm here ?0 ]
 
 
-// OP 3 - "To acknowledge when someone hails you say to them I'm listening"
-trig:
+OP 3 - "To acknowledge when someone hails you say to them I'm listening"
+  trig:
     DO[   act-1 -lex-   acknowledge
                 -obj--> input-1
         input-1 -lex-   hail
                 -agt--> obj-1  
                 -dest-> obj-2  
-          obj-2 -lex-   you ]
+          obj-2 -lex-   me ]
 -----------------
     DO[ act-2 -lex-   say
               -dest-> obj-1
@@ -44,68 +44,70 @@ trig:
 
 // ----------------------------------------
 
-// OP 4 - "If someone greets you then acknowledge that"
-trig:
+OP 4 - "If someone greets you then greet them"
+  trig:
   NOTE[ input-1 -lex-   greet
-                -agt--> obj-1  
+                -agt--> agt-1  
                 -dest-> obj-2  
-          obj-2 -lex-   you ]
+          obj-2 -lex-   me ]
 -----------------
-    DO[ act-1 -lex-  acknowledge
-              -obj-> input-1 ]
+    DO[ act-1 -lex-  greet
+              -obj-> agt-1 ]
 
 
-// OP 5 - "To acknowledge when someone greets you say to them hello there whoever"
-trig:
-    DO[   act-1 -lex-   acknowledge
-                -obj--> input-1
-        input-1 -lex-   greet
-                -agt--> obj-1  
-                -dest-> obj-2  
-          obj-2 -lex-   you ]
+OP 5 - "To greet someone say to them hello there whoever"
+  trig:
+    DO[ act-1 -lex-   greet
+              -obj--> agt-1 ]
 -----------------
     DO[ act-2 -lex-   say
-              -dest-> obj-1
+              -dest-> agt-1
               -obj--> txt-1
         txt-1 -str-   Hello there ?0 ]
 
 
-// OP 6 - "To acknowledge when someone greets you say to them nice to see you again"
-trig:
-    DO[   act-1 -lex-   acknowledge
-                -obj--> input-1
-        input-1 -lex-   greet
-                -agt--> obj-1  
-                -dest-> obj-2  
-          obj-2 -lex-   you ]
+OP 6 - "To greet someone say to them nice to see you again whoever"
+  trig:
+    DO[ act-1 -lex-   greet
+              -obj--> agt-1 ]
 -----------------
     DO[ act-2 -lex-   say
-              -dest-> obj-1
+              -dest-> agt-1
               -obj--> txt-1
-        txt-1 -str-   Nice to see you again ]
+        txt-1 -str-   Nice to see you again ?0 ]
 
+
+OP 7 - "To greet someone say to them hey whoever, how are you doing."
+  trig:   
+    DO[ act-1 -lex-  greet 
+              -obj-> agt-1 ]
+---------------
+    DO[ act-2 -lex-   say 
+              -dest-> agt-1
+              -obj--> txt-1
+        txt-1 -str-   hey ?0, how're you doing? ]
 
 // ----------------------------------------
 
-// OP 7 - "If someone dismisses you then acknowledge that"
-trig:
+OP 8 - "If someone dismisses you then acknowledge that"
+  trig:
   NOTE[ input-1 -lex-   dismiss
                 -agt--> obj-1  
                 -dest-> obj-2  
-          obj-2 -lex-   you ]
+          obj-2 -lex-   me ]
 -----------------
     DO[ act-1 -lex-  acknowledge
               -obj-> input-1 ]
 
 
-// OP 8 - "To acknowledge when someone dismisses you say to them goodbye for now whoever"
-trig:
+OP 9 - "To acknowledge when someone dismisses you say to them goodbye for now whoever"
+  trig:
     DO[   act-1 -lex-   acknowledge
                 -obj--> input-1
         input-1 -lex-   dismiss
                 -agt--> obj-1  
                 -dest-> obj-2  
-          obj-2 -lex-   you ]
+          obj-2 -lex-   me ]
 -----------------
     DO[ act-2 -lex-   say
               -dest-> obj-1
@@ -113,14 +115,14 @@ trig:
         txt-1 -str-   goodbye for now ?0 ]
 
 
-// OP 9 - "To acknowledge that someone dismisses you say to them ta ta, see you later"
-trig:
+OP 10 - "To acknowledge that someone dismisses you say to them ta ta, see you later"
+  trig:
     DO[   act-1 -lex-   acknowledge
                 -obj--> input-1
         input-1 -lex-   dismiss
                 -agt--> obj-1  
                 -dest-> obj-2  
-          obj-2 -lex-   you ]
+          obj-2 -lex-   me ]
 -----------------
     DO[ act-2 -lex-   say
               -dest-> obj-1

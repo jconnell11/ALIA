@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@
 // commands are speed and goal guarded moves with expected durations
 // action defaults to stopped at each cycle, else highest bid wins
 // all persistent goals should be maintained OUTSIDE this class
-// basic commands set rotation (twin) and translation (mwin) goal positions
+// basic commands set rotation and translation goal positions
 // progress can be monitored by TurnErr and MoveErr functions (possibly absolute)
 // automatically reads wheel encoders and decodes into a variety of forms
 //   integral motions (head, trav) and since-last-step change (dr, dm)
@@ -100,6 +100,7 @@ private:
   // instantaneous speed estimates
   UL32 now;
   double mvel, tvel, imv, itv;
+  int parked;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -137,7 +138,7 @@ public:
   int SaveCfg (const char *fname) const;
 
   // configuration
-  int CommOK (int bad =0) const {return((berr > bad) ? 0 : 1);}
+  int CommOK (int bad =3) const {return((berr > bad) ? 0 : 1);}
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
   double Battery ();
@@ -177,8 +178,10 @@ public:
   double TurnCmdV () const  {return tvel;}
   double MoveIPS (int abs =0) const {return((abs > 0) ? fabs(imv) : imv);}
   double TurnDPS (int abs =0) const {return((abs > 0) ? fabs(itv) : itv);}
+  int Static () const {return parked;}
   void AdjustXY (double& tx, double& ty, double tx0 =0.0, double ty0 =0.0) const;
   void AdjustTarget (jhcMatrix& pos) const;
+  double AdjustAng (double ang) const;
 
   // base goal specification
   void DriveClear () {mctrl.RampReset(); tctrl.RampReset();} 
@@ -206,9 +209,6 @@ public:
   bool DriveClose (double dist =0.5, double ang =2.0) const {return(MoveClose(dist) && TurnClose(ang));}
   bool MoveClose (double tol =0.5) const {return(mctrl.RampDist(trav) <= tol);}
   bool TurnClose (double tol =2.0) const {return(tctrl.RampDist(head) <= tol);}
-  bool DriveFail (double secs =1.0) const {return(MoveFail(secs) && TurnFail(secs));} 
-  bool MoveFail (double secs =1.0) const {return(mctrl.RampDone() > secs);} 
-  bool TurnFail (double secs =1.0) const {return(tctrl.RampDone() > secs);} 
 
   // -------------------- BASE EXTRAS ---------------------------
 
@@ -256,24 +256,10 @@ public:
   // eliminate residual error
   int MoveFix (double dist, double secs =0.5, double rmax =1.5, int bid =10)
     {return MoveTarget(dist, MoveRate(dist, secs, rmax), bid);}
-/*
-{
-double rate = MoveRate(dist, secs, rmax);
-jprintf("-MoveFix(%3.1f, %3.1f) -> rate = %4.2f\n", dist, secs, rate);
-MoveTarget(dist, rate, bid);
-}
-*/
   int TurnFix (double ang, double secs =0.5, double rmax =1.5, int bid =10)
     {return TurnTarget(ang, TurnRate(ang, secs, rmax), bid);}
-/*
-{
-double rate = TurnRate(ang, secs, rmax);
-jprintf(" TurnFix(%3.1f, %3.1f) -> rate = %4.2f\n", ang, secs, rate);
-TurnTarget(ang, rate, bid);
-}
-*/
 
-  // base read only access
+  // base read only access  
   double MoveCtrlVel () const {return mctrl.RampVel(mdead);}
   double TurnCtrlVel () const {return tctrl.RampVel(tdead);}
   double MoveAbsGoal () const {return mctrl.RampCmd();}

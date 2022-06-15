@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -104,7 +104,7 @@ int jhcEchoFcn::Start (const jhcAliaDesc *desc, int bid)
   {
     jprintf("ECHO: ");
     fcn_args(desc);
-    jprintf(" start ignored\n\n");
+    jprintf(" start ignored\n");
   }
   return 1;
 }
@@ -115,8 +115,7 @@ int jhcEchoFcn::Start (const jhcAliaDesc *desc, int bid)
 
 int jhcEchoFcn::Status (const jhcAliaDesc *desc, int inst)
 {
-  char ch;
-  int rc = -2, ans = 0;
+  int rc = -2;
 
   // try to pass on to some real handler first
   if (next != NULL)
@@ -131,23 +130,7 @@ int jhcEchoFcn::Status (const jhcAliaDesc *desc, int inst)
     fcn_args(desc);
     jprintf(" status ignored\n");
   }
-
-  // status call prompts user 
-  if (noisy < 2)
-  {
-    jprintf(1, noisy, "\n");
-    return rc;
-  }
-  jprintf("  verdict (sp = continue, s = success, f = fail)? ");
-  ch = (char) _getche();
-  jprintf("\n");
-
-  // interpret response
-  if (strchr("Ss+=", ch) != NULL)
-    ans = 1;
-  else if (strchr("Ff-_", ch) != NULL)
-    ans = -1;
-  return ans;
+  return -1;
 }
 
 
@@ -186,7 +169,6 @@ void jhcEchoFcn::fcn_args (const jhcAliaDesc *desc)
 
   if ((n = dynamic_cast<const jhcNetNode *>(desc)) == NULL)
     return;
-//  jprintf("\"%s(", n->Word());
   jprintf("\"%s(", n->Lex());
   na = n->NumArgs();
   for (i = 0; i < na; i++)

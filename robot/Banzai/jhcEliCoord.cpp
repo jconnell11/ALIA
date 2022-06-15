@@ -35,18 +35,24 @@
 jhcEliCoord::jhcEliCoord ()
 {
   // current software version (sync with MensEt)
-  ver = 4.50;
+  ver = 4.80;
   
   // connect processing to basic robot I/O
   rwi.BindBody(&body);
 
-  // bridge from operators to robot motion
+  // configure grounding kernels
   ball.Platform(&rwi);
-  kern.AddFcns(&ball);
   soc.Platform(&rwi);
-  kern.AddFcns(&soc);
   svis.Platform(&rwi);
+  man.Platform(&rwi);
+  sup.Platform(&rwi);
+
+  // attach grounding kernels
+  kern.AddFcns(&ball);
+  kern.AddFcns(&soc);
   kern.AddFcns(&svis);
+  kern.AddFcns(&man);
+  kern.AddFcns(&sup);
 
   // default processing parameters and state
   noisy = 1;
@@ -80,6 +86,8 @@ int jhcEliCoord::Defaults (const char *fname)
   ok &= ball.Defaults(fname);
   ok &= soc.Defaults(fname);
   ok &= svis.Defaults(fname);
+  ok &= man.Defaults(fname);
+  ok &= sup.Defaults(fname);
 
   // component parameters
   ok &= rwi.Defaults(fname);
@@ -102,6 +110,8 @@ int jhcEliCoord::SaveVals (const char *fname)
   ok &= ball.SaveVals(fname);
   ok &= soc.SaveVals(fname);
   ok &= svis.SaveVals(fname);
+  ok &= man.SaveVals(fname);
+  ok &= sup.SaveVals(fname);
 
   // component parameters
   ok &= rwi.SaveVals(fname);
@@ -123,36 +133,17 @@ int jhcEliCoord::SetPeople (const char *fname, int append)
 {
   int i, n, n0 = ((append > 0) ? vip.Names() : 0);
 
-  // enable spontaneous face recognition (and updating)
   ((rwi.fn).fr).LoadDB(fname, append);
-
-  // make sure grammar knows of names (first and full)
   n = vip.Load(fname, append);
-  for (i = n0; i < n; i++)
-  {
-    gr.ExtendRule("NAME", vip.Full(i));
-    gr.ExtendRule("NAME", vip.First(i));
-  }
-  if (SpeechIn() <= 0)
-    return n;
-
-  // possibly update speech front-end also 
-  if (spin == 1)
-  {
-    sp.Listen(0);
-    for (i = n0; i < n; i++)
-    {
-      sp.ExtendRule("NAME", vip.Full(i), 0);
-      sp.ExtendRule("NAME", vip.First(i), 0);
-    }
-    sp.Listen(1);
-  }
+  for (i = 0; i < n; i++)
+    AddName(vip.Full(i + n0));
+  jprintf("Added %d known users from %s\n\n", n, fname);
   return n;
 }
 
 
 //= Reset state for the beginning of a sequence.
-// bmode: 0 for no body, 1 init body, 2 for forced boot of body ONLY
+// bmode: 0 for no body, 1 or more for init body (2 used for autorun in CBanzaiDoc)
 // returns 2 if robot ready, 1 if ready but no robot, 0 or negative for error
 
 int jhcEliCoord::Reset (int bmode)
@@ -165,16 +156,14 @@ int jhcEliCoord::Reset (int bmode)
     if ((rc = body.Reset(1, mech - 1)) <= 0)
       return -1;
 
-  // possibly start background processing of video
-  if (mech >= 2)
-    return 2;
+  // start background processing of video
   rwi.Reset(mech);
   alert = 0;
 
   // initialize timing and speech components
   if (jhcAliaSpeech::Reset(body.rname, body.vname) <= 0)
     return 0;
-  if (mech > 0)                      
+  if (mech > 0)
     body.Charge(1);                    // possibly reset battery gauge
   return((rc <= 0) ? 1 : 2);
 }
@@ -215,7 +204,7 @@ int jhcEliCoord::Respond ()
   {
     mood.Walk(b->MoveIPS());
     mood.Wave((body.arm).FingerIPS());
-    mood.Energy(body.Percent());
+    mood.Energy(body.Charge(body.Voltage(), 0));
     stat.Drive(b->MoveCmdV(), b->MoveIPS(), b->TurnCmdV(), b->TurnDPS());
     stat.Gaze(n->PanCtrlGoal(), n->Pan(), n->TiltCtrlGoal(), n->Tilt());
   }
@@ -227,7 +216,7 @@ int jhcEliCoord::Respond ()
     return 0;
 
   // think a bit more but no GC (any new body commands must wait to run)
-  DayDream(); 
+  DayDream();
   return 1;
 }
 

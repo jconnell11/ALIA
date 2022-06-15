@@ -1,0 +1,98 @@
+// operators for responding to surface and object events
+// ======================================================
+
+OP 1 - "If you are bored announce that as you look around then find an interesting thing"
+  trig:
+  NOTE[  hq-1 -lex-  bored
+              -hq--> agt-1
+        agt-1 -lex-  me ]
+-----------------
+   >>>
+      DO[ act-1 -lex-  announce
+                -obj-> hq-1 ]
+   +++
+      DO[ act-2 -lex-  look around ]
+   <<<
+  FIND[ obj-1 
+         hq-2 -lex-  interesting
+              -hq--> obj-1 ]
+
+
+OP 2 - "To find an interesting thing find a surface, approach it, then find a red thing on it"
+  trig:
+  FIND[ obj-1
+         hq-1 -lex-  interesting
+              -hq--> obj-1 ]
+-----------------
+  FIND[ surf-1
+         ako-1 -lex-  surface
+               -ako-> surf-1 ]
+    DO[  act-1 -lex-  approach
+               -obj-> surf-1 ] 
+  FIND[ obj-2
+         hq-2 -lex-  red
+              -hq--> obj-2
+        loc-1 -lex-  on
+              -loc-> obj-2
+              -ref-> surf-1 ]
+
+
+OP 3 - "if there is an interesting thing take it then claim it as you walk away"
+  trig:
+  NOTE[  hq-1 -lex-  interesting
+              -hq--> obj-1 ]
+-----------------
+    DO[ act-1 -lex-  take
+              -obj-> obj-1 ]
+   >>>
+      DO[ act-2 -lex-  claim
+                -obj-> obj-1 ]
+   +++
+      DO[ act-3 -lex-  walk
+          dir-1 -lex-  away 
+                -dir-> act-3 ]
+   <<<
+
+
+OP 4 - "to walk away turn around then wander"
+  trig:
+    DO[ act-1 -lex-  walk
+        dir-1 -lex-  away 
+              -dir-> act-1 ]
+-----------------
+    DO[ act-2 -lex-  turn 
+        dir-1 -lex-  around 
+              -dir-> act-2 ]
+    DO[ act-3 -lex-  wander ]
+ 
+
+OP 5 - "to claim something say I really like this"
+  trig:
+    DO[ act-1 -lex-  claim
+              -obj-> obj-1 ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1 
+        txt-1 -str-  I really like this ]
+
+
+OP 6 - "to claim something say mine all mine"
+  trig:
+    DO[ act-1 -lex-  claim
+              -obj-> obj-1 ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1 
+        txt-1 -str-  mine all mine ]
+
+
+OP 7 - "to claim something say this belongs to me now"
+  trig:
+    DO[ act-1 -lex-  claim
+              -obj-> obj-1 ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1 
+        txt-1 -str-  this belongs to me now ]
+
+

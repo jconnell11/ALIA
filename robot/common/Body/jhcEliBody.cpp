@@ -63,9 +63,9 @@ jhcEliBody::jhcEliBody ()
   bnum = -1;
   tfill = 0;
 
-  // power state
+  // default battery status
   volts = 13.8;
-  pct = 100;
+  vsamp = 0;
 
   // default robot name
   *rname = '\0';
@@ -82,10 +82,12 @@ jhcEliBody::jhcEliBody ()
 
 //= Tell remaining battery charge using last voltage reading acquired while runnning.
 
-void jhcEliBody::ReportCharge () const
+void jhcEliBody::ReportCharge ()
 {
+  int pct = Charge(volts, 0);
+
   jprintf("Battery @ %3.1f volts [%d pct]", volts, pct);
-  if (pct < 50)
+  if (pct <= 20)
   {
     jprintf(" - CONSIDER RECHARGING");
     Beep();
@@ -151,7 +153,7 @@ int jhcEliBody::static_params (const char *fname)
   ps->SetTag("body_static", 0);
   ps->NextSpecF( &pdef,   0.0, "Default neck pan (deg)");
   ps->NextSpecF( &tdef, -51.2, "Default neck tilt (deg)");
-  ps->NextSpecF( &hdef,  31.8, "Default lift height (in)");
+  ps->NextSpecF( &hdef,  30.4, "Default lift height (in)");  // was 31.8
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -342,26 +344,29 @@ int jhcEliBody::Reset (int rpt, int full)
   jprintf(1, rpt, "BODY reset ...\n");
   if ((full > 0) || (CommOK(0) <= 0))
   {
+    // connect to proper serial port (if needed) 
+    if (mok < 0)
+    {
+      if (dyn.SetSource(dport, dbaud, 256) <= 0)
+        return jprintf(1, rpt, ">>> Could not open Dynamixel serial port %d in jhcEliBody::Reset !\n", dport);
+      mok = 1;
+    }
+    dyn.Reset();
+
     // possibly load configuration for a particular body
     *cfile = '\0';
     if (CfgFile(cfile, 1, 80) > 0)
     {
-      if (rpt > 0)
-        jprintf("  loading configuration for robot %d ...\n", __max(0, bnum));
+      jprintf(1, rpt, "  loading configuration for robot %d ...\n", __max(0, bnum));
       LoadCfg(cfile);
     }
 
-    // connect to proper serial port (if needed) 
-    if (mok < 0)
+    // check hardware number of robot
+    if (bnum <= 0)
     {
-      if (dyn.SetSource(dport, dbaud, 256) > 0)
-        mok = 1;
-      else if (rpt >= 2)
-        Complain("Could not open Dynamixel serial port %d in jhcEliBody::Reset", dport);
-      else if (rpt > 0)
-        jprintf(">>> Could not open Dynamixel serial port %d in jhcEliBody::Reset !\n", dport);
+      mok = -1;
+      return jprintf(1, rpt, ">>> Could not read robot number in jhcEliBody::Reset !\n");
     }
-    dyn.Reset();
 
     // tell other components to reset individually
     arm.Reset(rpt, 1);
@@ -371,6 +376,8 @@ int jhcEliBody::Reset (int rpt, int full)
     mic.mport = 8;                 // serial port for sound direction
     mic.Reset(rpt);
   }
+  else
+    arm.Stow();                    
   
   // finished with actuators
   if (rpt > 0)
@@ -442,17 +449,10 @@ int jhcEliBody::CfgFile (char *fname, int chk, int ssz)
   FILE *in;
   int first = ((bnum < 0) ? 1 : 0);
 
-  if ((bnum <= 0) && (chk > 0))
-  {
-    // connect to proper serial port (if needed) 
-    if (mok < 0)
-      if (dyn.SetSource(dport, dbaud, 256) > 0)
-        mok = 1;
-
-    // ask Dynamixel PIC controller for body serial number
-    dyn.Reset();
-    bnum = dyn.RobotID();
-  }
+  // sanity check and base identification
+  if (fname == NULL)
+    return -1;
+  BodyNum(chk);
 
   // look in current directory first
   sprintf_s(fname, ssz, "robot-%d.cfg", __max(0, bnum));
@@ -475,6 +475,25 @@ int jhcEliBody::CfgFile (char *fname, int chk, int ssz)
   // cleanup
   fclose(in);
   return first;
+}
+
+
+//= Determine robot ID if not known by querying Dynamixel PIC bridge.
+
+int jhcEliBody::BodyNum (int chk)
+{
+  if ((bnum <= 0) && (chk > 0))
+  {
+    // connect to proper serial port (if needed) 
+    if (mok < 0)
+      if (dyn.SetSource(dport, dbaud, 256) > 0)
+        mok = 1;
+
+    // ask Dynamixel PIC controller for body serial number
+    dyn.Reset();
+    bnum = dyn.RobotID();
+  }
+  return __max(0, bnum);
 }
 
 
@@ -563,17 +582,28 @@ int jhcEliBody::Charge (double v, int running)
                          {11.25, 11.50, 11.75, 11.90, 12.05, 12.15, 12.25, 12.35, 12.45, 12.55, 12.60},    // C/15
                          {11.45, 11.70, 11.90, 12.10, 12.20, 12.30, 12.40, 12.50, 12.55, 12.57, 12.65}};   // C/20
   double diff, frac, mix = 0.2, mem = 0.5, best = -1.0;
-  int i, cap, p, dp;
+  int i, cap, p;
 
-  // possibly update fully charged voltage
+
+  // analyze raw voltage reading
   if (v < 0.0)
     return -1;
-  if ((running > 0) && (v > base.vmax))          
+  if (running > 0)
   {
-    if (base.vmax <= 0.0)          
-      base.vmax = v; 
-    else 
-      base.vmax += mix * (v - base.vmax);
+    // possibly update fully charged voltage
+    if (v > base.vmax)
+    {
+      if (base.vmax <= 0.0)          
+        base.vmax = v; 
+      else 
+        base.vmax += mix * (v - base.vmax);
+    }
+
+    // keep IIR filtered version in member variable
+    if (vsamp++ <= 0)
+      volts = v;
+    else   
+      volts += mem * (v - volts);          
   }
 
   // lookup remaining capacity based on measurement
@@ -600,13 +630,6 @@ int jhcEliBody::Charge (double v, int running)
     frac = (v - curve[cap][i]) / (curve[cap][i + 1] - curve[cap][i]);
     p = ROUND(10.0 * (i + frac));
   }
-
-  // cache voltage and percentage in member variables (IIR smoothed)
-  volts += mem * (v - volts);                     
-  dp = ROUND(mem * (p - pct));
-  if ((dp == 0) && (p != pct))
-    dp = ((p > pct) ? 1 : -1);
-  pct += dp;
   return p;                          
 }
 
@@ -639,7 +662,8 @@ int jhcEliBody::Capacity () const
 
 int jhcEliBody::ResetVmax ()
 {
-  base.vmax = 0.0;
+  if (bnum > 0)
+    base.vmax = 0.0;
   return bnum;
 }
 
@@ -780,7 +804,7 @@ int jhcEliBody::UpdateImgs ()
   else
     ans = vid->Get(col);               // sometimes useful (e.g. face enroll) 
   if ((ans > 0) && (enh > 0))
-    Enhance(col, col);
+    Enhance3(col, col, 2.0);
   return ans;
 }
 
@@ -909,8 +933,6 @@ int jhcEliBody::InitPose (double ht)
 {
   int ok = 1;
 
-  if (arm.ZeroGrip(1) <= 0)
-    ok = -3;
   if (arm.Stow() <= 0)
     ok = -2;
   if (ht >= 0.0)                                           // skip if negative

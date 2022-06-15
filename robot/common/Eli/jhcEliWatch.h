@@ -82,9 +82,9 @@ private:
 
   // innate behaviors
   void cmd_freeze (class jhcEliGrok *g);
+  void gaze_sound (class jhcEliGrok *g);
   void watch_talker (class jhcEliGrok *g);
   void watch_closest (class jhcEliGrok *g);
-  void gaze_sound (class jhcEliGrok *g);
   void gaze_stare (class jhcEliGrok *g);
   void gaze_face (class jhcEliGrok *g);
   void head_rise (class jhcEliGrok *g);

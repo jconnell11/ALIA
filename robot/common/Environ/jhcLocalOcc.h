@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@
 
 
 //= Builds and maintains local occupancy map around robot.
+// analyzes height in narrow range around presumed floor (typ. -4" to +4")
 // once a pixel has been determined to be floor it remains so until forgotten
 // obstacles perceived where floor was previoulsy only exist when viewed (temporary)
 // uses obstacles to limit motion, only known floor pixels are assumed okay
@@ -48,6 +49,8 @@ friend class CBanzaiDoc;  // for debugging
 
 // PRIVATE MEMBER VARIABLES
 private:
+  static const int tail = 500;         /** Position history length. */
+
   // basic map formation
   jhcImg dev, bad, obst, conf;
 
@@ -65,11 +68,11 @@ private:
   int ndir, rt0, lf1;
 
   // navigation indicators
-  double known, fresh;
-  int trip, box, stuck;
+  double known;
+  int side, stuck;
 
   // debugging graphics
-  double xhist[300], yhist[300];
+  double xhist[tail], yhist[tail];
   int nh, fill;
 
 
@@ -78,22 +81,19 @@ public:
   // controls diagnostic messages
   int dbg;
 
-  // ground map parameters
+  // ground mapping parameters
   jhcParam eps;
   double dej, hat, fbump;
   int drop, hole;
 
-  // robot size parameters
+  // robot size and map fading parameters 
   jhcParam gps;
-  double rside, rfwd, rback;
+  double rside, rfwd, rback, pad, fade, temp;
 
-  // parameters for known areas
-  jhcParam kps;
-  double wmat, hmat, tmat0, tmat2, umat, kmat, temp, fade;
-
-  // parameters for motion control
+  // sensors and avoidance parameters
   jhcParam nps;
-  double pad, lead, veer, detour, block, hem, stime, btime;
+  double veer, lead, wmat, hmat, tmat, glide, orient;
+  int free;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -113,25 +113,13 @@ public:
   void ComputePaths ();
 
   // synthetic sensors
-  int NumDir () const  {return ndir;}
   double Step () const {return(180.0 / ndir);}
-  int MaxRt () const   {return rt0;}
-  int MaxLf () const   {return lf1;}
-  double Angle (int dev) const;
-  double Path (int dev, int pos =1) const;
-  double Ahead (double end =0.0) const;
-  double Behind (double end =0.0) const;
-  int Blind () const   {return trip;}
-  int Tight () const   {return box;}
-  int TightRng (double& lf, double& rt, double hspan =60.0) const;
+  bool Blind (double umat =0.5) const {return(known < umat);}
+  bool Tight (double hem =6.0) const;
 
   // navigation
-  double TurnLimit (double desired, double margin =10.0) const;
-  double MoveLimit (double desired, double stop =0.0) const;
-  double Avoid (double& trav, double& head, double tx, double ty);
-  bool Stymied (double delay =0.5) const
-    {return(stuck > ROUND((stime + btime + delay) * rate));}
   void Swerve (double& trav, double& head, double td, double ta, double stop =0.0);
+  void Wander (double& trav, double& head);
 
   // debugging graphics
   int LocalMap (jhcImg &dest, int rot =1) const;
@@ -153,27 +141,20 @@ private:
   // processing parameters
   int env_params (const char *fname);
   int geom_params (const char *fname);
-  int conf_params (const char *fname);
   int nav_params (const char *fname);
 
   // main functions
   void adj_hist (double fwd, double lf, double dr);
-//  void expect_floor (jhcImg& dest) const;
   void mixin_scan (jhcImg& obs, jhcImg& cf, const jhcImg& junk, const jhcImg& flat) const;
   void block_bot (jhcImg& obs, jhcImg& cf) const;
   void erase_blips (jhcImg& obs, const jhcImg& junk) const;
-  void status_vars ();
 
   // synthetic sensors
   void set_spin (double da);
   void build_spin (const jhcImg& env);
   void rigid_samp (jhcImg& dest, const jhcImg& src, double degs) const;
   int clr_paths (double& fwd, double& rwv, jhcImg& view) const;
-  void known_ahead (double& any, double& recent, const jhcImg& cf) const;
-
-  // navigation
-  double pick_dir (double td, double ta) const;
-  int closest_mid (double td, double ta) const;
+  void known_ahead (double& any, const jhcImg& cf) const;
 
   // debugging graphics
   double robot_pose (double& rx0, double& ry0, const jhcImg *ref) const;

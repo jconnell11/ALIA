@@ -40,9 +40,9 @@
 =[%Rule]
   <$cond> (<then>) <$res>
   <$res> <$cond>
-  <$cond-i> <$res-i>
-  <$cond-s> <$res-s>
   <$macro>
+  <$cond-s> <$res-s>
+//  <$cond-i> <$res-i>
 
 
 // rule precondition
@@ -103,22 +103,37 @@
 // procedural memory operator
 
 =[%Operator]
-  <$trig> (<then>) <$proc> (<$trig>)
-  <$trig> <equiv> <$proc> (<$trig>)
-  <$proc> <$trig>
-  <$trig-n> ((<conj>) instead <$proc> (<$trig>))
+  (<so>) <$trig> (<then>) <$proc> (<$trig>)
+  (<so>) <$trig> <equiv> <$proc> (<$trig>)
+  (<so>) <$proc> <$trig>
+  (<so>) <$trig-n> ((<conj>) instead <$proc> (<$trig>))
  
 
 // operator trigger goal
 
 =[$trig]
   (<inf>) <cmd> (<situation>)
+  <inf> <cmd> <BEFORE>
+  <if> <FAIL> <!find>
   <BEFORE> <cmd-g> (<situation>) 
   <AFTER> <cmd-g> (<situation>)
   <situation> then <BEFORE> <cmd-g> 
   <situation> then <AFTER> <cmd-g>
   <situation> then <inf> <cmd>
   <situation>
+
+
+// phrase indicating some command did not work
+
+=[FAIL]
+  you cannot
+  you can't
+  you could not
+  you couldn't
+  you did not
+  you didn't
+  you do not
+  you don't
 
 
 // contemplated action
@@ -208,38 +223,44 @@
 
 =[chain]
   <step>
-  <step> (<mid-step> (<mid-step> (<mid-step> (<mid-step>)))) <seq> <step>
+  <step> (<step> (<step> (<step> (<step>)))) <seq> <cmd>
+  <step> (<step> (<step> (<step> (<step>)))) <seq> <%play>
 
 
-// middle of sequence of activities
+// sequential step in chain
 
-=[mid-step]
-  (<seq>) <step>
+=[step]
+  <%play> (then)
+  <cmd> (<seq>)
 
 
 // sequential continuation
 
 =[seq]
   then
+  and (then)
 
 
-// sequential step in chain
-
-=[step]
-  <cmd>
-  <%play>
-
-
-// parallel set of activities
+// parallel set of activities (up to 4 simultaneous)
 
 =[%play]
-  <cmd> ((<par>) <cmd> ((<par>) <cmd>)) <par> <cmd>
+  <cmd> <par-i> <cmd> (((<par>) <cmd>) <par> <cmd>)
+
+
+// parallel inititiation
+
+=[par-i]
+  and also
+  and simultaneously
+  and at the same time
+  as you
 
 
 // parallel addition
  
 =[par]
-  and (also)
+  and 
+  <par-i> 
 
 
 

@@ -33,13 +33,14 @@
 
 #include "Data/jhcParam.h"             // common video
 
-#include "Action/jhcTimedFcns.h"       // common robot
-#include "Manus/jhcManusRWI.h"       
+#include "Manus/jhcManusRWI.h"         // common robot
+
+#include "Action/jhcStdKern.h"       
 
 
 //= Interface to Manus motion kernel for ALIA system.
 
-class jhcBasicAct : public jhcTimedFcns
+class jhcBasicAct : public jhcStdKern
 {
 // PRIVATE MEMBER VARIABLES
 private:

@@ -28,15 +28,16 @@
 
 #include "jhcGlobal.h"
 
-#include "Action/jhcTimedFcns.h"       // common robot   
-#include "Manus/jhcManusRWI.h"         
+#include "Manus/jhcManusRWI.h"         // common robot   
 #include "Objects/jhcStackSeg.h"
 #include "Objects/jhcPatchProps.h"
+
+#include "Action/jhcStdKern.h"       
 
 
 //= Interface to Manus visual behavior kernel for ALIA system.
 
-class jhcTargetVis : public jhcTimedFcns
+class jhcTargetVis : public jhcStdKern
 {
 // PRIVATE MEMBER VARIABLES
 private:

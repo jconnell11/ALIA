@@ -91,15 +91,15 @@ int jhcEliWatch::watch_params (const char *fname)
   int ok;
 
   ps->SetTag("watch_bid", 0);
-  ps->NextSpec4( &freeze, 27, "Freeze bid (neg = disable all)");   
-  ps->NextSpec4( &speak,  26, "Current speaker bid");
-  ps->NextSpec4( &sound,  25, "Most recent sound bid");
-  ps->NextSpec4( &close,  24, "Closest head bid");
-  ps->NextSpec4( &stare,  23, "Most recent stare bid");
-  ps->NextSpec4( &face,   22, "Most recent face bid");
+  ps->NextSpec4( &freeze,   -1, "Freeze bid (neg = disable all)");   
+  ps->NextSpec4( &sound,  2000, "Most recent sound bid");      // highest
+  ps->NextSpec4( &speak,    25, "Current speaker bid");
+  ps->NextSpec4( &close,    24, "Closest head bid");
+  ps->NextSpec4( &stare,    23, "Most recent stare bid");
+  ps->NextSpec4( &face,     22, "Most recent face bid");
 
-  ps->NextSpec4( &rise,   21, "Head rise bid");   
-  ps->NextSpec4( &align,  20, "Head center bid");
+  ps->NextSpec4( &rise,     21, "Head rise bid");   
+  ps->NextSpec4( &align,    20, "Head center bid");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -115,7 +115,7 @@ int jhcEliWatch::orient_params (const char *fname)
 
   ps->SetTag("watch_vals", 0);
   ps->NextSpecF( &bored, 10.0, "Post-cmd freeze (sec)");       
-  ps->NextSpecF( &edge,  25.0, "Sound trigger offset (deg)");  // was 30
+  ps->NextSpecF( &edge,  10.0, "Sound trigger offset (deg)");  // was 30 then 25
   ps->NextSpecF( &hnear, 72.0, "Head distance thresh (in)");
   ps->NextSpec4( &fmin,   3,   "Min face detections");
   ps->NextSpecF( &pdist, 36.0, "Default person dist (in)");
@@ -208,18 +208,9 @@ void jhcEliWatch::cmd_freeze (jhcEliGrok *g)
 }
 
 
-//= Continuously look at whomever is currently talking (if anyone).
-
-void jhcEliWatch::watch_talker (jhcEliGrok *g)
-{
-  if (speak <= 0) 
-    return;
-  g->WatchPerson((g->tk).Speaking(), speak);
-}
-
-
 //= Look at non-central sound source (if any) for a while.
 // state machine controlled by "seek" and timer "swait"
+// often given high bid priority to override everything else
 
 void jhcEliWatch::gaze_sound (jhcEliGrok *g)
 {
@@ -258,23 +249,38 @@ void jhcEliWatch::gaze_sound (jhcEliGrok *g)
 }
 
 
-//= Track the closest head (even if face not visible).
+//= Continuously look at whomever is currently talking (if anyone).
+
+void jhcEliWatch::watch_talker (jhcEliGrok *g)
+{
+  int sel;
+
+  if (speak <= 0) 
+    return;
+  if ((sel = (g->tk).Speaking()) > 0)
+    g->WatchPerson(sel, speak);
+}
+
+
+//= Track the most prominent head with a face. 
 
 void jhcEliWatch::watch_closest (jhcEliGrok *g)
 {
   const jhcStare3D *s3 = &(g->s3);
   const jhcMatrix *hd;
+  double pan, tilt;
   int sel;
 
-  // see if behvaior desired then find closest head
+  // see if behavior desired then find head closet to middle of image
   if (close <= 0) 
     return;
-  if ((sel = s3->Closest()) < 0)
+  if ((sel = g->ClosestFace((g->nav).rfwd)) < 0)
     return;
 
   // follow if planar distance close enough
   hd = s3->GetPerson(sel);
-  if (hd->PlaneVec3() <= hnear)
+  (g->neck)->AimFor(pan, tilt, *hd, (g->lift)->Height());
+  if (hd->PlaneVec3() <= hnear) 
     g->WatchPerson(s3->PersonID(sel), close);
 }
 
@@ -283,9 +289,12 @@ void jhcEliWatch::watch_closest (jhcEliGrok *g)
 
 void jhcEliWatch::gaze_stare (jhcEliGrok *g)
 {
+  int sel;
+
   if (stare <= 0) 
     return;
-  g->WatchPerson((g->fn).GazeNewID(), stare);
+  if ((sel = (g->fn).GazeNewID()) > 0)
+    g->WatchPerson(sel, stare);
 }
 
 
@@ -293,9 +302,12 @@ void jhcEliWatch::gaze_stare (jhcEliGrok *g)
 
 void jhcEliWatch::gaze_face (jhcEliGrok *g)
 {
+  int sel;
+
   if (face <= 0) 
     return;
-  g->WatchPerson((g->fn).FrontNewID(0, fmin), face);
+  if ((sel = (g->fn).FrontNewID(0, fmin)) > 0)
+    g->WatchPerson(sel, face);
 }
 
 
@@ -305,7 +317,7 @@ void jhcEliWatch::head_rise (jhcEliGrok *g)
 {
   jhcMatrix hd(4);
   jhcEliNeck *n = g->neck;
-  double pan, tilt, err, tol = 1.0;
+  double pan, tilt, err, tol = 2.0;
 
   if (rise <= 0) 
     return;

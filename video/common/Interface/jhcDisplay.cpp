@@ -774,8 +774,7 @@ int jhcDisplay::Graph (const jhcArr& h, int x, int y, int maxval,
   int i, px, py, ysw = y + ght, n = h.Size();
   const int *hist = h.Vals();
   double vsc = 1.0, hsc = gwid / (double)(n - 1);
-  int bot = __min(0, h.MinVal(1));                  
-  int top = __max(0, h.MaxVal(1));
+  int bot = __min(0, h.MinVal(1)), top = __max(0, h.MaxVal(1));
   CDC *cdc = win->GetDC();
   CPen new_pen(PS_SOLID, 1, color_n(col));
   CPen *old_pen;
@@ -805,8 +804,10 @@ int jhcDisplay::Graph (const jhcArr& h, int x, int y, int maxval,
   {
     px = ROUND(hsc * i);
     py = ROUND(vsc * (hist[i] - bot));
+    px = __max(0, __min(px, gwid));
+    py = __max(0, __min(py, ght));
     graph[i].x = x + px;
-    graph[i].y = ysw - __min(ght, py);
+    graph[i].y = ysw - py;
   }
 
   // clear space if not an overlay, then set trace color and draw graph 
@@ -855,8 +856,7 @@ int jhcDisplay::GraphV (const jhcArr& h, int x, int y, int maxval,
   int i, px, py, ysw = y + ght, n = h.Size();
   const int *hist = h.Vals();
   double hsc = 1.0, vsc = ght / (double)(n - 1);
-  int lf = __min(0, h.MinVal(1));                  
-  int rt = __max(0, h.MaxVal(1));
+  int lf = __min(0, h.MinVal(1)), rt = __max(0, h.MaxVal(1));
   CDC *cdc = win->GetDC();
   CPen new_pen(PS_SOLID, 1, color_n(col));
   CPen *old_pen;
@@ -886,7 +886,9 @@ int jhcDisplay::GraphV (const jhcArr& h, int x, int y, int maxval,
   {
     px = ROUND(hsc * (hist[i] - lf));
     py = ROUND(vsc * i);
-    graph[i].x = x + __min(gwid, px);
+    px = __max(0, __min(px, gwid));
+    py = __max(0, __min(py, ght));
+    graph[i].x = x + px;
     graph[i].y = ysw - py; 
   }
 

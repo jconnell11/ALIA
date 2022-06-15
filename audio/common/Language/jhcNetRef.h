@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // language interpretation
-  jhcNetNode *append_find (int n0, double blf, jhcAliaChain **skolem);
+  jhcNetNode *append_find (int n0, double blf, jhcAliaChain **skolem, int assume);
 
   // virtual override
   int match_found (jhcBindings *m, int& mc);

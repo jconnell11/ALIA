@@ -1,11 +1,10 @@
-// terms associated with jhcGraphizer speech acts
-// ================================================
+// terms by jhcGraphizer, jhcNetBuild, and jhcAliaMood 
+// ====================================================
 
 // singular noun
 
 =[AKO]
   person
-  user
   rule 
   operator
 
@@ -13,9 +12,14 @@
 // adjective
 
 =[HQ]
-  awake
-  male 
+  polite
+  male
   female
+  awake
+  overwhelmed
+  bored
+  lonely
+  tired
 
 
 // -----------------------------------------
@@ -23,16 +27,22 @@
 // imperative verb
 
 =[ACT]
-  understand
-  hail
-  greet
-  dismiss
-  give
-  ask
-  tell
   affirm
   deny
   pass
+  have
+  understand
+  hail
+  greet
+  dimiss
+  give
+  ask
+  tell
+  explain
+  fail
+  acknowledge
+  apologize
+  say
 
 
 // ================================================
@@ -41,9 +51,22 @@
 
 =[XXX-morph]
   person * npl = people
+  male * acomp = more male
+  male * asup  = most male
+  female * acomp = more female
+  female * asup  = most female
   awake	* acomp = more awake
   awake	* asup  = most awake
+  overwhelmed * acomp = more overwhelmed
+  overwhelmed * asup  = most overwhelmed
+  have * vpres = has
+  have * vprog = has
+  have * vpast = had
+  understand * vpast = understood
   give * vpast = gave
   tell * vpast = told
-  understand * vpast = understood
+  acknowledge * vprog = acknowledging
+  acknowledge * vpast = acknowledged
+  say * vpast = said
+
 

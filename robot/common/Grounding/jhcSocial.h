@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@
 
 #include "Data/jhcParam.h"             // common video
 
-#include "Action/jhcTimedFcns.h"       // common robot
+#include "Action/jhcStdKern.h"         // common robot
 #include "Eli/jhcEliGrok.h"       
 
 
@@ -45,7 +45,7 @@
 // NOTE: spontaneously volunteers "I see X" for people on the face reco VIP list
 //       and produces the event "X is close" even if no name is known
 
-class jhcSocial : public jhcTimedFcns
+class jhcSocial : public jhcStdKern
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -112,6 +112,9 @@ private:
   JCMD_DEF(soc_approach);
   JCMD_DEF(soc_retreat);
   JCMD_DEF(soc_follow);
+
+  // explore environment
+  JCMD_DEF(soc_explore);
 
 
 };

@@ -49,6 +49,7 @@ class jhcPatchProps : private jhcALU,   private jhcArea, private jhcColor, priva
                       private jhcGroup, private jhcHist, private jhcStats, private jhcThresh, private jhcVect
 {
 friend class CMensEtDoc;  // for debugging
+friend class CBanzaiDoc;
 
 // PRIVATE MEMBER VARIABLES
 private:

@@ -1,241 +1,188 @@
 // respond to person identification and proximity events
 // ================================================
 
-// OP 1: "If someone is named then greet them."
+OP 1 - "If someone is named then greet them."
   trig:   
-    NOTE[ ref-1 -ref-> agt-1 ]
-  ---------------
-      DO[ act-1 -lex-  greet 
-                -obj-> agt-1 ]
+  NOTE[ ref-1 -ref-> agt-1 ]
+---------------
+    DO[ act-1 -lex-  greet 
+              -obj-> agt-1 ]
 
 
-// OP 2: "To greet someone say to them hello there whoever."
+OP 2 - "Before greeting someone orient toward them."
   trig:   
-      DO[ act-1 -lex-  greet 
-                -obj-> agt-1 ]
-  ---------------
-      DO[ act-2 -lex-   say 
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   hello there ?0 ]
+  ANTE[ act-1 -lex-  greet 
+              -obj-> agt-1 ]
+---------------
+    DO[ act-2 -lex-  orient
+        loc-1 -lex-  toward
+              -loc-> act-2
+              -ref-> agt-1 ]
 
 
-// OP 3: "To greet someone say to them hey whoever, how are you doing."
-  trig:   
-      DO[ act-1 -lex-  greet 
-                -obj-> agt-1 ]
-  ---------------
-      DO[ act-2 -lex-   say 
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   hey ?0, how're you doing? ]
+OP 3 - "To orient toward a visible person turn toward them and also look at them"
+  trig:
+    DO[ act-1 -lex-  orient
+        loc-1 -lex-  toward
+              -loc-> act-1
+              -ref-> agt-1 
+        ako-1 -lex-  person
+              -ako-> agt-1 
+         hq-1 -lex-  visible
+              -hq--> agt-1 ]
+---------------
+  >>>
+    DO[ act-2 -lex-  turn
+        loc-1 -lex-  toward
+              -loc-> act-2
+              -ref-> agt-1 ] 
+  +++
+    DO[ act-3 -lex-  look
+        loc-1 -lex-  at
+              -loc-> act-3
+              -ref-> agt-1 ]
+  <<<
 
 
 // --------------------------------------
 
-// OP 4: "If a person is close offer to serve them"
+OP 4 - "If a person is close offer to serve them"
   trig:   
-    NOTE[  hq-1 -lex-  close 
-                -hq--> agt-1
-          ako-1 -lex-  person
-                -ako-> agt-1 ]
-  ---------------
-      DO[ act-1 -lex-  offer 
-                -obj-> act-2 
-          act-2 -lex-  serve
-                -obj-> agt-1 ]
+  NOTE[  hq-1 -lex-  close 
+              -hq--> agt-1
+        ako-1 -lex-  person
+              -ako-> agt-1 ]
+---------------
+    DO[ act-1 -lex-  offer 
+              -obj-> act-2 
+        act-2 -lex-  serve
+              -obj-> agt-1 ]
 
 
-// OP 5: "To offer to serve someone say to them how may I help you, whoever"
+OP 5 - "To offer to serve someone say to them how may I help you, whoever"
   trig:
-      DO[ act-1 -lex-  offer 
-                -obj-> act-2 
-          act-2 -lex-  serve
-                -obj-> agt-1 ]
-  ---------------
-      DO[ act-3 -lex-   say
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   how may I help you ?0?]
+    DO[ act-1 -lex-  offer 
+              -obj-> act-2 
+        act-2 -lex-  serve
+              -obj-> agt-1 ]
+---------------
+    DO[ act-3 -lex-   say
+              -dest-> agt-1
+              -obj--> txt-1
+        txt-1 -str-   how may I help you ?0?]
 
 
-// OP 6: "To offer to serve someone say to them can I do something for you"
+OP 6 - "To offer to serve someone say to them can I do something for you"
   trig:
-      DO[ act-1 -lex-  offer 
-                -obj-> act-2 
-          act-2 -lex-  serve
-                -obj-> agt-1 ]
-  ---------------
-      DO[ act-3 -lex-   say
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   can I do something for you? ]
+    DO[ act-1 -lex-  offer 
+              -obj-> act-2 
+        act-2 -lex-  serve
+              -obj-> agt-1 ]
+---------------
+    DO[ act-3 -lex-   say
+              -dest-> agt-1
+              -obj--> txt-1
+        txt-1 -str-   can I do something for you? ]
 
 
 // --------------------------------------
 
-// OP 7: "If someone named is not visible then say where did you go whoever"
+OP 7 - "If someone named is not visible then say where did you go whoever"
   trig:   
-    NOTE[  hq-1 -lex-  visible 
-                -neg-  1
-                -hq--> agt-1 
-          ako-1 -lex-  person 
-                -ako-> agt-1 
-          ref-1 -ref-> agt-1 ]
-  ---------------
-      DO[ act-1 -lex-   say 
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   where did you go ?0? ]
+  NOTE[  hq-1 -lex-  visible 
+              -neg-  1
+              -hq--> agt-1 
+        ako-1 -lex-  person 
+              -ako-> agt-1 
+        ref-1 -ref-> agt-1 ]
+---------------
+    DO[ act-1 -lex-   say 
+              -dest-> agt-1
+              -obj--> txt-1
+        txt-1 -str-   where did you go ?0? ]
 
 
-// OP 8: "If someone named is not visible then say whoever please come back"
+OP 8 - "If someone named is not visible then say whoever please come back"
   trig:   
-    NOTE[  hq-1 -lex-  visible 
-                -neg-  1
-                -hq--> agt-1 
-          ako-1 -lex-  person 
-                -ako-> agt-1 
-          ref-1 -ref-> agt-1 ]
-  ---------------
-      DO[ act-1 -lex-   say 
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   ?0 please come back ]
+  NOTE[  hq-1 -lex-  visible 
+              -neg-  1
+              -hq--> agt-1 
+        ako-1 -lex-  person 
+              -ako-> agt-1 
+        ref-1 -ref-> agt-1 ]
+---------------
+    DO[ act-1 -lex-   say 
+              -dest-> agt-1
+              -obj--> txt-1
+        txt-1 -str-   ?0 please come back ]
 
 
 // --------------------------------------
 
-// OP 9: "Before saying something to someone look at them"
+OP 9 - "If someone is far away then ask them to wait"
   trig:   
-    ANTE[ act-1 -lex-   say
-                -obj--> txt-1
-                -dest-> dude-1
-          ako-1 -lex-   person 
-                -ako--> dude-1 ]
-  ---------------
-      DO[ act-2 -lex-  look
-          loc-1 -lex-  at
-                -loc-> act-2
-                -wrt-> dude-1 ]
+  NOTE[  hq-1 -lex-  far away
+              -hq--> dude-1
+        ako-1 -lex-  person
+              -ako-> dude-1 ]
+---------------
+    DO[ act-2 -lex-   ask
+              -dest-> dude-1
+              -obj--> act-3 
+        act-3 -lex-   wait 
+              -agt->  dude-1 ]
+
+
+OP 10 - "To ask someone to wait say please slow down"
+  trig:
+    DO[ act-1 -lex-   ask
+              -dest-> dude-1
+              -obj--> act-2 
+        act-2 -lex-   wait 
+              -agt->  dude-1 ]
+---------------
+    DO[ act-3 -lex-   say
+              -dest-> dude-1
+              -obj--> txt-1
+        txt-1 -str-   please slow down ]
+
+
+OP 11 - "To ask someone to wait say wait for me"
+  trig:
+    DO[ act-1 -lex-   ask
+              -dest-> dude-1
+              -obj--> act-2 
+        act-2 -lex-   wait 
+              -agt->  dude-1 ]
+---------------
+    DO[ act-3 -lex-   say
+              -dest-> dude-1
+              -obj--> txt-1
+        txt-1 -str-   wait for me ]
 
 
 // --------------------------------------
 
-// OP 10: "If someone becomes visible hail them then approach them."
+OP 12 - "To come here approach me"
   trig:   
-    NOTE[  hq-1 -lex-  visible 
-                -hq--> agt-1 
-          ako-1 -lex-  person 
-                -ako-> agt-1 ]
-  ---------------
-      DO[ act-2 -lex-  hail
-                -obj-> agt-1 ]
-      DO[ act-3 -lex-  approach
-                -obj-> agt-1 ] 
+    DO[ act-1 -lex-  come
+        loc-1 -lex-  here 
+              -loc-> act-1 
+        agt-1 -lex-  you ]
+---------------
+    DO[ act-2 -lex-  approach
+              -obj-> agt-1 ]         
 
 
-// OP 11: "To hail someone say finally, someone to play with"
-  trig:
-      DO[ act-1 -lex-  hail
-                -obj-> agt-1 ]
-  ---------------
-      DO[ act-3 -lex-   say
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   finally, someone to play with ]
-
-
-// OP 12: "To hail someone say hey there whoever"
-  trig:
-      DO[ act-1 -lex-  hail
-                -obj-> agt-1 ]
-  ---------------
-      DO[ act-3 -lex-   say
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   hey there ?0 ]
-
-
-// OP 13: "To hail someone say good to see you whoever"
-  trig:
-      DO[ act-1 -lex-  hail
-                -obj-> agt-1 ]
-  ---------------
-      DO[ act-3 -lex-   say
-                -dest-> agt-1
-                -obj--> txt-1
-          txt-1 -str-   good to see you ?0 ]
-
-
-// --------------------------------------
-
-// OP 14: "To come here approach me"
+OP 13 - "If a person is very close then move backward"
   trig:   
-      DO[  act-1 -lex-  come
-           loc-1 -lex-  here 
-                 -loc-> act-1 
-          self-1 -lex-  me ]
-  ---------------
-      DO[ act-2 -lex-  approach
-                -obj-> self-1 ]         
-
-
-// --------------------------------------
-
-// OP 15: "If someone is far away then ask them to wait"
-  trig:   
-    NOTE[  hq-1 -lex-  far away
-                -hq--> dude-1
-          ako-1 -lex-  person
-                -ako-> dude-1 ]
-  ---------------
-      DO[ act-2 -lex-   ask
-                -dest-> dude-1
-                -obj--> act-3 
-          act-3 -lex-   wait 
-                -agt->  dude-1 ]
-
-
-// OP 16: "To ask someone to wait say please slow down"
-  trig:
-      DO[ act-1 -lex-   ask
-                -dest-> dude-1
-                -obj--> act-2 
-          act-2 -lex-   wait 
-                -agt->  dude-1 ]
-  ---------------
-      DO[ act-3 -lex-   say
-                -dest-> dude-1
-                -obj--> txt-1
-          txt-1 -str-   please slow down ]
-
-
-// OP 17: "To ask someone to wait say wait for me"
-  trig:
-      DO[ act-1 -lex-   ask
-                -dest-> dude-1
-                -obj--> act-2 
-          act-2 -lex-   wait 
-                -agt->  dude-1 ]
-  ---------------
-      DO[ act-3 -lex-   say
-                -dest-> dude-1
-                -obj--> txt-1
-          txt-1 -str-   wait for me ]
-
-
-// --------------------------------------
-
-// OP 18: "If a person is very close then move backward"
-  trig:   
-    NOTE[  hq-1 -lex-  close 
-                -hq--> agt-1
-          deg-1 -lex-  very
-                -deg-> hq-1
-          ako-1 -lex-  person
-                -ako-> agt-1 ]
-  ---------------
-      DO[ act-1 -lex-  move 
-          dir-1 -lex-  backward
-                -dir-> act-1 ]
+  NOTE[  hq-1 -lex-  close 
+              -hq--> agt-1
+        deg-1 -lex-  very
+              -deg-> hq-1
+        ako-1 -lex-  person
+              -ako-> agt-1 ]
+---------------
+    DO[ act-1 -lex-  move 
+        dir-1 -lex-  backward
+              -dir-> act-1 ]

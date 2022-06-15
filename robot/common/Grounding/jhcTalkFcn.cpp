@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,10 +44,11 @@ jhcTalkFcn::~jhcTalkFcn ()
 
 jhcTalkFcn::jhcTalkFcn ()
 {
-  ver = 1.50;
+  ver = 1.55;
   strcpy_s(tag, "TalkFcn");
   SetSize(smax);
   *winner = '\0';
+  finish = 0;
   imp = 0;
 }
 
@@ -57,23 +58,46 @@ jhcTalkFcn::jhcTalkFcn ()
 
 int jhcTalkFcn::Output (char *out, int ssz) 
 {
-  int imp0 = imp;
+  double lps = 12.0;                   // letters per second        
+  int n = (int) strlen(winner);
 
-  if (*winner == '\0')
+  // reset arbitration if last output likely spoken
+  if (finish != 0) 
+    if (jms_diff(jms_now(), finish) > 0)
+    {
+      finish = 0;
+      imp = 0;
+    }
+
+  // possibly nothing new to report
+  if (n <= 0)
   {
     *out = '\0';
     return 0;
   }
+
+  // report string just once but block lower priority for a while
   strcpy_s(out, ssz, winner);
-  *winner = '\0';                        // reset arbitration
-  imp = 0;
-  return imp0;
+  *winner = '\0';                             
+  finish = jms_now() + ROUND(1000.0 * n / lps);
+  return imp;
 }
 
 
 ///////////////////////////////////////////////////////////////////////////
 //                          Overridden Functions                         //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Set up for new run of system.
+
+void jhcTalkFcn::local_reset (jhcAliaNote *top)
+{
+  dg.SetMem(top);
+  *winner = '\0';
+  finish = 0;
+  imp = 0;
+}
+
 
 //= Start up a new instance of some named function.
 // starting time and bid are already speculatively bound by base class
@@ -111,7 +135,28 @@ int jhcTalkFcn::echo_wds0 (const jhcAliaDesc *desc, int i)
     return -1;
   if (build_string(desc, i) <= 0)
     return -1;
+  ct0[i] = jms_now();
   return i;  
+}
+
+
+//= Assert already assembled utterance as a good thing to say.
+// saves utterance in member variable in case daydreaming
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcTalkFcn::echo_wds (const jhcAliaDesc *desc, int i)
+{
+  double patience = 2.0;
+
+  if (cbid[i] >= imp) 
+  {
+    strcpy_s(winner, full[i]);        
+    imp = cbid[i];
+    return 1;
+  }
+  if (jms_elapsed(ct0[i]) > patience)  
+    return -1;
+  return 0;
 }
 
 
@@ -145,7 +190,7 @@ int jhcTalkFcn::build_string (const jhcAliaDesc *desc, int inst)
     if ((ref = dg.NodeRef(pat, -1)) == NULL)
       return 0;
     strcpy_s(full[inst], ref);
-    return 1;
+    return fix_surface(full[inst]);
   }
 
   // find substitution points in a format like: "I see ?1 ?2 things ?0"
@@ -185,14 +230,44 @@ int jhcTalkFcn::build_string (const jhcAliaDesc *desc, int inst)
     else
       while (*ref != '\0')
         *txt++ = *ref++;
-   }
+  }
 
   // clean up
   *txt = '\0';
-  fix_verb(full[inst]);
-  fix_det(full[inst]);
-  fix_abbrev(full[inst]);
+  return fix_surface(full[inst]);
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                            String Cleanup                             //
+///////////////////////////////////////////////////////////////////////////
+
+//= Perform a series of surface form checks to clean up final phrase.
+// always returns 1 for covenience
+
+int jhcTalkFcn::fix_surface (char *txt)
+{
+  fix_itis(txt);
+  fix_verb(txt);
+  fix_det(txt);
+  fix_abbrev(txt);
   return 1;
+}
+
+
+//= Drop off leading "it is" from property descriptions.
+// example: "it is red" -> "red", need to run before fix_abbrev
+
+void jhcTalkFcn::fix_itis (char *txt)
+{
+  int i, trim = (int) strlen(txt) - 6;
+
+  if (_strnicmp(txt, "it is ", 6) == 0)
+  {
+    for (i = 0; i < trim; i++)
+      txt[i] = txt[i + 6];
+    txt[trim] = '\0';
+  }
 }
 
 
@@ -206,7 +281,7 @@ void jhcTalkFcn::fix_verb (char *txt)
   int i, n;
 
   // "I is" -> "I am"
-  if ((fix = strstr(txt, "I is")) != NULL)
+  if ((fix = strstr(txt, "I is")) != NULL) 
   {
     fix[2] = 'a';
     fix[3] = 'm';
@@ -217,7 +292,7 @@ void jhcTalkFcn::fix_verb (char *txt)
   if ((fix = strstr(txt, "you is")) != NULL)
   {
     n = (int) strlen(fix);
-    for (i = n; i > 6; i--)
+    for (i = n; i >= 6; i--)
       fix[i + 1] = fix[i];
     fix[4] = 'a';
     fix[5] = 'r';
@@ -267,35 +342,57 @@ void jhcTalkFcn::fix_det (char *txt)
 
 void jhcTalkFcn::fix_abbrev (char *txt)
 {
-  char *fix;
+  char *tail, *fix;
   int i, n;
 
   // "it is" -> "it's" (tail of string shifted)
-  if ((fix = strstr(txt, "it is")) != NULL)
+  tail = txt;
+  while ((fix = strstr(tail, "it is")) != NULL)
   {
-    n = (int) strlen(fix);
-    for (i = 5; i < n; i++)
-      fix[i - 1] = fix[i];
-    fix[n - 1] = '\0';
-    fix[2] = '\'';
-    fix[3] = 's';
-    return;
+    tail = fix + 5;                    // skip over match
+    if (word_after(tail))
+    {
+      n = (int) strlen(fix);
+      for (i = 5; i < n; i++)
+        fix[i - 1] = fix[i];
+      fix[n - 1] = '\0';
+      fix[2] = '\'';
+      fix[3] = 's';
+      tail--;                          // one letter shorter now
+    }
+  }
+
+  // "do not" -> "don't"
+  tail = txt;
+  while ((fix = strstr(tail, "do not")) != NULL)
+  {
+    tail = fix + 6;                    // skip over match
+    if (word_after(tail))
+    {
+      n = (int) strlen(fix);
+      for (i = 6; i < n; i++)
+        fix[i - 1] = fix[i];
+      fix[n - 1] = '\0';
+      fix[2] = 'n';
+      fix[3] = '\'';
+      fix[4] = 't';
+      tail--;                          // one letter shorter now
+    }
   }
 }
 
 
-//= Assert already assembled utterance as a good thing to say.
-// saves utterance in member variable in case daydreaming
-// returns 1 if done, 0 if still working, -1 for failure
+//= Make sure string starts with whitespace and has something non-whitepace later.
+// prevents contraction of "it is not" -> "it isn't" -> "it'sn't"
 
-int jhcTalkFcn::echo_wds (const jhcAliaDesc *desc, int i)
+bool jhcTalkFcn::word_after (const char *txt) const
 {
-jprintf("SAY: <%s> bid = %d (vs %d)\n", full[i], cbid[i], imp);
-  if ((cbid[i] >= imp) || (*winner == '\0'))
-  {
-    strcpy_s(winner, full[i]);        
-    imp = cbid[i];
-  }
-  return 1;
-}
+  const char *tail = txt;
 
+  if ((txt == NULL) || (*txt == '\0') || isalnum(*txt))
+    return false;
+  while (!isalnum(*tail++))
+    if (*tail == '\0')
+      return false;
+  return true;
+}

@@ -103,17 +103,19 @@ BEGIN
         MENUITEM "Head &Track",                 ID_ROOM_HEADTRACK
         MENUITEM SEPARATOR
         MENUITEM "&Navigation Map",             ID_NAVIGATION_UPDATING
-        MENUITEM "&Robot Size",                 ID_NAV_FOVLIMITS
-        MENUITEM "Con&fidence",                 ID_NAV_CONFIDENCE
-        MENUITEM "&Guidance",                   ID_NAV_GUIDANCE
-        MENUITEM SEPARATOR
+        MENUITEM "&Robot Dims",                 ID_ROOM_ROBOTDIMS
+        MENUITEM "&Obstacle Sense",             ID_NAV_GUIDANCE
         MENUITEM "&Depth FOV",                  ID_NAV_DEPTHFOV
-        MENUITEM "&Floor Calib",                ID_NAV_CAMCALIB
+        MENUITEM SEPARATOR
+        MENUITEM "&Save Defaults",              ID_PARAMETERS_SAVEDEFAULTS
+        MENUITEM "Load &Defaults",              ID_PARAMETERS_LOADDEFAULTS
     END
     POPUP "&Table"
     BEGIN
-        MENUITEM "Table &Map",                  ID_OBJECTS_SURFACEMAP
+        MENUITEM "Surface &Height",             ID_SOCIAL_SURFFIND
+        MENUITEM "Surface &Areas",              ID_TABLE_SURFACE
         MENUITEM "Surface &Zoom",               ID_OBJECTS_SURFACEZOOM
+        MENUITEM "Table &Map",                  ID_OBJECTS_SURFACEMAP
         MENUITEM SEPARATOR
         MENUITEM "&Plane Fitting",              ID_OBJECTS_PLANEFIT
         MENUITEM "&Depth Detect",               ID_OBJECTS_DETECT
@@ -121,20 +123,22 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Shape Params",               ID_OBJECTS_SHAPE
         MENUITEM "&Track Params",               ID_OBJECTS_TRACK
-        MENUITEM "&Filter Params",              ID_OBJECTS_FILTER
+        MENUITEM "Fi&lter Params",              ID_OBJECTS_FILTER
     END
-    POPUP "Trape&zoid"
+    POPUP "&Motion"
     BEGIN
         MENUITEM "&Neck Ramp",                  ID_RAMP_NECKRAMP
-        MENUITEM "&Lift Ramp",                  ID_PARAMETERS_LIFTRAMP
-        MENUITEM SEPARATOR
-        MENUITEM "&Arm Ramp",                   ID_PROFILING_ARMRAMP
-        MENUITEM "&Grab Ramp",                  ID_PARAMETERS_GRABRAMP
-        MENUITEM SEPARATOR
+        MENUITEM "Li&ft Ramp",                  ID_PARAMETERS_LIFTRAMP
         MENUITEM "&Base Ramp",                  ID_PARAMETERS_BASERAMP
         MENUITEM SEPARATOR
-        MENUITEM "&Save Defaults",              ID_PARAMETERS_SAVEDEFAULTS
-        MENUITEM "Load &Defaults",              ID_PARAMETERS_LOADDEFAULTS
+        MENUITEM "Arm &Ramp",                   ID_PROFILING_ARMRAMP
+        MENUITEM "&Grab Ramp",                  ID_PARAMETERS_GRABRAMP
+        MENUITEM "&Inv Kinematics",             ID_MOTION_INVKINEMATICS
+        MENUITEM SEPARATOR
+        MENUITEM "&Lift Calib ...",             ID_ROOM_FORKCALIB
+        MENUITEM "&Floor Calib ...",            ID_NAV_CAMCALIB
+        MENUITEM "&Arm Calib ...",              ID_MOTION_CALIBARM
+        MENUITEM "&Wrist Calib ...",            ID_MOTION_CALIBWRIST
     END
     MENUITEM "|",                           0
     POPUP "&Mood"
@@ -147,9 +151,11 @@ BEGIN
     BEGIN
         MENUITEM "&Watching",                   ID_PARAMETERS_WATCHING
         MENUITEM "&Orienting",                  ID_PARAMETERS_ORIENTING
-        MENUITEM "&Visibility",                 ID_PEOPLE_VISIBILITY
         MENUITEM SEPARATOR
-        MENUITEM "&Social Attn",                ID_PEOPLE_SOCIALEVENTS
+        MENUITEM "&Head Gaze",                  ID_PEOPLE_VISIBILITY
+        MENUITEM "&Saccades",                   ID_SOCIAL_SACCADES
+        MENUITEM SEPARATOR
+        MENUITEM "Social &Attn",                ID_PEOPLE_SOCIALEVENTS
         MENUITEM "Social &Move",                ID_PEOPLE_SOCIALMOVE
         MENUITEM SEPARATOR
         MENUITEM "Enroll &Photo",               ID_ATTENTION_ENROLLPHOTO
@@ -165,6 +171,19 @@ BEGIN
         MENUITEM "&Color Finding",              ID_VISUAL_COLORFINDING
         MENUITEM "&Hue Thresholds",             ID_VISUAL_HUETHRESHOLDS
         MENUITEM "&Primary Colors",             ID_VISUAL_PRIMARYCOLORS
+    END
+    POPUP "&Grab"
+    BEGIN
+        MENUITEM "&Surf Height",                ID_OBJECTS_SURFHEIGHT
+        MENUITEM "Surf &Location",              ID_OBJECTS_SURFLOCATION
+        MENUITEM SEPARATOR
+        MENUITEM "&Grasp Point",                ID_OBJECTS_GRASPPOINT
+        MENUITEM "&Empty Spot",                 ID_OBJECTS_EMPTYSPOT
+        MENUITEM "&Trajectory Ctrl",            ID_OBJECTS_TRAJECTORYCTRL
+        MENUITEM "&Motion Done",                ID_OBJECTS_MOTIONDONE
+        MENUITEM SEPARATOR
+        MENUITEM "&Workspace",                  ID_OBJECTS_WORKSPACE
+        MENUITEM "&Body Shift",                 ID_GRAB_BODYSHIFT
     END
     POPUP "&Ballistic"
     BEGIN
@@ -190,9 +209,11 @@ BEGIN
         MENUITEM "&Speaking",                   ID_PEOPLE_SPEAKING
         MENUITEM SEPARATOR
         MENUITEM "&Pick Table",                 ID_SURFACE_PICKTABLE
+        MENUITEM "&Gaze Surface",               ID_DETECTION_GAZESURFACE
+        MENUITEM SEPARATOR
         MENUITEM "&Depth Objs",                 ID_OBJECTS_TRACKOBJS
         MENUITEM "&Color Objs",                 ID_SURFACE_COLOROBJS
-        MENUITEM "&Hybrid Seg",                 ID_SURFACE_HYBRIDSEG
+        MENUITEM "&Features",                   ID_SURFACE_HYBRIDSEG
     END
     POPUP "&Navigation"
     BEGIN
@@ -203,15 +224,22 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Seek Loc",                   ID_ENVIRON_GOTO
     END
-    POPUP "&Motion"
+    POPUP "&Manipulation"
     BEGIN
-        MENUITEM "&Limp",                       ID_ARM_LIMP
-        MENUITEM "&Neutral",                    ID_ANIMATION_NEUTRAL
-        MENUITEM "&Breathe",                    ID_ANIMATION_IDLE
-        MENUITEM SEPARATOR
         MENUITEM "Swing &Params",               ID_ARM_SWINGPARAMS
-        MENUITEM "&Swing Joint",                ID_ARM_SWINGJOINT
+        MENUITEM "S&wing Joint",                ID_ARM_SWINGJOINT
         MENUITEM "&Goto Pose",                  ID_ARM_GOTOPOSE
+        MENUITEM SEPARATOR
+        MENUITEM "Adjust &Z",                   ID_MANIPULATION_ADJUSTZ
+        MENUITEM "&Hand Eye",                   ID_MANIPULATION_HANDEYE
+        MENUITEM "Goto &Via",                   ID_MANIPULATION_GOTOVIA
+        MENUITEM "&Deposit Spot",               ID_MANIPULATION_DEPOSIT
+        MENUITEM SEPARATOR
+        MENUITEM "&Move Obj",                   ID_MANIPULATION_MOVEOBJ
+    END
+    POPUP "&Force"
+    BEGIN
+        MENUITEM "&Breathe",                    ID_ANIMATION_IDLE
         MENUITEM SEPARATOR
         MENUITEM "Hand &Force",                 ID_ARM_HANDFORCE
         MENUITEM "Drag &Hand",                  ID_FORCE_DRAGHAND
@@ -225,9 +253,12 @@ BEGIN
     BEGIN
         MENUITEM "Demo &Options",               ID_DEMO_DEMOOPTIONS
         MENUITEM "Attn + Time",                 ID_DEMO_ATTN
-        MENUITEM "Static &Pose",                ID_DEMO_STATICPOSE
+        MENUITEM "&Static Pose",                ID_DEMO_STATICPOSE
         MENUITEM SEPARATOR
         MENUITEM "&Reset Robot",                ID_DEMO_RESETROBOT
+        MENUITEM "Init &Pose",                  ID_ANIMATION_NEUTRAL
+        MENUITEM "&Limp",                       ID_ARM_LIMP
+        MENUITEM SEPARATOR
         MENUITEM "&Text File",                  ID_DEMO_TEXTFILE
         MENUITEM "> &Interactive",              ID_DEMO_INTERACTIVE
     END
@@ -240,7 +271,7 @@ BEGIN
         MENUITEM "Play &Depth",                 ID_UTILITIES_PLAYDEPTH
         MENUITEM "&Play Both",                  ID_UTILITIES_PLAYBOTH
         MENUITEM SEPARATOR
-        MENUITEM "&Auto Values",                ID_UTILITIES_VALUERULES
+        MENUITEM "Value &Rules",                ID_UTILITIES_VALUERULES
         MENUITEM "&Extract Words",              ID_UTILITIES_EXTRACTWORDS
         MENUITEM "Chk &Grammar",                ID_UTILITIES_CHKGRAMMAR
         MENUITEM SEPARATOR
@@ -284,37 +315,37 @@ CAPTION "About Banzai"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "Banzai Version 4.50",IDC_STATIC,47,11,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2015-2021, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
+    LTEXT           "Banzai Version 4.80",IDC_STATIC,47,11,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2015-2022, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
 END
 
-IDD_JHCARGS DIALOGEX 0, 0, 218, 170
+IDD_JHCARGS DIALOGEX 0, 0, 219, 175
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Parameter Selection"
 FONT 8, "MS Sans Serif", 0, 0, 0x1
 BEGIN
     EDITTEXT        IDC_JHC_ARG1,106,7,40,15,ES_AUTOHSCROLL
-    EDITTEXT        IDC_JHC_ARG2,106,25,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_JHC_ARG3,106,45,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_JHC_ARG4,106,64,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_JHC_ARG5,106,83,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_JHC_ARG6,106,102,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_JHC_ARG7,105,130,54,15,ES_AUTOHSCROLL
-    EDITTEXT        IDC_JHC_ARG8,105,148,54,15,ES_AUTOHSCROLL
-    EDITTEXT        IDC_JHC_TXT1,7,7,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    EDITTEXT        IDC_JHC_TXT2,7,26,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    EDITTEXT        IDC_JHC_TXT3,7,45,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    EDITTEXT        IDC_JHC_TXT4,7,64,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    EDITTEXT        IDC_JHC_TXT5,7,83,91,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    EDITTEXT        IDC_JHC_TXT6,7,102,91,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    EDITTEXT        IDC_JHC_TXT7,7,131,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    EDITTEXT        IDC_JHC_TXT8,7,148,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
-    PUSHBUTTON      "Cancel",IDCANCEL,161,45,50,14
-    DEFPUSHBUTTON   "OK",IDOK,161,7,50,14
-    PUSHBUTTON      "Defaults",IDC_JHC_ARGDEFAULT,161,25,50,14
-    LTEXT           "___________________________________________________",IDC_STATIC,7,115,204,11
+    EDITTEXT        IDC_JHC_ARG2,106,27,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG3,106,46,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG4,106,65,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG5,106,84,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG6,106,104,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG7,105,133,54,15,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_ARG8,105,153,54,15,ES_AUTOHSCROLL
+    EDITTEXT        IDC_JHC_TXT1,7,8,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT2,7,27,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT3,7,46,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT4,7,65,92,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT5,7,84,91,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT6,7,104,91,14,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT7,7,134,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    EDITTEXT        IDC_JHC_TXT8,7,153,91,15,ES_AUTOHSCROLL | ES_READONLY | NOT WS_BORDER,WS_EX_RIGHT
+    PUSHBUTTON      "Cancel",IDCANCEL,162,45,50,14
+    DEFPUSHBUTTON   "OK",IDOK,162,7,50,14
+    PUSHBUTTON      "Defaults",IDC_JHC_ARGDEFAULT,162,25,50,14
+    LTEXT           "___________________________________________________",IDC_STATIC,7,118,205,11
 END
 
 IDD_JHCNAME DIALOGEX 0, 0, 262, 46
@@ -374,8 +405,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 4,80,0,1
+ PRODUCTVERSION 4,80,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -388,15 +419,15 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904B0"
+        BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription", "Banzai MFC Application"
-            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "FileDescription", "Banzai Robot Reasoner"
+            VALUE "FileVersion", "4.80.0.1"
             VALUE "InternalName", "Banzai"
-            VALUE "LegalCopyright", "Copyright (C) 2002"
-            VALUE "OriginalFilename", "Banzai.EXE"
-            VALUE "ProductName", "Banzai Application"
-            VALUE "ProductVersion", "1, 0, 0, 1"
+            VALUE "LegalCopyright", "Copyright (C) 2022 Etaoin Systems"
+            VALUE "OriginalFilename", "Banzai.exe"
+            VALUE "ProductName", "Banzai"
+            VALUE "ProductVersion", "4.80.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -425,9 +456,9 @@ BEGIN
     IDD_JHCARGS, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 211
+        RIGHTMARGIN, 212
         TOPMARGIN, 7
-        BOTTOMMARGIN, 163
+        BOTTOMMARGIN, 168
     END
 
     IDD_JHCNAME, DIALOG
@@ -639,7 +670,7 @@ BEGIN
     ID_PARAMETERS_BASEPROGRESS 
                             "How to determine if a translation or rotation has failed"
     ID_PARAMETERS_BASERAMP  "Trapezoidal profiling for translation and rotation"
-    ID_DEMO_RESETROBOT      "Force a robot hardware reset"
+    ID_DEMO_RESETROBOT      "Force a robot hardware reset but no motion"
     ID_PARAMETERS_LIFTCMD   "How to interpret words in fork lift stage commands"
     ID_PARAMETERS_LIFTRAMP  "Trapezoidal profiling for lift stage"
     ID_PARAMETERS_BATTERYLEVEL 
@@ -681,8 +712,8 @@ BEGIN
     ID_NAV_MAPCLEAR         "Parameters to find floor and clear areas"
     ID_ENVIRON_AIRCONF      "Show maximum height imaged for obstacles"
     ID_ENVIRON_FLATAREA     "Show how far the robot can drive forward in the current environment"
-    ID_NAV_CAMCALIB         "Refine sensor tilt, roll, and height based on floor"
-    ID_NAV_GUIDANCE         "Parameters for determining where the robot can move based on the map"
+    ID_NAV_CAMCALIB         "Refine sensor tilt, roll, and height based on floor (calibrate lift first)"
+    ID_NAV_GUIDANCE         "Parameters for synthetic sensors and obstacle avoidance"
     ID_ENVIRON_AVOIDANCE    "Show reachable areas and collision avoidance detours"
 END
 
@@ -692,9 +723,9 @@ BEGIN
     ID_ENVIRON_COZYUP       "Move straight ahead until blocked by obstacle"
     ID_ENVIRON_LOCALPATHS   "Show distances robot can go in various orientations"
     ID_ENVIRON_DISTANCES    "Show valid forward and backward motions on large maps"
-    ID_NAV_FOVLIMITS        "Specified rough footprint of robot on floor"
+    ID_NAV_FOVLIMITS        "Specify rough footprint of robot on floor and map fading"
     ID_ENVIRON_GOTO         "Pick fixed map location for robot to travel toward"
-    ID_NAV_CONFIDENCE       "Parameters governing minimal area and map fading"
+    ID_NAV_CONFIDENCE       "Parameters for synthetic sensors and obstacle avoidance"
     ID_PEOPLE_VISIBILITY    "Angular range where heads are likely to be detected"
     ID_DEMO_ATTN            "Adjust attention timing and thought rate"
     ID_OBJECTS_TRACKOBJS    "Detect protrusions from a flat surface"
@@ -717,7 +748,7 @@ BEGIN
     ID_SURFACE_HYBRIDSEG    "Segment and track objects on table based on height and color"
     ID_OBJECTS_COLORPARAMS  "Parameters for finding nearly flat objects on surfaces"
     ID_SURFACE_COLOROBJS    "Find nearly flat objects based on color differences"
-    ID_UTILITIES_VALUERULES "Get preliminary rules and operators from a list of properties and values"
+    ID_UTILITIES_VALUERULES "Get preliminary rules from a list of properties and values"
     ID_VISUAL_DIST          "Set distance thresholds for categories and alerts"
     ID_VISUAL_DIMSBINS      "Set object size thresholds for categories"
     ID_VISUAL_COLORFINDING  "Parameters for analyzing hues and intensities"
@@ -740,6 +771,44 @@ BEGIN
     ID_MOOD_ENERGYLEVEL     "Adjust threshold for tiredness"
     ID_MOOD_INTERACTIONLEVEL "Adjust thresholds for loneliness"
     ID_SOCIAL_FOOTCHECK     "Parameters for automatically re-checking ground in front of robot"
+    ID_ROOM_ROBOTDIMS       "Specify rough footprint of robot on floor and map fading"
+    ID_SOCIAL_SACCADES      "Parameters governing local mapping gazes during movement"
+    ID_MOTION_CALIBWRIST    "Smash hand onto table to calibrate wrist angles (calibrate arm first)"
+    ID_MOTION_CALIBARM      "Click on joints in image to improve arm kinematics (calibrate floor first)"
+END
+
+STRINGTABLE
+BEGIN
+    ID_MANIPULATION_HANDEYE "Report hand position relative to a selected object"
+    ID_MANIPULATION_GOTOVIA "Go to pre-grasp position relative to some object"
+    ID_MANIPULATION_ADJUSTZ "Move whole arm to achieve good height over detected surface"
+    ID_MANIPULATION_SNATCH  "Grab selected object and retract arm"
+    ID_MANIPULATION_ADJUSTXY 
+                            "Move base slightly to bring selected object within arm workspace"
+    ID_MANIPULATION_MOVEOBJ "Shift object from one location to another"
+    ID_DETECTION_GAZESURFACE "Optimize head angles for detected surface"
+    ID_DETECTION_GAZEOBJECT "Look straight at middle of selected object"
+    ID_MANIPULATION_ACQUIREFULL "Move body then arm to clutch object to chest"
+    ID_OBJECTS_GRASPPOINT   "Geometric parameters for generating grasp and via points "
+    ID_OBJECTS_TRAJECTORYCTRL 
+                            "Additional parameters governing execution of trajectories"
+    ID_OBJECTS_MOTIONDONE   "Position and angle tolerances for successful completion"
+    ID_OBJECTS_PHASETIMEOUT "Maximum amount of time expected for each phase"
+    ID_SOCIAL_SURFFIND      "Parameters controlling surface level finding in wide depth view"
+    ID_TABLE_SURFACE        "Parameters governing localization of surface patches"
+    ID_OBJECTS_SURFHEIGHT   "Parameters for qualitative height of surfaces "
+END
+
+STRINGTABLE
+BEGIN
+    ID_OBJECTS_SURFLOCATION "Parameters for qualitative position and direction of surfaces"
+    ID_MOTION_INVKINEMATICS "Set parameters for joint angle search"
+    ID_OBJECTS_WORKSPACE    "Limits on object position to be in valid manipulation area"
+    ID_MANIPULATION_DEPOSIT "Show selected final location for some object given a relation to another"
+    ID_OBJECTS_EMPTYSPOT    "Parameters governing choice of object deposit location"
+    ID_ROOM_LIFTCALIB       "Get offset and scaling factor for fork lift stage"
+    ID_GRAB_BODYSHIFT       "Parameters for jockeying robot to bring object into workspace"
+    ID_ROOM_FORKCALIB       "Adjust height from controller using hand measurements"
 END
 
 #endif    // English (United States) resources

@@ -85,10 +85,11 @@ double jhcSurface3D::CamCalib (double& t, double& r, double& h, const jhcImg& sr
                                double zlo, double zhi, double ipp, double yoff, const jhcRoi *area) 
 {
   const jhcRoi *samp = ((area != NULL) ? area : &src);
-  int lo, hi, x, y, iw = samp->RoiW(), ih = samp->RoiH(), sk = src.RoiSkip(*samp);
   double cxm = cx + 0.5 * ipp * src.XDim(), cym = cy + yoff;
   double rads = D2R * (p0 + 90.0), cp = cos(rads), sp = sin(rads);
   double a, b, c, tz, ipz = (zhi - zlo) / 252.0, sc = 1.0 / ipz;
+  int x0 = samp->RoiX(), x2 = samp->RoiX2(), y0 = samp->RoiY(), y2 = samp->RoiY2();
+  int lo, hi, x, y, sk = src.RoiSkip(*samp);
   const UC8 *s = src.RoiSrc(*samp);
 
   if (!src.Valid(1))
@@ -102,8 +103,8 @@ double jhcSurface3D::CamCalib (double& t, double& r, double& h, const jhcImg& sr
 
   // gather statistics using pixels close to expected surface
   ClrStats();
-  for (y = 0; y < ih; y++, s += sk)
-    for (x = 0; x < iw; x++, s++)
+  for (y = y0; y < y2; y++, s += sk)
+    for (x = x0; x < x2; x++, s++)
       if ((*s >= lo) && (*s <= hi))
         AddPoint(x, y, *s);
 
@@ -121,6 +122,65 @@ double jhcSurface3D::CamCalib (double& t, double& r, double& h, const jhcImg& sr
   t = -R2D * atan(a * cp + b * sp);
   r = R2D * atan(-a * sp + b * cp);
   return RMS();
+}
+
+
+//= Does a least square fit of points along an image line to give a tilt angle.
+// line start at pixel (x0 y0) and goes to (x1 y1), angle is atan(dz/dr) in degs
+// can optionally trim line to start at f0 fraction of length and stop at f1
+// primarily used to estimate angle of ELI robot forearm for calibration
+// returns 360.0 if problem with estimate (normally -180 to +180)
+
+double jhcSurface3D::LineTilt (const jhcImg& d16, double x0, double y0, double x1, double y1, double f0, double f1) const
+{
+  double dx = x1 - x0, dy = y1 - y0, len = sqrt(dx * dx + dy * dy);
+  double ix = x0 + f0 * dx, iy = y0 + f0 * dy, ir = f0 * len, stop = f1 * len;
+  double x, y, z, xref, yref, r, num, den, xstep = dx / len, ystep = dy / len; 
+  double sr = 0.0, sz = 0.0, sr2 = 0.0, srz = 0.0; 
+  int iz, n = 0;
+
+  if (!d16.Valid(2))
+    return Fatal("Bad images to jhcSurface3D::LineTilt");
+
+  // get raw depth for all points on image line
+  while (ir < stop)
+  {
+    iz = d16.ARefChk16(ROUND(ix), ROUND(iy), 0);
+    if ((iz >= 1760) && (iz <= 40000))
+    {
+      // find actual 3D coordinates and get planar distance from start
+      WorldPt(x, y, z, ix, iy, iz);
+      if (n <= 0)
+      {
+        xref = x;
+        yref = y;
+      }
+      x -= xref;
+      y -= yref;
+      r = sqrt(x * x + y * y);
+
+      // add to statistics
+      sr  += r; 
+      sz  += z;
+      sr2 += r * r;
+      srz += r * z;
+      n++;
+    }
+
+    // advance to next sampling location
+    ix += xstep;
+    iy += ystep;
+    ir += 1.0;
+  }
+
+  // compute angle of slope
+  if (n < 2)
+    return 360.0;
+  num = n * srz - sr * sz;
+  den = n * sr2 - sr * sr;
+  if (den == 0.0)
+    return 360.0;
+  return R2D * atan(num / den);
 }
 
 
@@ -705,6 +765,7 @@ int jhcSurface3D::MapBack (jhcImg& dest, const jhcImg& src, double z0, double z1
 // adjusts mask ROI at exit to contain just marked pixels (add any border externally)
 // does incremental back-projection without need for CacheXYZ to be valid
 // useful for anaylzing color of objects (more pixels visible in frontal image)
+// returns 1 if okay, 0 if no valid pixels in mask
 
 int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, double under, const jhcImg& cc, int n)
 {
@@ -721,6 +782,7 @@ int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, doubl
   // sanity check
   if (!mask.SameFormat(iw, ih, 1) || !mask.SameSize(d16, 2))
     return Fatal("Bad images to jhcSurface3D::FrontMask");
+  mask.FillArr(0);
 
   // extract factors: ix = (a0 * x + b0 * y + c0) * z + d0
   a0 = xform.MRef(0, 0);
@@ -769,9 +831,7 @@ int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, doubl
           continue;
 
         // see if component at this surface location matches desired
-        if (cc.ARef16(ix, iy) != n)
-          *d = 0;
-        else
+        if (cc.ARef16(ix, iy) == n)
         {
           // mark pixel and expand binary mask zone in output
           *d = 255;
@@ -785,6 +845,8 @@ int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, doubl
 
   // adjust output ROI so it encloses just mask pixels
   mask.SetRoiLims(lf, bot, rt, top);
+  if (mask.RoiArea() <= 0) 
+    return 0;
   return 1;
 }
 

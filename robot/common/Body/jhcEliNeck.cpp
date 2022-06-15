@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -127,7 +127,7 @@ int jhcEliNeck::neck_params (const char *fname)
   int ok;
 
   ps->SetTag("neck_move", 0);
-  ps->NextSpecF( &gaze0, -5.0, "Initial head tilt (deg)");    // was -40
+  ps->NextSpecF( &gaze0,  0.0, "Initial head tilt (deg)");    // was -40, -5, then -70
   ps->Skip();
   ps->NextSpecF( &ndone,  1.0, "Blocking gaze done test (deg)");
   ps->NextSpecF( &quit,   0.5, "Blocking move timeout (sec)");
@@ -803,15 +803,18 @@ int jhcEliNeck::SlewNeck (double pan, double tilt, double dps)
 
 
 //= Send angular command to neck servos (blocks).
+// NOTE: jhcEliGrok::Reset calls jhcEliBody::InitPose which calls SetNeck(0.0, gaze0) 
 
 int jhcEliNeck::SetNeck (double pan, double tilt)
 {
+  UL32 start = jms_now();
+
   // check hardware and get current pose 
   if (Update() <= 0)
     return -1;
   
   // drive neck until timeout
-  while (1)
+  while (jms_elapsed(start) < 2.0)
   {
     // reiterate command
     GazeTarget(pan, tilt);
@@ -822,7 +825,7 @@ int jhcEliNeck::SetNeck (double pan, double tilt)
     Update();
 
     // see if close enough yet
-    if (GazeClose() || GazeFail())
+    if (GazeClose())
       break;
   }
     

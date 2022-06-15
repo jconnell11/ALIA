@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@
 
 #include "Language/jhcDegrapher.h"     // common audio
 
-#include "Action/jhcTimedFcns.h"       // common robot
+#include "Action/jhcStdKern.h"         // common robot
 
 
 //= String and semantic net language output for ALIA system.
@@ -40,7 +40,7 @@
 // NOTE: does not wait for output to be fully actualized (e.g. spoken)
 // requests basically generate quick events which may be overwritten
 
-class jhcTalkFcn : public jhcTimedFcns
+class jhcTalkFcn : public jhcStdKern
 {
   static const int smax = 10;        /** Maximum pending things to say. */
 
@@ -52,6 +52,7 @@ private:
 
   // output arbitration
   char winner[500];
+  UL32 finish;
   int imp;
 
 
@@ -65,6 +66,7 @@ public:
   // creation and initialization
   ~jhcTalkFcn ();
   jhcTalkFcn ();
+  void Bind (const class jhcMorphFcns *mf) {dg.SetWords(mf);}
   int Output (char *out, int ssz);
   template <size_t ssz>
     int *Output (char (&out)[ssz])               // for convenience
@@ -74,16 +76,21 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // overridden virtuals
-  void local_reset (jhcAliaNote *top) {dg.Bind(top);}
+  void local_reset (jhcAliaNote *top);
   int local_start (const jhcAliaDesc *desc, int i);
   int local_status (const jhcAliaDesc *desc, int i);
 
   // user literal output
   JCMD_DEF(echo_wds);
   int build_string (const jhcAliaDesc *desc, int inst);
+
+  // string cleanup
+  int fix_surface (char *txt);
+  void fix_itis (char *txt);
   void fix_verb (char *txt);
   void fix_det (char *txt);
   void fix_abbrev (char *txt);
+  bool word_after (const char *txt) const;
 
 
 };

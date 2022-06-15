@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,6 +116,7 @@ public:
   // current neck information
   void HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift) const; 
   void HeadLoc (jhcMatrix& pos, double lift) const;
+  double HeadZ (double lift) const {return(pos0.Z() + lift);}
   double Pan () const  {return jt[0].Angle();}
   double Tilt () const {return jt[1].Angle();}
   void Gaze (double& p, double& t) const {p = Pan(); t = Tilt();}
@@ -148,22 +149,19 @@ public:
   double GazeErr (double pan, double tilt, int lim =1) const
     {return __max(PanErr(pan, 1, lim), TiltErr(tilt, 1, lim));}
   double GazeErr (const jhcMatrix& targ, double lift) const;
-  bool PanDone (double p, double tol =2.0) const  
+  bool PanDone (double p, double tol =3.0) const  
     {return(PanErr(p) <= tol);}
-  bool TiltDone (double t, double tol =2.0) const 
+  bool TiltDone (double t, double tol =3.0) const 
     {return(TiltErr(t) <= tol);}
-  bool GazeDone (double p, double t, double tol =2.0) const 
+  bool GazeDone (double p, double t, double tol =3.0) const 
     {return(PanDone(p, tol) && TiltDone(t, tol));}
-  bool GazeDone (const jhcMatrix& targ, double lift, double tol =2.0) const 
+  bool GazeDone (const jhcMatrix& targ, double lift, double tol =3.0) const 
     {return(GazeErr(targ, lift) <= tol);}
 
   // profiled motion progress
   bool GazeClose (double tol =1.0) const {return(PanClose(tol) && TiltClose(tol));}
   bool PanClose (double tol =1.0) const  {return(jt[0].RampDist(Pan()) <= tol);}
   bool TiltClose (double tol =1.0) const {return(jt[1].RampDist(Tilt()) <= tol);}
-  bool GazeFail (double secs =0.5) const {return(PanFail(secs) && TiltFail(secs));}
-  bool PanFail (double secs =0.5) const  {return(jt[0].RampDone() > secs);}
-  bool TiltFail (double secs =0.5) const {return(jt[1].RampDone() > secs);}
 
   // -------------------- NECK EXTRAS ---------------------------
 

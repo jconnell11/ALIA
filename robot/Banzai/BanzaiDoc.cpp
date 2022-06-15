@@ -1,11 +1,11 @@
-// BanzaiDoc.cpp : top level GUI framework does something
+// BanzaiDoc.cpp : top level GUI framework runs robot and reasoner
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -132,9 +132,7 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_NAV_GUIDANCE, &CBanzaiDoc::OnNavGuidance)
   ON_COMMAND(ID_ENVIRON_LOCALPATHS, &CBanzaiDoc::OnEnvironLocalpaths)
   ON_COMMAND(ID_ENVIRON_DISTANCES, &CBanzaiDoc::OnEnvironDistances)
-  ON_COMMAND(ID_NAV_FOVLIMITS, &CBanzaiDoc::OnNavFovlimits)
   ON_COMMAND(ID_ENVIRON_GOTO, &CBanzaiDoc::OnEnvironGoto)
-  ON_COMMAND(ID_NAV_CONFIDENCE, &CBanzaiDoc::OnNavConfidence)
   ON_COMMAND(ID_PEOPLE_VISIBILITY, &CBanzaiDoc::OnPeopleVisibility)
   ON_COMMAND(ID_DEMO_ATTN, &CBanzaiDoc::OnDemoAttn)
   ON_COMMAND(ID_OBJECTS_TRACKOBJS, &CBanzaiDoc::OnObjectsTrackobjs)
@@ -168,7 +166,30 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_MOOD_ACTIVITYLEVEL, &CBanzaiDoc::OnMoodActivitylevel)
   ON_COMMAND(ID_MOOD_ENERGYLEVEL, &CBanzaiDoc::OnMoodEnergylevel)
   ON_COMMAND(ID_MOOD_INTERACTIONLEVEL, &CBanzaiDoc::OnMoodInteractionlevel)
-END_MESSAGE_MAP()
+  ON_COMMAND(ID_ROOM_ROBOTDIMS, &CBanzaiDoc::OnRoomRobotdims)
+  ON_COMMAND(ID_SOCIAL_SACCADES, &CBanzaiDoc::OnSocialSaccades)
+  ON_COMMAND(ID_MOTION_CALIBWRIST, &CBanzaiDoc::OnMotionCalibwrist)
+  ON_COMMAND(ID_MOTION_CALIBARM, &CBanzaiDoc::OnMotionCalibarm)
+  ON_COMMAND(ID_MANIPULATION_HANDEYE, &CBanzaiDoc::OnManipulationHandeye)
+  ON_COMMAND(ID_MANIPULATION_GOTOVIA, &CBanzaiDoc::OnManipulationGotovia)
+  ON_COMMAND(ID_MANIPULATION_ADJUSTZ, &CBanzaiDoc::OnManipulationAdjustz)
+  ON_COMMAND(ID_MANIPULATION_MOVEOBJ, &CBanzaiDoc::OnManipulationMoveobj)
+  ON_COMMAND(ID_OBJECTS_GRASPPOINT, &CBanzaiDoc::OnObjectsGrasppoint)
+  ON_COMMAND(ID_OBJECTS_TRAJECTORYCTRL, &CBanzaiDoc::OnObjectsTrajectoryctrl)
+  ON_COMMAND(ID_OBJECTS_MOTIONDONE, &CBanzaiDoc::OnObjectsMotiondone)
+  ON_COMMAND(ID_DETECTION_GAZESURFACE, &CBanzaiDoc::OnDetectionGazesurface)
+  ON_COMMAND(ID_SOCIAL_SURFFIND, &CBanzaiDoc::OnSocialSurffind)
+  ON_COMMAND(ID_TABLE_SURFACE, &CBanzaiDoc::OnTableSurface)
+  ON_COMMAND(ID_OBJECTS_SURFHEIGHT, &CBanzaiDoc::OnObjectsSurfheight)
+  ON_COMMAND(ID_OBJECTS_SURFLOCATION, &CBanzaiDoc::OnObjectsSurflocation)
+  ON_COMMAND(ID_MOTION_INVKINEMATICS, &CBanzaiDoc::OnMotionInvkinematics)
+  ON_COMMAND(ID_OBJECTS_WORKSPACE, &CBanzaiDoc::OnObjectsWorkspace)
+  ON_COMMAND(ID_MANIPULATION_DEPOSIT, &CBanzaiDoc::OnManipulationDeposit)
+  ON_COMMAND(ID_OBJECTS_EMPTYSPOT, &CBanzaiDoc::OnObjectsEmptyspot)
+  ON_COMMAND(ID_GRAB_BODYSHIFT, &CBanzaiDoc::OnGrabBodyshift)
+  ON_COMMAND(ID_ROOM_FORKCALIB, &CBanzaiDoc::OnRoomForkcalib)
+  END_MESSAGE_MAP()
+
 
 /////////////////////////////////////////////////////////////////////////////
 // CBanzaiDoc construction/destruction
@@ -247,7 +268,7 @@ BOOL CBanzaiDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = ec.Version();
-  LockAfter(12, 2021, 7, 2021);
+  LockAfter(11, 2022, 6, 2022);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -270,8 +291,11 @@ void CBanzaiDoc::RunDemo()
   if (d.Valid() <= 0)   
     d.BindTo(this);
 
-  OnDemoInteractive();
-//  OnCloseDocument();    // possibly auto-exit when done
+  // start autonomous interaction or exit program if disabled
+  if (rob >= 2)
+    OnDemoInteractive();
+  else
+    OnCloseDocument();       
 }
 
 
@@ -858,6 +882,16 @@ void CBanzaiDoc::OnParametersGrabramp()
 	jhcPickVals dlg;
 
   dlg.EditParams((eb->arm).fps); 
+}
+
+
+// Set parameters for joint angle search
+
+void CBanzaiDoc::OnMotionInvkinematics()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((eb->arm).ips); 
 }
 
 
@@ -1528,39 +1562,68 @@ void CBanzaiDoc::OnForceDragrobot()
 //                           Animation Functions                           //
 /////////////////////////////////////////////////////////////////////////////
 
-// Set all arm servos to passive
+// Force a robot hardware reset but no motion
 
-void CBanzaiDoc::OnArmLimp()
+void CBanzaiDoc::OnDemoResetrobot()
 {
-  d.Clear(1, "Setting arm passive ...");
-  d.StringGrid(0, 0, "Initializing robot ...");  
-  if (eb->Reset(1) <= 0)
-    if (AskNot("Problem with robot hardware. Continue?") <= 0)
-      return;
-  (eb->arm).Limp();
-  d.StatusText("Stopped.");  
-  Tell("Arm is now limp"); 
+  // bind video
+  d.Clear(1);
+  d.StringGrid(0, 0, "Reset robot");
+  if ((cam > 0) && (ChkStream() > 0))
+    eb->BindVideo(&v);
+  else
+    eb->BindVideo(NULL);
+
+  // start up robot
+  d.StatusText("Initializing robot ...");
+  if (eb->Reset(1, 1) <= 0)
+    Complain("Problem with robot hardware");
+  else
+    Tell("Robot %d hardware reset", eb->BodyNum());
+  d.StatusText("Done");  
 }
 
 
 // Assume default pose for all actuators
+// also adjusts to canonical height
 
 void CBanzaiDoc::OnAnimationNeutral()
 {
-  // start up robot
-  d.Clear(1, "Neutral pose ...");
-  d.ResetGrid(3, 640, 200);
-  d.StringGrid(0, 0, "Initializing robot ...");  
-  if (eb->Reset(1) <= 0)
-    if (AskNot("Problem with robot hardware. Continue?") <= 0)
-      return;
+  d.Clear(1);
+  d.StatusText("Initializing pose ...");
+  if (eb->Reset(1, 1) <= 0)
+    Complain("Problem with robot hardware");
+  else if (eb->InitPose() <= 0)
+    Complain("Could not achieve starting pose");
+  else
+    Tell("Robot in standard pose");
+  d.StatusText("Done");  
+}
 
-  // change to starting angle
-  d.ClearGrid(0, 0);
-  d.StringGrid(0, 0, "Moving to pose ...");
-  eb->InitPose();
-  d.StatusText("Stopped.");  
-  Tell("Robot in neutral pose"); 
+
+// Set all arm servos to passive
+
+void CBanzaiDoc::OnArmLimp()
+{
+  // bind video
+  d.Clear(1);
+  d.StringGrid(0, 0, "Passive actuators");
+  eb->Limp();
+  Tell("All actuators powered off");
+  d.StatusText("Done");  
+}
+
+
+// Robot is fully charged so recalibrate battery capacity
+
+void CBanzaiDoc::OnUtilitiesBatteryfull()
+{
+  int n;
+
+  if ((n = (ec.body).ResetVmax()) > 0)
+    Tell("Robot %d battery capacity will be recalibrated on next run", n);
+  else
+    Complain("Robot body currently unknown");
 }
 
 
@@ -1670,15 +1733,15 @@ int CBanzaiDoc::interact_params (const char *fname)
   int ok;
 
   ps->SetTag("banzai_opt", 0);
-  ps->NextSpec4( &rob,        0, "Body connected");
+  ps->NextSpec4( &rob,        0, "Body (none, yes, autorun)");
   ps->NextSpec4( &cam,        0, "Camera available");
-  ps->NextSpec4( &(ec.spin),  0, "Speech (none, local, web)");  
+  ps->NextSpec4( &(ec.spin),  0, "Speech (no, w7, web, w11)");  
   ps->NextSpec4( &(ec.amode), 2, "Attn (none, any, front, only)");
-  ps->NextSpec4( &(ec.tts),   0, "Read output always");
-  ps->Skip();
-
+  ps->NextSpec4( &(ec.tts),   0, "Vocalize output");
   ps->NextSpec4( &fsave,      0, "Face model update");
-  ps->NextSpec4( &(ec.acc),   0, "Accumulate knowledge");
+
+  ps->NextSpec4( &(ec.vol),   1, "Load baseline volition");
+  ps->NextSpec4( &(ec.acc),   0, "Skills (none, load, update)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -1715,29 +1778,6 @@ void CBanzaiDoc::OnDemoStaticpose()
 }
 
 
-// Force a robot hardware reset
-
-void CBanzaiDoc::OnDemoResetrobot()
-{
-  if ((cam > 0) && (ChkStream() > 0))
-    (ec.body).BindVideo(&v);
-  else
-    (ec.body).BindVideo(NULL);
-  ec.Reset(2);
-}
-
-
-// Robot is fully charged so recalibrate battery capacity
-
-void CBanzaiDoc::OnUtilitiesBatteryfull()
-{
-  if ((ec.body).ResetVmax() > 0)
-    Tell("Battery capacity will be recalibrated on next restart");
-  else
-    Complain("Robot body currently unknown");
-}
-
-
 // Read successive inputs from a text file
 
 void CBanzaiDoc::OnDemoTextfile()
@@ -1745,8 +1785,9 @@ void CBanzaiDoc::OnDemoTextfile()
   jhcString sel, test;
   CFileDialog dlg(TRUE);
   HWND me = GetForegroundWindow();
-  FILE *f;
   char in[200] = "";
+  const jhcImg *icam = NULL;
+  FILE *f;
   int sp0 = ec.spin;
 
   // select file to read 
@@ -1770,7 +1811,8 @@ void CBanzaiDoc::OnDemoTextfile()
   system("cls");
   jprintf_open();
   ec.spin = 0;
-  if (ec.Reset(0) <= 0)
+  d.StatusText("Initializing robot ...");
+  if (ec.Reset(rob) <= 0)
   {
     jprintf_close();
     return;
@@ -1804,8 +1846,8 @@ jtimer_clr();
       // show interaction
       if ((ec.body).NewFrame())
       {
-        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention  %s", (ec.rwi).Watching());
-        d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  --  %s", (ec.rwi).NavGoal());
+        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention (%3.1f\")  %s", ((ec.rwi).tab).ztab, (ec.rwi).Watching());
+        d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  %s", (ec.rwi).NavGoal());
       }
       (ec.stat).Memory(&d, 0, 1, ec.Sensing());
       chat.Post(ec.NewInput(), 1);
@@ -1827,6 +1869,14 @@ jtimer_rpt();
   d.StatusText("Stopped."); 
   chat.Mute();
   SetForegroundWindow(me);
+
+  // clean up
+  icam = (ec.rwi).HeadView();
+  if ((icam != NULL) && icam->Valid())
+  {
+    res.Clone(*icam);
+    sprintf_s(rname, "script_cam.bmp");
+  }
 }
 
 
@@ -1864,8 +1914,9 @@ bool CBanzaiDoc::next_line (char *txt, int ssz, FILE *f) const
 void CBanzaiDoc::OnDemoInteractive()
 {
   HWND me = GetForegroundWindow();
-  char in[200];
-  jhcImg map, col(640, 480, 3);
+  char in[200] = "";
+  jhcImg col(640, 480, 3);
+  const jhcImg *inav = NULL;
 
   // possibly check for video
   (ec.body).BindVideo(NULL);
@@ -1922,12 +1973,16 @@ jtimer_clr();
       // show robot sensing and action and any communication
       if ((ec.body).NewFrame())
       {
-        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention  %s", (ec.rwi).Watching());
-        d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  --  %s", (ec.rwi).NavGoal());
+        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention (%3.1f\")  %s", ((ec.rwi).tab).ztab, (ec.rwi).Watching());
+//        d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  %s", (ec.rwi).NavGoal());
+
+Cross((ec.man).space, (ec.man).xdest, (ec.man).ydest, 17, 17, 1, 200);
+d.ShowGrid((ec.man).space,       1, 0, 2, "Free space");
+d.ShowGrid(((ec.rwi).sobj).top , 1, 1, 2, "Table area");
       }
-//      (ec.stat).Memory(&d, 0, 1, ec.Sensing());
+      (ec.stat).Memory(&d, 0, 1, ec.Sensing());
 //      (ec.stat).Wheels(&d, 0, 1);
-      (ec.stat).Neck(&d, 0, 1);
+//      (ec.stat).Neck(&d, 0, 1);
       chat.Post(ec.NewInput(), 1);
       chat.Post(ec.NewOutput());
     }
@@ -1945,6 +2000,14 @@ jtimer_rpt();
   d.StatusText("Stopped."); 
   chat.Mute();
   SetForegroundWindow(me);
+  
+  // clean up
+  inav = (ec.rwi).MapView();
+  if ((inav != NULL) && inav->Valid())
+  {
+    FalseClone(res, *inav);
+    sprintf_s(rname, "interact_nav.bmp");
+  }
 }
 
 
@@ -2029,6 +2092,16 @@ void CBanzaiDoc::OnPeopleVisibility()
 	jhcPickVals dlg;
 
   dlg.EditParams((ec.rwi).vps); 
+}
+
+
+// Parameters governing local mapping gazes during movement
+
+void CBanzaiDoc::OnSocialSaccades()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.rwi).sps); 
 }
 
 
@@ -2469,7 +2542,7 @@ void CBanzaiDoc::OnPeopleSpeaking()
 //                           Grammar Construction                          //
 /////////////////////////////////////////////////////////////////////////////
 
-// Get preliminary rules and operators from a list of properties and values
+// Get preliminary rules from a list of properties and values
 
 void CBanzaiDoc::OnUtilitiesValuerules()
 {
@@ -2479,7 +2552,7 @@ void CBanzaiDoc::OnUtilitiesValuerules()
   int n, skip = (int) strlen(cwd) + 1;
 
   // select file to read 
-  sprintf_s(test.ch, "%s\\KB\\grounding.vals", cwd);
+  sprintf_s(test.ch, "%s\\KB0\\kernel.vals", cwd);
   test.C2W();
   (dlg.m_ofn).lpstrFile = test.Txt();
   (dlg.m_ofn).lpstrFilter = _T("Value lists\0*.vals\0All Files (*.*)\0*.*\0");
@@ -2491,7 +2564,7 @@ void CBanzaiDoc::OnUtilitiesValuerules()
   if ((end = strrchr(sel.ch, '.')) != NULL)
     *end = '\0';
   if ((n = (ec.net).AutoVals(sel.ch)) > 0)
-    Tell("Analyzed %d categories to generate files:\n%s0.rules and %s0.ops", n, sel.ch + skip, sel.ch + skip);
+    Tell("Analyzed %d categories to generate files:\n\n%s0.rules  +  %s_v0.rules", n, sel.ch + skip, sel.ch + skip);
 }
 
 
@@ -2530,7 +2603,7 @@ void CBanzaiDoc::OnUtilitiesChkgrammar()
   int err;
 
   // select file to read 
-  sprintf_s(test.ch, "%s\\language\\lex_open.sgm", cwd);
+  sprintf_s(test.ch, "%s\\language\\vocabulary.sgm", cwd);
   test.C2W();
   (dlg.m_ofn).lpstrFile = test.Txt();
   (dlg.m_ofn).lpstrFilter = _T("Grammar Files\0*.sgm\0All Files (*.*)\0*.*\0");
@@ -2571,9 +2644,9 @@ void CBanzaiDoc::OnNavigationUpdating()
 }
 
 
-// Define active part of Kinect sensing cone and size of robot
+// Specify rough footprint of robot on floor and map fading
 
-void CBanzaiDoc::OnNavFovlimits()
+void CBanzaiDoc::OnRoomRobotdims()
 {
 	jhcPickVals dlg;
 
@@ -2581,17 +2654,7 @@ void CBanzaiDoc::OnNavFovlimits()
 }
 
 
-// Parameters governing minimal area and map fading 
-
-void CBanzaiDoc::OnNavConfidence()
-{
-	jhcPickVals dlg;
-
-  dlg.EditParams(((ec.rwi).nav).kps); 
-}
-
-
-// Parameters for determining where the robot can move based on the map
+// Parameters for synthetic sensors and obstacle avoidance
 
 void CBanzaiDoc::OnNavGuidance()
 {
@@ -2611,6 +2674,96 @@ void CBanzaiDoc::OnNavDepthfov()
 }
 
 
+// Adjust height from controller using hand measurements
+
+void CBanzaiDoc::OnRoomForkcalib()
+{
+  jhcEliLift *lift = &(eb->lift);
+  char in[20];
+  double ht0, ht1, cmd0 = 10.0, cmd1 = 30.0, htol = 0.2;
+  int stable, pmax0, pmin0, v0, v1, shift, span;
+
+  // start up robot (no background loop)
+  eb->BindVideo(NULL);
+  if (eb->Reset(1, 1) <= 0)
+    return;
+  pmax0 = lift->pmax;
+  pmin0 = lift->pmin;
+
+  // go to lower height
+  printf("Setting shelf to nomimal %3.1f inches ...", cmd0);
+  stable = 0;
+  while (stable++ < 10)
+  {
+    lift->Update();
+    if (lift->LiftErr(cmd0) > htol)
+      stable = 0;
+    lift->LiftTarget(cmd0);
+    lift->Issue();
+  }
+
+  // solict low measurement
+  printf("\nDistance from bottom of shelf to floor (x to quit): ");
+  gets_s(in);
+  if (sscanf_s(in, "%lf", &ht0) != 1)
+  {
+    printf("\nQuit!\n");
+    return;
+  }
+  lift->Update();
+  v0 = lift->RawFB();                  // movement has stopped  
+
+  // go to upper height
+  printf("\nSetting shelf to nomimal %3.1f inches ...", cmd1);
+  stable = 0;
+  while (stable++ < 10)
+  {
+    lift->Update();
+    if (lift->LiftErr(cmd1) > htol)
+      stable = 0;
+    lift->LiftTarget(cmd1);
+    lift->Issue();
+  }
+
+  // solict high measurement
+  printf("\nDistance from bottom of shelf to floor (x to quit): ");
+  gets_s(in);
+  if (sscanf_s(in, "%lf", &ht1) != 1)
+  {
+    printf("\nQuit!\n");
+    return;
+  }
+  lift->Update();
+  v1 = lift->RawFB();                  // movement has stopped  
+
+  // do adjustment and gauge change
+  eb->Limp();
+  lift->AdjustRaw(ht0, v0, ht1, v1);
+  shift = abs(lift->pmin - pmin0);
+  span = abs((lift->pmax - lift->pmin) - (pmax0 - pmin0));
+  printf("\n");
+
+  // talk to user about what to do
+  if ((shift > 5) || (span > 10))
+  {
+    printf("Feedback range adjusted to [%d %d] vs old [%d %d]\n", lift->pmin, lift->pmax, pmin0, pmax0);
+    if ((shift > 100) || (span > 200)) 
+      printf("  *** maybe potentiometer has come unglued? ***\n");
+    if (Ask("Save new values to %s?", eb->LastCfg()))
+    {
+      lift->SaveCfg(eb->LastCfg());
+      printf("Done.\n");
+      return;
+    }
+  }
+
+  // otherwise revert to original values
+  lift->pmax = pmax0;
+  lift->pmin = pmin0;
+  printf("Values unchanged.\n");
+}
+
+
 // Refine sensor tilt, roll, and height based on floor
 
 void CBanzaiDoc::OnNavCamcalib()
@@ -2620,16 +2773,17 @@ void CBanzaiDoc::OnNavCamcalib()
   jhcImg mask;
   jhcMatrix pos(4), dir(4);
   char fname[80];
-  double tsum = 0.0, rsum = 0.0, hsum = 0.0, dev = 4.0;
+  double tsum = 0.0, rsum = 0.0, hsum = 0.0, dev = 4.0, tilt = -45.0;
   double err, t, r, h, dt = 0.0, dr = 0.0, dh = 0.0, tol = 0.1, htol = 0.1;
   int cnt = 0;
 
   // make sure video is working then initialize robot
   if (ChkStream() <= 0)
     return;
+  eb->BindVideo(&v);
   if (eb->Reset(1, 1) <= 0)
     return;
-  eb->Limp();
+  (eb->neck).SetNeck(0.0, tilt);
 
   // configure map for tight range around floor
   nav->mw = 1.5 * nav->dej;
@@ -2649,7 +2803,7 @@ void CBanzaiDoc::OnNavCamcalib()
       // get frame, pause if right mouse click
       if (eb->Update() <= 0)
         break;
-
+ 
       // find areas near floor and estimate camera corrections
       (eb->neck).HeadPose(pos, dir, (eb->lift).Height());
       nav->SetCam(0, 0.0, 0.0, pos.Z(), 90.0, dir.T(), dir.R(), 1.2 * nav->dej);
@@ -2834,7 +2988,7 @@ void CBanzaiDoc::OnEnvironIntegrated()
 
       // show overhead map and input image
       d.ShowGrid(obs2, 0, 0, 2, "Floor, obstacles, and potential dropoffs");
-      d.ShowGrid(cf2,  1, 0, 2, "Confidence and doormat area (%4.2f)", nav->fresh);
+      d.ShowGrid(cf2,  1, 0, 2, "Confidence and doormat area (%4.2f)", nav->known);
 
       // prompt for new sensors
       (ec.rwi).Issue();
@@ -3106,7 +3260,7 @@ void CBanzaiDoc::OnEnvironGoto()
       mbut = d.MouseRel0(mx, my);
       if ((mbut < -1) || (mbut == 3))
         break;
-      if ((step >= 21) && ((d0 <= arrive) || nav->Stymied()))
+      if ((step >= 21) && (d0 <= arrive))
         break;
     }
   }
@@ -3119,13 +3273,8 @@ void CBanzaiDoc::OnEnvironGoto()
   // clean up
   FalseClone(res, map);
   sprintf_s(rname, "%s_goto.bmp", v.FrameName());
-  if (step >= 21)
-  { 
-    if (d0 <= arrive)
-      Tell("Arrived");
-    else if (nav->Stymied())
-      Complain("Stuck");
-  }
+  if ((step >= 21) && (d0 <= arrive))
+    Tell("Arrived");
 }
 
 
@@ -3133,13 +3282,53 @@ void CBanzaiDoc::OnEnvironGoto()
 //                             Object Detection                            //
 /////////////////////////////////////////////////////////////////////////////
 
+// Parameters controlling surface height finding in wide depth view
+
+void CBanzaiDoc::OnSocialSurffind()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(((ec.rwi).tab).hps);      
+}
+
+
+// Parameters governing localization of surface patches
+
+void CBanzaiDoc::OnTableSurface()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(((ec.rwi).tab).cps);      
+}
+
+
+// Parameters for qualitative height of surfaces 
+
+void CBanzaiDoc::OnObjectsSurfheight()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.sup).hps);    
+}
+
+
+// Parameters for qualitative position and direction of surfaces
+
+void CBanzaiDoc::OnObjectsSurflocation()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.sup).lps);    
+}
+
+
 // Map size and resolution for detecting objects on surface
 
 void CBanzaiDoc::OnObjectsSurfacemap()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams(((ec.rwi).tab).mps);    
+  dlg.EditParams(((ec.rwi).sobj).mps);    
 }
 
 
@@ -3149,7 +3338,7 @@ void CBanzaiDoc::OnObjectsSurfacezoom()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams(((ec.rwi).tab).zps);    
+  dlg.EditParams(((ec.rwi).sobj).zps);    
 }
 
 
@@ -3159,7 +3348,7 @@ void CBanzaiDoc::OnObjectsPlanefit()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams(((ec.rwi).tab).pps);    
+  dlg.EditParams(((ec.rwi).sobj).pps);    
 }
 
 
@@ -3169,7 +3358,7 @@ void CBanzaiDoc::OnObjectsDetect()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams(((ec.rwi).tab).dps);
+  dlg.EditParams(((ec.rwi).sobj).dps);
 }
 
 
@@ -3179,7 +3368,7 @@ void CBanzaiDoc::OnObjectsColorparams()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams(((ec.rwi).tab).gps);
+  dlg.EditParams(((ec.rwi).sobj).gps);
 }
 
 
@@ -3189,7 +3378,7 @@ void CBanzaiDoc::OnObjectsShape()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams(((ec.rwi).tab).sps);  
+  dlg.EditParams(((ec.rwi).sobj).sps);  
 }
 
 
@@ -3199,7 +3388,7 @@ void CBanzaiDoc::OnObjectsTrack()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((((ec.rwi).tab).pos).tps);
+  dlg.EditParams((((ec.rwi).sobj).pos).tps);
 }
 
 
@@ -3209,7 +3398,7 @@ void CBanzaiDoc::OnObjectsFilter()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((((ec.rwi).tab).pos).fps);
+  dlg.EditParams((((ec.rwi).sobj).pos).fps);
 }
 
 
@@ -3259,7 +3448,7 @@ void CBanzaiDoc::OnVisualColorfinding()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((((ec.rwi).tab).pp).cps);
+  dlg.EditParams((((ec.rwi).sobj).pp).cps);
 }
 
 
@@ -3269,7 +3458,7 @@ void CBanzaiDoc::OnVisualHuethresholds()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((((ec.rwi).tab).pp).hps);
+  dlg.EditParams((((ec.rwi).sobj).pp).hps);
 }
 
 
@@ -3279,7 +3468,7 @@ void CBanzaiDoc::OnVisualPrimarycolors()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((((ec.rwi).tab).pp).nps);
+  dlg.EditParams((((ec.rwi).sobj).pp).nps);
 }
 
 
@@ -3287,12 +3476,14 @@ void CBanzaiDoc::OnVisualPrimarycolors()
 
 void CBanzaiDoc::OnSurfacePicktable()
 {
-  HWND me = GetForegroundWindow();
-  jhcStare3D *s3 = &((ec.rwi).s3);
-  jhcBumps *tab = &((ec.rwi).tab);
-  jhcImg map2, surf;
-  double rng = 2.0;
-  int dev, pk, gh0 = d.ght;
+  jhcEliGrok *rwi = &(ec.rwi);
+  jhcStare3D *s3 = &(rwi->s3);
+  jhcTable *tab = &(rwi->tab);
+  jhcImg surf, map2;
+  jhcRoi box;
+  double hw = (rwi->nav).rside, g0 = (eb->neck).gaze0;
+  double mx, hp0, x0, y0, cx, cy, dist, hpel;
+  int rect, gh0 = d.ght;
 
   // make sure video is working
   if (ChkStream() <= 0)
@@ -3306,15 +3497,15 @@ void CBanzaiDoc::OnSurfacePicktable()
       d.StatusText("Failed.");
       return;
     }
-  (ec.rwi).Reset(rob, 0);
+  (eb->neck).gaze0 = -45.0;
+  rwi->Reset(rob, 0);
   eb->Limp();
 
   // local images
-  surf.SetSize(s3->map);
-  dev = s3->ZDEV(rng);
+  surf.SetSize(tab->wmap);
+  mx = surf.RoiAvgX();
 
   // loop over selected set of frames  
-  SetForegroundWindow(me);
   d.ght = 500;
   d.Clear(1, "Potential surfaces ...");
   v.Rewind(1);
@@ -3323,37 +3514,151 @@ void CBanzaiDoc::OnSurfacePicktable()
     while (!d.LoopHit(v.StepTime()))
     {
       // get images and body data then process it
-      if ((ec.rwi).Update() <= 0)
+      hp0 = tab->hpref;
+      if (rwi->Update() <= 0)
         break;
+      dist = 0.0;
 
       // make pretty pictures
-      map2.Clone(s3->map);
-      pk = s3->I2Z(tab->ztab);
-      Between(surf, s3->map, __max(1, pk - dev), pk + dev, 200);
+      map2.Clone(tab->wmap);
+      if (tab->dpref > 0.0)
+      {
+        CircleEmpty(map2, mx, 0.0, (tab->dpref - tab->margin) / tab->wipp, 1);
+        CircleEmpty(map2, mx, 0.0, (tab->dpref + tab->margin) / tab->wipp, 1);
+      }
+      Threshold(surf, tab->wbin, 128, 200);
+      if (tab->tsel >= 0)
+      {
+        // valid surface sensing area and travel corridor 
+        (rwi->s3).BeamEmpty(surf, tab->SurfHt(), 1, -7);
+        dist = (ec.man).surf_gap();
+        rect = ROUND((dist + (ec.man).prow) / tab->wipp);
+        hpel = hw / tab->wipp;
+        RectEmpty(surf, ROUND(mx - hpel), 0, ROUND(2.0 * hpel), rect, 1, -2); 
+
+        // show centroid on depth map
+        (tab->wlob).BlobCentroid(&cx, &cy, tab->tsel);
+        Cross(map2, cx, cy, 17, 17, 3, -2); 
+
+        // ray from camera position to edge
+        x0 = tab->hx / tab->wipp + mx;
+        y0 = tab->hy / tab->wipp;
+        (tab->wlob).BlobCentroid(&cx, &cy, tab->tsel);
+        CircleEmpty(surf, x0, y0, 5.0, 1, -3);
+        DrawLine(surf, x0, y0, tab->ex, tab->ey, 1, -3);
+      }
 
       // show overhead map and selected surface
-      d.ShowGrid(map2, 1, 0, 2, "Person height map");
-      d.ShowGrid(surf, 0, 0, 2, "Selected surface");
+      d.ShowGrid(map2, 1, 0, 2, "Person height map  --  surface centroid");
+      if (dist <= 0.0)
+        d.ShowGrid(surf, 0, 0, 2, "Selected surface  --  true edge not seen!");
+      else
+        d.ShowGrid(surf, 0, 0, 2, "Selected surface  --  advance up to %3.1f\" for grab", dist);
 
       // show various height planes considered
-      d.GraphGridV(s3->hhist, 2, 0, 0, 0, "Height clusters = %3.1f in", tab->ztab);
+      d.GraphGridV(tab->hhist, 2, 0, 0, 0, "Height clusters = %3.1f in", tab->ztab);
       d.GraphValV(200, 0, 4);
-      d.GraphMarkV(pk, 1);
-      d.GraphMarkV(s3->I2Z((eb->lift).Height() - 2.0), 2, 0.5);
+      d.GraphMarkV(s3->I2Z(tab->ztab), 1);
+      d.GraphMarkV(tab->i2z(hp0), 2, 0.5);
      
       // prompt for new sensors
-      (ec.rwi).Issue();
+      rwi->Issue();
     }
   }
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
-  (ec.rwi).Stop();
+  rwi->Stop();
   d.ght = gh0;
+  (eb->neck).gaze0 = g0;
   d.StatusText("Stopped.");  
 
   // clean up
-  FalseClone(res, map2);
+  FalseClone(res, surf);
   sprintf_s(rname, "%s_surf.bmp", v.FrameName());
+}
+
+
+// Optimize head angles for detected surface
+
+void CBanzaiDoc::OnDetectionGazesurface()
+{
+  jhcEliGrok *rwi = &(ec.rwi);
+  jhcSurfObjs *sobj = &(rwi->sobj);
+  jhcTable *tab = &(rwi->tab);
+  jhcImg omap, surf;
+  jhcRoi box;
+  jhcMatrix head(4), edge(4);
+  double mx, x0, y0, cx, cy, g0 = (eb->neck).gaze0, pan = 0.0, tilt = -45.0;
+
+  // make sure video is working
+  if (ChkStream() <= 0)
+    return;
+
+  // initialize robot system (no ALIA)
+  d.StatusText("Initializing robot ...");
+  if (rob > 0)
+    if (eb->Reset(1, 0) <= 0)
+    {
+      d.StatusText("Failed.");
+      return;
+    }
+  (eb->neck).gaze0 = tilt;
+  rwi->Reset(rob, 0);
+  eb->Limp();
+
+  // local images
+  surf.SetSize(tab->wmap);
+  mx = surf.RoiAvgX();
+
+  // loop over selected set of frames  
+  d.Clear(1, "Gazing toward surface ...");
+  v.Rewind(1);
+  try
+  {
+    while (!d.LoopHit(v.StepTime()))
+    {
+      // get images and body data then process it
+      if (rwi->Update() <= 0)
+        break;
+
+      // pick direction to look
+      (eb->neck).HeadLoc(head, (eb->lift).Height());
+      tab->SurfEdge(edge);
+      (eb->neck).AimFor(pan, tilt, edge, (eb->lift).Height());
+      (eb->neck).GazeFix(pan, tilt, 0.5);
+
+      // make pretty pictures
+      omap.Clone(sobj->map);
+      (sobj->blob).DrawOutline(omap);
+      surf.CopyArr(tab->wmap);
+      if (tab->tsel >= 0)
+      {
+        (tab->wlob).GetRoi(box, tab->tsel);
+        RectEmpty(surf, box, 1, -7);
+        x0 = tab->hx / tab->wipp + mx;
+        y0 = tab->hy / tab->wipp;
+        (tab->wlob).BlobCentroid(&cx, &cy, tab->tsel);
+        CircleEmpty(surf, x0, y0, 5.0, 1, -3);
+        DrawLine(surf, x0, y0, cx, cy, 1, -3);
+      }
+
+      // show overhead map and selected surface
+      d.ShowGrid(surf, 0, 0, 2, "Selected surface at %3.1f\"", sobj->ztab);
+      d.ShowGrid(omap, 1, 0, 2, "Overhead objects (tilt %3.1f)", (eb->neck).Tilt());
+     
+      // prompt for new sensors
+      rwi->Issue();
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  rwi->Stop();
+  (eb->neck).gaze0 = g0;
+  d.StatusText("Stopped.");  
+
+  // clean up
+  FalseClone(res, omap);
+  sprintf_s(rname, "%s_zoom.bmp", v.FrameName());
 }
 
 
@@ -3362,7 +3667,7 @@ void CBanzaiDoc::OnSurfacePicktable()
 void CBanzaiDoc::OnObjectsTrackobjs()
 {
   HWND me = GetForegroundWindow();
-  jhcSurfObjs *tab = &((ec.rwi).tab);
+  jhcSurfObjs *sobj = &((ec.rwi).sobj);
   jhcImg map2, scr, obj2;
   int n = -1;
 
@@ -3380,13 +3685,12 @@ void CBanzaiDoc::OnObjectsTrackobjs()
     }
   (ec.rwi).Reset(rob, 0);
   (eb->neck).SetTilt(-50.0);
-  eb->Limp();
+//  eb->Limp();
 
   // local images
-  scr.SetSize(tab->map);
-  obj2.SetSize(tab->map);
+  scr.SetSize(sobj->map);
+  obj2.SetSize(sobj->map);
 
-jtimer_clr();
   // loop over selected set of frames  
   SetForegroundWindow(me);
   d.Clear(1, "Depth objects ...");
@@ -3400,22 +3704,22 @@ jtimer_clr();
         break;
 
       // make pretty pictures
-      map2.Clone(tab->map);
-      n = (tab->blob).DrawOutline(map2);
-      Scramble(scr, tab->cc);                                  
-      Threshold(obj2, tab->top, 50);
+      map2.Clone(sobj->map);
+      n = (sobj->blob).DrawOutline(map2);
+      Scramble(scr, sobj->cc);                                  
+      Threshold(obj2, sobj->top, 50);
       SubstOver(obj2, scr, scr, 0);
 
       // show overhead map and input image
-      d.ShowGrid(map2,     0, 0, 2, "Overhead height  --  %d object%c", n, ((n != 1) ? 's' : ' '));
-      d.ShowGrid(tab->det, 1, 0, 2, "Deviations from flat");
+      d.ShowGrid(map2,      0, 0, 2, "Overhead height  --  %d object%c", n, ((n != 1) ? 's' : ' '));
+      d.ShowGrid(sobj->det, 1, 0, 2, "Deviations from flat");
 
-      d.StringGrid(2, 0, "Tilt adj \t%+4.2f", tab->TiltDev());
-      d.StringBelow("Roll adj \t%+4.2f", tab->RollDev());
-      d.StringBelow("Ht adj \t%+4.2f", tab->HtDev());
+      d.StringGrid(2, 0, "Tilt adj \t%+4.2f", sobj->TiltDev());
+      d.StringBelow("Roll adj \t%+4.2f", sobj->RollDev());
+      d.StringBelow("Ht adj \t%+4.2f", sobj->HtDev());
 
-      d.ShowGrid(tab->top, 0, 1, 2, "Supporting plane @ %3.1f\"", tab->ztab + tab->HtDev());
-      d.ShowGrid(obj2,     1, 1, 2, "Bumps and surface");
+      d.ShowGrid(sobj->top, 0, 1, 2, "Supporting plane @ %3.1f\" (adjusted)", sobj->ztab + sobj->HtDev());
+      d.ShowGrid(obj2,      1, 1, 2, "Bumps and surface");
 
       // prompt for new sensors
       (ec.rwi).Issue();
@@ -3425,7 +3729,6 @@ jtimer_clr();
   v.Prefetch(0);
   (ec.rwi).Stop();
   d.StatusText("Stopped.");  
-jtimer_rpt();
 
   // clean up
   FalseClone(res, map2);
@@ -3438,7 +3741,7 @@ jtimer_rpt();
 void CBanzaiDoc::OnSurfaceColorobjs()
 {
   HWND me = GetForegroundWindow();
-  jhcSurfObjs *tab = &((ec.rwi).tab);
+  jhcSurfObjs *sobj = &((ec.rwi).sobj);
   jhcImg pat2, scr, obj2;
   int n;
 
@@ -3456,10 +3759,10 @@ void CBanzaiDoc::OnSurfaceColorobjs()
     }
   (ec.rwi).Reset(rob, 0);
   (eb->neck).SetTilt(-50.0);
-  eb->Limp();
+//  eb->Limp();
 
   // local images
-  scr.SetSize(tab->map);
+  scr.SetSize(sobj->map);
   obj2.SetSize(scr);
   pat2.SetSize(scr, 3);
 
@@ -3477,24 +3780,24 @@ jtimer_clr();
         break;
 
       // make pretty pictures
-      Scramble(scr, tab->gcc);
-      Threshold(obj2, tab->bgnd, 0);
-      UnderGate(obj2, obj2, tab->rim, tab->bgth, 1);
+      Scramble(scr, sobj->gcc);
+      Threshold(obj2, sobj->bgnd, 0);
+      UnderGate(obj2, obj2, sobj->rim, sobj->bgth, 1);
       SubstOver(obj2, scr, scr, 0);
-      pat2.CopyArr(tab->pat);
-      n = (tab->glob).DrawOutline(pat2);
+      pat2.CopyArr(sobj->pat);
+      n = (sobj->glob).DrawOutline(pat2);
 
       // show results
-      d.ShowGrid(pat2,      0, 0, 0, "Overhead color --  %d object%c", n, ((n != 1) ? 's' : ' '));
-      d.ShowGrid(tab->cdet, 1, 0, 2, "Deviations from bulk color");
+      d.ShowGrid(pat2,       0, 0, 0, "Overhead color --  %d object%c", n, ((n != 1) ? 's' : ' '));
+      d.ShowGrid(sobj->cdet, 1, 0, 2, "Deviations from bulk color");
 
-      d.GraphGrid(tab->wkhist, 2, 0, 0, 0, "Intensity values");
-      d.GraphMark(tab->wk0, 0);
-      d.GraphMark(tab->wk1, 6);
-      d.StringBelow("bulk = %d - %d", tab->wk0, tab->wk1);
+      d.GraphGrid(sobj->wkhist, 2, 0, 0, 0, "Intensity values");
+      d.GraphMark(sobj->wk0, 0);
+      d.GraphMark(sobj->wk1, 6);
+      d.StringBelow("bulk = %d - %d", sobj->wk0, sobj->wk1);
 
-      d.ShowGrid(tab->gray, 0, 1, 0, "Grayscale surface");
-      d.ShowGrid(obj2,      1, 1, 2, "Ananomalies and background");
+      d.ShowGrid(sobj->gray, 0, 1, 0, "Grayscale surface");
+      d.ShowGrid(obj2,       1, 1, 2, "Anomalies and background");
 
       // prompt for new sensors
       (ec.rwi).Issue();
@@ -3517,7 +3820,7 @@ jtimer_rpt();
 void CBanzaiDoc::OnSurfaceHybridseg()
 {
   HWND me = GetForegroundWindow();
-  jhcSurfObjs *tab = &((ec.rwi).tab);
+  jhcSurfObjs *sobj = &((ec.rwi).sobj);
   jhcImg col2, pat2, pass;
   jhcArr chist(90);
   jhcMatrix loc(4);
@@ -3539,10 +3842,10 @@ void CBanzaiDoc::OnSurfaceHybridseg()
     }
   (ec.rwi).Reset(rob, 0);
   (eb->neck).SetTilt(-50.0);
-  eb->Limp();
+//  eb->Limp();
 
   // local images
-  pat2.SetSize(tab->pat);
+  pat2.SetSize(sobj->pat);
   v.SizeFor(col2);
   pass.SetSize(col2);
 
@@ -3558,32 +3861,32 @@ jtimer_clr();
       // get images and body data then process it
       if ((ec.rwi).Update() <= 0)
         break;
-      tab->Spectralize(eb->Color(), eb->Range(), item, 1);
+      sobj->Spectralize(eb->Color(), eb->Range(), item, 1);
 
       // check collection of objects
-      n = tab->CntTracked();
-      ang = tab->World(loc, item);
-      id = tab->ObjID(item);
+      n = sobj->CntTracked();
+      ang = sobj->World(loc, item);
+      id = sobj->ObjID(item);
 
       // make pretty pictures of detections
       col2.CopyArr(eb->Color());
-      tab->ObjsCam(col2, 0, -1);
-      pat2.Clone(tab->pat);
-      tab->ShowAll(pat2);
+      sobj->ObjsCam(col2, 0, -1);
+      pat2.Clone(sobj->pat);
+      sobj->ShowAll(pat2);
       if (id > 0)
-        XMark(pat2, tab->MapX(item), tab->MapY(item), 25, 2); 
+        XMark(pat2, sobj->MapX(item), sobj->MapY(item), 25, 2); 
 
       // extract color information
       pass.MaxRoi();
       pass.FillRGB(0, 0, 255);
-      OverGateRGB(pass, eb->Color(), tab->cmsk, 128, 0, 0, 255);  
-      (tab->pp).QuantColor(chist);
-      (tab->pp).MainColors(main);
-      (tab->pp).AltColors(alt);
+      OverGateRGB(pass, eb->Color(), (sobj->pp).shrink, 128, 0, 0, 255);  
+      (sobj->pp).QuantColor(chist);
+      (sobj->pp).MainColors(main);
+      (sobj->pp).AltColors(alt);
 
       // show overhead map and input image
-      d.ShowGrid(col2,   0, 0, 0, "Frontal camera  --  %d object%c", n, ((n != 1) ? 's' : ' '));
-      d.ShowGrid(pass,   0, 1, 0, "Object pixels");
+      d.ShowGrid(col2, 0, 0, 0, "Frontal camera  --  %d object%c", n, ((n != 1) ? 's' : ' '));
+      d.ShowGrid(pass, 0, 1, 0, "Object pixels (for color)");
 
       d.GraphGrid(chist, 1, 1, 0, 0, "ROYGBP-KXW measures");
       d.StringBelow("Colors = %-80s", main);
@@ -3594,8 +3897,8 @@ jtimer_clr();
       else
         d.ShowGrid(pat2, 1, 0, 0, "Overhead zoom  --  Object %d @ (%3.1f %3.1f %3.1f)  =  size (%4.2f %4.2f %4.2f) x %1.0f degs",
                                   id, loc.X(), loc.Y(), loc.Z(), 
-                                  tab->Major(item), tab->Minor(item), tab->SizeZ(item), 
-                                  ((tab->Elongation(item) < 1.5) ? 0.0 : ang));
+                                  sobj->Major(item), sobj->Minor(item), sobj->SizeZ(item), 
+                                  ((sobj->Elongation(item) < 1.5) ? 0.0 : ang));
 
       // see if any object was clicked (inside last image = pat2)
       mbut = d.MouseRel0(mx, my);     
@@ -3606,7 +3909,7 @@ jtimer_clr();
       }
       d.StringBelow("Click R above to exit ...");
       if (mbut == 1)
-        item = tab->ClickN(mx, my);
+        item = sobj->ClickN(mx, my);
 
       // prompt for new sensors
       (ec.rwi).Issue();
@@ -3625,6 +3928,1169 @@ jtimer_rpt();
 
 
 /////////////////////////////////////////////////////////////////////////////
+//                              Manipulation                               //
+/////////////////////////////////////////////////////////////////////////////
+
+// Geometric parameters for generating grasp and via points 
+
+void CBanzaiDoc::OnObjectsGrasppoint()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.man).gps);
+}
+
+
+// Additional parameters governing execution of trajectories
+
+void CBanzaiDoc::OnObjectsTrajectoryctrl()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.man).cps);
+}
+
+
+// Position and angle tolerances for successful completion
+
+void CBanzaiDoc::OnObjectsMotiondone()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.man).dps);
+}
+
+
+// Parameters governing choice of object deposit location
+
+void CBanzaiDoc::OnObjectsEmptyspot()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.man).sps);
+}
+
+
+// Limits on object position to be in valid manipulation area
+
+void CBanzaiDoc::OnObjectsWorkspace()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.man).wps);
+}
+
+
+// Parameters for jockeying robot to bring object into workspace
+
+void CBanzaiDoc::OnGrabBodyshift()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.man).ips);
+}
+
+
+// Click on joints in image to improve arm kinematics
+
+void CBanzaiDoc::OnMotionCalibarm()
+{
+  char hint[4][80] = {"on center of shoulder", "on elbow axis spot", "on between wrist white spots", "when valid forearm tilt"};
+  char dtxt[20];
+  jhcImg mark, d8, dcol;
+  jhcEliArm *arm = &((ec.body).arm);
+  const jhcMatrix *pos = arm->Position(), *dir = arm->Direction();
+  double ax0, ay0, scal, ecal, lcal, z, a0, a1, tilt, tsm = 360.0;
+  double jx, jy, sx, sy, sz, ex, ey, lx, ly, wx, wy;
+  int mx, my, mbut = 0, gap = 0, step = 0, any = 0;
+
+  // connect video source
+  if (ChkStream() <= 0)
+    return;
+  (ec.body).BindVideo(&v);
+
+  // local images
+  v.SizeFor(mark);
+  dcol.SetSize(mark);
+  d8.SetSize(mark, 1);
+
+  // reset body
+  d.StatusText("Initializing robot ...");
+  if ((ec.body).Reset(1, 0) <= 0)
+  {
+    Complain("Robot not functioning properly");
+    d.StatusText("Failed.");
+    return;
+  }
+  (ec.rwi).Reset(1, 0);
+
+  // remember original calibration values
+  ax0 = arm->ax0;
+  ay0 = arm->ay0;
+  scal = (arm->jt[0]).cal;
+  ecal = (arm->jt[1]).cal;
+  lcal = (arm->jt[2]).cal;
+
+  // start up background processing
+  d.Clear(1, "Calibrating arm ...");
+  try
+  {
+    while (1)
+    {
+      // update joint angles and Kinect images
+      (ec.rwi).Update();
+
+      // find slope of forearm in depth image
+      (ec.rwi).ImgJt(lx, ly, 2);
+      (ec.rwi).ImgJt(wx, wy, 3);
+      tilt = ((ec.rwi).s3).LineTilt((ec.body).Range(), lx, ly, wx, wy, 0.2, 0.8);
+      if (tilt >= 360.0)
+        tsm = 360.0;
+      else if (tsm >= 360.0)
+        tsm = tilt;
+      else
+        tsm += 0.1 * (tilt - tsm);
+      if (tilt >= 360.0)
+        strcpy_s(dtxt, "BAD");       
+      else
+        sprintf_s(dtxt, "%3.1f", tsm);
+
+      // draw arm on depth
+      Night8(d8, (ec.body).Range(), 0);
+      CopyMono(dcol, d8);
+      (ec.rwi).Skeleton(dcol);
+
+      // draw arm on color with some joint highlighted
+      (ec.body).ImgBig(mark);
+      (ec.rwi).Skeleton(mark);
+      if (step <= 2)
+      {
+        (ec.rwi).ImgJt(jx, jy, ((step == 2) ? 3 : step));
+        RectCent(mark, jx, jy, 20.0, 20.0, 0.0, 3, -4);
+      }
+      
+      // see if user clicked somewhere
+      if ((mbut == 3) && (gap >= 15))
+        step++;                                                      // skip this step
+      else if ((mbut == 1) && (gap >= 15))
+      {
+        if (step == 0)                 
+        {
+          sz = (ec.rwi).ImgJt(sx, sy, 0);
+          ((ec.rwi).s3).WorldPt(arm->ax0, arm->ay0, z, mx, my, sz);  // move shoulder center 
+        }
+        else if (step == 1)            
+        {
+          (ec.rwi).ImgJt(sx, sy, 0);
+          (ec.rwi).ImgJt(ex, ey, 1);
+          a0 = R2D * atan2(ey - sy, ex - sx);
+          a1 = R2D * atan2(my - sy, mx - sx);
+          (arm->jt[0]).cal -= a1 - a0;                               // adjust shoulder zero angle
+        }
+        else if (step == 2)            
+          (arm->jt[1]).cal -= (ec.rwi).ImgVeer(mx, my, 3, 1);        // adjust elbow zero angle
+        else if (step == 3) 
+        {
+          if (tsm < 360.0)
+            (arm->jt[2]).cal -= (tsm + 45.0) - arm->JtAng(2);        // adjust lift zero angle
+          else
+          {
+            Complain("Cannot compute forearm tilt");
+            any--;                                                   // cancel following increments
+            step--;
+          }
+        }
+        any++;                                                       // number of things adjusted
+        step++;                                                      
+      }
+
+      // show results
+      d.ShowGrid(dcol, 1, 0, 0, "Forearm tilt = %s %s", dtxt, ((step == 3) ? " <-- sampling" : ""));
+      if (step < 4)
+        d.ShowGrid(mark, 0, 0, 0, "%d  --  Click %s (R to skip) ...", step + 1, hint[step]);
+      else
+        d.ShowGrid(mark, 0, 0, 0, "DONE  --  hand (%3.1f %3.1f %3.1f) : pan %3.1f, tilt %3.1f, roll %3.1f",
+                                  pos->X(), pos->Y(), pos->Z(), dir->P(), dir->T(), dir->R());
+
+      // check for mouse event in image or if all joints done
+      gap = ((mbut != 0) ? 0 : gap + 1);         
+      mbut = d.MouseRel0(mx, my);
+      if ((mbut < -1) || (step > 4))
+        break;
+
+      // send any commands and start collecting next input
+      ((ec.body).neck).GazeTarget(0.0, -80.0);
+      arm->Limp();
+      (ec.rwi).Issue();
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  d.ShowGrid(mark, 0, 0, 0, "Adjusted arm skeleton");
+  d.StatusText("Stopped.");  
+
+  // save/restore values and cleanup
+  if (any > 0)
+  {
+    if ((step >= 4) && 
+        AskNot("Adjust shoulder (%+3.1f %+3.1f) zero %+3.1f\nelbow zero %+3.1f, lift zero %+3.1f", 
+               arm->ax0 - ax0, arm->ay0 - ay0, (arm->jt[0]).cal - scal, (arm->jt[1]).cal - ecal, (arm->jt[2]).cal - lcal))
+      arm->SaveCfg((ec.body).LastCfg());
+    else
+    {
+      // revert to original values
+      arm->ax0 = ax0;
+      arm->ay0 = ay0;
+      (arm->jt[0]).cal = scal;
+      (arm->jt[1]).cal = ecal;
+      (arm->jt[2]).cal = lcal;
+    }
+  }
+  res.Clone(mark);
+  strcpy_s(rname, "skeleton.bmp");
+}
+
+
+// Smash hand onto table to calibrate wrist angles
+
+void CBanzaiDoc::OnMotionCalibwrist()
+{
+  char hint[200];
+  jhcImg mark;
+  jhcBumps *sobj = &((ec.rwi).sobj);
+  jhcEliLift *fork = &((ec.body).lift);
+  jhcEliNeck *neck = &((ec.body).neck);
+  jhcEliArm *arm = &((ec.body).arm);
+  const jhcMatrix *pos = arm->Position(), *dir = arm->Direction();
+  double tilt = -70.0, hover = 1.0, flat = 0.9, fix = 0.9, atol = 0.5, htol = 0.1;
+  double mid, rcal, pcal, tcal, az0, shelf, ix0, iy0, ix1, iy1, ipan, veer, bump;
+  int mx0, my0, mx1, my1, mx, my, mbut = 0, gap = 0, step = 0, adj = 0, pass = 0;
+
+  // connect video source
+  d.Clear();
+  d.StringGrid(0, 0, "Preparing hardware  --  please wait ...");
+  if (ChkStream() <= 0)
+    return;
+  (ec.body).BindVideo(&v);
+  v.SizeFor(mark);
+  mid = 0.5 * mark.XDim();
+
+  // reset body
+  Complain("Make sure arm is clear of surface");
+  d.StatusText("Initializing robot ...");
+  if ((ec.body).Reset(1, 0) <= 0)
+  {
+    Complain("Robot not functioning properly");
+    d.StatusText("Failed.");
+    return;
+  }
+  (ec.rwi).Reset(1, 0);
+
+  // save original values
+  rcal = (arm->jt[3]).cal;
+  pcal = (arm->jt[4]).cal;
+  tcal = (arm->jt[5]).cal;
+  az0  = arm->az0;
+
+  // start up background processing
+  d.Clear(1, "Calibrating wrist ...");
+  try
+  {
+    while (1)
+    {
+      // update joint angles and Kinect images
+      if ((ec.rwi).Update() <= 0)
+        break;
+
+      // adjust lift to be above table
+      if (step == 0)
+      {
+        sprintf_s(hint, "Adjusting to surface (hover %3.1f)", fork->LiftErr(sobj->ztab, 0));
+        shelf = sobj->ztab + hover;
+        if (fork->LiftErr(shelf) > 0.5)
+          fork->LiftTarget(shelf, 0.25);         // slower lets vision catch up
+        else 
+          step++;
+      }
+
+      // level hand and determine finger direction
+      if (step == 1)
+        sprintf_s(hint, "Flatten hand on surface then click on jaw axis: pan %3.1f, tilt %3.1f, roll %3.1f, above %3.1f", 
+                         dir->P(), dir->T(), dir->R(), (pos->Z() + fork->Height()) - sobj->ztab);
+
+      // determine finger direction
+      if (step == 2)
+        sprintf_s(hint, "Click between finger tips: pan %3.1f, tilt %3.1f, roll %3.1f, above %3.1f", 
+                         dir->P(), dir->T(), dir->R(), (pos->Z() + fork->Height()) - sobj->ztab);
+
+      // make adjustments one at a time, let settle, then iterate
+      if (step == 3)
+      {
+        // find pan and height errors
+        (ec.rwi).ImgJt(ix0, iy0, 6);                                     // find jaw to tips angle
+        (ec.rwi).ImgJt(ix1, iy1, 7);   
+        ipan = R2D * atan2(iy1 - iy0, ix1 - ix0);
+        veer = R2D * atan2(my1 - my0, mx1 - mx0);                        // user supplied angle
+        bump = (pos->Z() + fork->Height()) - (sobj->ztab + flat);        // known finger offset
+
+        // make some gradual adjustment
+        if (adj <= 0)                            
+          (arm->jt[3]).cal += fix * dir->R();                            // flat gripper
+        else if (adj == 1)                       
+          (arm->jt[4]).cal += fix * (veer - ipan);
+        else if (adj == 2)                       
+          (arm->jt[5]).cal += fix * dir->T();                            // flat gripper
+        else if (adj == 3)                       
+          arm->az0 -= bump;
+        else if (adj >= 4)                       
+          if ((pass++ > 5) || ((fabs(veer) <= atol) && (fabs(dir->T()) <= atol) && 
+                               (fabs(dir->R()) <= atol) && (fabs(bump) <= htol)))
+            step++;                                                      
+        if (++adj > 4)                                                   // adjust next value
+          adj = 0;
+      }        
+
+      // draw arm on color image and possibly indicate actual pan angle
+      (ec.body).ImgBig(mark);
+      DrawLine(mark, mid, 0, mid, mark.YDim(), 1, -4);
+      if (step == 2)
+        Cross(mark, mx0, my0, 17, 17, 1, -6);
+      else if (step >= 3)
+        Ray(mark, mx0, my0, veer, 0.0, 1, -6);
+      (ec.rwi).Skeleton(mark); 
+
+      // show results
+      if (step <= 2)
+        d.ShowGrid(mark, 0, 0, 0, "%s ...", hint);
+      else
+        d.ShowGrid(mark, 0, 0, 0, "DO NOT MOVE -- errors: pan %+3.1f, tilt %+3.1f, roll %+3.1f, above %+3.1f ...", 
+                                  dir->P() - veer, dir->T(), dir->R(), bump);
+                               
+      // check for mouse event in image
+      if (step == 1)
+        mbut = d.MouseRel0(mx0, my0);
+      else if (step == 2)
+        mbut = d.MouseRel0(mx1, my1);
+      else
+        mbut = d.MouseRel0(mx, my);
+      if ((mbut < -1) || (mbut == 3) || (step >= 4))
+        break;
+
+      // advance state and record position if needed
+      if ((step == 1) || (step == 2))
+        if ((mbut == 1) && (gap >= 15))
+          step++;
+      gap = ((mbut != 0) ? 0 : gap + 1);    
+
+      // send any commands and start collecting next input
+      neck->GazeTarget(0.0, tilt);
+      arm->Limp();
+      (ec.rwi).Issue();
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  d.ShowGrid(mark, 0, 0, 0, "Adjusted gripper errors: pan %+3.1f, tilt %+3.1f, roll %+3.1f, above %+3.1f", 
+                             dir->P() - veer, dir->T(), dir->R(), (pos->Z() + fork->Height()) - sobj->ztab);
+  d.StatusText("Stopped.");  
+
+  // cleanup
+  if ((step >= 4) &&
+      AskNot("Adjust pan %+3.1f, tilt %+3.1f, roll %+3.1f, z %+3.1f", 
+             (arm->jt[4]).cal - pcal, (arm->jt[5]).cal - tcal, (arm->jt[3]).cal - rcal, arm->az0 - az0))
+    arm->SaveCfg((ec.body).LastCfg());
+  else
+  {
+    // revert to original values
+    (arm->jt[3]).cal = rcal;
+    (arm->jt[4]).cal = pcal;
+    (arm->jt[5]).cal = tcal;
+    arm->az0 = az0;
+  }
+  res.Clone(mark);
+  strcpy_s(rname, "wrist_cal.bmp");
+}
+
+
+// Move whole arm to achieve good height over detected surface
+
+void CBanzaiDoc::OnManipulationAdjustz()
+{
+  jhcEliLift *fork = &((ec.body).lift);
+  double start = 30.0, tilt = -70.0, hover = -(ec.man).wz0;
+  double tz, shelf, hp0, g0 = (eb->neck).gaze0;
+  int gh0 = d.ght, step = 0;
+
+  // make sure video is working
+  d.Clear();
+  d.StringGrid(0, 0, "Preparing hardware  --  please wait ...");
+  if (ChkStream() <= 0)
+    return;
+
+  // initialize robot system (no ALIA)
+  d.StatusText("Initializing robot ...");
+  if (rob > 0)
+    if (eb->Reset(1, 0) <= 0)
+    {
+      d.StatusText("Failed.");
+      return;
+    }
+  (eb->neck).gaze0 = tilt;
+  (ec.rwi).Reset(rob, 0);
+
+  // start up background processing
+  d.ght = 500;
+  d.Clear(1, "Adjusting arm height ...");
+  try     
+  {
+    while (!d.LoopHit(v.StepTime()))
+    {
+      // update joint angles and Kinect images
+      hp0 = ((ec.rwi).tab).hpref;
+      if ((ec.rwi).Update() <= 0)
+        break;
+      tz = ((ec.rwi).sobj).ztab;
+
+      // set arm high enough for counter
+      if (step <= 0)
+      {
+        if (fork->LiftErr(start) > 0.5)
+          fork->LiftTarget(start);
+        else
+        {
+          ((ec.rwi).tab).Reset();
+          step++;
+        }
+      }
+
+      // adjust lift to be above table
+      if (step >= 1)
+      {
+        shelf = tz + hover;
+        if (fork->LiftErr(shelf) > 0.5)
+          fork->LiftTarget(shelf, 0.25);         // slower lets vision catch up
+      }
+
+      // show results
+      if (step <= 0)
+        d.ShowGrid((ec.body).Color(), 0, 0, 0, "Rising to table height ... %3.1f", fork->Height());
+      else
+      {
+        // also show various height planes considered
+        d.ShowGrid((ec.body).Color(),      0, 0, 0,    "Surface at %3.1f\"  --  hovering at %3.1f\"", tz, fork->LiftErr(tz, 0));
+        d.GraphGridV(((ec.rwi).tab).hhist, 1, 0, 0, 0, "Height clusters = %3.1f in", ((ec.rwi).tab).ztab);
+        d.GraphValV(200, 0, 4);
+        d.GraphMarkV(((ec.rwi).s3).I2Z(((ec.rwi).tab).ztab), 1);
+        d.GraphMarkV(((ec.rwi).tab).i2z(hp0), 2, 0.5);
+      }
+
+      // send any commands and start collecting next input
+      ((ec.body).neck).GazeTarget(0.0, tilt);
+      (ec.rwi).Issue();
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  (eb->neck).gaze0 = g0;
+  d.ght = gh0;
+  d.StatusText("Stopped.");  
+
+  // cleanup
+  res.Clone((ec.body).Color());
+  strcpy_s(rname, "arm_hover.bmp"); 
+}
+
+
+// Report hand position relative to a selected object
+
+void CBanzaiDoc::OnManipulationHandeye()
+{
+  jhcImg mark, pat2;
+  jhcMatrix obj(4);
+  jhcSurfObjs *sobj = &((ec.rwi).sobj);
+  jhcEliArm *arm = &((ec.body).arm);
+  const jhcMatrix *pos = arm->Position(), *dir = arm->Direction();
+  double ang, over, g0 = (eb->neck).gaze0, tilt = -70.0;
+  int mx, my, mbut = 0, item = -1;
+
+  // make sure video is working
+  d.Clear();
+  d.StringGrid(0, 0, "Preparing hardware  --  please wait ...");
+  if (ChkStream() <= 0)
+    return;
+  v.SizeFor(mark);
+
+  // initialize robot system (no ALIA)
+  d.StatusText("Initializing robot ...");
+  if (rob > 0)
+    if (eb->Reset(1, 0) <= 0)
+    {
+      d.StatusText("Failed.");
+      return;
+    }
+
+  // start vision routines
+  (eb->neck).gaze0 = tilt;
+  (ec.rwi).Reset(rob, 0);
+  pat2.SetSize(sobj->pat);
+
+  // start up background processing
+  d.Clear(1, "Hand-eye coordination ...");
+  try     
+  {
+    while (1)
+    {
+      // update joint angles and Kinect images
+      if ((ec.rwi).Update() <= 0)
+        break;
+
+      // get target information
+      if (item >= 0)
+      {
+        ang = sobj->World(obj, item);
+        over = (pos->Z() + ((ec.body).lift).Height()) - (sobj->ztab + sobj->SizeZ(item));
+        sobj->Retain(item);
+      }
+
+      // make pretty pictures of detections
+      pat2.Clone(sobj->pat);
+      if (item < 0)
+        sobj->ShowAll(pat2);
+      else
+        Cross(pat2, sobj->MapX(item), sobj->MapY(item), 150, 150, 3, -4);
+      (ec.rwi).MapArm(pat2);
+
+      // draw arm on color image
+      (ec.body).ImgBig(mark);
+      (ec.rwi).Skeleton(mark); 
+
+      // show results
+      d.ShowGrid(mark,   0, 0, 0, "Color image (%3.1f\" surface) %s", sobj->ztab, 
+                                  ((item < 0) ? " --  Mouse on overhead projection  ==>" : ""));
+      if (item < 0)
+        d.ShowGrid(pat2, 1, 0, 0, "Click one of %d objects (R to exit) ...", sobj->CntTracked());
+      else
+        d.ShowGrid(pat2, 1, 0, 0, "Hand offset (%+3.1f %+3.1f) over %+3.1f  --  align %+3.1f, pinch %+3.1f (tilt %3.1f, roll %3.1f)", 
+                                  pos->X() - obj.X(), pos->Y() - obj.Y(), over, 
+                                  dir->P() - ang, arm->Width() - sobj->Minor(item), dir->T(), dir->R());
+
+      // see if any object was clicked (inside last image = pat2)
+      mbut = d.MouseRel0(mx, my);     
+      if (d.MouseExit(mbut) > 0)
+        break;
+      if (mbut == 1)
+        item = sobj->ClickN(mx, my);
+
+      // send any commands and start collecting next input
+      ((ec.body).neck).GazeTarget(0.0, tilt);
+      arm->Limp();
+      (ec.rwi).Issue();
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  (eb->neck).gaze0 = g0;
+  d.StatusText("Stopped.");  
+
+  // cleanup
+  res.Clone(pat2);
+  strcpy_s(rname, "hand_eye.bmp"); 
+}
+
+
+// Go to pre-grasp position relative to some object 
+
+void CBanzaiDoc::OnManipulationGotovia()
+{
+  jhcImg mark, pat2;
+  jhcMatrix grab(4), via(4), end(4), aim(4), perr(4), derr(4);
+  jhcSurfObjs *sobj = &((ec.rwi).sobj);
+  jhcEliArm *arm = &((ec.body).arm);
+  const jhcMatrix *pos = arm->Position(), *dir = arm->Direction();
+  double ht, ang, diff, ix, iy, wid = 0.0, g0 = (eb->neck).gaze0, tilt = -70.0;
+  int mbut, mx, my, rc, item = -1, done = 0;
+
+  // make sure video is working
+  d.Clear();
+  d.StringGrid(0, 0, "Preparing hardware  --  please wait ...");
+  if (ChkStream() <= 0)
+    return;
+  v.SizeFor(mark);
+
+  // initialize robot system (no ALIA)
+  d.StatusText("Initializing robot ...");
+  if (rob > 0)
+    if (eb->Reset(1, 0) <= 0)
+    {
+      d.StatusText("Failed.");
+      return;
+    }
+
+  // start vision routines
+  (eb->neck).gaze0 = tilt;
+  (ec.rwi).Reset(rob, 0);
+  pat2.SetSize(sobj->pat);
+
+  // start up background processing
+  d.Clear(1, "Move hand to via ...");
+  try     
+  {
+    while (1)
+    {
+      // update joint angles and Kinect images
+      if ((ec.rwi).Update() <= 0)
+        break;
+      ht = ((ec.body).lift).Height();
+
+      // get target info 
+      sobj->Retain(item);
+      if (item >= 0) 
+      {
+        // compute via point once (wid > 0 afterwards) ignoring obstacles
+        if (wid == 0.0)
+          if ((rc = (ec.man).pick_grasp(wid, ang, grab, item)) >= 0)
+            via.SetVec3(grab.X(), grab.Y(), sobj->MaxZ(item) + (ec.man).over);
+
+        // check current gripper alignment
+        diff = dir->P() - ang;
+        if (diff > 180.0)
+          diff -= 360.0;
+        else if (diff <= -180.0)
+          diff += 360.0;
+      }
+
+      // make pretty pictures of detections
+      pat2.Clone(sobj->pat);
+      if (item < 0)
+        sobj->ShowAll(pat2);
+      else
+      {
+        sobj->ViewPels(ix, iy, grab.X(), grab.Y());
+        Cross(pat2, ix, iy,  75,  75, 3, -6);
+      }
+      (ec.rwi).MapArm(pat2);
+
+      // draw arm on color image
+      (ec.body).ImgBig(mark);
+      (ec.rwi).Skeleton(mark); 
+
+      // show results
+      d.ShowGrid(mark,   0, 0, 0, "Color image (%3.1f\" surface) %s", sobj->ztab, 
+                                  ((item < 0) ? " --  Mouse on overhead projection  ==>" : ""));
+      if (item < 0)
+        d.ShowGrid(pat2, 1, 0, 0, "Click one of %d objects (R to exit) ...", sobj->CntTracked());
+      else if (rc < 0)
+        d.ShowGrid(pat2, 1, 0, 0, "Problem: %3.1f x %3.1f inches (R to exit) ...", sobj->Minor(item), sobj->Major(item));
+      else
+        d.ShowGrid(pat2, 1, 0, 0, "Hand offset (%+4.2f %+4.2f) over %+4.2f  --  align %+3.1f, pinch %+3.1f (tilt %3.1f, roll %3.1f) %s",
+                                  pos->X() - via.X(), pos->Y() - via.Y(), (pos->Z() + ht) - via.Z(),
+                                  diff, arm->Width() - wid, dir->T(), dir->R(), ((done > 0) ? " --  DONE" : ""));
+
+      // see if graspable object selected 
+      if ((item >= 0) && (rc >= 0))
+      {
+        // compute arm target and orientation
+        end.RelVec3(via, 0.0, 0.0, -ht);
+        aim.SetVec3(ang, -(ec.man).tip, 0.0);
+
+        // stop moving if close to destination
+        arm->ArmErr(perr, derr, end, aim);
+        if ((perr.MaxAbs3() > (ec.man).ptol) || (arm->WidthErr(wid) > (ec.man).wtol))
+        {
+          arm->PosTarget(end);
+          arm->DirTarget(aim);
+          arm->WidthTarget(wid);
+        }
+        else
+          done = 1;
+      }
+
+      // see if any object was clicked (inside last image = pat2)
+      mbut = d.MouseRel0(mx, my);     
+      if (d.MouseExit(mbut) > 0)
+        break;
+      if (mbut == 1)
+        item = sobj->ClickN(mx, my);
+
+      // send any commands and start collecting next input
+      ((ec.body).neck).GazeTarget(0.0, tilt);
+      (ec.rwi).Issue();
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  (eb->neck).gaze0 = g0;
+  d.StatusText("Stopped.");  
+
+  // cleanup
+  res.Clone(pat2);
+  strcpy_s(rname, "via.bmp"); 
+}
+
+// Shift object from one location to another
+// does not adjust gaze, base, or fork lift stage
+
+void CBanzaiDoc::OnManipulationMoveobj()
+{
+  char phase[11][40] = {"", "", "REACH", "ENCLOSE", "GRAB", "TRANSFER", 
+                        "PLACE", "RELEASE", "BACKOFF", "TUCK", "DONE"};
+  jhcImg mark, pat2;
+  jhcMatrix obj(4), tpos(4);
+  jhcArr ax(400), ay(400), az(400), tx(400), ty(400), tz(400);
+  int div[9];
+  jhcSurfObjs *sobj = &((ec.rwi).sobj);
+  jhcManipulate *man = &(ec.man);
+  const jhcMatrix *pos = (eb->arm).Position();
+  double g0 = (eb->neck).gaze0, tilt = -70.0;
+  double zinc2, xinc = -0.5 * (man->wx0 + man->wx1), top = 10.0;
+  double yinc = -0.5 * (man->wy0 + man->wy1 - top), zinc = 1.0;      // grip z wrt table
+  double x, y, wx, wy, wz, sx, sy, gx, gy, dx, dy, off, gx0, gy0;
+  int h0 = d.ght, w0 = d.gwid, rng = ROUND(1000.0 * top), trail = 400;
+  int fn = 0, nraw = 0, n = 0, gap = 0, item = -1, dest = 0, rc = 0, fat = 0;
+  int i, mbut, mx, my, id, n0, end, start;
+
+  // clear graph data
+  ax.Fill(ROUND(1000.0 * xinc));
+  tx.Fill(ROUND(1000.0 * xinc));
+  ay.Fill(ROUND(1000.0 * yinc));
+  ty.Fill(ROUND(1000.0 * yinc));
+  az.Fill(ROUND(1000.0 * zinc));
+  tz.Fill(ROUND(1000.0 * zinc));
+  for (i = 0; i < 9; i++)
+    div[i] = 0;
+
+  // make sure video is working
+  d.Clear();
+  d.StringGrid(0, 0, "Preparing hardware  --  please wait ...");
+  if (ChkStream() <= 0)
+    return;
+  v.SizeFor(mark);
+
+  // initialize robot system (no ALIA)
+  d.StatusText("Initializing robot ...");
+  if (rob > 0)
+    if (eb->Reset(1, 0) <= 0)
+    {
+      d.StatusText("Failed.");
+      return;
+    }
+
+jprintf_open();
+  // start vision routines
+  (eb->neck).gaze0 = tilt;
+  man->Reset(&(ec.atree));
+  (ec.rwi).Reset(rob, 0);
+  pat2.SetSize(sobj->pat);
+
+  // start up background processing
+  d.Clear(1, "Move visible object ...");
+  try     
+  {
+    while (1)
+    {
+      // update joint angles and Kinect images
+      if ((ec.rwi).Update() <= 0)
+        break;
+
+      // shift marked positions and arm history if base moves
+      (eb->base).AdjustXY(sx, sy);
+      (eb->base).AdjustXY(wx, wy);
+      end = __min(fn, 400);
+      for (i = 0; i < end; i++)
+      {
+        // commanded position
+        x = 0.001 * tx.ARef(i) - xinc;
+        y = 0.001 * ty.ARef(i) - yinc;
+        (eb->base).AdjustXY(x, y);
+        tx.ASet(i, ROUND(1000.0 * (x + xinc)));
+        ty.ASet(i, ROUND(1000.0 * (y + yinc)));  
+
+        // actual arm position
+        x = 0.001 * ax.ARef(i) - xinc;
+        y = 0.001 * ay.ARef(i) - yinc;
+        (eb->base).AdjustXY(x, y);
+        ax.ASet(i, ROUND(1000.0 * (x + xinc)));
+        ay.ASet(i, ROUND(1000.0 * (y + yinc)));  
+      }
+
+      // record new hand command and actual position
+      (eb->arm).PosGoal(tpos);
+      tx.Scroll(fn, ROUND(1000.0 * (tpos.X() + xinc)));
+      ax.Scroll(fn, ROUND(1000.0 * (pos->X() + xinc)));
+      ty.Scroll(fn, ROUND(1000.0 * (tpos.Y() + yinc)));
+      ay.Scroll(fn, ROUND(1000.0 * (pos->Y() + yinc)));
+      zinc2 = zinc + (eb->lift).Height() - ((ec.rwi).tab).ztab; 
+      tz.Scroll(fn, ROUND(1000.0 * (tpos.Z() + zinc2)));
+      az.Scroll(fn, ROUND(1000.0 * (pos->Z() + zinc2)));
+      if (++fn >= 400)
+        for (i = 0; i < 9; i++)
+          div[i] -= 1;
+    
+      // if enough info run manipulation sequences
+      if ((item >= 0) && (dest > 0))
+      {
+        // find distance of object to goal location
+        sobj->World(obj, item);
+        dx = obj.X() - wx;
+        dy = obj.Y() - wy;
+        off = sqrt(dx * dx + dy * dy);
+
+        // run controller (unless already failed)
+        if ((rc >= 0) && (nraw != 10) && (nraw != 22))
+        {
+          // check for execution error or bad object
+          rc = man->Move();
+          fat = man->LastErr();
+          n0 = n;
+          nraw = man->State();
+          n = __max(0, __min(nraw, 10));
+     
+          // record phase change markers for graphs
+          if ((n > n0) || (rc < 0))
+            div[n0] = fn + 1;          
+          if (fat < 0)
+            div[n] = fn + 2;
+        }
+      }
+
+      // show detected objects or selected object and goal position
+      pat2.Clone(sobj->pat);
+      man->Workspace(pat2, -6);
+      if ((item >= 0) && (dest > 0))
+      {
+        sobj->ViewPels(gx, gy, wx, wy);
+        Cross(pat2, gx, gy, 75, 75, 3, -2);      // destination
+      }
+      if (item >= 0)
+      {
+        sobj->ViewPels(gx, gy, sx, sy);          // source
+        Cross(pat2, gx, gy, 49, 49, 3, -4);
+      }
+      else
+        sobj->ShowAll(pat2);
+      (ec.rwi).MapArm(pat2, 0.0);
+
+      // show path of grip point over time
+      end = __min(fn, 400);
+      start = __max(0, end - trail);
+      for (i = start; i < end; i++)
+      {
+        sobj->ViewPels(gx, gy, 0.001 * ax.ARef(i) - xinc, 0.001 * ay.ARef(i) - yinc);
+        if (i > start)
+          DrawLine(pat2, gx0, gy0, gx, gy, 3, -1);
+        gx0 = gx;
+        gy0 = gy;
+      }
+
+      // draw objects and arm on color image
+      (ec.body).ImgBig(mark);
+      sobj->ObjsCam(mark, 0);
+      (ec.rwi).Skeleton(mark); 
+
+      // show basic view from robot
+      if ((item < 0) || (dest <= 0))
+        d.ShowGrid(mark, 0, 0, 0, "Color image (%3.1f\" surface)  --  Mouse on overhead projection  ==>", sobj->ztab);
+      else
+        d.ShowGrid(mark, 0, 0, 0, "Color image (%3.1f\" surface)  --  Move to (%3.1f %3.1f) --> Object %d at (%3.1f %3.1f)", 
+                                   sobj->ztab, wx, wy, sobj->ObjID(item), obj.X(), obj.Y());
+
+      // show arm X position graph (vertical)
+      d.gwid = 480;
+      d.ght  = 400;
+      d.GraphGridV(ax, 0, 1, -rng, 0, "X position of grip point vs. command");
+      for (i = 0; i < n; i++)
+        d.GraphMarkV(div[i], (((i == 0) || (i == 8)) ? 2 : 6));
+      if (rc < 0)
+        d.GraphMarkV(div[n], 1);
+      d.GraphOverV(tx, -rng, 5);
+      d.GraphOverV(ax, -rng, 8);
+
+      // show arm X position graph (horizontal)
+      d.gwid = 400;
+      d.ght  = 240;
+      d.GraphAdj( ay, rng, 0, "Y position of grip point vs. command");
+      for (i = 0; i < n; i++)
+        d.GraphMark(div[i], (((i == 0) || (i == 8)) ? 2 : 6));
+      if (rc < 0)
+        d.GraphMark(div[n], 1);
+      d.GraphOver(ty, rng, 5);
+      d.GraphOver(ay, rng, 8);
+
+      // show arm Z position graph (horizontal)
+      d.GraphAdj( az, rng, 0, "Z position of grip point vs. command");
+      d.GraphVal(ROUND(1000.0 * zinc), rng, 4);
+      for (i = 0; i < n; i++)
+        d.GraphMark(div[i], (((i == 0) || (i == 8)) ? 2 : 6));
+      if (rc < 0)
+        d.GraphMark(div[n], 1);
+      d.GraphOver(tz, rng, 5);
+      d.GraphOver(az, rng, 8);
+
+      // show overhead view (last for mouse focus)
+      if (item < 0) 
+        d.ShowGrid(pat2, 1, 0, 0, "Click one of %d objects (R to exit) ...", sobj->CntTracked());
+      else if (dest <= 0)
+        d.ShowGrid(pat2, 1, 0, 0, "Click destination for object (R to exit) ...");
+      else if (fat < 0)
+        d.ShowGrid(pat2, 1, 0, 0, "Problem: object %3.1f x %3.1f inches (R to exit) ...", 
+                                  sobj->Minor(item), sobj->Major(item));
+      else
+        d.ShowGrid(pat2, 1, 0, 0, "%s  --  dx %+4.1f, dy %+4.1f --> radial offset %3.1f\" %s", 
+                                  phase[n], dx, dy, off, ((rc < 0) ? " --  failed!" : ""));
+
+      // see if any object was clicked (inside last image = pat2)
+      mbut = d.MouseRel0(mx, my);     
+      if (d.MouseExit(mbut) > 0)
+        break;
+      if ((mbut == 1) && (gap >= 15))
+      {
+        if ((item < 0) || (fat > 0))
+        {
+          // select item and remember grasp point
+          item = sobj->ClickN(mx, my);
+          man->ForceItem(item);
+          id = sobj->ObjID(item);
+          sobj->World(sx, sy, item);
+        }
+        else if (dest <= 0) 
+        {
+          // select deposit point
+          sobj->PelsXY(wx, wy, mx, my);
+          wz = sobj->MapZ(mx, my, 5, sobj->ztab);
+          man->ForceDest(wx, wy, wz);
+          dest = 1;
+        }
+      }
+      gap = ((mbut != 0) ? 0 : gap + 1);         // separation between clicks
+
+      // send any commands and start collecting next input
+      ((ec.body).neck).GazeTarget(0.0, tilt);
+      (ec.rwi).Issue();
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  (eb->neck).gaze0 = g0;
+  d.ght = h0;
+  d.gwid = w0;
+  d.StatusText("Stopped.");  
+jprintf_close();
+
+  // cleanup
+  res.Clone(pat2);
+  strcpy_s(rname, "move_obj.bmp"); 
+}
+
+
+// Show selected final location for some object given a relation to another
+
+void CBanzaiDoc::OnManipulationDeposit()
+{
+  jhcPickString pick;
+  char prompt[80], rel[40] = "left of";
+  int side[4] = {180, 0, -90, 90};
+  jhcSurfObjs *sobj = &((ec.rwi).sobj);
+  jhcManipulate *man = &(ec.man);
+  jhcImg map2, space2, align2, shrink2;
+  double ix, iy, dx, dy, wid, len, ang, pan = 90.0, g0 = (eb->neck).gaze0, tilt = -70.0;
+  int mbut, mx, my, cx, cy, ok, t = -1, rn = -1, a = -1, a2 = -1, gap = 0, phase = 0;
+
+  // get destination location relation first
+  while ((rn < 0) || (rn == jhcManipulate::ON))
+  {
+    if (pick.EditString(rel, 0, "Relation: down, between, etc.") <= 0)
+      return;
+    rn = man->txt2rnum(rel);
+  }
+
+  // make sure video is working
+  d.Clear();
+  d.StringGrid(0, 0, "Preparing hardware  --  please wait ...");
+  if (ChkStream() <= 0)
+    return;
+
+  // initialize robot system (no ALIA)
+  d.StatusText("Initializing robot ...");
+  if (rob > 0)
+    if (eb->Reset(1, 0) <= 0)
+    {
+      d.StatusText("Failed.");
+      return;
+    }
+
+  // start vision routines
+  (eb->neck).gaze0 = tilt;
+  man->Reset(&(ec.atree));
+  (ec.rwi).Reset(rob, 0);
+  (eb->arm).Limp();
+
+  // find middle of map images and clear intermediates
+  cx = (sobj->XDim()) >> 1;
+  cy = (sobj->YDim()) >> 1;
+  man->set_size(sobj->map);
+  (man->align).FillArr(0);
+  (man->shrink).FillArr(0);
+
+  // start up background processing
+  d.Clear(1, "Deposit location ...");
+  v.Rewind(1);
+  try
+  {
+    while (1)
+    {
+      // get images and body data then process it
+      if ((ec.rwi).Update() <= 0)
+        break;
+
+      // interact with space routines in jhcManipulate
+      if (phase >= 0)
+      {
+        sobj->RetainAll();
+        man->htrk = t;
+      }
+      man->free_space(t);
+      if (phase >= 3)
+      {
+        man->dest_ref(ix, iy, t, rn, a, a2);
+        pan = man->dest_ang(ix, iy, t, rn, a, a2);
+        ok = man->pick_spot(dx, dy, ix, iy, pan, t, rn, a, a2); 
+      }
+
+      // copy intermediate images for annotation
+      map2.Clone(sobj->map);
+      space2.Clone(man->space);
+      align2.Clone(man->align);
+      shrink2.Clone(man->shrink);
+  
+      // visually mark important objects
+      sobj->ShowAll(map2, 1, 0, 0);
+      if (t >= 0)
+        XMark(map2, sobj->MapX(t), sobj->MapY(t), 15, 1);
+      if (a >= 0)
+        Cross(map2, sobj->MapX(a), sobj->MapY(a), 25, 25, 1);
+      if (a2 >= 0)
+        Cross(map2, sobj->MapX(a2), sobj->MapY(a2), 25, 25, 1);
+
+      // mark spatial relation reference point in intermediate images
+      if (phase >= 3)
+      {
+        if ((rn >= 2) && (rn <= 5))
+        {
+          ang = sobj->ViewAngle(side[rn - 2]);
+          Ray(space2, ix, iy, ang + man->sdev, 0.0, 1, 90);
+          Ray(space2, ix, iy, ang - man->sdev, 0.0, 1, 90);
+        }
+        Cross(space2, ix, iy, 17, 17, 1, 200);
+        Cross(align2, cx, cy, 17, 17, 1, 200);
+        if ((rn >= 2) && (rn <= 5))
+        {
+          ang = sobj->ViewAngle(side[rn - 2]) + (90.0 - pan);
+          Ray(shrink2, cx, cy, ang + man->sdev, 0.0, 1, 50); 
+          Ray(shrink2, cx, cy, ang - man->sdev, 0.0, 1, 50); 
+        }
+        Cross(shrink2, cx, cy, 17, 17, 1, 200);
+      }
+
+      // mark chosen deposit location and orientation
+      if ((phase >= 3) && (ok > 0))
+      {
+        wid = 1.2 * sobj->I2P(sobj->Minor(t));
+        len = 1.2 * sobj->I2P(sobj->Major(t));
+        RectCent(map2, dx, dy, len, wid, pan, 1);
+        RectCent(space2, dx, dy, len, wid, pan, 3, -5);    
+        XMark(shrink2, man->xpick, man->ypick, 11, 3, 128);
+      }
+
+      // assemble prompt based on phase
+      if (strcmp(rel, "down") == 0)
+      {
+        if (phase <= 0)
+          sprintf_s(prompt, "X down\"  <--  click on object to move ...");
+        else if (phase >= 1)
+          sprintf_s(prompt, "object %d down\"", sobj->ObjID(t));
+      }
+      else if (strcmp(rel, "between") == 0)
+      {
+        if (phase <= 0)
+          sprintf_s(prompt, "X between Y and Z\"  --  click on object to move ...");
+        else if (phase == 1)
+          sprintf_s(prompt, "object %d between Y and Z\"  --  click on reference object ...", sobj->ObjID(t));
+        else if (phase == 2)
+          sprintf_s(prompt, "object %d between objects %d and Z\"  --  click on second reference object ...", sobj->ObjID(t), sobj->ObjID(a));
+        else if (phase >= 3)
+          sprintf_s(prompt, "object %d between objects %d and %d\"" , sobj->ObjID(t), sobj->ObjID(a), sobj->ObjID(a2));
+      }
+      else if (phase <= 0)
+         sprintf_s(prompt, "X %s Y\"  --  click on object to move ...", rel);
+      else if (phase == 1)
+        sprintf_s(prompt, "object %d %s Y\"  --  click on reference object ...", sobj->ObjID(t), rel); 
+      else if (phase >= 2)
+        sprintf_s(prompt, "object %d %s object %d\"", sobj->ObjID(t), rel, sobj->ObjID(a));
+
+      // show results of processing
+      if (phase < 3)
+        d.ShowGrid(space2, 1, 0, 2, "Unoccupied surface");
+      else if (ok <= 0)
+        d.ShowGrid(space2, 1, 0, 2, "Unoccupied surface  --  object %d does not fit!", sobj->ObjID(t)); 
+      else
+        d.ShowGrid(space2, 1, 0, 2, "Unoccupied surface and destination for object %d", sobj->ObjID(t)); 
+      if (pan == 90.0)
+        d.ShowGrid(align2, 0, 1, 2, "Aligned around reference location (no rotation)");
+      else
+        d.ShowGrid(align2, 0, 1, 2, "Aligned around reference location  --  rotated %sclockwise %3.1f degs", 
+                                    (((90.0 - pan) >= 0) ? "counter" : ""), fabs(90.0 - pan));
+      d.ShowGrid(shrink2,  1, 1, 2, "Shrunken by deposit footprint");
+      d.ShowGrid(map2,     0, 0, 2, "Command:  \"Put %s", prompt);
+
+      // see if any object was clicked (inside last image = map2)
+      if (phase >= 3)
+        break;
+      mbut = d.MouseRel0(mx, my);     
+      if (d.MouseExit(mbut) > 0)
+        break;
+      if ((mbut == 1) && (gap >= 15))
+      {
+        if (phase == 0)
+        {
+          if ((t = sobj->ClickN(mx, my)) >= 0)
+            phase = ((strcmp(rel, "down") == 0) ? 3 : 1);      // no anchors needed
+        }
+        else if (phase == 1)
+        {
+          if ((a = sobj->ClickN(mx, my)) >= 0)
+            phase = ((strcmp(rel, "between") != 0) ? 3 : 2);   // only one anchor needed
+        }
+        else if (phase == 2)
+        {
+          if ((a2 = sobj->ClickN(mx, my)) >= 0)
+            phase = 3;
+        }
+      }
+      gap = ((mbut != 0) ? 0 : gap + 1);         // separation between clicks
+
+      // prompt for new sensors
+      (ec.rwi).Issue();
+    }
+  }
+  catch (...){Tell("Unexpected exit!");}
+  v.Prefetch(0);
+  (ec.rwi).Stop();
+  (eb->neck).gaze0 = g0;
+  d.StatusText("Stopped.");  
+
+  // cleanup
+  FalseClone(res, space2);
+  sprintf_s(rname, "deposit %s.bmp", rel); 
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
 //                              Test Functions                             //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -3632,24 +5098,35 @@ jtimer_rpt();
 
 void CBanzaiDoc::OnUtilitiesTest()
 {
-  char txt[80] = "A owl gave me a object";
-  int i, j, n = (int) strlen(txt), mid = 0;
+//  Tell("No current function");
 
-  // look for first occurrence of pattern
-  for (i = 2; i < n; i++)
-  {
-    if ((mid <= 0) && (tolower(txt[i - 2]) == 'a') && (txt[i - 1] == ' ') && 
-        (strchr("aeiou", tolower(txt[i])) != NULL))
-    {
-      // insert missing "n" after shifting other letters over
-      n++;
-      for (j = n; j >= i; j--) 
-        txt[j] = txt[j - 1];
-      txt[i - 1] = 'n';
-    }
-    mid = isalnum(txt[i - 2]);      
-  }
-  jprintf("<%s>\n", txt);
+  jprintf("progressive of <tuck in> = <%s>\n", ec.net.mf.SurfWord("tuck in", JTAG_VPROG));
+  return;
+
+  char fname[200], item[80] = "flower";
+  jhcImgIO jio;
+  jhcImg src, r, g, b, dest;
+
+  sprintf_s(fname, "%s/results/%s_cast.bmp", cwd, item);
+  jio.LoadResize(src, fname);
+  d.ShowGrid(src, 0, 0, 0, "Source");
+  dest.SetSize(src);
+  r.SetSize(src, 1);
+  g.SetSize(src, 1);
+  b.SetSize(src, 1);
+
+  SplitRGB(r, g, b, src);
+  Enhance(r, r, 4.0);
+  Enhance(g, g, 4.0);
+  Enhance(b, b, 4.0);
+  MergeRGB(dest, r, g, b);
+  d.ShowGrid(dest, 1, 0, 0, "Enhanced");
+  sprintf_s(fname, "%s/results/%s_enh3.bmp", cwd, item);
+
+  Enhance3(dest, src, 4.0);
+  sprintf_s(fname, "%s/results/%s_quick.bmp", cwd, item);
+  d.ShowGrid(dest, 1, 1, 0, "Quick version");
+  jio.Save(fname, dest);
 }
 
 

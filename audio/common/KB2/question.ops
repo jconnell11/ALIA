@@ -1,8 +1,8 @@
 // Responses to yes/no and wh- questions 
 // ================================================
 
-// OP - "To affirm say yes indeed"
-trig:
+OP 1 - "To affirm say yes indeed"
+  trig:
     DO[ act-1 -lex-  affirm ]
 -----------------
     DO[ act-2 -lex-  say
@@ -10,8 +10,8 @@ trig:
         txt-1 -str-  yes indeed ]
 
 
-// OP - "To affirm say yup"
-trig:
+OP 2 - "To affirm say yup"
+  trig:
     DO[ act-1 -lex-  affirm ]
 -----------------
     DO[ act-2 -lex-  say
@@ -19,8 +19,8 @@ trig:
         txt-1 -str-  yup ]
 
 
-// OP - "To affirm say I believe so whoever"
-trig:
+OP 3 - "To affirm say I believe so whoever"
+  trig:
     DO[ act-1 -lex-  affirm ]
 -----------------
     DO[ act-2 -lex-  say
@@ -30,8 +30,8 @@ trig:
 
 // ----------------------------------------
 
-// OP - "To deny say no"
-trig:
+OP 4 - "To deny say no"
+  trig:
     DO[ act-1 -lex-  deny ]
 -----------------
     DO[ act-2 -lex-  say
@@ -39,8 +39,8 @@ trig:
         txt-1 -str-  no ]
 
 
-// OP - "To deny say nope"
-trig:
+OP 5 - "To deny say nope"
+  trig:
     DO[ act-1 -lex-  deny ]
 -----------------
     DO[ act-2 -lex-  say
@@ -48,8 +48,8 @@ trig:
         txt-1 -str-  nope ]
 
 
-// OP - "To deny say I don't think so"
-trig:
+OP 6 - "To deny say I don't think so"
+  trig:
     DO[ act-1 -lex-  deny ]
 -----------------
     DO[ act-2 -lex-  say
@@ -59,8 +59,8 @@ trig:
 
 // ----------------------------------------
 
-// OP - "To pass say no clue"
-trig:
+OP 7 - "To pass say no clue"
+  trig:
     DO[ act-1 -lex-  pass ]
 -----------------
     DO[ act-2 -lex-  say
@@ -68,8 +68,8 @@ trig:
         txt-1 -str-  no clue ]
 
 
-// OP - "To pass say I don't know"
-trig:
+OP 8 - "To pass say I don't know"
+  trig:
     DO[ act-1 -lex-  pass ]
 -----------------
     DO[ act-2 -lex-  say
@@ -77,8 +77,8 @@ trig:
         txt-1 -str-  I don't know ]
 
 
-// OP - "To pass say beats me whoever"
-trig:
+OP 9 - "To pass say beats me whoever"
+  trig:
     DO[ act-1 -lex-  pass ]
 -----------------
     DO[ act-2 -lex-  say
@@ -86,10 +86,39 @@ trig:
         txt-1 -str-  beats me ?0 ]
 
 
+// ----------------------------------------
+
+OP 10 - "To confirm say okay whoever"
+  trig:
+    DO[ act-1 -lex-  confirm ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  okay ?0 ]
+
+
+OP 11 - "To confirm say got it"
+  trig:
+    DO[ act-1 -lex-  confirm ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  got it ]
+
+
+OP 12 - "To confirm say fine, what next?"
+  trig:
+    DO[ act-1 -lex-  confirm ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  fine, what next? ]
+
+
 // ================================================
 
-// OP - "To tell what something is say whatever"
-trig:
+OP 13 - "To tell what something is say whatever"
+  trig:
     DO[ act-1 -lex-   tell 
               -obj--> hq-1 
          hq-1 -hq---> obj-1 ]
@@ -98,50 +127,22 @@ trig:
               -obj--> hq-1 ]
 
 
-// OP - "To tell what something is say the something is whatever"
-trig:
+OP 14 - "To tell what something is say whatever, I think"
+  trig:
     DO[ act-1 -lex-   tell 
               -obj--> hq-1 
          hq-1 -hq---> obj-1 ]
 -----------------
     DO[ act-2 -lex-   say
               -obj--> txt-1
-        txt-1 -str-   ?1 is ?2
-              -arg1-> obj-1 
-              -arg2-> hq-1 ]
+        txt-1 -str-   ?1, I think
+              -arg1-> hq-1 ]
 
 
 // ----------------------------------------
 
-// OP - "To tell what kind of thing something is say a whatever"
-trig:
-    DO[ act-1 -lex-   tell 
-              -obj--> ako-1 
-        ako-1 -ako--> obj-1 ]
------------------
-    DO[ act-2 -lex-   say
-              -obj--> txt-1 
-        txt-1 -str-   a ?1
-              -arg1-> ako-1 ]
-
-
-// OP - "To tell what kind of thing something is say the something is a whatever"
-trig:
-    DO[ act-1 -lex-   tell 
-              -obj--> ako-1 
-        ako-1 -ako--> obj-1 ]
------------------
-    DO[ act-2 -lex-   say
-              -obj--> txt-1
-        txt-1 -str-   ?1 is a ?2
-              -arg1-> obj-1 
-              -arg2-> ako-1 ]
-
-
-// ----------------------------------------
-
-// OP - "To tell how many things there are say however many"
-trig:
+OP 15 - "To tell how many things there are say however many"
+  trig:
     DO[ act-1 -lex-   tell 
               -obj--> cnt-1 
         cnt-1 -cnt--> obj-1 ]
@@ -150,8 +151,8 @@ trig:
               -obj--> cnt-1 ]
 
 
-// OP - "To tell how many things there are say there are however many"
-trig:
+OP 16 - "To tell how many things there are say there are however many"
+  trig:
     DO[ act-1 -lex-   tell 
               -obj--> cnt-1 
         cnt-1 -cnt--> obj-1 ]
@@ -162,8 +163,8 @@ trig:
               -arg1-> cnt-1 ]
 
 
-// OP - "To tell how many things there are say however many I think"
-trig:
+OP 17 - "To tell how many things there are say however many, I think"
+  trig:
     DO[ act-1 -lex-   tell 
               -obj--> cnt-1 
         cnt-1 -cnt--> obj-1 ]
@@ -176,8 +177,8 @@ trig:
 
 // ----------------------------------------
 
-// OP - "To tell what something is say the something"
-trig:
+OP 18 - "To tell what something is say the something"
+  trig:
     DO[ act-1 -lex-   tell 
               -obj--> obj-1 ]
 -----------------
@@ -185,8 +186,8 @@ trig:
               -obj--> obj-1 ]
 
 
-// OP - "To tell someone something just tell something"
-trig:
+OP 19 - "To tell someone something just tell something"
+  trig:
     DO[ act-1 -lex-   tell 
               -dest-> obj-1
               -obj--> obj-2 ]
@@ -195,8 +196,8 @@ trig:
               -obj--> obj-2 ]
 
 
-// OP - "To tell someone about themself just tell something"
-trig:
+OP 20 - "To tell someone about themself just tell something"
+  trig:
     DO[ act-1 -lex-   tell 
               -dest-> obj-1
               -obj--> obj-1 ]
@@ -205,8 +206,8 @@ trig:
               -obj--> obj-1 ]
 
 
-// OP - "To tell someone about themself say the boss whoever"
-trig:
+OP 21 - "To tell someone about themself say the boss whoever"
+  trig:
     DO[ act-1 -lex-   tell 
               -dest-> obj-1
               -obj--> obj-1 ]
@@ -214,18 +215,3 @@ trig:
     DO[ act-2 -lex-   say
               -obj--> txt-1 
         txt-1 -str-   the boss ?0 ] 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

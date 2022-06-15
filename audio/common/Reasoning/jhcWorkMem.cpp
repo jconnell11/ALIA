@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -97,6 +97,7 @@ void jhcWorkMem::clr_ext ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Set up definitions of "self" and "user" in semantic net.
+// Note: robot first and full name are added to grammars by jhcAliaSpeech::Reset
 
 void jhcWorkMem::InitPeople (const char *rname)
 {
@@ -105,20 +106,20 @@ void jhcWorkMem::InitPeople (const char *rname)
   char *sep;
 
   // make nodes for participants in conversation
-  self = MakeNode("self", "you", 0, -1.0);
+  self = MakeNode("self", "me", 0, -1.0);
   self->Reveal();
   p = AddProp(self, "ako", "robot", 0, -1.0);
   p->Reveal();
   if ((rname != NULL) && (*rname != '\0'))
   {
     // copy robot's name (if any) to "self" node
-    p = AddProp(self, "ref", rname, 0, -1.0);
+    p = AddProp(self, "name", rname, 0, -1.0);
     p->Reveal();
     strcpy_s(first, rname);
     if ((sep = strchr(first, ' ')) != NULL)
     {
       *sep = '\0';
-      p = AddProp(self, "ref", first, 0, -1.0);
+      p = AddProp(self, "name", first, 0, -1.0);
       p->Reveal();
     }
   }
@@ -146,7 +147,7 @@ jhcNetNode *jhcWorkMem::ShiftUser (const char *name)
   n->Reveal();
   if ((name != NULL) && (*name != '\0'))
   {
-    p = AddProp(n, "ref", name, 0, -1.0);
+    p = AddProp(n, "name", name, 0, -1.0);
     p->Reveal();
   }
   return SetUser(n);
@@ -163,10 +164,10 @@ jhcNetNode *jhcWorkMem::SetUser (jhcNetNode *n)
   if (n == user)
     return user;
 
-  // reassign "me" (and "I") to new node
+  // reassign "you" to new node
   SetLex(user, "");
   user = n;
-  SetLex(user, "me");
+  SetLex(user, "you");
 
   // make sure that personhood is marked
   p = AddProp(user, "ako", "person", 0, -1.0);
@@ -228,10 +229,19 @@ bool jhcWorkMem::Prohibited (const jhcNetNode *n) const
 // if reference has no lex, does not return hash = 0 count but TOTAL count
 // will be slight over-estimate for halo-1 matching (some halo-2 counted)
 
-int jhcWorkMem::SameBin (const jhcNetNode& focus) const
+int jhcWorkMem::SameBin (const jhcNetNode& focus, const jhcBindings *b) const
 {
-  int bin = ((focus.Lex() == NULL) ? -1 : focus.Code());
+  int bin;
 
+  // determine appropriate bin(s) for focus node
+  if (focus.Lex() == NULL)
+    bin = -1;
+  else if (b != NULL)
+    bin = b->LexBin(focus);
+  else 
+    bin = focus.Code();
+
+  // get count in main memory and perhaps halo also
   if (mode <= 0)
     return BinCnt(bin);
   return(BinCnt(bin) + halo.BinCnt(bin));  
@@ -265,9 +275,10 @@ void jhcWorkMem::PromoteHalo (jhcBindings& h2m, const jhcBindings& b)
       continue;
 
     // make equivalent wmem node with proper generation
-    // then actualize result and save translation
+    // then actualize result as visible and save translation
     n2 = MakeNode(n->Kind(), n->Lex(), n->Neg(), 1.0, n->Done());     
     n2->SetBelief(n->Default());  
+    n2->Reveal();
     h2m.Bind(n, n2);
   }
 
@@ -328,7 +339,7 @@ int jhcWorkMem::CleanMem (int dbg)
 
 void jhcWorkMem::keep_party (jhcNetNode *anchor) const
 {
-  jhcNetNode *prop, *deg;
+  jhcNetNode *prop, *arg, *deg;
   int i, j, n, n2;
 
   // definitely keep this node
@@ -341,14 +352,21 @@ void jhcWorkMem::keep_party (jhcNetNode *anchor) const
   for (i = 0; i < n; i++)
   {
     prop = anchor->Prop(i);
-    if (!prop->Hyp() && anchor->RoleIn(i, "ref", "ako", "hq"))
+    if (!prop->Hyp() && anchor->RoleIn(i, "name", "ako", "hq"))      
     {
-      // keep this property and check for modifiers 
+      // keep this property and all arguments
       prop->keep = 2;
+      n2 = prop->NumArgs();
+      for (j = 0; j < n2; j++)
+      {
+        arg = prop->Arg(j);
+        arg->keep = 1;                 // allow spreading from arg
+      }
+
+      // retain degree for properties like "very smart"
       n2 = prop->NumProps();
       for (j = 0; j < n2; j++)
       {
-        // retain degree for properties like "very smart"
         deg = prop->Prop(j);
         if (!deg->Hyp() && prop->RoleMatch(j, "deg"))
           deg->keep = 2;
@@ -452,8 +470,9 @@ void jhcWorkMem::RevealAll (const jhcGraphlet& desc)
 // ignores sense negation when checking for equality to allow truth value flip
 // ensures only one variant of predicate will have belief > 0 (generally most recent)
 // if run incrementally, first non-zero match found should be the only one 
+// returns number of non-halo assertions overridden
 
-void jhcWorkMem::Endorse (const jhcGraphlet& desc, int dbg)
+int jhcWorkMem::Endorse (const jhcGraphlet& desc, int dbg)
 {
   const jhcNetNode *n;
   jhcNetNode *n2;
@@ -486,6 +505,7 @@ void jhcWorkMem::Endorse (const jhcGraphlet& desc, int dbg)
   if (cnt > 0)
     jprintf(1, dbg, "\n");
   Dirty(cnt);
+  return cnt;
 }
 
 
@@ -494,20 +514,20 @@ void jhcWorkMem::Endorse (const jhcGraphlet& desc, int dbg)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Link some external reference number to a particular node.
-// internal reference numbers are positive for objects, negative for agents
+// kind: 0 = object, 1 = agent, 2 = surface
 // returns 1 if successful, 0 if out of space
 
-int jhcWorkMem::ExtLink (int rnum, jhcNetNode *obj, int agt)
+int jhcWorkMem::ExtLink (int rnum, jhcNetNode *obj, int kind)
 {
-  int i, key = ((agt > 0) ? -rnum : rnum);
+  int i;
 
   // look for pre-existing entry
-  for (i = 0; i < 20; i++)
-    if (ext[i] == key)
+  for (i = 0; i < emax; i++)
+    if ((cat[i] == kind) && (ext[i] == rnum))
       break;
 
   // alter or erase entry found
-  if (i < 20)
+  if (i < emax)
   {
     if (obj != NULL)
       nref[i] = obj;
@@ -520,45 +540,45 @@ int jhcWorkMem::ExtLink (int rnum, jhcNetNode *obj, int agt)
   }
 
   // add entry at first empty slot
-  for (i = 0; i < 20; i++)
+  for (i = 0; i < emax; i++)
     if (nref[i] == NULL)
       break;
-  if (i >= 20)
+  if (i >= emax)
     return 0;
-  ext[i] = key;
+  cat[i] = kind;
+  ext[i] = rnum;
   nref[i] = obj;
   return 1;
 }
 
 
 //= Find the first array entry which has given reference number.
+// kind: 0 = object, 1 = agent, 2 = surface
 // returns associated node or NULL if none
 
-jhcNetNode *jhcWorkMem::ExtRef (int rnum, int agt) const
+jhcNetNode *jhcWorkMem::ExtRef (int rnum, int kind) const
 {
-  int i, key = ((agt > 0) ? -rnum : rnum);
+  int i;
 
-  for (i = 0; i < 20; i++)
-    if (ext[i] == key)
+  for (i = 0; i < emax; i++)
+    if ((cat[i] == kind) && (ext[i] == rnum))
       return nref[i];
   return NULL;  
 }
 
 
 //= Find the first array entry which has given main memory node.
+// kind: 0 = object, 1 = agent, 2 = surface
 // returns associated reference number or 0 if none
 
-int jhcWorkMem::ExtRef (const jhcNetNode *obj, int agt) const
+int jhcWorkMem::ExtRef (const jhcNetNode *obj, int kind) const
 {
-  int i, key;
+  int i;
 
   if (obj != NULL)
-    for (i = 0; i < 20; i++)
-      if (nref[i] == obj)
-      {
-        key = ext[i];
-        return((agt > 0) ? -key : key);
-      }
+    for (i = 0; i < emax; i++)
+      if ((cat[i] == kind) && (nref[i] == obj))  
+        return ext[i];
   return 0;  
 }
 
@@ -570,10 +590,29 @@ void jhcWorkMem::rem_ext (const jhcAliaDesc *obj)
   int i;
 
   if (obj != NULL)
-    for (i = 0; i < 20; i++)
+    for (i = 0; i < emax; i++)
       if (nref[i] == obj)
       {
         ext[i] = 0;
         nref[i] = NULL;
       }
+}
+
+
+//= Enumerate ID's for all items of a certain kind having an external link.
+// start with last = 0 then feed in previous answer, returns 0 at end
+
+int jhcWorkMem::ExtEnum (int last, int kind) const
+{
+  int i, ready = ((last <= 0) ? 1 : 0);
+  
+  for (i = 0; i < emax; i++)
+    if (cat[i] == kind)
+    {
+      if (ready > 0)
+        return ext[i];
+      if ((last != 0) && (ext[i] == last))
+        ready = 1;
+    }
+  return 0;
 }

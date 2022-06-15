@@ -47,7 +47,7 @@ class jhcSmTrack
 // PRIVATE MEMBER VARIABLES
 private:
   double **pos, **var, **dist;
-  int *ena, *id, *cnt, *fwd, *back;
+  int *id, *cnt, *fwd, *back;
   int total, valid, last_id, stats;
   char name[40];
 
@@ -93,8 +93,8 @@ public:
 
   // track status 
   void Reset (int dbg =0);
-  void EnableAll (int active);
-  void SetEnable (int i, int active);
+  void NoMiss (int i);
+  void ForcePos (int i, double x, double y, double z);
 
   // main functions
   void MatchAll (const double * const *detect, int n, int rem =1, const double * const *shp =NULL);
@@ -110,7 +110,6 @@ public:
   int Limit () const {return valid;}
   int MaxItems () const {return total;}
   int Valid (int i) const;
-  int Enabled (int i) const;
   int TrackFor (int j) const;
   int DetectFor (int i) const;
   int Coords (double& x, double& y, double& z, int i) const;
@@ -118,13 +117,13 @@ public:
   double TX (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][0]);}
   double TY (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][1]);}
   double TZ (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][2]);}
-  void ForceTX (int i, double x) {if ((i >= 0) && (i < valid)) pos[i][0] = x;}
-  void ForceTY (int i, double y) {if ((i >= 0) && (i < valid)) pos[i][1] = y;}
+  double DistXY (int i) const;
+  void ForceXYZ (int i, double x, double y, double z) 
+    {if ((i < 0) || (i >= valid)) return; pos[i][0] = x; pos[i][1] = y; pos[i][2] = z;}
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  int alloc (int n);
   void dealloc ();
 
   // parameters

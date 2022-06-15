@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2017 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,11 +51,17 @@ public:
   void SetKal (double m, double x, double y, double z)    /** Kalman filter parameters.   */
     {mix = m; noise[0] = x; noise[1] = y; noise[2] = z;}
   int Blank () const {return((cnt == 0) ? 1 : 0);}        /** Never been updated yet.     */
+  int First () const {return((cnt == 1) ? 1 : 0);}        /** Only had one update so far. */
   int Last () const  {return(1 + __max(0, -cnt));}        /** Frames since last update.   */
 
   // main functions
   void Clear () {cnt = 0;}                                /** Get ready for first update. */
+  void Clear (const jhcMatrix& init)
+    {Copy(init); cnt = 0;}
+  void Clear (double x, double y =0.0, double z =0.0) 
+    {SetVec3(x, y, z); cnt = 0;}
   int Update (const jhcMatrix& raw, jhcMatrix *diff =NULL, double dt =0.0);
+  int Update (double x, double y =0.0, double z =0.0, jhcMatrix *diff =NULL, double dt =0.0);
   int Skip ();
 
 

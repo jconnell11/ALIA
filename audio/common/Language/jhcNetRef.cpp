@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,25 +56,31 @@ jhcNetRef::jhcNetRef (jhcNodePool *u, double bmin)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Return working memory node matching description of main node in graphlet.
-// attempts to resolve description to some pre-existing node if "find" > 0
+// attempts to resolve description to some pre-existing node if "fmode" > 0
 // can optionally re-use "f0" node from "add" pool as place to copy structure
 // automatically makes a new node, if needed, with all properties true
-// "find": -1 = always create new item (create > 0)
-//          0 = always make FIND
-//          1 = resolve locally else make FIND
-//          2 = resolve locally else create item (resolve > 0)
+// "fmode": -1 = always create new item (not used)
+//           0 = always make FIND
+//           1 = always make BIND (create > 0)
+//           2 = resolve locally else create item (resolve > 0)
 
-jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int find, jhcNetNode *f0, 
+jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0, 
                                  double blf, jhcAliaChain **skolem)
 {
   jhcBindings b;
   jhcNetNode *var = NULL;
+  const jhcNetNode *main = cond.Main();
   const jhcNodeList *f2 = ((univ != &add) ? univ : NULL);
   int pend = (((skolem != NULL) && (*skolem != NULL)) ? 1 : 0); 
-  int n0, got = 0, mc = 1; 
+  int n0, find = fmode, got = 0, mc = 1; 
 
 //dbg = 1;                             // quick debugging
 
+  // never try to FIND/BIND something with no description (primarily "it")
+  // Note: now generates FIND[ x ] which is resolved in jhcAliaDir::complete_find
+//  if ((find >= 0) && (cond.NumItems() == 1) && (main->Lex() == NULL) && (main->NumArgs() <= 0))
+//    find = 2;
+  
   // possibly tell what is sought
   if (dbg >= 1)
   {
@@ -84,9 +90,9 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int find, jhcNetNode *f0,
 
   // must have some accumulator in order to find new assertions
   partial = add.Accum();
-  if (partial == NULL)
+  if (((find == 0) || (find == 1)) && (partial == NULL))
   {
-    jprintf(">>> no accumulator in FindMake !!!\n");
+    jprintf(">>> no accumulator in jhcNetRef::FindMake !!!\n");
     return NULL;
   }
 
@@ -97,30 +103,23 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int find, jhcNetNode *f0,
   win.Copy(b);
   recent = -1;
 
-  // always look for exisiting node if find > 0
+  // always look for existing node if find > 1 (was 0 prior to 11/21) 
   b.expect = cond.NumItems();
-  if ((find <= 0) || ((got = MatchGraph(&b, mc, cond, add, f2)) <= 0))
+  if ((find <= 1) || ((got = MatchGraph(&b, mc, cond, add, f2)) <= 0))
   {
     // nothing found now (or did not look)
-    n0 = partial->NumItems();
+    if (partial != NULL)
+      n0 = partial->NumItems();
     add.Assert(cond, win, blf, 0, univ);         // force belief
     if ((find == 0) || (find == 1))
     {
       // add a new FIND to chain instead of creating
-      if ((var = append_find(n0, blf, skolem)) == NULL)
+      if ((var = append_find(n0, blf, skolem, find)) == NULL)
         return NULL;
-      jprintf(1, dbg, "  ==> %s from new FIND\n", var->Nick());
+      jprintf(1, dbg, "  ==> %s from new %s\n", ((find > 0) ? "BIND" : "FIND"), var->Nick());
       return add.MarkRef(var);                   // user speech
     }
   }
-/*
-  else if (skolem != NULL)
-  {
-    // any earlier FINDs not needed if reference resolved
-    delete *skolem;
-    *skolem = NULL;
-  }
-*/
 
   // possibly tell result and source
   jprintf(1, dbg, " ==> %s %s %s\n", ((got > 0) ? "existing" : "created"), 
@@ -129,10 +128,11 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int find, jhcNetNode *f0,
 }
 
 
-//= Construct an appropriate BIND directive from newly added description.
+//= Construct an appropriate FIND/BIND directive from newly added description.
+// generally makes a FIND directive unless assume > 0 (BIND can create if none found)
 // gets added to end of chain (if any), returns head of chain
 
-jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem)
+jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem, int assume)
 {
   jhcGraphlet trim;
   jhcBindings mt;
@@ -146,7 +146,7 @@ jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem)
   if ((skolem == NULL) || (n <= n0))
     return NULL;
   ch = new jhcAliaChain;
-  dir = new jhcAliaDir(JDIR_BIND);     // allow creation if not found
+  dir = new jhcAliaDir((assume > 0) ? JDIR_BIND : JDIR_FIND);     
   ch->BindDir(dir);
 
   // copy new parts of description (from Assert) to key of directive

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,9 +129,17 @@ int jms_resume (UL32 cont)
 }
 
 
+//= Tell how many seconds have passed since reference time stamp.
+
+double jms_elapsed (UL32 tref)
+{
+  return jms_secs(jms_now(), tref);
+}
+
+
 //= Gives string with elapsed time in hrs:min:sec.ms from base time.
 
-char *jms_elapsed (char *dest, UL32 tref, int ssz)
+char *jms_offset (char *dest, UL32 tref, int ssz)
 {
   int h, m, s, ms = jms_diff(jms_now(), tref);
 

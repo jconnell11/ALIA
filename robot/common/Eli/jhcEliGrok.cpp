@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,8 +63,14 @@ jhcEliGrok::jhcEliGrok ()
   fn.dadj = 2.0;                                                 // head is shell
 
   // configure object finding map
-  tab.SetMap(108.0, 63.0, 24.0, -6.0, -2.0, 18.0, 0.15, 28.5);   // 720 x 421 map
-  tab.hmix = 0.0;
+  sobj.SetMap(108.0, 63.0, 24.0, -6.0, -2.0, 18.0, 0.15, 28.5);   // 720 x 421 map
+  sobj.hmix = 0.0;
+
+  // set up display strings
+  nmode[0][0] = '\0';
+  strcpy_s(nmode[1], "--  APPROACH");
+  strcpy_s(nmode[2], "--  Follow");
+  strcpy_s(nmode[3], "--  wander ...");
 }
 
 
@@ -105,19 +111,6 @@ void jhcEliGrok::clr_ptrs ()
 }
 
 
-//= Generate a string telling what is controlling the robot's motion.
-
-const char *jhcEliGrok::NavGoal ()
-{
-  *nmode = '\0';
-  if ((approach > 0) && (approach > follow))
-    strcpy_s(nmode, "APPROACH");
-  else if ((follow > 0) && (follow >= approach))
-    strcpy_s(nmode, "FOLLOW");
-  return nmode;
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //                         Processing Parameters                         //
 ///////////////////////////////////////////////////////////////////////////
@@ -145,6 +138,29 @@ int jhcEliGrok::vis_params (const char *fname)
 }
 
 
+//= Parameters controlling navigation related gaze activities.
+
+int jhcEliGrok::sacc_params (const char *fname)
+{
+  jhcParam *ps = &sps;
+  int ok;
+
+  ps->SetTag("grok_sacc", 0);
+  ps->NextSpecF( &hem,      6.0, "Forward motion blocked (in)");
+  ps->NextSpecF( &umat,     0.5, "Fraction unknown doormat");
+  ps->NextSpecF( &sacp,    25.0, "Saccade lateral pan (deg)");
+  ps->NextSpecF( &sact,   -25.0, "Saccade nearby tilt (deg)");
+  ps->NextSpecF( &sact2,  -65.0, "Saccade floor tilt (deg)"); 
+  ps->Skip();
+
+  ps->NextSpecF( &road,   -40.0, "Path check tilt (deg)");      
+  ps->NextSpecF( &cruise,   2.0, "Path check interval (sec)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                           Parameter Bundles                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -157,8 +173,10 @@ int jhcEliGrok::Defaults (const char *fname)
 
   ok &= watch.Defaults(fname);
   ok &= vis_params(fname);
+  ok &= sacc_params(fname);
   ok &= fn.Defaults(fname);      // does s3 also
   ok &= nav.Defaults(fname);
+  ok &= sobj.Defaults(fname);
   ok &= tab.Defaults(fname);
   return ok;
 }
@@ -184,8 +202,10 @@ int jhcEliGrok::SaveVals (const char *fname)
 
   ok &= watch.SaveVals(fname);
   ok &= vps.SaveVals(fname);
+  ok &= sps.SaveVals(fname);
   ok &= fn.SaveVals(fname);      // does s3 also
   ok &= nav.SaveVals(fname);
+  ok &= sobj.SaveVals(fname);
   ok &= tab.SaveVals(fname);
   return ok;
 }
@@ -223,7 +243,9 @@ void jhcEliGrok::Reset (int rob, int behaviors)
   s3.Reset();
   fn.Reset();
   nav.Reset();
-  tab.Reset();
+  sobj.Reset();
+  tab.SetSize(s3.map);
+  tab.Reset(); 
 
   // configure body 
   phy = 0;
@@ -236,7 +258,7 @@ void jhcEliGrok::Reset (int rob, int behaviors)
     {
       phy = 1; 
       base->Zero();
-      body->InitPose(-1.0);
+      body->InitPose();          // used to leave height unaltered (-1.0)
       body->Update(-1, 1);       // sensor info will be waiting and need to be read
     }
     else
@@ -247,7 +269,7 @@ void jhcEliGrok::Reset (int rob, int behaviors)
     {
       // setup navigation
       nav.SrcSize(v->XDim(), v->YDim(), v->Focal(1), v->Scaling(1));
-      tab.SrcSize(v->XDim(), v->YDim(), v->Focal(1), v->Scaling(1));
+      sobj.SrcSize(v->XDim(), v->YDim(), v->Focal(1), v->Scaling(1));
 
       // make status images
       body->BigSize(mark);
@@ -265,11 +287,13 @@ void jhcEliGrok::Reset (int rob, int behaviors)
   wwin = 0;
   slock = 0;
   vlock = 0;
+  xlock = 0;
+  flock = 0;
 
-  // navigation goal
-  approach = 0;
-  follow = 0;
+  // navigation goal and FSM
+  act = 0;
   feet = 0;
+  ahead = 0;
 
   // restart background loop, which first generates a body Issue call
   reflex = behaviors;
@@ -284,7 +308,6 @@ void jhcEliGrok::Reset (int rob, int behaviors)
 
 int jhcEliGrok::Update (int voice, UL32 resume)
 {
-jtimer(1, "jhcEliGrok::Update");
   // do slow vision processing in background (already started usually)
   if (jhcBackgRWI::Update(0) <= 0)
     return 0;
@@ -297,7 +320,6 @@ jtimer(1, "jhcEliGrok::Update");
   // create pretty picture then enforce min wait (to simulate robot)
   cam_img();
   nav_img();
-jtimer_x(1);
   jms_resume(resume);  
   return 1;
 }
@@ -336,8 +358,9 @@ jtimer(2, "body update");
     }   
   }
 
-  // use old person map to guess table height for this cycle
-  tab.ztab = s3.PickPlane(lift->Height() + tab.lrel, tab.ppel, 4, tab.flip);
+  // use old person map to guess table height for this cycle (both threads need)
+//  if (!neck->Saccade())
+    sobj.ztab = tab.PickPlane(s3.map, s3.IPP(), s3.HMIN(), s3.HMAX());
 jtimer_x(2);
 }
 
@@ -347,33 +370,41 @@ jtimer_x(2);
 void jhcEliGrok::interpret ()
 {
   jhcMatrix pos(4), dir(4);
+  double ht = lift->Height();
 
   // needs depth data
   if (seen <= 0)
     return;
-jtimer(9, "interpret (bg1)");
+
+jtimer(3, "interpret (tab + face + nav)");
+jtimer(4, "find table (bg1)");
+  // find support surface as a target in old map (s3 in other thread)
+  neck->HeadPose(pos, dir, ht);
+//  if (!neck->Saccade())
+    tab.FindSurf(pos, ht);
+jtimer_x(4);  
 
   // find new person location based on current camera pose
-jtimer(3, "face track (bg1)");
+jtimer(5, "face track (bg1)");
   adjust_heads();
-  neck->HeadPose(pos, dir, lift->Height());
   fn.SetCam(pos, dir);
   if (!neck->Saccade())
     fn.Analyze(body->Color(), body->Range());
-jtimer_x(3);
+jtimer_x(5);
 
-jtimer(4, "navigation (bg1)");
+jtimer(6, "navigation (bg1)");
   // update navigation map
   nav.AdjustMaps(base->StepFwd(), base->StepLeft(), base->StepTurn());
-  if (!neck->Saccade())
+  if (!neck->Saccade())                // needed
     nav.RefineMaps(body->Range(), pos, dir);
   nav.ComputePaths();
-jtimer_x(4);
-jtimer_x(9);
+jtimer_x(6);
+jtimer_x(3);
 }
 
 
 //= Alter expected position and visibilty of heads based on robot state.
+// NOTE: odometry only provides coarse adjustment, true tracking is more accurate
 
 void jhcEliGrok::adjust_heads ()
 {
@@ -414,13 +445,14 @@ void jhcEliGrok::interpret2 ()
   if (seen <= 0)
     return;
 
-  // detect objects (tab.ztab already set by body_update)
-jtimer(5, "objects (bg2)");
+jtimer(7, "interpret2 (objects)");
+  // detect objects (ztab already set by body_update)
+  sobj.AdjBase(base->StepSide(), base->StepFwd(), base->StepTurn()); 
   neck->HeadPose(pos, dir, lift->Height());
-  tab.AdjTracks(pos, dir);
-  if (!neck->Saccade())
-    tab.FindObjects(body->Color(), body->Range());
-jtimer_x(5);
+  sobj.AdjNeck(pos, dir);
+  if (!neck->Saccade())                // needed
+    sobj.FindObjects(body->Color(), body->Range(), ArmMask(limb));
+jtimer_x(7);
 }
 
 
@@ -430,7 +462,7 @@ void jhcEliGrok::body_issue ()
 {
   const jhcVideoSrc *v;
 
-jtimer(6, "body_issue");
+jtimer(8, "body_issue");
   // record current time
   tnow = jms_now();
   if (body == NULL)
@@ -440,27 +472,106 @@ jtimer(6, "body_issue");
   if (reflex > 0)
     watch.React(this);
 
-  // interpret high-level commands
+  // interpret high-level commands (in order of priority)
+  act = base_mode();
+  assert_scan();
   assert_watch();
   assert_seek();
   assert_servo();
-  if ((approach == 0) && (follow == 0))
-    feet = 0;
+  assert_explore();
 
   // start actuator commands and get new raw images
   if (phy > 0)
 {
-jtimer(7, "Issue");
+jtimer(9, "Issue");
     body->Issue();
-jtimer_x(7);
+jtimer_x(9);
 }
-jtimer(8, "UpdateImgs");
+jtimer(10, "UpdateImgs");
   seen = body->UpdateImgs(); 
   if ((v = body->vid) != NULL)
     if (v->IsClass("jhcListVSrc") > 0)
       seen = 1;                                  // for static images
+jtimer_x(10);
 jtimer_x(8);
-jtimer_x(6);
+}
+
+
+//= Set descriptive string telling what high-level command the robot is performing.
+// picks dominant mode (in priority order)
+
+int jhcEliGrok::base_mode ()
+{
+  int top = __max(xlock, __max(vlock, slock));
+
+  if (top <= 0)
+    return 0;
+  if (slock == top)
+    return 1;
+  if (vlock == top)
+    return 2;
+  if (xlock == top)
+    return 3;
+  return -1;                 // should never get here
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                       Combination Sensing                             //
+///////////////////////////////////////////////////////////////////////////
+
+//= Find person with a face closest in 3D to camera origin in projection space.
+// can optionally take a forward offset from robot origin and min face detections
+// returns tracker index not person ID
+
+int jhcEliGrok::ClosestFace (double front, int cnt) const
+{
+  jhcMatrix pos(4);
+  double dx, dy, d2, best;
+  int i, n = s3.PersonLim(), win = -1;
+
+  for (i = 0; i < n; i++)
+    if (s3.PersonOK(i) && s3.Visible(i))
+      if (fn.FaceCnt(i) >= cnt)
+      {
+        s3.Head(pos, i);
+        dx = pos.X();
+        dy = pos.Y() - front;
+        d2 = dx * dx + dy * dy;
+        if ((win < 0) || (d2 < best))
+        {
+          win = i;
+          best = d2;
+        }
+      }
+  return win;
+}
+
+
+//= Find person with a face closest to the center of the current view.
+// can optionally take a forward offset from robot origin and min face detections
+// returns tracker index not person ID
+
+int jhcEliGrok::CentralFace (double aim, int cnt) const
+{
+  jhcMatrix pos(4);
+  double pan, tilt, off, best;
+  int i, n = s3.PersonLim(), win = -1;
+
+  for (i = 0; i < n; i++)
+    if (s3.PersonOK(i) && s3.Visible(i))
+      if (fn.FaceCnt(i) >= cnt)
+      {
+        s3.Head(pos, i);
+        neck->AimFor(pan, tilt, pos, lift->Height());
+        off = fabs(pan - aim);
+        if ((win < 0) || (off < best))
+        {
+          win = i;
+          best = off;
+        }
+      }
+  return win;
 }
 
 
@@ -468,14 +579,14 @@ jtimer_x(6);
 //                     High-Level People Commands                        //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Connect some tracked person to motion controller.
+//= Connect some tracked person to motion controller semi-permanently.
 // "wiring" persists even without command until overridden (e.g. id = 0)
 // bid value must be greater than previous command to take effect
 // returns 1 if newly set, 0 if pre-empted by higher priority
 
 int jhcEliGrok::WatchPerson (int id, int bid)
 {
-  if ((bid <= wlock) || (id <= 0))
+  if (bid <= wlock) 
     return 0;
   wlock = bid;
   wwin = id;
@@ -485,21 +596,37 @@ int jhcEliGrok::WatchPerson (int id, int bid)
 
 //= Turn selected person into tracking motion.
 // needs to be called before body->Issue() due to target persistence
+// keeps trying to watch person regardless of visibility, angle, or distance
 
 void jhcEliGrok::assert_watch ()
 {
   const jhcMatrix *targ;
-
+  double ang, horizon = 120.0, crane = 120.0;
+  int bid = wlock;
+ 
   if ((wlock <= 0) || (wwin <= 0))
     return;
+
+  // see if most recently selected person is still close enough
   if ((targ = s3.GetID(wwin)) != NULL)
-    OrientToward(targ, wlock);
-  else
-  {
-    // most recently selected person has vanished
-    wlock = 0;
-    wwin = 0;
-  }
+    if (targ->PlaneVec3() <= horizon)
+    {
+      // make sure that the person is in the visible zone
+      ang = targ->PanVec3() - 90.0;
+      if (ang <= -180.0)
+        ang += 360.0;
+      else if (ang > 180.0)
+        ang -= 360.0;
+      if (fabs(ang) <= crane)
+      {
+        OrientToward(targ, bid);
+        return;
+      }
+    }
+
+  // give up on watching that particular person
+  wwin = 0;
+  wlock = 0;
 }
 
 
@@ -561,32 +688,30 @@ void jhcEliGrok::assert_seek ()
   int bid = slock;
 
   // check if some command, then reset arbitration for next round
-  approach = slock;
   if (slock <= 0)
     return;
   slock = 0;   
- 
+/*
   // pick a steering angle and travel speed
-  if (quick_survey() <= 0)
-  {
-    nav.Avoid(trav, head, sx, sy);
-    base->MoveTarget(trav, ((trav < 0.0) ? 0.7 : ssp), bid);
-    base->TurnFix(head, 1.0, 1.0, bid);             
-  }
+  nav.Avoid(trav, head, sx, sy);
+  base->MoveTarget(trav, ((trav < 0.0) ? 0.7 : ssp), bid);
+  base->TurnFix(head, 1.0, 1.0, bid);             
+*/
 }
 
 
-//= Try to keep robot at td = off from target at azimuth ta (0 is forward).
+//= Try to keep robot center at td = off from target with azimuth ta (0 is forward).
 // tries to aim toward target at all times, moving backward if too close
 // generally speed to follow (1.5) is higher than speed to approach (1.0)
 // bid value must be greater than previous command to take effect
 // returns 1 if newly set, 0 if pre-empted by higher priority
+// NOTE: should also call MapPath with same bid to make sure feet are free
 
-int jhcEliGrok::ServoPolar (double td, double ta, double sp, int bid, double off)
+int jhcEliGrok::ServoPolar (double td, double ta, double off, double sp, int bid)
 {
   if (bid <= vlock)
     return 0;
-  vlock = bid;
+  vlock = bid;           
   vd = td;
   va = ta;
   vsp = sp;
@@ -603,60 +728,14 @@ void jhcEliGrok::assert_servo ()
   int bid = vlock;
 
   // check if some command, then reset arbitration for next round
-  follow = vlock;
   if (vlock <= 0)
     return;
   vlock = 0;          
 
   // pick a steering angle and travel speed (or update map)
-  head = 0.0;
-  trav = 0.0;
-  if (quick_survey() <= 0)
-    nav.Swerve(trav, head, vd, va, voff);
-
-  // send selected direction to base 
+  nav.Swerve(trav, head, vd, va, voff);
   base->TurnTarget(head, 1.0, bid);
   base->MoveTarget(trav, 1.0, bid);
-}
-
-
-//= Rebuild map directly in front of robot using 4 discrete gaze fixations.
-// returns 1 if forced head move, 0 if no floor scan step in progress
-
-int jhcEliGrok::quick_survey ()
-{
-  double pan, tilt, p0 = 25.0, t0 = -25, t1 = -65.0;       // depends on Kinect FOV
-
-  // if unsure about foot area or contrained movement then start sequence
-  if (feet <= 0)
-  {
-    if ((nav.Blind() <= 0) && (nav.Tight() <= 0))
-      return 0;
-    feet = 1;
-  }
-
-  // only allow sequence to be reactivated when trigger goes away
-  if (feet >= 5) 
-  { 
-    if ((nav.Blind() <= 0) && (nav.Tight() <= 0))
-      feet = 0;
-    return 0;
-  }
-
-  // force rapid look at a sequence of 4 fixations (no gaps)
-  while (feet < 5)
-  {
-    pan  = (((feet == 1) || (feet == 2)) ? -p0 : p0);
-    tilt = (((feet == 1) || (feet == 4)) ?  t0 : t1);
-    if (neck->GazeDone(pan, tilt))
-      feet++;
-    else
-    {
-      neck->GazeTarget(pan, tilt, -1.5, -1.5, 2000);      
-      break;
-    }
-  }
-  return 1;
 }
 
 
@@ -670,14 +749,318 @@ double jhcEliGrok::FrontDist (double td, double ta) const
 }
 
 
+//= Wander aimlessly without hitting things.
+
+int jhcEliGrok::Explore (double sp, int bid)
+{
+  if (bid <= xlock)
+    return 0;
+  xlock = bid;
+  xsp = sp;
+  return 1;
+}
+
+
+//= Drive along frontmost path that is sufficiently long. 
+// assumes assert_scan called early to referesh map if needed
+
+void jhcEliGrok::assert_explore ()
+{
+  double trav, head;              
+  int bid = xlock;
+
+  // check if some command, then reset arbitration for next round
+  if (xlock <= 0)
+    return;
+  xlock = 0;          
+
+  // pick a steering angle and travel speed (gaze ahead and down)
+  nav.Wander(trav, head);
+  base->TurnTarget(head, 0.5, bid);
+  base->MoveTarget(trav, xsp, bid);
+}
+
+
+//= Request mapping in front of robot, sometimes at feet if needed.
+// predicate Survey() will be true when head is being moved
+
+int jhcEliGrok::MapPath (int bid)
+{
+  if (bid <= flock)
+    return 0;
+  flock = bid + 1;           // a bit of a hack
+  return 1;
+}
+
+
+//= Set robot gaze appropriately to build portion of map needed.
+// generally most important motion so called first in sequence of "asserts"
+
+void jhcEliGrok::assert_scan ()
+{
+  int bid = flock;
+
+  // check if some command, then reset arbitration for next round
+  if (flock <= 0)
+  {  
+    // reset state when not in use
+    feet = 0;      
+    return;
+  }
+  flock = 0;         
+
+  // look at feet if needed, otherwise occasionally look ahead
+  if ((quick_survey(bid) > 0) || (jms_elapsed(ahead) < cruise))
+    return;
+jprintf("* CRUISE\n");
+  if (!neck->GazeDone(0.0, road))
+    neck->GazeTarget(0.0, road, 1.0, 1.0, bid);      
+  else
+    ahead = jms_now();                 // reset cycle timer
+}
+
+
+//= Use a series of 4 rapid gaze fixations to map floor ahead of robot.
+//   feet: 0 = check if foot saccade needed
+//         1 = await mid-right saccade
+//         2 = await low-right saccade
+//         3 = await low-left saccade
+//         4 = await mid-left saccade
+//         5 = await reset
+// returns 1 if moving head, 0 if no gaze command
+
+int jhcEliGrok::quick_survey (int bid)
+{
+  double pan, tilt;
+
+  // reset saccade when free to travel or unknown doormat area
+  if (feet >= 5)
+  {
+    if (nav.Tight(hem) && !nav.Blind(umat))
+      return 0;
+    feet = 0;
+  }
+
+  // if contrained movement then start sequence
+  if (feet <= 0)
+  {
+    if (!nav.Tight(hem))
+      return 0;
+    feet = 1;
+  }
+
+  // force rapid look at a sequence of 4 fixations (no time gaps)
+  while (feet < 5)
+  {
+    pan  = (((feet == 1) || (feet == 2)) ? -sacp : sacp);
+    tilt = (((feet == 1) || (feet == 4)) ?  sact : sact2);
+    if (neck->GazeDone(pan, tilt))
+      feet++;
+    else
+    {
+      // no base motion during saccade
+      neck->GazeTarget(pan, tilt, -1.5, -1.5, bid);      
+      base->DriveTarget(0.0, 0.0, 1.0, bid);      
+      return 1;
+    }
+  }
+  return 0;        // feet just set to 5
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                           Debugging Graphics                          //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Overlay stick figure of arm onto camera image in some color.
+// optionally show ray of some length (inches) from grasp point
+// best if arm angles are not changing (i.e. don't call during update)
+// NOTE: this is only for the color camera view
+
+int jhcEliGrok::Skeleton (jhcImg& dest, double ray) const
+{
+  jhcMatrix pos(4), off(4);
+  int jt[5] = {1, 2, 3, 6, 7};
+  double px, py, ix, iy;
+  int i; 
+
+  if (!dest.Valid(1, 3))
+    return Fatal("Bad images to jhcEliGrok::Skeleton");
+
+  // draw links and grip location
+  ImgJt(px, py, 0);
+  for (i = 0; i < 5; i++)
+  {
+    ImgJt(ix, iy, jt[i]);
+    DrawLine(dest, px, py, ix, iy, 3, -5);
+    px = ix;
+    py = iy;
+  }
+  CircleEmpty(dest, px, py, 10, 3, -5);  
+
+  // ray in grip direction 
+  if (ray <= 0.0)
+    return 1;
+  off.SetVec3(arm->ToolX() + ray, 0.0, 0.0);
+  (arm->jt[6]).GlobalMap(pos, off);
+  s3.ImgPtZ(ix, iy, pos.X(), pos.Y(), pos.Z() + lift->Height());
+  DrawLine(dest, px, py, ix, iy, 3, -3); 
+  return 1;
+}
+
+
+//= Overlay stick figure of arm onto overhead object map image.
+// optionally show ray of some length (inches) from grasp point
+// NOTE: this is only for the overhead map view (adjusts for neck pose)
+
+int jhcEliGrok::MapArm (jhcImg& dest, double ray) const
+{
+  jhcMatrix pos(4), off(4);
+  int jt[5] = {1, 2, 3, 6, 7};
+  double px, py, mx, my;
+  int i; 
+
+  if (!dest.Valid(1, 3))
+    return Fatal("Bad images to jhcEliGrok::MapArm");
+
+  // draw links from shoulder and circle grip location
+  arm->JtPos(pos, 0);
+  sobj.ViewPels(px, py, pos.X(), pos.Y());
+  for (i = 0; i < 5; i++)
+  {
+    // select some joint and get map coords
+    if (jt[i] == 7)
+      arm->Position(pos);
+    else if (jt[i] == 2)
+      arm->LiftBase(pos);      // looks better on screen
+    else
+      arm->JtPos(pos, jt[i]);
+    sobj.ViewPels(mx, my, pos.X(), pos.Y());
+
+    // draw segment
+    DrawLine(dest, px, py, mx, my, 3, -5);
+    px = mx;
+    py = my;
+  }
+  CircleEmpty(dest, px, py, 10, 3, -5);  
+
+  // ray in grip direction 
+  if (ray <= 0.0)
+    return 1;
+  off.SetVec3(arm->ToolX() + ray, 0.0, 0.0);
+  (arm->jt[6]).GlobalMap(pos, off);
+  sobj.ViewPels(mx, my, pos.X(), pos.Y());
+  DrawLine(dest, px, py, mx, my, 3, -3); 
+  return 1;
+}
+
+
+//= Overlay stick figure of arm with some blocks onto overhead map image.
+// useful for suppressing object detection of arm itself
+// NOTE: this is only for the overhead map view (adjusts for neck pose)
+
+const jhcImg *jhcEliGrok::ArmMask (jhcImg& dest, int clr) const
+{
+  jhcMatrix pos(4), off(4);
+  int jt[5] = {1, 2, 3, 6, 7};
+  double px, py, mx, my, side = -1.5, lift = 1.5, wrist = 2.0, hand = 3.0;
+  int i; 
+
+  // set image size and clear background
+  dest.SetSize(sobj.map, __max(1, dest.Fields()));
+  if ((clr > 0) || (phy <= 0))
+    dest.FillArr(0);
+  if (phy <= 0)
+    return &dest;
+
+  // draw links from shoulder and circle grip location
+  arm->JtPos(pos, 0);
+  sobj.ViewPels(px, py, pos.X(), pos.Y());
+  for (i = 0; i < 5; i++)
+  {
+    // select some joint and get map coords
+    if (jt[i] == 7)
+      arm->Position(pos);
+    else if (jt[i] == 2)
+      arm->LiftBase(pos);      // looks better on screen
+    else
+      arm->JtPos(pos, jt[i]);
+    sobj.ViewPels(mx, my, pos.X(), pos.Y());
+
+    // draw segment
+    DrawLine(dest, px, py, mx, my, 3, -5);
+    px = mx;
+    py = my;
+  }
+
+  // block out big section around lift pod
+  arm->LiftBase(pos, side);
+  sobj.ViewPels(mx, my, pos.X(), pos.Y());
+  CircleFill(dest, mx, my, sobj.I2P(lift), -5); 
+
+  // block out around back of gripper
+  arm->JtPos(pos, 6);
+  sobj.ViewPels(mx, my, pos.X(), pos.Y());
+  CircleFill(dest, mx, my, sobj.I2P(wrist), -5); 
+
+  // block out around front of gripper
+  arm->Position(pos);
+  sobj.ViewPels(mx, my, pos.X(), pos.Y());
+  CircleFill(dest, mx, my, sobj.I2P(hand), -5); 
+  return &dest;
+}
+
+
+//= Find the pixel location of a particular arm joint.
+// jt: 0 = shoulder,   1 = elbow,     2 = FOREARM lift, 
+//     3 = wrist roll, 4 = wrist pan, 5 = wrist tilt, 
+//     6 = jaw axis,   7 = mid tips
+// returns non-scaled z coordinate (for use with jhcSurface3D::WorldPt)
+
+double jhcEliGrok::ImgJt (double& ix, double& iy, int jt) const
+{
+  jhcMatrix pos(4);
+
+  if ((jt < 0) || (jt > 7))
+    return 0;
+  if (jt == 7)
+    arm->Position(pos);
+  else if (jt == 2)
+    arm->LiftBase(pos);      // looks better on screen
+  else
+    arm->JtPos(pos, jt);
+  return s3.ImgPtZ(ix, iy, pos.X(), pos.Y(), pos.Z() + lift->Height());
+}
+
+
+//= Get angle difference of the click location versus projected jt1 relative to projected jt0.
+// primarily used by arm calibration routines in jhcBanzaiDoc
+
+double jhcEliGrok::ImgVeer (int mx, int my, int jt1, int jt0) const
+{
+  double x0, y0, x1, y1, ang, click, diff;
+
+  // find interjoint angle and click angle
+  ImgJt(x0, y0, jt0);
+  ImgJt(x1, y1, jt1);
+  ang = R2D * atan2(y1 - y0, x1 - x0);
+  click = R2D * atan2(my - y0, mx - x0);
+
+  // normalize difference
+  diff = click - ang;
+  if (diff > 180.0)
+    diff -= 360.0;
+  else if (diff <= -180.0)
+    diff += 360.0;
+  return diff;
+}
+
 
 //= Make a pretty version of color image showing relevant items.
 
 void jhcEliGrok::cam_img ()  
 {
+  jhcMatrix target(4);
   int t, gz, sp, nt, col;
 
   // get current color camera view
@@ -685,19 +1068,29 @@ void jhcEliGrok::cam_img ()
     return;
   body->ImgBig(mark);
 
-  // people (green = talking, yellow = gaze, magenta = nodified)
+  // show people
   gz = fn.GazeNew();
   sp = tk.Speaking();
   nt = s3.PersonLim();
   for (t = 0; t < nt; t++)
 //    if (s3.PersonState(t) > 0)
     {
-      col = ((s3.PersonID(t) == sp) ? 2 : ((t == gz) ? 3 : 5));  
+      if (s3.PersonID(t) == sp) 
+        col = 2;                                 // green   = speaker
+      else if (t == gz)
+        col = 3;                                 // yellow  = newest direct gaze
+      else if (fn.FaceCnt(t) > 0)
+        col = 5;                                 // magenta = only if face seen
+      else 
+        continue;
       s3.PersonCam(mark, t, 0, 1, 0, col);
     }
+  fn.FacesCam(mark);                             // cyan    = faces
 
-  // objects (green = focal, magenta = nodified)
-  tab.AttnCam(mark, 5, 2);                      
+  // objects (green = focal, yellow = nodified, magenta = others, cyan = target)
+  sobj.AttnCam(mark, 2, 3, 5);     
+  arm->PosGoal(target, lift->Height());
+  sobj.MarkCam(mark, target, 6);
 }
 
 
@@ -711,14 +1104,15 @@ void jhcEliGrok::nav_img ()
   nav.LocalMap(mark2);
 
   // directions of motion possible and robot footprint
-  nav.Paths(mark2, 1);
+  nav.Dists(mark2, 1);
   nav.RobotCmd(mark2, base->TurnIncGoal(), base->MoveIncGoal());
   nav.RobotBody(mark2);
 
   // path recently traveled and target (if any)
   nav.Tail(mark2);
-  if ((approach > 0) && (approach > follow))
+  if (act == 1)                        // approach
     nav.Target(mark2, sx, sy);
-  else if ((follow > 0) && (follow >= approach))
+  else if (act == 2)                   // follow
     nav.Target(mark2, vd, va, 1);
 }
+

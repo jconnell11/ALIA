@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -139,7 +139,6 @@ public:
   afx_msg void OnFileSavesource();
   afx_msg void OnUtilitiesPlaydepth();
   afx_msg void OnUtilitiesPlayboth();
-  afx_msg void OnInterestVividview();
   afx_msg void OnAnimationIdle();
   afx_msg void OnAnimationNeutral();
   afx_msg void OnArmGotopose();
@@ -187,9 +186,7 @@ public:
   afx_msg void OnNavGuidance();
   afx_msg void OnEnvironLocalpaths();
   afx_msg void OnEnvironDistances();
-  afx_msg void OnNavFovlimits();
   afx_msg void OnEnvironGoto();
-  afx_msg void OnNavConfidence();
   afx_msg void OnPeopleVisibility();
   afx_msg void OnDemoAttn();
   afx_msg void OnObjectsTrackobjs();
@@ -223,6 +220,28 @@ public:
   afx_msg void OnMoodActivitylevel();
   afx_msg void OnMoodEnergylevel();
   afx_msg void OnMoodInteractionlevel();
+  afx_msg void OnRoomRobotdims();
+  afx_msg void OnSocialSaccades();
+  afx_msg void OnMotionCalibwrist();
+  afx_msg void OnMotionCalibarm();
+  afx_msg void OnManipulationHandeye();
+  afx_msg void OnManipulationGotovia();
+  afx_msg void OnManipulationAdjustz();
+  afx_msg void OnManipulationMoveobj();
+  afx_msg void OnObjectsGrasppoint();
+  afx_msg void OnObjectsTrajectoryctrl();
+  afx_msg void OnObjectsMotiondone();
+  afx_msg void OnDetectionGazesurface();
+  afx_msg void OnSocialSurffind();
+  afx_msg void OnTableSurface();
+  afx_msg void OnObjectsSurfheight();
+  afx_msg void OnObjectsSurflocation();
+  afx_msg void OnMotionInvkinematics();
+  afx_msg void OnObjectsWorkspace();
+  afx_msg void OnManipulationDeposit();
+  afx_msg void OnObjectsEmptyspot();
+  afx_msg void OnGrabBodyshift();
+  afx_msg void OnRoomForkcalib();
 };
 
 /////////////////////////////////////////////////////////////////////////////

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,7 +103,7 @@ public:
 
   // main functions
   void Reset ();
-  void Update (jhcAliaNote& rpt);
+  void Update (jhcAliaNote& rpt, int nag =1);
 //  double Preference (const double chg[]) const;
 //  void Adjust (double chg[], const double start[]);
 

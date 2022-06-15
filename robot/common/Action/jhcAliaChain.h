@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,6 +53,8 @@ private:
   // variables from earlier FINDs
   jhcBindings scoping;
   jhcAliaChain *backstop;
+  UL32 mt0;
+  int spew;
 
   // payload is one of two types
   class jhcAliaDir *d;
@@ -72,6 +74,7 @@ private:
 public:
   // next step in chain (public for jhcGraphizer)
   jhcAliaChain *fail, *cont, *alt;
+  class jhcAliaOp *avoid;
   int alt_fail;
 
 
@@ -84,7 +87,9 @@ public:
   int Level () const    {return level;}
   jhcBindings *Scope () {return &scoping;}
   class jhcAliaCore *Core () {return core;}
-  bool Fallback () const {return(backstop != NULL);}
+  class jhcActionTree *ATree ();
+  bool Fallback () const   {return(backstop != NULL);}
+  bool Variations () const {return((cont == NULL) && (spew >= 2) && (backstop != NULL));}   
 
   // configuration
   jhcAliaChain *BindDir (class jhcAliaDir *dir)
@@ -100,9 +105,11 @@ public:
   jhcAliaChain *StepN (int n);
   jhcAliaChain *Penult ();
   jhcAliaChain *Last ();
+  jhcGraphlet *LastKey ();
   jhcAliaChain *Append (jhcAliaChain *tackon);
   int MaxDepth () const;
   int NumGoals (int leaf =0) const;
+  void Enumerate ();
 
   // building
   jhcAliaChain *Instantiate (jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx =NULL);
@@ -136,7 +143,7 @@ private:
   void clr_labels (int head);
 
   // main functions
-  int start_payload ();
+  int start_payload (int lvl);
 
   // file reading
   int build_chain (jhcNodePool& pool, jhcAliaChain *label[], jhcAliaChain *fix[], int& n, jhcTxtLine& in);

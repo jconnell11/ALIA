@@ -90,7 +90,7 @@ private:
   char cfile[80];
   double vmax0, volts;
   UL32 ntime, ltime, atime, gtime, ttime, mtime;
-  int bnum, cw, ch, iw, ih, kin, mok, tstep, tfill, pct;
+  int bnum, cw, ch, iw, ih, kin, mok, tstep, tfill, vsamp;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -133,8 +133,7 @@ public:
   ~jhcEliBody ();
   jhcEliBody ();
   double Voltage () const {return volts;}
-  int Percent () const    {return pct;}
-  void ReportCharge () const;
+  void ReportCharge ();
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);
@@ -146,10 +145,11 @@ public:
   void BindVideo (jhcVideoSrc *v);
   int SetKinect (int rpt =1);
   int Reset (int rpt =0, int full =0);
+  int BodyNum (int chk =0);
   int CfgFile (char *fname, int chk, int ssz); 
+  const char *LastCfg () const {return cfile;}
   int CommOK (int rpt =1, int bad =0) const;
   int VideoOK () const {if ((vid == NULL) || !vid->Valid()) return 0; return 1;}
-  int BodyNum () const {return __max(0, bnum);}
   const char *Problems ();
   int Charge (double v, int running =0);
   int Charge (int running =0) 

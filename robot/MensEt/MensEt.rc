@@ -220,8 +220,8 @@ CAPTION "About MensEt"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "MensEt Version 4.50",IDC_STATIC,48,11,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2018-2021, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
+    LTEXT           "MensEt Version 4.80",IDC_STATIC,48,11,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2018-2022, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
 END
@@ -310,8 +310,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 4,80,0,1
+ PRODUCTVERSION 4,80,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -324,15 +324,15 @@ VS_VERSION_INFO VERSIONINFO
 BEGIN
     BLOCK "StringFileInfo"
     BEGIN
-        BLOCK "040904B0"
+        BLOCK "040904b0"
         BEGIN
-            VALUE "FileDescription", "MensEt MFC Application"
-            VALUE "FileVersion", "1, 0, 0, 1"
+            VALUE "FileDescription", "MensEt Robot Reasoner"
+            VALUE "FileVersion", "4.80.0.1"
             VALUE "InternalName", "MensEt"
-            VALUE "LegalCopyright", "Copyright (C) 2002"
-            VALUE "OriginalFilename", "MensEt.EXE"
-            VALUE "ProductName", "MensEt Application"
-            VALUE "ProductVersion", "1, 0, 0, 1"
+            VALUE "LegalCopyright", "Copyright (C) 2022 Etaoin Systems"
+            VALUE "OriginalFilename", "MensEt.exe"
+            VALUE "ProductName", "MensEt"
+            VALUE "ProductVersion", "4.80.0.1"
         END
     END
     BLOCK "VarFileInfo"

@@ -2021,6 +2021,7 @@ int jhcResize::Rigid (jhcImg& dest, const jhcImg& src, double degs, double cx, d
 // source point (px py) goes to dest point (cx cy) then rotate around (cx cy) 
 // source steps along new axes are xsc and ysc, unknown source pixels get value (r g b)
 // about 1.1ms for 50x100 dest with crop on 3.2GHz Pentium (2.3x faster than Mix)
+// for linear interpolation rather than sampling use ExtRotateRGB
 
 int jhcResize::RigidRGB (jhcImg& dest, const jhcImg& src, double degs, double cx, double cy, 
                          double px, double py, int r, int g, int b, double xsc, double ysc) const
@@ -2515,6 +2516,7 @@ int jhcResize::CopyPart (jhcImg& dest, const jhcImg& src, const jhcRoi& a) const
 
 //= Fills destination with rotated color patch from source around (cx cy).
 // "ang" says how much "dest" vertical is rotated relative to "source" vertical
+// does linear interpolation on color, to sample nearest instead use RigidRGB
 
 int jhcResize::ExtRotateRGB (jhcImg& dest, const jhcImg& src, double cx, double cy, double ang) const
 {

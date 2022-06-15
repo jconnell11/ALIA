@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2017 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -165,6 +166,7 @@ int jhcSerialFTDI::Xmit (int val)
 int jhcSerialFTDI::RxArray (UC8 *vals, int n)
 {
   DWORD qlen;
+  int got;
 
   // see if Windows or FTDI serial port should be used
   if (sport != NULL)
@@ -172,10 +174,16 @@ int jhcSerialFTDI::RxArray (UC8 *vals, int n)
   if (ftdi == NULL)
     return 0;
 
-  // read bytes in and check for timeout
+  // read bytes in and check for timeout (retry if not enough at first)
   if (FT_Read(ftdi, (LPVOID) vals, n, &qlen) == FT_IO_ERROR)
 	  return -1;
-  return((int) qlen);
+  if ((got = (int) qlen) < n)
+  {
+    if (FT_Read(ftdi, (LPVOID)(vals + got), n - got, &qlen) == FT_IO_ERROR)
+	    return -1;
+    got += (int) qlen;
+  }
+  return got;
 }
 
 

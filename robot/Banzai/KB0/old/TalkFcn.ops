@@ -1,0 +1,21 @@
+// commands understood by text-to-speech pattern generator
+// ================================================
+
+OP 1 - "To say something ..."
+  trig:
+    DO[ act-1 -lex-  say
+              -obj-> txt-1 ]
+-----------
+   FCN[ fcn-1 -lex-  echo_wds 
+              -pat-> txt-1 ]
+
+
+OP 2 - "To say something to someone ..."
+  trig:
+    DO[ act-1 -lex-   say
+              -dest-> agt-1
+              -obj--> txt-1 ]
+-----------
+   FCN[ fcn-1 -lex-   echo_wds 
+              -dest-> agt-1
+              -pat--> txt-1 ]

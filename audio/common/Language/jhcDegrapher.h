@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 #include "jhcGlobal.h"
 
 #include "Language/jhcNetRef.h"        // common audio
+#include "Language/jhcMorphFcns.h"
 #include "Reasoning/jhcActionTree.h"
 #include "Semantic/jhcGraphlet.h"     
 
@@ -41,11 +42,13 @@ class jhcDegrapher
 private:
   char phrase[500];
   const jhcGraphlet *gr;
+  const jhcMorphFcns *mf;
   jhcWorkMem *wmem;
-
+  
 
 // PUBLIC MEMBER VARIABLES
 public:
+  int dbg;                             
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -53,15 +56,16 @@ public:
   // creation and initialization
   ~jhcDegrapher ();
   jhcDegrapher ();
-  void Bind (jhcWorkMem *m) {wmem = m;}
-  void Bind (jhcAliaNote *m) 
-    {Bind(dynamic_cast<jhcWorkMem *>(m));}
+  void SetWords (const jhcMorphFcns *m) {mf = m;}
+  void SetMem (jhcWorkMem *m) {wmem = m;}
+  void SetMem (jhcAliaNote *m) 
+    {SetMem(dynamic_cast<jhcWorkMem *>(m));}
  
   // formatted output
   const char *NameRef (const jhcNetNode *n) const
     {return(((n == NULL) || (wmem == NULL)) ? NULL : n->Name(0, wmem->MinBlf()));}
   const char *NodeRef (const jhcNetNode *n, int nom =1)
-    {return node_ref(phrase, 500, n, nom);}
+    {return node_ref(phrase, 500, n, nom, NULL);}
   const char *UserRef () const
     {return((wmem == NULL) ? NULL : NameRef(wmem->Human()));}
 
@@ -78,16 +82,22 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // formatted output
-  const char *node_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
-  const char *obj_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
+  const char *node_ref (char *txt, int ssz, const jhcNetNode *n, int nom, const char *avoid) const;
+  const char *pred_ref (char *txt, int ssz, const jhcNetNode *n, int inf) const;
+  const char *full_pred (char *txt, int ssz, const jhcNetNode *n, int inf) const;
+
+  // object reference
+  const char *obj_ref (char *txt, int ssz, const jhcNetNode *n, int nom, const char *avoid) const;
   const char *pron_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
   bool chk_prop (const jhcNetNode *n, const char *role, const char *label, 
                  const jhcGraphlet *desc) const;
   const char *name_ref (jhcNetRef& nr, const jhcNetNode *n) const;
-  const char *add_kind (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n) const;
-  const char *add_adj (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n) const;
-  const char *pred_ref (char *txt, int ssz, const jhcNetNode *n) const;
-  const char *full_pred (char *txt, int ssz, const jhcNetNode *n) const;
+  const char *add_kind (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n, const char *avoid) const;
+  const char *add_adj (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n, const char *avoid) const;
+  const char *hyp_ref (char *txt, int ssz, const jhcNetNode *n, const char *avoid) const;
+
+  // utilities
+  char *strcatf_s (char *txt, int ssz, const char *fmt, ...) const;
 
   // main functions
   int follow_args (jhcNetNode *n) const;

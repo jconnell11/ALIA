@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,7 +48,8 @@ private:
   int lok;                      /** Communications status.                */
 
   // sensor data
-  double ht;                    /** Current height of fork stage. */
+  int raw;                      /** Scaled feedback from controller. */
+  double ht;                    /** Current height of fork stage.    */
 
   // speed estimate
   UL32 now;                     /** Time of last height reading.   */
@@ -68,6 +69,7 @@ public:
 
   // geometric calibration
   jhcParam gps;
+  int pmax, pmin;
   double top, bot;
 
 
@@ -88,6 +90,8 @@ public:
   int Check (int rpt =0, int tries =2);
   int CommOK (int bad =0) const {return lok;}
   void Inject (double ht0) {ht = ht0;}
+  int RawFB () const {return raw;}
+  void AdjustRaw (double ht0, int v0, double ht1, int v1);
 
   // low level commands
   int Freeze (int doit =1, double tupd =0.033);
@@ -102,7 +106,8 @@ public:
   // --------------------- LIFT MAIN ----------------------------
 
   // current lift information
-  double Height () const  {return ht;}
+  double Height () const {return ht;}
+  const double *LiftHt () const {return &ht;}
   double LiftIPS () const {return ips;}
   bool Moving (double sp =0.5) const {return(ips > sp);}
 
@@ -117,7 +122,6 @@ public:
   // profiled motion progress
   double LiftErr (double high, int abs =1, int lim =1) const; 
   bool LiftClose (double tol =0.2) const {return(RampDist(ht) <= tol);} 
-  bool LiftFail (double secs =0.5) const {return(RampDone() > secs);}
 
   // -------------------- LIFT EXTRAS ---------------------------
 
@@ -134,7 +138,7 @@ public:
     {return LiftTime(high, Height(), rate);}
 
   // lift read only access
-  double LiftCtrlVel () const {return RampVel();}
+  double LiftCtrlVel () const  {return RampVel();}
   double LiftCtrlGoal () const {return RampCmd();}
   int LiftWin () const {return llock0;}
 

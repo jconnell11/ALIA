@@ -1,0 +1,134 @@
+// terms associated with "SceneVis" ops and rules
+// ================================================
+
+// singular nouns
+
+=[AKO]
+  distance
+  size
+  length
+  width
+  height
+  color
+  closeness
+  farness
+  bigness
+  smallness
+  longness
+  compactness
+  wideness
+  narrowness
+  thickness
+  thinness
+  tallness
+  shortness
+  redness
+  orangeness
+  yellowness
+  greenness
+  blueness
+  purpleness
+  blackness
+  grayness
+  whiteness
+  object
+  comparison
+  nearness
+  largeness
+  fatness
+  skinniness
+  chunkiness
+
+
+// mass nouns (like "a rice")
+
+=[AKO-M]
+
+
+// adjectives
+
+=[HQ]
+  medium
+  close
+  far
+  big
+  small
+  long
+  compact
+  wide
+  narrow
+  thick
+  thin
+  tall
+  short
+  red
+  orange
+  yellow
+  green
+  blue
+  purple
+  black
+  gray
+  white
+  leftmost
+  rightmost
+  middle
+  visible
+  near
+  large
+  fat
+  skinny
+  chunky
+
+
+// proper nouns
+
+=[NAME]
+
+
+// -----------------------------------------
+
+// modifiers
+
+=[MOD]
+
+
+// directions
+
+=[DIR]
+
+
+// imperative verbs
+
+=[ACT]
+
+
+// imperative verbs requiring object and location
+
+=[ACT-2]
+ 
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  medium * acomp = more medium
+  medium * asup = most medium
+  far * acomp = farther
+  far * asup  = farthest
+  compact * acomp = more compact
+  compact * asup = most compact
+  orange * acomp = oranger
+  orange * asup  = orangest
+  yellow * acomp = yellower
+  yellow * asup  = yellowest
+  blue * acomp = bluer
+  blue * asup  = bluest
+  purple * acomp = purpler
+  purple * asup  = purplest
+  visible * acomp = more visible
+  visible * asup  = most visible
+
+
+

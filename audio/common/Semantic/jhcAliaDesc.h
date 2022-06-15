@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,6 +80,9 @@ public:
 
   //= Check if the node has no arguments.
   virtual bool ObjNode () const =0;
+
+  //= Check if the node has no properties.
+  virtual bool Naked () const =0;
 
   //= Give unique numeric index associated with node.
   virtual int Inst () const =0;

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,11 +67,12 @@ int jhcNetBuild::NameSaid (const char *alist, int mode) const
 
 
 //= Build an appropriate structure based on given association list.
+// also save input utterance for new rules or operators
 // return: 8 = farewell, 7 = greet, 6 = hail, 
 //         5 = op, 4 = rule, 3 = question, 2 = command, 1 = fact, 
 //         0 = nothing, negative for error
 
-int jhcNetBuild::Convert (const char *alist)
+int jhcNetBuild::Convert (const char *alist, const char *sent)
 {
   int spact;
 
@@ -88,7 +89,7 @@ int jhcNetBuild::Convert (const char *alist)
   if ((spact >= 1) && (spact <= 3))
     return attn_tag(spact, alist);           // fact or command
   if ((spact >= 4) && (spact <= 5))
-    return add_tag(spact, alist);            // new rule or operator
+    return add_tag(spact, alist, sent);      // new rule or operator
 
   // handle superficial speech acts
   if (HasSlot(alist, "HELLO"))               // simple greeting
@@ -102,6 +103,7 @@ int jhcNetBuild::Convert (const char *alist)
 
 
 //= Record a summary of last sentence conversion process.
+// basically shows what was produced by jhcGraphizer for last sentence
 // part of jhcNetBuild because needs access to "add" and "bulk"
 
 void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) const
@@ -126,9 +128,9 @@ void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) con
   else if (spact == 6)
     fprintf(log, "-- hail --\n\n");
   else if ((spact == 5) && (add != NULL) && (add->new_oper != NULL))
-    (add->new_oper)->Save(log, 2);
+    (add->new_oper)->Save(log, 0);
   else if ((spact == 4) && (add != NULL) && (add->new_rule != NULL))
-    (add->new_rule)->Save(log, 2);
+    (add->new_rule)->Save(log, 0);
   else if ((spact <= 3) && (spact >= 1) && (bulk != NULL))
   {
     bulk->Save(log, 2);
@@ -234,34 +236,43 @@ int jhcNetBuild::farewell_tag () const
 // save core of ADD directive in "add" for convenience
 // returns 4 for rule, 5 for operator (echoes input "kind")
 
-int jhcNetBuild::add_tag (int spact, const char *alist) 
+int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent) 
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch, *ch2;
-  jhcNetNode *input, *r;
+  jhcAliaChain *ch, *steps;
+  jhcNetNode *input, *item;
  
-  // make a new NOTE directive
+  // make a new NOTE directive for speech act
   ch = build_tag(&input, alist);
   atree->SetLex(input, "give");
-  r = atree->MakeNode("obj");
-  input->AddArg("obj", r);
-  atree->AddProp(r, "ako", ((spact == 4) ? "rule" : "operator"));
+  item = atree->MakeNode((spact == 4) ? "rule" : "op");
+  input->AddArg("obj", item);
+  atree->AddProp(item, "ako", ((spact == 4) ? "rule" : "operator"));
 
-  // tack on a generic ADD directive at the end
-  ch2 = new jhcAliaChain;
+  // make a new ADD directive to add rule or operator
+  steps = new jhcAliaChain;
   add = new jhcAliaDir(JDIR_ADD);
-  ch2->BindDir(add);
-  ch->cont = ch2;
+  (add->key).AddItem(item);            // dummy node
+  steps->BindDir(add);
+  steps->cont = ack_given(input);      // thank user for input
+  steps->fail = exp_fail(item);        // failed for some reasone
 
   // move newly create rule or operator into directive (in case slow)
   if (spact == 4)
+  {
+    rule->SetGist(sent);
     add->new_rule = rule;
+  }
   else
+  {
+    oper->SetGist(sent);
     add->new_oper = oper;
-  rule = NULL;               // prevent deletion by jhcGraphizer
+  }
+  rule = NULL;                         // prevent deletion by jhcGraphizer
   oper = NULL;
 
-  // add completed structure to attention buffer
+  // then add completed structure to attention buffer
+  ch->cont = steps;
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
   return spact;
@@ -275,20 +286,26 @@ int jhcNetBuild::add_tag (int spact, const char *alist)
 int jhcNetBuild::attn_tag (int spact, const char *alist) const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch;
-  jhcNetNode *input, *dummy;
+  jhcAliaChain *ch, *seq = bulk;
+  jhcNetNode *input, *item;
 
-  // make a new NOTE directive before bulk
+  // make a new NOTE directive for speech act
+  // question "ask act", command "tell act", fact "tell obj"
   ch = build_tag(&input, alist);
-  ch->cont = bulk;
-
-  // specialize based on speech act then point to payload
-  atree->SetLex(input, ((spact <= 2) ? "tell" : "ask"));
-//  bulk->RefSteps(input, ((spact == 2) ? "cmd" : "obj"), *atree);
-  dummy = atree->MakeNode((spact == 2) ? "act" : "fact");
-  input->AddArg(((spact == 2) ? "cmd" : "obj"), dummy);
+  atree->SetLex(input, ((spact >= 3) ? "ask" : "tell"));
+  item = atree->MakeNode("plan");
+  input->AddArg(((spact >= 2) ? "act" : "obj"), item);
  
-  // add completed structure to attention buffer
+  // possibly acknowledge a new fact (prepend)
+  if (spact == 1)
+  {
+    seq = ack_given(input);
+    seq->cont = bulk;
+  }
+
+  // tack on a TRY directive encapsulating the bulk sequence
+  // then add completed structure to attention buffer
+  ch->cont = guard_plan(seq, item);
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
   return spact;
@@ -322,12 +339,67 @@ jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *alist) cons
 }
 
 
+//= Generate a TRY directive encapsulating payload (symbolic node "ref").
+// returns chain step with its overall fail branch being an explanation
+
+jhcAliaChain *jhcNetBuild::guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const
+{
+  jhcAliaChain *ch = new jhcAliaChain;
+  jhcAliaDir *seq = new jhcAliaDir(JDIR_TRY);
+
+  (seq->key).AddItem(plan);          // dummy node
+  seq->SetMethod(steps);                        
+  ch->BindDir(seq);
+  ch->fail = exp_fail(plan);
+  return ch;
+}
+
+
+//= Add a request to explain the failure of some action.
+
+jhcAliaChain *jhcNetBuild::exp_fail (jhcNetNode *plan) const
+{
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *ch = new jhcAliaChain;
+  jhcAliaDir *cry = new jhcAliaDir(JDIR_DO);
+  jhcNetNode *exp, *prob;
+
+  atree->BuildIn(&(cry->key));
+  exp  = atree->MakeNode("act", "explain");
+  prob = atree->MakeNode("fail", "fail");
+  prob->AddArg("act", plan);
+  exp->AddArg("obj", prob);
+  atree->BuildIn(NULL);
+  ch->BindDir(cry);
+  return ch;
+}
+
+
+//= Add a request to acknowledge the speech act.
+
+jhcAliaChain *jhcNetBuild::ack_given (jhcNetNode *input) const
+{
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *ch;
+  jhcAliaDir *thank;
+  jhcNetNode *act;
+
+  ch = new jhcAliaChain;
+  thank = new jhcAliaDir(JDIR_DO);
+  atree->BuildIn(&(thank->key));
+  act = atree->MakeNode("act", "acknowledge");
+  act->AddArg("obj", input);
+  ch->BindDir(thank);
+  return ch;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
-//                               Utilities                               //
+//                           Value Range Rules                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Read a file of potentential property values and makes auxilliary files.
-// read from "kern.vals" with format:
+//= Reads a file of potentential property values and makes auxilliary files.
+// reads from "kern.vals" with format:
 // <pre>
 // 
 //   =width : narrow wide    // value "width" with lo = "narrow" and hi = "wide" (exclusive)
@@ -342,16 +414,17 @@ jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *alist) cons
 // </pre>    
 // values for a property are: very <lo>, <lo>, medium <hi>, <hi>, very <hi>
 // for colloquial phrasing sometimes <lo> and <hi> have to be reversed, e.g. "medium close"
-// returns number of categories read and generates starter files "kern0.rules" and "kern0.ops"
-// Note: these output files can be further processed with HarvestLex to give a starter ".sgm" file
+// returns number of categories read and generates starter files "kern0.rules" and "kern_v0.rules"
+// Note: these output files can be further processed with HarvestLex to give a starter "kern0.sgm" file
+//       gists might have phrases like "farer" instead of "farther" if "kern.sgm" file is incomplete
 
-int jhcNetBuild::AutoVals (const char *kern, const char *fcn) const
+int jhcNetBuild::AutoVals (const char *kern) 
 {
   jhcTxtLine txt;
   char fname[200], hi[40], lo[40], cat[40] = "";
-  FILE *rules, *ops; 
+  FILE *rules, *imply;  
   const char *val, *base;
-  int nr = 0, np = 0, nc = 0;
+  int nr = 0, ni = 0, nc = 0;
 
   // open input and output files
   if (kern == NULL)
@@ -362,23 +435,28 @@ int jhcNetBuild::AutoVals (const char *kern, const char *fcn) const
   sprintf_s(fname, "%s0.rules", kern);
   if (fopen_s(&rules, fname, "w") != 0)
     return txt.Close();
-  sprintf_s(fname, "%s0.ops", kern);
-  if (fopen_s(&ops, fname, "w") != 0)
+  sprintf_s(fname, "%s_v0.rules", kern);
+  if (fopen_s(&imply, fname, "w") != 0)
   {
     fclose(rules);
     return txt.Close();
   }
 
   // write output file headers
-  if ((val = strrchr(kern, '\\')) == NULL)
+  if ((val = strrchr(kern, '\\')) != NULL)
+    val++;
+  else
     val = kern;
-  if ((base = strrchr(val, '/')) == NULL)
+  if ((base = strrchr(val, '/')) != NULL)
+    base++;
+  else
     base = val;
-  fprintf(rules, "// Standard inferences for \"%s\" kernel\n", base + 1);
-  fprintf(ops,   "// Basic interface to \"%s\" kernel\n", base + 1);
+  fprintf(rules, "// Category definitions and rules for %s kernel\n", base);
+  fprintf(rules, "// ========================================================\n\n");
+  fprintf(imply, "// Inferences between category values in %s kernel\n", base);
+  fprintf(imply, "// ========================================================\n\n");
 
   // look for non-comment input lines with category prefix
-  strcpy_s(fname, ((fcn != NULL) ? fcn : "vis"));
   while (txt.NextContent() != NULL)
   {
     // see if new category, term alias, or possible value
@@ -391,30 +469,39 @@ int jhcNetBuild::AutoVals (const char *kern, const char *fcn) const
       txt.Token(hi, 1);
       nc++;
 
-      // add delimiters to output files between categories
-      fprintf(rules, "// ================================================\n\n");
-      fprintf(ops,   "// ================================================\n\n");
+      // insert delimiters between categories in basic rules
+      if (nr > 0)
+        fprintf(rules, "// ------------------------------------------------\n\n");
 
-      // create basic rules and ops for category
-      if ((*lo != '\0') && (*hi != '\0'))
+      // ranges with hi and lo vals (no imply rules for things like colors)
+      if ((*lo != '\0') && (*hi != '\0'))                  
       {
-        nr = range_rules(rules, cat, lo, hi, nr);
-        np = range_ops(ops, fname, cat, np);
+        if (ni > 0)
+          fprintf(imply, "// ================================================\n\n");
+        nr = range_rules(rules, cat, lo, hi, nr);          
+        ni = exclude_rules(imply, lo, hi, ni);
       }
-      else
-        np = list_ops(ops, fname, cat, np);
     }
-    else if ((*lo == '\0') || (*hi == '\0'))
-      nr = value_rules(rules, cat, txt.Token(), nr);
-    else if (txt.Begins("-"))
-      nr = alias_rules(rules, cat, lo, txt.Token() + 1, nr);
-    else if (txt.Begins("+"))
-      nr = alias_rules(rules, cat, hi, txt.Token() + 1, nr);
+    else if (*cat != '\0') 
+    {
+      if ((*lo == '\0') || (*hi == '\0'))      
+      {            
+        // enumerations like color
+        val = txt.Token();
+        nr = value_rules(rules, cat, val, -nr);     
+      }
+      else if (txt.Begins("-"))
+        ni = alias_rules(imply, cat, lo, txt.Token() + 1, ni);
+      else if (txt.Begins("+"))
+        ni = alias_rules(imply, cat, hi, txt.Token() + 1, ni);
+    }
     txt.Next(1);  
   }    
 
-  // cleanup
-  fclose(ops);
+  // add separator for user extras then cleanup
+  fprintf(rules, "// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n");
+  fprintf(imply, "// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n");
+  fclose(imply);
   fclose(rules);
   txt.Close();
   return nc;
@@ -428,20 +515,10 @@ int jhcNetBuild::range_rules (FILE *out, const char *cat, const char *lo, const 
   char mid[40];
   int nr = n;
 
-  // make values member of the category
   sprintf_s(mid, "medium %s", hi);
   nr = value_rules(out, cat, lo,  nr);
   nr = value_rules(out, cat, mid, -nr);
   nr = value_rules(out, cat, hi,  nr);
-  fprintf(out, "// ------------------------------------------------\n\n");
-
-  // base values are mutually exclusive
-  nr = mutex_rule(out, lo,  mid, nr);
-  nr = mutex_rule(out, lo,  hi,  nr);
-  nr = mutex_rule(out, mid, lo,  nr);
-  nr = mutex_rule(out, mid, hi,  nr);
-  nr = mutex_rule(out, hi,  lo,  nr);
-  nr = mutex_rule(out, hi,  mid, nr);
   return nr;
 }
 
@@ -455,33 +532,57 @@ int jhcNetBuild::value_rules (FILE *out, const char *cat, const char *val, int n
   int nr = abs(n);
 
   // membership rule
-  fprintf(out, "// RULE %d - %c%s is a %s\n", nr + 1, toupper(val[0]), val + 1, cat);
-  fprintf(out, "  if:  hq-1 -lex-  %s\n", val);
-  fprintf(out, "            -hq--> obj-1\n");
-  fprintf(out, "then: ako-1 -lex-  %s\n", cat);
-  fprintf(out, "            -ako-> hq-1\n\n");
+  fprintf(out, "RULE %d - \"%c%s is a %s\"\n", nr + 1, toupper(val[0]), val + 1, cat);
+  fprintf(out, "    if:  hq-1 -lex-  %s\n", val);
+  fprintf(out, "              -hq--> obj-1\n");
+  fprintf(out, "  then: ako-1 -lex-  %s\n", cat);
+  fprintf(out, "              -ako-> hq-1\n\n");
 
   // create artificial category from value ("wide" -> "wideness")
   if (n < 0)
     return(nr + 1);
   mf.PropKind(ness, val);
-  if (strcmp(ness, cat) == 0)
+  if (strcmp(ness, cat) == 0)          // skip "thick" -> "thickness"
     return(nr + 1);
   
   // search rule
-  fprintf(out, "// RULE %d - A %s is a %s\n", nr + 2, ness, cat);   
-  fprintf(out, "  if: ako-1 -lex-  %s\n", ness);
-  fprintf(out, "            -ako-> hq-1\n");
-  fprintf(out, "then: ako-2 -lex-  %s\n", cat);
-  fprintf(out, "            -ako-> hq-1\n\n");
+  fprintf(out, "RULE %d - \"A %s is a %s\"\n", nr + 2, ness, cat);   
+  fprintf(out, "    if: ako-1 -lex-  %s\n", ness);
+  fprintf(out, "              -ako-> hq-1\n");
+  fprintf(out, "  then: ako-2 -lex-  %s\n", cat);
+  fprintf(out, "              -ako-> hq-1\n\n");
 
   // result conversion rule
-  fprintf(out, "// RULE %d - A %s is a %s\n", nr + 3, cat, ness);
-  fprintf(out, "  if: ako-1 -lex-  %s\n", cat);
-  fprintf(out, "            -ako-> hq-1\n");
-  fprintf(out, "then: ako-2 -lex-  %s\n", ness);
-  fprintf(out, "            -ako-> hq-1\n\n");
+  fprintf(out, "RULE %d - \"A %s is a %s\"\n", nr + 3, cat, ness);
+  fprintf(out, "    if: ako-1 -lex-  %s\n", cat);
+  fprintf(out, "              -ako-> hq-1\n");
+  fprintf(out, "  then: ako-2 -lex-  %s\n", ness);
+  fprintf(out, "              -ako-> hq-1\n\n");
   return(nr + 3);
+}
+
+
+//= Have one value in a range precludes object from having another value in range.
+
+int jhcNetBuild::exclude_rules (FILE *out, const char *lo, const char *hi, int n) const
+{
+  char mid[40];
+  int nr = n;
+
+  // properties (first in category so no delimiter)
+  sprintf_s(mid, "medium %s", hi);
+  nr = mutex_rule(out, lo,  mid, nr);
+  nr = mutex_rule(out, lo,  hi,  nr);
+  nr = mutex_rule(out, mid, lo,  nr);
+  nr = mutex_rule(out, mid, hi,  nr);
+  nr = mutex_rule(out, hi,  lo,  nr);
+  nr = mutex_rule(out, hi,  mid, nr);
+
+  // comparisons
+  fprintf(out, "// ------------------------------------------------\n\n");
+  nr = opposite_rule(out, lo, hi, nr);
+  nr = opposite_rule(out, hi, lo, nr);
+  return nr;
 }
 
 
@@ -489,12 +590,31 @@ int jhcNetBuild::value_rules (FILE *out, const char *cat, const char *val, int n
 
 int jhcNetBuild::mutex_rule (FILE *out, const char *val, const char *alt, int n) const
 {
-  fprintf(out, "// RULE %d - If something is %s then it is not %s\n", n + 1, val, alt);
-  fprintf(out, "  if: hq-1 -lex-  %s\n", val);
-  fprintf(out, "           -hq--> obj-1\n");
-  fprintf(out, "then: hq-2 -lex-  %s\n", alt);
-  fprintf(out, "           -neg-  1\n");
-  fprintf(out, "           -hq--> obj-1\n\n");
+  fprintf(out, "RULE %d - \"If something is %s then it is not %s\"\n", n + 1, val, alt);
+  fprintf(out, "    if: hq-1 -lex-  %s\n", val);
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "  then: hq-2 -lex-  %s\n", alt);
+  fprintf(out, "             -neg-  1\n");
+  fprintf(out, "             -hq--> obj-1\n\n");
+  return(n + 1);
+}
+
+
+//= Opposite extremes of the comparison range cannot both be true.
+// gists might have phrases like "more far" instead of "farther" if "kern.sgm" file is incomplete
+
+int jhcNetBuild::opposite_rule (FILE *out, const char *v1, const char *v2, int n) const
+{
+  char c1[40], c2[40]; 
+
+  fprintf(out, "RULE %d - \"If something is %s than something else then that something is %s than it\"\n",
+               n + 1, mf.SurfWord(c1, v1, JTAG_ACOMP), mf.SurfWord(c2, v2, JTAG_ACOMP)); 
+  fprintf(out, "    if: hq-1 -lex-  %s\n", v1);
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "             -alt-> obj-2\n");
+  fprintf(out, "  then: hq-2 -lex-  %s\n", v2);
+  fprintf(out, "             -hq--> obj-2\n");
+  fprintf(out, "             -alt-> obj-1\n\n");
   return(n + 1);
 }
 
@@ -510,82 +630,27 @@ int jhcNetBuild::alias_rules (FILE *out, const char *cat, const char *val, const
   nr = value_rules(out, cat, alt, nr);
 
   // affirm alternate term
-  fprintf(out, "// RULE %d - If something is %s then it is %s\n", nr + 1, val, alt);
-  fprintf(out, "  if: hq-1 -lex-  %s\n", val);
-  fprintf(out, "           -hq--> obj-1\n");
-  fprintf(out, "then: hq-2 -lex-  %s\n", alt);
-  fprintf(out, "           -hq--> obj-1\n\n");
+  fprintf(out, "RULE %d - \"If something is %s then it is %s\"\n", nr + 1, val, alt);
+  fprintf(out, "    if: hq-1 -lex-  %s\n", val);
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "  then: hq-2 -lex-  %s\n", alt);
+  fprintf(out, "             -hq--> obj-1\n\n");
 
   // refute alternate term
-  fprintf(out, "// RULE %d - If something is not %s then it is not %s\n", nr + 2, val, alt);
-  fprintf(out, "  if: hq-1 -lex-  %s\n", val);
-  fprintf(out, "           -neg-  1\n");
-  fprintf(out, "           -hq--> obj-1\n");
-  fprintf(out, "then: hq-2 -lex-  %s\n", alt);
-  fprintf(out, "           -neg-  1\n");
-  fprintf(out, "           -hq--> obj-1\n\n");
+  fprintf(out, "RULE %d - \"If something is not %s then it is not %s\"\n", nr + 2, val, alt);
+  fprintf(out, "    if: hq-1 -lex-  %s\n", val);
+  fprintf(out, "             -neg-  1\n");
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "  then: hq-2 -lex-  %s\n", alt);
+  fprintf(out, "             -neg-  1\n");
+  fprintf(out, "             -hq--> obj-1\n\n");
   return(nr + 2);
 }
 
 
-//= Add operators that call functions to determine the value of some range property.
-
-int jhcNetBuild::range_ops (FILE *out, const char *pre, const char *cat, int np) const
-{
-  // basic information finding
-  fprintf(out, "// OP %d - To find the %s of something ...\n", np + 1, cat);
-  fprintf(out, "trig:\n");
-  fprintf(out, "  FIND[  hq-1 -hq--> obj-1\n");
-  fprintf(out, "        ako-1 -lex-  %s\n", cat);
-  fprintf(out, "              -ako-> hq-1 ]\n"); 
-  fprintf(out, "  ----------\n");
-  fprintf(out, "   FCN[ fcn-1 -lex-  %s_value\n", pre);
-  fprintf(out, "              -str-  %s\n", cat);
-  fprintf(out, "              -arg-> obj-1 ]\n\n");
-
-  // indirect assertion testing (relies on mutexes)
-  fprintf(out, "// OP %d - To check if something is some %s ...\n", np + 2, cat);
-  fprintf(out, "trig:\n");
-  fprintf(out, "   CHK[  hq-1 -hq--> obj-1\n");
-  fprintf(out, "        ako-1 -lex-  %s\n", cat);
-  fprintf(out, "              -ako-> hq-1 ]\n"); 
-  fprintf(out, "  ----------\n");
-  fprintf(out, "   FCN[ fcn-1 -lex-  %s_value\n", pre);
-  fprintf(out, "              -str-  %s\n", cat);
-  fprintf(out, "              -arg-> obj-1 ]\n\n");
-  return(np + 2);
-}
-
-
-//= Add operators that call functions to determine the value of some category.
-
-int jhcNetBuild::list_ops (FILE *out, const char *pre, const char *cat, int np) const
-{
-  char abbr[40];
-
-  // basic information finding
-  fprintf(out, "// OP %d - To find the %s of something ...\n", np + 1, cat);
-  fprintf(out, "trig:\n");
-  fprintf(out, "  FIND[  hq-1 -hq--> obj-1\n");
-  fprintf(out, "        ako-1 -lex-  %s\n", cat);
-  fprintf(out, "              -ako-> hq-1 ]\n"); 
-  fprintf(out, "  ----------\n");
-  fprintf(out, "   FCN[ fcn-1 -lex-  %s_%s\n", pre, cat);
-  fprintf(out, "              -arg-> obj-1 ]\n\n");
-
-  // assertion testing
-  strncpy_s(abbr, cat, 3);
-  fprintf(out, "// OP %d - To check if something is some %s ...\n", np + 2, cat);
-  fprintf(out, "trig:\n");
-  fprintf(out, "   CHK[  hq-1 -hq--> obj-1\n");
-  fprintf(out, "        ako-1 -lex-  %s\n", cat);
-  fprintf(out, "              -ako-> hq-1 ]\n"); 
-  fprintf(out, "  ----------\n");
-  fprintf(out, "   FCN[ fcn-1 -lex-  %s_%s_ok\n", pre, abbr);
-  fprintf(out, "              -arg-> hq-1 ]\n\n");
-  return(np + 2);
-}
-
+///////////////////////////////////////////////////////////////////////////
+//                         Vocabulary Generation                         //
+///////////////////////////////////////////////////////////////////////////
 
 //= Get potential lexicon used by a set of operators and rules.
 // examines files "kern.ops" and "kern.rules" (if they exist)
@@ -612,6 +677,8 @@ int jhcNetBuild::HarvestLex (const char *kern)
   sprintf_s(fname, "%s.ops", kern);
   scan_lex(fname);
   sprintf_s(fname, "%s.rules", kern);
+  scan_lex(fname);
+  sprintf_s(fname, "%s_v.rules", kern);
   scan_lex(fname);
 
   // generate output grammar file
@@ -647,7 +714,7 @@ int jhcNetBuild::scan_lex (const char *fname)
         // find associated word(s) 
         wds = sep + 5;
         while (isalnum(*(++wds)) == 0)
-          if ((*wds == '\0') || (*wds == '\n'))
+          if ((*wds == '\0') || (*wds == '\n') || (*wds == '*'))
             break;
         if (isalnum(*wds) == 0)
           continue;
@@ -660,6 +727,8 @@ int jhcNetBuild::scan_lex (const char *fname)
           end++;
         }
         strncpy_s(term, wds, last - wds + 1);
+        if ((strcmp(term, "me") == 0) || (strcmp(term, "you") == 0))
+          continue;
 
         // get category type from previous node label
         last = sep;

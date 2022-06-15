@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,10 +40,10 @@
 //= Various different kinds of directives.
 // NOTE is a special bridge between declarative and procedural
 // must remain consistent with "ktag" strings
-//                  0          1          2         3          4          5
-enum JDIR_KIND {JDIR_NOTE, JDIR_DO,  JDIR_ANTE, JDIR_POST, JDIR_PUNT, JDIR_FCN, 
-                JDIR_CHK,  JDIR_ACH, JDIR_KEEP, JDIR_FIND, JDIR_BIND, JDIR_ADD, JDIR_MAX};
-//                  6          7          8         9         10         11        12  
+//                  0          1          2         3          4         5         6
+enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_PUNT, JDIR_FCN, JDIR_CHK, JDIR_ACH, 
+                JDIR_KEEP, JDIR_BIND, JDIR_FIND, JDIR_NONE, JDIR_ADD, JDIR_TRY, JDIR_MAX};
+//                  7          8          9         10         11        12        13    
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -70,12 +70,6 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,  JDIR_ANTE, JDIR_POST, JDIR_PUNT, JDIR_FCN,
 // ANTE: preparing for an action
 //       try all applicable operators one-by-one
 //       progress to DO when no more operators
-//       cannot be top-level focus
-// 
-// POST: cleaning up after an action
-//       keys off DO marked result (success/fail)
-//       try all applicable operators one-by-one
-//       return DO result when no more operators
 //       cannot be top-level focus
 // 
 // PUNT: signal failure of triggering condition
@@ -107,6 +101,9 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,  JDIR_ANTE, JDIR_POST, JDIR_PUNT, JDIR_FCN,
 //       never succeeds, can only be stopped
 //       times out when done if top-level focus 
 // 
+// BIND: like FIND but will assume some new item if needed 
+//       only used for referential phrases, never a command
+//
 // FIND: bind description to known item
 //       try all applicable operators one-by-one
 //       done (fail) when no more operators
@@ -114,11 +111,14 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,  JDIR_ANTE, JDIR_POST, JDIR_PUNT, JDIR_FCN,
 //       if successors fail, restart to get new binding
 //       times out when done if top-level focus
 //
-// BIND: like FIND but will assume some new item if needed 
-//       only used for referential phrases, never a command
+// NONE: things to try when FIND fails
 //
 //  ADD: accept new rule or operator into system
 //       allows delay to see if user is reliable
+// 
+//  TRY: accept new command or question sequence
+//       allows detection of failure at any step
+//  
 // </pre>
 
 class jhcAliaDir : private jhcSituation
@@ -141,7 +141,9 @@ private:
 
   // partial CHK and FIND control
   jhcGraphlet full;
-  int subset, gtst;
+  const jhcNetNode *focus;
+  jhcNetNode *pron;
+  int subset, gtst, exc, recent;
 
   // choices for FIND directive
   jhcNetNode *guess[gmax];
@@ -157,11 +159,10 @@ private:
   // execution state
   jhcAliaChain *meth;
   jhcGraphlet ctx;
-  int inst, verdict, wait, checking;
+  int inst, verdict, wait, chk_state;
 
-  // multi-method for NOTE
-  double obsess;
-  UL32 t0;
+  // NOTE perseverance
+  UL32 t0, t1;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -194,18 +195,24 @@ public:
   bool ConcreteFind () const   {return(((kind == JDIR_FIND) || (kind == JDIR_BIND)) && hyp.Empty());}
   const char *KindTag () const {return ktag[kind];}
   jhcNetNode *KeyMain () const {return key.Main();}
+  const char *KeyNick () const {return key.MainNick();}
+  const char *KeyTag () const  {return key.MainTag();}
   int MaxOps () const          {return omax;}
   int MaxHist () const         {return hmax;}
   JDIR_KIND CvtKind (const char *name) const;
   const char *CvtTag (JDIR_KIND k) const;
   int MaxDepth () const;
   int NumGoals (int leaf =0) const;
+  const jhcAliaChain *Method () const {return meth;}
+  int NumGuess () const {return __max(cand, cand0);}
+  int NumTries () const {return nri;}
 
   // building
   void Copy (const jhcAliaDir& ref);
   int CopyBind (jhcNodePool& pool, const jhcAliaDir& ref, jhcBindings& b, const jhcGraphlet *ctx =NULL);
   void SetKind (JDIR_KIND k2) {kind = k2;}
   int SetKind (const char *tag);
+  void SetMethod (jhcAliaChain *ch) {meth = ch;}
   bool HasAlt () const {return(kind == JDIR_CHK);}
   bool Involves (const jhcNetNode *item) const;
   int RefDir (jhcNetNode *src, const char *slot, jhcNodePool& pool) const;
@@ -228,6 +235,7 @@ public:
 private:
   // creation and initialization
   int reset ();
+  int delete_meth ();
 
   // building
   void share_context (const jhcGraphlet *ctx);
@@ -238,6 +246,7 @@ private:
   int next_method ();
   int report (int val);
   void alter_pref () const;
+  void err_rule ();
   void halt_subgoal ();
 
   // variable scoping
@@ -256,14 +265,19 @@ private:
   int reduce_cond (const jhcAliaOp *op, const jhcBindings& match);
   int seek_match ();
   int pat_confirm (const jhcGraphlet& desc);
-  int match_found (jhcBindings *m, int& mc);
+  int complete_chk (jhcBindings *m, int& mc);
 
   // FIND control
   int seek_instance ();
   jhcNetNode *sat_criteria (const jhcGraphlet& desc, int exc, int after);
+  int complete_find (jhcBindings *m, int& mc);
   class jhcAliaChain *chk_method ();
   int assume_found ();
 
+  // jhcSituation override
+  int match_found (jhcBindings *m, int& mc)
+    {return((chkmode > 0) ? complete_chk(m, mc) : complete_find(m, mc));}
+  
 
 };
 

@@ -1,0 +1,126 @@
+// basic commands for manipulating visible objects
+// ================================================
+
+OP 1 - "To grab a thing ..."
+  trig:   
+    DO[ act-1 -lex-  grab 
+              -obj-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  man_grab 
+              -arg-> obj-1 ]
+
+
+OP 2 - "To lift a thing ..."
+  trig:   
+    DO[ act-1 -lex-  lift
+              -obj-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  man_lift 
+              -arg-> obj-1 ]
+
+
+OP 3 - "To take a thing ..."
+  trig:   
+    DO[ act-1 -lex-  take
+              -obj-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  man_take 
+              -arg-> obj-1 ]
+
+
+OP 4 - "To move a thing somehere ..."
+  trig:   
+    DO[ act-1 -lex-   move
+              -obj--> obj-1
+              -dest-> loc-1 ]
+---------------
+   FCN[ fcn-1 -lex-   man_put
+              -arg--> obj-1
+              -arg2-> loc-1 ]
+
+
+OP 5 - "To put a thing down ..."
+  trig:   
+    DO[ act-1 -lex-   put
+              -obj--> obj-1
+        dir-1 -lex-   down
+              -dir->  act-1 ]
+---------------
+   FCN[ fcn-1 -lex-   man_put
+              -arg--> obj-1 
+              -arg2-> dir-1 ]
+
+
+OP 6 - "To retract the arm ..."
+  trig:   
+    DO[ act-1 -lex-  retract
+              -obj-> obj-1 
+        ako-1 -lex-  arm
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  man_tuck
+              -arg-> obj-1 ]
+
+
+// --------------------------------------
+
+OP 7 - "Before grabbing something if you are holding something else put it down."
+  trig:   
+  ANTE[  act-1 -lex-  grab
+               -obj-> obj-1 
+         act-2 -lex-  hold
+               -agt-> self-1
+               -obj-> obj-2 
+        self-1 -lex-  me ] 
+---------------
+    DO[ act-3 -lex-  put
+              -obj-> obj-2 
+        dir-1 -lex-  down
+              -dir-> act-3 ]
+
+
+OP 8 - "Before lifting something if you are holding something else put it down."
+  trig:   
+  ANTE[  act-1 -lex-  lift
+               -obj-> obj-1 
+         act-2 -lex-  hold
+               -agt-> self-1
+               -obj-> obj-2 
+        self-1 -lex-  me ] 
+---------------
+    DO[ act-3 -lex-  put
+              -obj-> obj-2 
+        dir-1 -lex-  down
+              -dir-> act-3 ]
+
+
+OP 9 - "Before taking something if you are holding something else put it down."
+  trig:   
+  ANTE[  act-1 -lex-  take
+               -obj-> obj-1 
+         act-2 -lex-  hold
+               -agt-> self-1
+               -obj-> obj-2 
+        self-1 -lex-  me ] 
+---------------
+    DO[ act-3 -lex-  put
+              -obj-> obj-2 
+        dir-1 -lex-  down
+              -dir-> act-3 ]
+
+
+OP 10 - "Before moving something somewhere if you are holding something else put it down."
+  trig:   
+  ANTE[  act-1 -lex-   move
+               -obj--> obj-1
+               -dest-> loc-1 
+         act-2 -lex-   hold
+               -agt--> self-1
+               -obj--> obj-2 
+        self-1 -lex-   me ] 
+---------------
+    DO[ act-3 -lex-  put
+              -obj-> obj-2 
+        dir-1 -lex-  down
+              -dir-> act-3 ]
+

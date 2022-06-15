@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,7 +87,6 @@ public:
   double FracUnder (const jhcImg& src, int th =255) const;
   double FracUnder (const jhcImg& src, const jhcRoi& patch, int th =0) const;
 
-
   // border pixel counting
   int SideCount (const jhcImg& src, int side, int th =0) const;
   double SideFrac (const jhcImg& src, int side, int th =0) const;
@@ -95,14 +95,18 @@ public:
   int Centroid (double *xc, double *yc, const jhcImg& src, int th =0) const;
   int Centroid (double *xc, double *yc, const jhcImg& src, const jhcRoi& patch, int th =0) const;
   int Shape (double *xc, double *yc, double *ecc, double *ang, 
-              const jhcImg& src, const jhcRoi& patch, int th =0) const;
+             const jhcImg& src, const jhcRoi& patch, int th =0) const;
   double Cloud (double *xc, double *yc, double *sdx, double *sdy, 
                 const jhcImg& src, const jhcRoi& patch, int th =0) const;
+  double Ellipse (double *xc, double *yc, double *wid, double *len, 
+                  const jhcImg& src, const jhcRoi& patch, int th =0) const;
   int RegionNZ (jhcRoi &dest, const jhcImg& src, int th =0) const;
-//  int PtMaxX (int& px, int& py, const jhcImg& src, int th =0, int bias =1) const; 
-//  int PtMinX (int& px, int& py, const jhcImg& src, int th =0, int bias =0) const; 
   int PtMaxY (int& px, int& py, const jhcImg& src, int th =0, int bias =1) const; 
-//  int PtMinY (int& px, int& py, const jhcImg& src, int th =0, int bias =0) const; 
+  double NearPt (int& px, int& py, const jhcImg& src, int tx, int ty, int th =0) const;
+  double NearCent (int& px, int& py, const jhcImg& src, int th =0) const
+    {return NearPt(px, py, src, src.XDim() >> 1, src.YDim() >> 1, th);}
+  double NearSect (int& px, int& py, const jhcImg& src, double ang, double dev, int th =0) const;
+
 
 };
 

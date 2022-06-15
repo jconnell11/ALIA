@@ -44,6 +44,7 @@ private:
   // match keys and substitutions (now on heap)
   const jhcNetNode **key;
   jhcNetNode **sub;
+  int *term;
   int nb;
 
 
@@ -69,6 +70,9 @@ public:
   // main functions
   jhcNetNode *LookUp (const jhcNetNode *k) const;
   const jhcNetNode *FindKey (const jhcNetNode *subst) const;
+  const char *LexSub (const jhcNetNode *k) const;
+  int LexBin (const jhcNetNode& k) const;
+  bool LexAgree (const jhcNetNode *focus, const jhcNetNode *mate) const;
   int Bind (const jhcNetNode *k, jhcNetNode *subst);
   int TrimTo (int n);
   int Pop () {return TrimTo(nb - 1);}
@@ -100,6 +104,8 @@ public:
 private:
   // list functions
   int index (const jhcNetNode *probe) const;
+  const char *lookup_lex (const char *var) const;
+
 
 
 };

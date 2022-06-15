@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include <math.h>
+#include <ctype.h>
 
 #include "Reasoning/jhcAliaRule.h"
 
@@ -40,15 +41,43 @@ jhcAliaRule::~jhcAliaRule ()
 //= Default constructor initializes certain values.
 
 jhcAliaRule::jhcAliaRule ()
-{
+{ 
   // core information
   next = NULL;
+  *gist = '\0';
   id = 0;
   lvl = 3;             // default = newly told
+  conf = 1.0;
+
+  // learned overrides
+  *prov = '\0';
+  pnum = 0;
+  conf0 = 1.0;
 
   // run-time status
+  wmem = NULL;
   nh = 0;
   show = 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                            Simple Functions                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Remember human readable utterance that generated this rule.
+
+void jhcAliaRule::SetGist (const char *sent)
+{
+  char *end;
+
+  *gist = '\0';
+  if (sent == NULL)
+    return;
+  strcpy_s(gist, ((*sent == '"') ? sent + 1 : sent));
+  gist[0] = (char) toupper(gist[0]);
+  if ((end = strrchr(gist, '"')) != NULL)
+    *end = '\0';
 }
 
 
@@ -267,11 +296,10 @@ void jhcAliaRule::LinkCombo (jhcBindings& m2c, const jhcAliaRule& step2, const j
 {
   const jhcGraphlet *c2 = &(step2.cond), *r2 = &(step2.result);
   const jhcNetNode *mem, *fact;
-  jhcNetNode *combo;
-  double cf = -1.0;
   int i, nc = c2->NumItems(), nr = r2->NumItems();
 
-  // add non-halo step2 cond nodes and find most fragile intermediate (cf)
+  // add non-halo step2 cond nodes and find most fragile intermediate (conf)
+  conf = step2.conf;
   for (i = 0; i < nc; i++)
     if ((mem = b2.LookUp(c2->Item(i))) != NULL) 
     {
@@ -282,8 +310,8 @@ void jhcAliaRule::LinkCombo (jhcBindings& m2c, const jhcAliaRule& step2, const j
       {
         // get result belief from step1 rule (might have been applied to hyp)       
         fact = (mem->hbind)->FindKey(mem);
-        if ((cf < 0.0) || (fact->Belief() < cf))
-          cf = fact->Belief();
+        if (fact->Belief() < conf)
+          conf = fact->Belief();
         get_equiv(m2c, mem, 1);        // might be an arg in combo result      
       }
     }
@@ -295,15 +323,7 @@ void jhcAliaRule::LinkCombo (jhcBindings& m2c, const jhcAliaRule& step2, const j
       result.AddItem(get_equiv(m2c, mem, 1));
   connect_args(result, m2c);
   result.RemAll(cond);
-
-  // no result fact can be more sure than most fragile intermediate (cf) 
-  nr = result.NumItems();
-  for (i = 0; i < nr; i++)
-  {
-    combo = result.Item(i);
-    if (combo->Belief() > cf)
-      combo->SetBelief(cf);
-  }
+  result.ForceBelief(conf);
 }
 
 
@@ -412,11 +432,7 @@ bool jhcAliaRule::Tautology ()
 {
   jhcSituation sit;
   jhcBindings m;
-  int n = cond.NumItems(), mc = 1;
-
-  // if result is a different size then infers more or less than cond
-  if (result.NumItems() != n)
-    return false;
+  int mc = 1;
 
   // copy just precondition nodes to a new situation
   sit.BuildCond();
@@ -424,7 +440,7 @@ bool jhcAliaRule::Tautology ()
   m.Clear();
 
   // see if situation gets a match with rule result
-  m.expect = n;
+  m.expect = cond.NumItems();
   sit.bth = -1.0;
   return(sit.MatchGraph(&m, mc, *(sit.Pattern()), result) > 0);
 }
@@ -435,12 +451,25 @@ bool jhcAliaRule::Tautology ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Read at current location in a file to fill in details of self.
-// returns: 1 = successful, 0 = syntax error, -1 = end of file, -2 = file error 
+// returns: 1 = okay, 0 = syntax error, -1 = end of file, -2 = file error 
 
 int jhcAliaRule::Load (jhcTxtLine& in)
 {
+  const char *item;
   int ans;
 
+  // required header ("RULE <pnum> - <gist>" where gist is optional)
+  if (in.NextContent() == NULL)
+    return -1;
+  if (((item = in.Token()) == NULL) || (_stricmp(item, "RULE") != 0))
+    return 0;
+  if (((item = in.Token()) == NULL) || (sscanf_s(item, "%d", &pnum) != 1))
+    return 0;
+  if (((item = in.Token()) != NULL) && (strcmp(item, "-") == 0))
+    SetGist(in.Head());
+
+  // body of rule
+  in.Flush();
   if (in.NextContent() == NULL)
     return -1;
   ClrTrans();
@@ -478,12 +507,24 @@ int jhcAliaRule::load_clauses (jhcTxtLine& in)
     }
   }
 
+  // get result confidence (defaults to 1.0)
+  if (in.Begins("conf:"))
+  {
+    in.Skip("conf:");
+    if (sscanf_s(in.Head(), "%lf", &conf) != 1)
+      return 0;
+    conf0 = conf;
+    if (in.Next(1) == NULL)
+      return 0;
+  }
+
   // main consequent
   if (!in.Begins("then:"))
     return 0;
   in.Skip("then:");
   if ((ans = LoadGraph(&result, in, 1)) <= 0)
     return ans;
+  result.ForceBelief(conf);
   result.ActualizeAll(0);              // needed for match_found
   return 1;
 }
@@ -495,13 +536,17 @@ int jhcAliaRule::load_clauses (jhcTxtLine& in)
 
 int jhcAliaRule::Save (FILE *out, int detail) const
 {
-  char num[20] = "";
   int i;
 
-  // rule number
+  // header ("RULE <id> - <gist>") and optional provenance
+  if ((detail >= 2) && (*prov != '\0'))
+    jfprintf(out, "// originally rule %d from %s\n\n", pnum, prov);  
+  jfprintf(out, "RULE");
   if (id > 0)
-    _itoa_s(id, num, 10);
-  jfprintf(out, "// RULE %s\n", num);
+    jfprintf(out, " %d", id);
+  if ((detail >= 2) && (*gist != '\0'))
+    jfprintf(out, " - \"%s\"", gist);
+  jfprintf(out, "\n");
 
   // precondition
   jfprintf(out, "    if: ");
@@ -516,10 +561,14 @@ int jhcAliaRule::Save (FILE *out, int detail) const
     jfprintf(out, "\n");
   }
 
+  // confidence
+  if (conf != 1.0)
+    jfprintf(out, "  conf: %5.3f\n", conf);
+
   // save consequent and add blank line
   jfprintf(out, "  then: ");
   result.Save(out, -8, detail);
-  jfprintf(out, "\n\n");
+  jfprintf(out, "\n");
   return((ferror(out) != 0) ? -1 : 1);
 }
 

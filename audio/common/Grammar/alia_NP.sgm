@@ -10,6 +10,13 @@
   <query>
 
 
+// definite or indefinite noun phrase
+
+=[np-any]
+  <%obj>
+  <%obj-i>
+
+
 // noun phrase including plural indefinites
 
 =[np-s]
@@ -18,8 +25,17 @@
 
 // possessive noun phrase
 
-=[np-poss]
-  [WRT]
+=[%obj-p]
+  (<desc>) <NAME-P>
+  (<desc>) <AKO-P>
+  (<desc>) thing's
+  <WRT>
+
+
+// possessive "of" prepositional phrase
+
+=[%obj-pp]
+  of <art> (<desc>) <n> (<comp>)
 
 
 // vague indefinite noun phrase ("something red on the table")
@@ -47,11 +63,17 @@
 
 =[%obj]
   <def> (<desc>) <n> (<comp>)
-  <WRT> (<desc>) <n> (<comp>)
+  (<art>) <desc-p> (<desc>) <n> (<comp>)
   (<desc>) <NAME> (<comp>)
   <REF-D>
   <REF>
   <REF-L>
+
+
+// non-quantified noun phrase
+
+=[%obj-q]
+  (<desc>) <n> (<comp>)
 
 
 // noun
@@ -70,6 +92,12 @@
 
 
 // --------------------------------------------------
+
+// possessive qualifiers (up to 3 deep)
+
+=[desc-p]
+  <%obj-p> (<%obj-p> (<%obj-p>))
+
 
 // description (up to 3 adjectives)
 
@@ -93,6 +121,7 @@
   that <be> <HQ>
   <place>
   <HQ-ER> than <%obj>
+  <%obj-pp>
  
 
 // types of location phrases
@@ -113,6 +142,7 @@
   (<cop>) <comp>
   (<cop>) <%obj-i>
   (<cop>) <%obj-s>
+  (<cop>) <%obj-p>
   (<cop>) a <%n-super>
 
 

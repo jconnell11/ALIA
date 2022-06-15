@@ -5,7 +5,8 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
-//
+// Copyright 2022 Etaoin Systems
+// 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -42,8 +43,8 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  double sc;                           // from call to Enhance
-  int off;                             // from call to Enhance
+  double sc, gsc, bsc;                 // from call to Enhance
+  int off, goff, boff;                 // from call to Enhance
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -82,6 +83,7 @@ public:
   // image enhancement
   int Enhance (jhcImg& dest, const jhcImg& src, double smax =8.0, const jhcRoi *area =NULL, int omax =0);
   int Enhance (jhcImg& dest, const jhcImg& src, const jhcImg& mask, double smax =8.0, int omax =0);  
+  int Enhance3 (jhcImg& dest, const jhcImg& src, double smax =8.0, const jhcRoi *area =NULL, int omax =0);
   int Enhance16 (jhcImg& dest, const jhcImg& src, int pmax =4095, double smax =8.0, const jhcRoi *area =NULL, int omax =0);
 
   // directional projections
@@ -101,6 +103,8 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   void compute_bins (int n, int vmin, int vmax, int squash);
+  int linear_fix (double& isc, UC8 scaled[], jhcArr& hist, double smax, int omax) const;
+
 
 };
 

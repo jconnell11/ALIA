@@ -32,30 +32,29 @@
 
 
 //= Helper functions for trapezoidal velocity profiling for 3D vectors.
-// No longer has system follow trajectory of idealized point as this led
-// to herky-jerky motion. Now simply changes command speed based on distance 
-// to target and current speed. Instead of an expected time to completion 
-// there is a "no progress" indicator saying the motion is stuck (or done).
 // Can also be used with angle sets or simple scalar values. If "done" < 0
 // then treats vector coefficients as angles (i.e. mod 360 degrees).
-// NOV 2019: Added velocity deadband, moved progress to jhcTimedFcns::Stuck
-// MAY 2020: Added vector velocity to more closely match physical systems
-// special command of rt = 0 freezes control at pose where first issued
+// No longer has system follow trajectory of idealized point as this led
+// to herky-jerky motion. Now simply changes command speed based on distance 
+// to target and current speed. The system essentially constantly replans the 
+// trajectory using "sp" and "vel" (aka inertia) as the only state. 
+// This handles interruption by other subsumption behaviors more cleanly. 
+// Resulting motion is largely governed by deceleration "dstd". 
+// Note: special command of rt = 0 freezes control at pose where first issued
 
 class jhcMotRamp
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  // state variables
+public:
+  // trajectory variables
   jhcMatrix vel;     /** Motion for ideal trajectory. */
-  jhcMatrix keep;    /** Pose to use with freeze.     */
-  double sp;         /** Speed along trajectory.      */
-  int ice;
+  double sp;         /** Speed along trajectory.      */  
 
-  // progress monitoring
-  double drem;      /** Current distance from goal.    */
-  double d0;        /** Last distance during progress. */
-  double stuck;     /** Seconds since progress made.   */
+  // state variables
+  jhcMatrix keep;    /** Pose to use with freeze.    */
+  double drem;       /** Current distance from goal. */
+  int ice;           /** Whether motion is frozen.   */
 
 
 // PUBLIC MEMBER VARIABLES
@@ -82,11 +81,13 @@ public:
   void RampCfg (double v =90.0, double a =180.0, double d =180.0, double tol =2.0, double e =0.0)
     {vstd = v; astd = a; dstd = d; done = tol; dmax = e;} 
   void RampReset () 
-    {vel.Zero(); sp = 0.0; d0 = 0.0; stuck = 0.0; rt = 1.0; ice = 0;} 
+    {vel.Zero(); sp = 0.0; cmd.Zero(); rt = 1.0; ice = 0;} 
 
   // goal specification
   void RampTarget (double val, double rate =1.0) 
     {cmd.SetVec3(val, 0.0, 0.0); rt = rate;}
+  void RampTarget (double x, double y, double z, double rate =1.0) 
+    {cmd.SetVec3(x, y, z); rt = rate;}
   void RampTarget (const jhcMatrix& val, double rate =1.0) 
     {cmd.Copy(val); rt = rate;}
   void RampInc (double amt) 
@@ -94,11 +95,12 @@ public:
 
   // servo control
   double RampNext (double now, double tupd =0.033, double lead =3.0);
+  double ExactNext () {vel.Zero(); sp = 0.0; return cmd.X();}
   void RampNext (jhcMatrix& stop, const jhcMatrix& now, double tupd =0.033, double lead =3.0);
+  void ExactNext (jhcMatrix& stop, int imm =0x7);
   void RampErr (jhcMatrix& err, const jhcMatrix& loc, int abs =1) const;
   double RampDist (const jhcMatrix& loc) const {return find_dist(loc, cmd);}
   double RampDist (double loc) const {return find_dist(loc, cmd.X());}
-  double RampDone () const {return stuck;}
 
   // trajectory queries
   double RampTime (double p2, double p1, double rate =1.0) const
@@ -112,7 +114,7 @@ public:
   void SoftStop (jhcMatrix& stop, const jhcMatrix& now, double skid =0.0, double rate =1.5);
   double SoftStop (double now, double skid =0.0, double rate =1.5);
 
-  // read only state
+  // read only state  
   double RampVel (double dead =0.0) const {return((drem > dead) ? sp : 0.0);}
   double RampAxis (int i =0) const {return vel.VRefChk(i);}
   double RampCmd (int i =0) const  {return cmd.VRefChk(i);}

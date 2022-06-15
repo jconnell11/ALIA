@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,10 +37,14 @@ enum JTAG_VAL
   JTV_DEF,    // definite object ("the")
   JTV_ALT,    // alternative object ("other")
 
+  JTV_NAME,   // proper name ("Jon")
+  JTV_NAMEP,  // possessive name
+
   JTV_NZERO,  // absent noun ("none") 
   JTV_NSING,  // singular noun
   JTV_NPL,    // plural noun
   JTV_NMASS,  // mass noun
+  JTV_NPOSS,  // possessive noun
 
   JTV_APROP,  // normal adjective
   JTV_ACOMP,  // comparative adjective (-er)
@@ -65,10 +70,14 @@ const char JTAG_STR[JTV_MAX][10] =
   "def",
   "alt",
 
+  "name",
+  "namep",
+
   "nzero", 
   "nsing",
   "npl", 
   "nmass", 
+  "nposs", 
 
   "aprop", 
   "acomp",
@@ -89,31 +98,40 @@ const char JTAG_STR[JTV_MAX][10] =
 
 enum JTAG_MASK
 {
-  JTAG_DEF   = (0x01 << JTV_DEF),
+  JTAG_DEF   = (0x01 << JTV_DEF),      
   JTAG_ALT   = (0x01 << JTV_ALT),
+
+  JTAG_NAME  = (0x01 << JTV_NAME),
+  JTAG_NAMEP = (0x01 << JTV_NAMEP),    // digit 0
 
   JTAG_NZERO = (0x01 << JTV_NZERO),
   JTAG_NSING = (0x01 << JTV_NSING),
   JTAG_NPL   = (0x01 << JTV_NPL),
-  JTAG_NMASS = (0x01 << JTV_NMASS),
+  JTAG_NMASS = (0x01 << JTV_NMASS),    // digit 1
+  JTAG_NPOSS = (0x01 << JTV_NPOSS),
 
   JTAG_APROP = (0x01 << JTV_APROP),
   JTAG_ACOMP = (0x01 << JTV_ACOMP),
-  JTAG_ASUP  = (0x01 << JTV_ASUP),
+  JTAG_ASUP  = (0x01 << JTV_ASUP),     // digit 2
 
   JTAG_VIMP  = (0x01 << JTV_VIMP),
   JTAG_VPRES = (0x01 << JTV_VPRES),
   JTAG_VPAST = (0x01 << JTV_VPAST),
-  JTAG_VPROG = (0x01 << JTV_VPROG),
+  JTAG_VPROG = (0x01 << JTV_VPROG),    // digit 3
   JTAG_VFUT  = (0x01 << JTV_VFUT),
   JTAG_VINF  = (0x01 << JTV_VINF)
 
 };
 
 
+//= All mask bits associated with proper nouns.
+
+const UL32 JTAG_PROPER = (JTAG_NAME | JTAG_NAMEP);
+
+
 //= All mask bits associated with nouns.
 
-const UL32 JTAG_NOUN = (JTAG_DEF | JTAG_ALT | JTAG_NZERO | JTAG_NSING | JTAG_NPL | JTAG_NMASS);
+const UL32 JTAG_NOUN = (JTAG_DEF | JTAG_ALT | JTAG_NZERO | JTAG_NSING | JTAG_NPL | JTAG_NMASS | JTAG_NPOSS);
 
 
 //= All mask bits associated with verbs.

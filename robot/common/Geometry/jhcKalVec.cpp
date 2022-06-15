@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2017 IBM Corporation
+// Copyright 2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,6 +106,17 @@ int jhcKalVec::Update (const jhcMatrix& raw, jhcMatrix *diff, double dt)
   if (diff != NULL)
     diff->SetVec3(inc[0], inc[1], inc[2]);
   return cnt;
+}
+
+
+//= Perform update using discrete values instead of a vector.
+
+int jhcKalVec::Update (double x, double y, double z, jhcMatrix *diff, double dt)
+{
+  jhcMatrix est(4);
+
+  est.SetVec3(x, y, z);
+  return Update(est, diff, dt);
 }
 
 

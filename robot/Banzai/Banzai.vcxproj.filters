@@ -423,9 +423,6 @@
     <ClCompile Include="..\common\Action\jhcAliaChain.cpp">
       <Filter>Source Files\common robot\Action</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Action\jhcTimedFcns.cpp">
-      <Filter>Source Files\common robot\Action</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Action\jhcAliaCore.cpp">
       <Filter>Source Files\common robot\Action</Filter>
     </ClCompile>
@@ -525,9 +522,6 @@
     <ClCompile Include="..\..\audio\common\Parse\jhcNameList.cpp">
       <Filter>Source Files\common audio\Parse</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Eli\jhcEliGrok.cpp">
-      <Filter>Source Files\common robot\Eli</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Grounding\jhcSocial.cpp">
       <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
@@ -572,6 +566,24 @@
     </ClCompile>
     <ClCompile Include="..\common\Action\jhcAliaMood.cpp">
       <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcManipulate.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Environ\jhcTable.cpp">
+      <Filter>Source Files\common robot\Environ</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcSupport.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Eli\jhcEliGrok.cpp">
+      <Filter>Source Files\common robot\Eli</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcStdKern.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcIntrospect.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -863,9 +875,6 @@
     <ClInclude Include="..\common\Action\jhcAliaChain.h">
       <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\Action\jhcTimedFcns.h">
-      <Filter>Header Files\common robot\Action</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Action\jhcAliaCore.h">
       <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
@@ -1027,6 +1036,21 @@
     </ClInclude>
     <ClInclude Include="..\common\Action\jhcAliaMood.h">
       <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcManipulate.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Environ\jhcTable.h">
+      <Filter>Header Files\common robot\Environ</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcSupport.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcStdKern.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcIntrospect.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

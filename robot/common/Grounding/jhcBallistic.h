@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +33,7 @@
 
 #include "Data/jhcParam.h"             // common video
 
-#include "Action/jhcTimedFcns.h"       // common robot
+#include "Action/jhcStdKern.h"         // common robot
 #include "Eli/jhcEliGrok.h"       
 
 
@@ -42,7 +43,7 @@
 // NOTE: also volunteers "I am tired" when the battery gets low
 //       and "I lost grip" when it accidentally drops something
 
-class jhcBallistic : public jhcTimedFcns
+class jhcBallistic : public jhcStdKern
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -137,12 +138,8 @@ private:
 
   // overridden virtuals
   void local_reset (jhcAliaNote *top);
-  void local_volunteer ();
   int local_start (const jhcAliaDesc *desc, int i);
   int local_status (const jhcAliaDesc *desc, int i);
-
-  // reported events
-  void hand_drop ();
 
   // overall poses
   JCMD_DEF(ball_stop);
@@ -178,6 +175,9 @@ private:
   JCMD_DEF(ball_neck);
   int get_gaze (int i, const jhcAliaDesc *act);
   int get_gsp (double& speed, const jhcAliaDesc *act) const;
+
+  // utilities
+  bool stuck (int i, double err, double prog, int start, int mid);
 
 
 };

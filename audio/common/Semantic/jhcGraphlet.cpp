@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -310,6 +310,49 @@ int jhcGraphlet::ActualizeAll (int ver) const
 }
 
 
+//= Find the minimum belief over all nodes in the description.
+
+double jhcGraphlet::MinBelief () const
+{
+  double b, lo;
+  int i;
+
+  if (ni <= 0)
+    return 0.0;
+  lo = desc[0]->Default();
+  for (i = 1; i < ni; i++)
+  {
+    b = desc[i]->Default();
+    lo = __min(b, lo);
+  }
+  return lo;
+}
+
+
+//= Make all nodes in list have the same belief if non-zero.
+
+void jhcGraphlet::ForceBelief (double blf)
+{
+  int i;
+
+  for (i = 0; i < ni; i++)
+//    if (desc[i]->Default() > 0.0)
+    desc[i]->SetBelief(blf);
+}
+
+
+//= Keep items in description from being garbage collected.
+// for a predicate to be valid its arguments need to exist also
+
+void jhcGraphlet::MarkSeeds () const
+{
+  int i;
+
+  for (i = 0; i < ni; i++)
+    desc[i]->keep = 1;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                              List Access                              //
 ///////////////////////////////////////////////////////////////////////////
@@ -347,7 +390,7 @@ jhcNetNode *jhcGraphlet::NextNode (const jhcNetNode *prev, int bin) const
 int jhcGraphlet::Save (FILE *out, int lvl, int detail) const
 {
   const jhcNetNode *n;
-  int i, lvl2 = lvl, kmax = 3, nmax = 1, rmax = 3;
+  int i, lvl2 = lvl, kmax = 2, nmax = 1, rmax = 3;
 
   // ignore if empty, else get printing field sizes
   if (ni <= 0)                 

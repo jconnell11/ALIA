@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1221,6 +1222,92 @@ double jhcStats::Cloud (double *xc, double *yc, double *sdx, double *sdy,
 }
 
 
+//= Similar to Centroid but computes equivalent ellipse center and dimensions.
+// constrained to a particular region and to pixels above threshold (binary!)
+// return orientation of major axis (len), negative if problem
+
+double jhcStats::Ellipse (double *xc, double *yc, double *wid, double *len, 
+                          const jhcImg& src, const jhcRoi& patch, int th) const 
+{
+  if (!src.Valid(1))
+    return Fatal("Bad image to jhcStats::Ellipse");
+
+  // general ROI case
+  jhcRoi p;
+  double xmid, ymid, mxx, myy, mxy, ang, rt, den, ecc;
+  long long x2sum = 0, y2sum = 0, xysum = 0;
+  int x, y, rw, rh, rsk, cnt = 0, area = 0, xsum = 0, ysum = 0;
+  const UC8 *s;
+
+  // sanity check on area
+  p.CopyRoi(patch);
+  p.RoiClip(src);
+  rw = p.RoiW();
+  rh = p.RoiH();
+  rsk = src.RoiSkip(p);
+  s = src.RoiSrc(p);
+
+  // find centroid relative to ROI 
+  for (y = 0; y < rh; y++, s += rsk)
+    for (x = 0; x < rw; x++, s++)
+      if (*s > th)
+      {
+        // collect data for moments wrt ROI (not weighted)
+        x2sum += x * x;
+        y2sum += y * y;
+        xysum += x * y;
+        xsum += x;
+        ysum += y;
+        area++;
+        cnt++;
+      }
+
+  // make sure some pixels were examined
+  if (cnt <= 0)
+  {
+    *xc = p.RoiAvgX();
+    *yc = p.RoiAvgY();
+    *wid = 0.0;
+    *len = 0.0;
+    return -1.0;
+  }
+
+  // digest raw data into central moments
+  xmid = xsum / (double) area;
+  ymid = ysum / (double) area;
+  mxx = x2sum - (area * xmid * xmid);
+  myy = y2sum - (area * ymid * ymid);
+  mxy = xysum - (area * xmid * ymid);
+
+  // save middle
+  if (xc != NULL)
+    *xc = xmid + p.RoiX();
+  if (yc != NULL)
+    *yc = ymid + p.RoiY();
+
+  // find angle of orientation (degrees)
+  if ((mxy == 0) && (mxx == mxy))
+    ang = 0.0;
+  else
+    ang = 0.5 * R2D * atan2(-2.0 * mxy, mxx - myy);
+  if (ang < 0.0) 
+    ang += 180.0; 
+  
+  // find equivalent ellipse length / width
+  rt = (double) sqrt(4.0 * mxy * mxy + (mxx - myy) * (mxx - myy));  
+  den = mxx + myy - rt;
+  if (den == 0.0)
+    ecc = 4.0 * area / PI;
+  else
+    ecc = (double) sqrt((mxx + myy + rt) / den);
+
+  // convert to actual ellipse width and length
+  *wid = 2.0 * sqrt((double) area / (PI * ecc));    
+  *len = ecc * (*wid);
+  return(180.0 - ang);
+}
+
+
 //= Sets ROI to match area of image above threshold value.
 // can give image itself as dest in order to set its active ROI
 // returns number of pixels over threshold
@@ -1270,7 +1357,7 @@ int jhcStats::RegionNZ (jhcRoi &dest, const jhcImg& src, int th) const
 }
 
 
-//= Find the coordinates of the highest non-zero point in the image.
+//= Find the pixel above threshold with the highest Y coordinate.
 
 int jhcStats::PtMaxY (int& px, int& py, const jhcImg& src, int th, int bias) const
 {
@@ -1304,3 +1391,173 @@ int jhcStats::PtMaxY (int& px, int& py, const jhcImg& src, int th, int bias) con
 }
 
 
+//= Find the pixel above threshold nearest to the target location.
+// uses Euclidean distance, for ties prefers lower then leftmost candidate
+// ignores ROI (always considers whole image), attempts to stop scan early
+// returns closest distance if successful, negative if nothing suitable (px and py unchanged)
+
+double jhcStats::NearPt (int& px, int& py, const jhcImg& src, int tx, int ty, int th) const
+{
+  int xlim = src.XLim(), ylim = src.YLim(), ln = src.Line(), y0 = __max(0, __min(ty, ylim));
+  int x, y, dy, dy2, dx, d2, xrem = xlim - tx, win2 = -1;
+  const UC8 *s0, *s;
+
+  if (!src.Valid(1))
+    return Fatal("Bad image to jhcStats::NearPt");
+
+  // scan image from target point upward
+  s0 = src.RoiSrc(xlim, y0);
+  dy = y0 - ty;
+  for (y = y0; y <= ylim; y++, dy++, s0 += ln)
+  {
+    // see if all points above here are guaranteed to be worse
+    dy2 = dy * dy;
+    if ((win2 >= 0) && (dy2 > win2))
+      break;
+
+    // scan image right to left (left wins tie)
+    s = s0;
+    dx = xrem;
+    for (x = xlim; x >= 0; x--, dx--, s--)
+      if (*s > th)
+      {
+        d2 = dx * dx + dy2;
+        if ((win2 < 0) || (d2 <= win2))
+        {
+          px = x;
+          py = y;
+          win2 = d2;
+        }
+      }
+  }
+
+  // scan image from just below target point downward (bottom wins tie)
+  s0 = src.RoiSrc(xlim, y0 - 1);
+  dy = y0 - 1 - ty;
+  for (y = y0 - 1; y >= 0; y--, dy--, s0 -= ln)
+  {
+    // see if all points below here are guaranteed to be worse
+    dy2 = dy * dy;
+    if ((win2 >= 0) && (dy2 > win2))
+      break;
+
+    // scan image right to left (left wins tie)
+    s = s0;
+    dx = xrem;
+    for (x = xlim; x >= 0; x--, dx--, s--)
+      if (*s > th)
+      {
+        d2 = dx * dx + dy2;
+        if ((win2 < 0) || (d2 <= win2))
+        {
+          px = x;
+          py = y;
+          win2 = d2;
+        }
+      }
+  }
+
+  // report distance of winner
+  if (win2 < 0)
+    return -1.0;
+  return sqrt((double) win2);
+}
+
+
+//= Find the pixel above threshold nearest to center and within ang +/- dev sector.
+// uses orientated Manhattan distance to prefer positions closer to designated axis
+// ignores ROI (always considers whole image), attempts to stop scan early
+//    manh = abs(dot) + abs(orth)
+//    dot  = (x - mx) *  cos(a) + (y - my) * sin(a)       along ang vector
+//    orth = (x - mx) * -sin(a) + (y - my) * cos(a)       at -90 degs to ang vector
+// in sector if orth/dot < tan(dev) so -dsec < osec < dsec where:   
+//    osec = orth * cos(dev) and dsec = dot * sin(dev)   
+// for dev > 90 computes results for 180 - dev (e.g. 150 -> +/- 30 deg sector) 
+// returns oriented L1 distance, negative if nothing suitable (px and py unchanged)
+
+double jhcStats::NearSect (int& px, int& py, const jhcImg& src, double ang, double dev, int th) const
+{
+  double ar = D2R * ang, dr = D2R * dev;
+  int ca = ROUND(1024.0 * cos(ar)), sa = ROUND(1024.0 * sin(ar));
+  int cd = ROUND(1024.0 * cos(dr)), sd = ROUND(1024.0 * sin(dr));
+  int mx = src.XDim() >> 1, my = src.YDim() >> 1, xlim = src.XLim(), ylim = src.YLim();
+  int sasd = (sa * sd + 512) >> 10, cacd = (ca * cd + 512) >> 10;
+  int casd = (ca * sd + 512) >> 10, sacd = (sa * cd + 512) >> 10, xrem = xlim - mx;
+  int idot = xrem * ca, iorth = xrem * sa, idsec = xrem * casd, iosec = xrem * sacd;
+  int x, y, dot0, orth0, dsec0, osec0, dot, orth, dsec, osec, manh, ln = src.Line(), win = -1;
+  const UC8 *srt, *s;
+
+  if (!src.Valid(1))
+    return Fatal("Bad image to jhcStats::NearSect");
+
+  // scan image from target point upward
+  srt = src.RoiSrc(xlim, my);
+  dot0  = 0;
+  orth0 = 0;
+  dsec0 = 0;
+  osec0 = 0;
+  for (y = my; y <= ylim; y++, dot0 += sa, orth0 += ca, dsec0 += sasd, osec0 += cacd, srt += ln)
+  {
+    // see if all points above here are guaranteed to be worse
+    if ((win >= 0) && ((y - my) > (win >> 10)))
+      break;
+
+    // scan image right to left (left wins tie)
+    s = srt;
+    dot  = dot0  + idot;
+    orth = orth0 - iorth;
+    dsec = dsec0 + idsec;
+    osec = osec0 - iosec;
+    for (x = xlim; x >= 0; x--, dot -= ca, orth += sa, dsec -= casd, osec += sacd, s--)
+      if (*s > th)
+        if ((-dsec <= osec) && (osec <= dsec))
+        {
+          manh = abs(dot) + abs(orth);
+          if ((win < 0) || (manh <= win))
+          {
+            // new closest within sector
+            px = x;
+            py = y;
+            win = manh;
+          }
+        }
+  }
+
+  // scan image from just below target point downward (bottom wins tie)
+  srt = src.RoiSrc(xlim, my - 1);
+  dot0  = -sa;
+  orth0 =  ca;
+  dsec0 = -sasd;
+  osec0 =  cacd;
+  for (y = my - 1; y >= 0; y--, dot0 -= sa, orth0 -= ca, dsec0 -= sasd, osec0 -= cacd, srt -= ln)
+  {
+    // see if all points below here are guaranteed to be worse
+    if ((win >= 0) && ((my - y) > (win >> 10)))
+      break;
+
+    // scan image right to left (left wins tie)
+    s = srt;
+    dot  = dot0  + idot;
+    orth = orth0 - iorth;
+    dsec = dsec0 + idsec;
+    osec = osec0 - iosec;
+    for (x = xlim; x >= 0; x--, dot -= ca, orth += sa, dsec -= casd, osec += sacd, s--)
+      if (*s > th)
+        if ((-dsec <= osec) && (osec <= dsec))
+        {
+          manh = abs(dot) + abs(orth);
+          if ((win < 0) || (manh <= win))
+          {
+            // new closest within sector
+            px = x;
+            py = y;
+            win = manh;
+          }
+        }
+  }
+
+  // report distance of winner
+  if (win < 0)
+    return -1;
+  return(win / 1024.0);
+}

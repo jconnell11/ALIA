@@ -45,7 +45,7 @@ public:
   virtual bool InList (const jhcNetNode *n) const =0;
   virtual bool Prohibited (const jhcNetNode *n) const {return(n == NULL);}
   virtual int NumBins () const {return 1;}
-  virtual int SameBin (const jhcNetNode& focus) const {return 1;}
+  virtual int SameBin (const jhcNetNode& focus, const jhcBindings *b) const {return 1;}
 
 
 };

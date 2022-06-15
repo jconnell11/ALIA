@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,8 +41,9 @@
 
 
 //= Finds and tracks objects on table.
-// originally developed for multiple stationary Kinects
-// information below is wrt native map coordinates (inches)
+// all "raw" and "shp" info is in actual inches (not pixels)
+// positions and angles are relative to current view angle
+// this also holds for tracked results like PosX() and Angle()
 // <pre>
 // raw array has nr (detections) or nr2 (+ under hand) entries:
 //   0 = x center
@@ -74,7 +75,7 @@
 //
 // </pre>
 
-class jhcBumps : public jhcOverhead3D, protected jhcGroup, protected jhcLabel, private jhcStats
+class jhcBumps : public jhcOverhead3D, protected jhcGroup, protected jhcLabel, protected jhcStats
 {
 friend class CMesaDoc;       // for debugging
 friend class CBanzaiDoc;
@@ -88,7 +89,7 @@ private:
 
   // object tracking
   double **raw;
-  int *ralt, *rlab;
+  int *ralt, *rlab, *lock;
   int total, rlim;
 
   // touch source
@@ -103,6 +104,7 @@ protected:
   // object detection
   jhcBlob blob;
   jhcBlob *alt_blob;
+  jhcImg *alt_cc;
   jhcImg det, obj, cc;
   jhcArr pks;
   int surf;
@@ -164,6 +166,7 @@ public:
   bool ObjOK (int i, int trk =1) const;
   int ObjID (int i, int trk =1) const;
   int ObjTrack (int id) const;
+  bool OkayID (int id) const {return ObjOK(ObjTrack(id));}
   const char *ObjDesc (int i, int trk =1) const;
   double PosX (int i, int trk =1) const; 
   double PosY (int i, int trk =1) const; 
@@ -176,11 +179,21 @@ public:
   double Angle (int i, int trk =1) const;
   double Elongation (int i, int trk =1) const;
   double MaxDim (int i, int trk =1) const;
+  double MinZ (int i, int trk =1) const 
+    {return(PosZ(i, trk) - 0.5 * SizeZ(i, trk));}
+  double MaxZ (int i, int trk =1) const 
+    {return(PosZ(i, trk) + 0.5 * SizeZ(i, trk));}
+  double OverZ (int i, int trk =1) const 
+    {return(MaxZ(i, trk) - ztab);}   
+  double Aligned (double& xm, double& ym, double& len, double& wid, int i, int axis =1) const;
   bool Contact (int i, int trk =1) const;
   double MapX (int i, int trk =1) const {return W2X(PosX(i, trk));}
   double MapY (int i, int trk =1) const {return W2Y(PosY(i, trk));}
   int Flat (int i) const;
-  int Component (int) const;
+  int Component (int i) const;
+  void Retain (int i) {pos.NoMiss(i);}
+  void RetainAll ();
+  void KeepShape (int i);
 
   // display helpers
   void SetTag (int i, const char *txt);
@@ -212,7 +225,9 @@ public:
   int Ellipses (jhcImg& dest, double rect =0.0, int trk =1, int style =2);
   int TrackBox (jhcImg& dest, int i, int num =1, int invert =0, int style =2);
   int RawBox (jhcImg& dest, int i, int num =1, int invert =0);
+  int FatEllipse (jhcImg& dest, int t, double mag =1.5, int col =4) const;
   int ObjsCam (jhcImg& dest, int cam, int trk =1, int rev =0, int style =2);
+  int DetPels (jhcImg& dest, int t, int col =255) const;
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -249,6 +264,7 @@ private:
 
   // debugging graphics
   const char *label (int i, int style =2);
+
 
 };
 

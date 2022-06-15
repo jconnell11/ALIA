@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ jhcEliLift::jhcEliLift ()
   // processing parameters
   LoadCfg();
   Defaults();
+  raw = 0;
   ht = ht0;
 }
 
@@ -99,8 +100,10 @@ int jhcEliLift::geom_params (const char *fname)
   int ok;
 
   ps->SetTag("lift_origin", 0);
-  ps->NextSpecF( &top, 37.85, "Max arm shelf height (in)");
-  ps->NextSpecF( &bot,  1.85, "Min arm shelf height (in)");
+  ps->NextSpecF( &top,    37.85, "Max arm shelf height (in)");
+  ps->NextSpecF( &bot,     1.85, "Min arm shelf height (in)");
+  ps->NextSpec4( &pmax, 4095,    "Feedback at max height");
+  ps->NextSpec4( &pmin,    0,    "Feedback at min height");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -255,6 +258,18 @@ int jhcEliLift::Check (int rpt, int tries)
 }
  
 
+//= Adjust pmin and pmax raw scaled feedback limits based on measurments.
+// assumes measured shelf height ht0 results in RawFB value v0
+
+void jhcEliLift::AdjustRaw (double ht0, int v0, double ht1, int v1)
+{
+  double vpi = (v1 - v0) / (ht1 - ht0);
+
+  pmin = ROUND(v0 - (ht0 - bot) * vpi);
+  pmax = ROUND(pmin + (top - bot) * vpi); 
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                           Low Level Commands                          //
 ///////////////////////////////////////////////////////////////////////////
@@ -331,7 +346,7 @@ int jhcEliLift::UpdateStart ()
     return lok;
 
   // request current position of stage
- if (lcom.Xmit(0xA7) < 1)
+  if (lcom.Xmit(0xA7) < 1)
     lok = 0;
   return lok;
 }
@@ -344,8 +359,7 @@ int jhcEliLift::UpdateFinish ()
 {
   UC8 pod[2];
   UL32 last = now;
-  double s, i, h0 = ht, mix = 0.5;
-  int pos;
+  double pf, s, i, h0 = ht, mix = 0.5;
 
   // make sure hardware is working
   if (lok < 0)
@@ -355,11 +369,12 @@ int jhcEliLift::UpdateFinish ()
   // collect current position of stage
   if (lcom.RxArray(pod, 2) < 2)
     return lok;
-  pos = (pod[1] << 8) | pod[0];
+  raw = (pod[1] << 8) | pod[0];
   lok = 1;
 
   // convert to inches and save
-  ht = bot + (top - bot) * pos / 4095.0;
+  pf = (raw - pmin) / (double)(pmax - pmin);
+  ht = pf * (top - bot) + bot;
   now = jms_now();
   if (last != 0)
     if ((s = jms_secs(now, last)) > 0.0)
@@ -390,7 +405,7 @@ void jhcEliLift::clr_lock (int hist)
 int jhcEliLift::Issue (double tupd, double lead)
 {
   UC8 pod[2];
-  double pos;
+  double pos, pf;
   int val;
 
   // check if lift stage is under active command
@@ -401,7 +416,9 @@ int jhcEliLift::Issue (double tupd, double lead)
 
     // continue along profile then convert profile position to servo command value
     pos = RampNext(ht, tupd, lead);
-    val = ROUND(4095.0 * (pos - bot) / (top - bot));
+    pf = (pos - bot) / (top - bot);
+    val = ROUND(pf * (pmax - pmin) + pmin);
+    val = __max(0, __min(val, 4095));
 
     // send to controller
     pod[0] = (UC8)(0xC0 | (val & 0x1F));  // low 5 bits
@@ -469,7 +486,7 @@ int jhcEliLift::SetLift (double ins)
     Update();
 
     // see if close enough yet
-    if (LiftClose() || LiftFail())
+    if (LiftClose())
       break;
   }
     

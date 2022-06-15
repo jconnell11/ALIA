@@ -1,12 +1,6 @@
 // terms associated with "people" ops and rules
 // ================================================
 
-// singular nouns - mass nouns like "a rice" belong in =[AKO-M] instead
-
-=[AKO]
-  person
-
-
 // adjectives
 
 =[HQ]
@@ -17,17 +11,22 @@
 
 // -----------------------------------------
 
+// directions
+
+=[DIR]
+  backward
+
+
 // imperative verbs
 
 =[ACT]
-  say
   offer
   serve
   look
   come
   approach
-  ask
   wait
+  move
   see
 
 
@@ -38,14 +37,11 @@
 =[XXX-morph]
   visible * acomp = more visible
   visible * asup   = most visible
-  serve * vprog = serving
-  serve * vpast = served
-  see * vpast = saw
-  person * npl = people
   far away * acomp = farther away
   far away * asup  = farthest away
-  say * vpast = said
   come * vpast = came
+  see * vpast = saw
+
 
 
 

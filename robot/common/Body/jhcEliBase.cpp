@@ -277,6 +277,7 @@ int jhcEliBase::Reset (int rpt, int chk)
   tvel = 0.0;
   imv  = 0.0;
   itv  = 0.0;
+  parked = 0;
 
   // finished
   jprintf(1, rpt, "    ** good **\n");
@@ -731,7 +732,7 @@ int jhcEliBase::UpdateContinue ()
 int jhcEliBase::UpdateFinish ()
 {
   UL32 last = now;
-  double s, m, t, t0 = trav, h0 = head, mmix = 0.5, tmix = 0.3;
+  double s, m, t, t0 = trav, h0 = head, mmix = 0.5, tmix = 0.3, scoot = 1.0, swivel = 2.0;
 
   // read in 32 bit value (only good to 10 bits --> work with bottom 8)
   BBARF(-1, bcom.RxArray(pod, 6 + c16) < (6 + c16));
@@ -751,6 +752,12 @@ int jhcEliBase::UpdateFinish ()
       imv += mmix * (m - imv); 
       itv += tmix * (t - itv); 
     }
+
+  // do qualitative evaluation of motion
+  if ((fabs(imv) >= scoot) || (fabs(itv) >= swivel))
+    parked = __min(0, parked - 1);
+  else
+    parked = __max(1, parked + 1);
 
   // set up to receive new round of commands and bids
   clr_locks(0);      
@@ -1018,10 +1025,6 @@ int jhcEliBase::Zero ()
   // make sure hardware is working
   BBARF(-1, fail_pend());
 
-  // adjust goal (if any)
-//  twin -= head;
-//  mwin -= trav;
-
   // reset internal variables
   xpos = 0.0;
   ypos = 0.0;
@@ -1071,6 +1074,20 @@ void jhcEliBase::AdjustTarget (jhcMatrix& pos) const
 
   AdjustXY(tx, ty);
   pos.SetVec3(tx, ty, pos.Z());
+}
+
+
+//= Change planar angle (e.g. object orientation) if base rotates.
+
+double jhcEliBase::AdjustAng (double ang) const
+{
+  double adj = ang - dr;
+
+  if (adj > 180.0)
+    adj -= 360.0;
+  else if (adj <= -180.0)
+    adj += 360.0;
+  return adj;
 }
 
 
@@ -1226,27 +1243,6 @@ int jhcEliBase::Drive (double dist, double degs)
   // drive base until timeout
   while (!DriveClose())
   {
-    // check for timeout
-    if (DriveFail())
-    {
-      ok = 0;
-      break;
-    }
-
-    // servo tuning information
-    if (noisy > 0)
-    {
-      jprintf("  base goal: %3.1f %3.1f - stuck secs: ", mctrl.RampDist(trav), tctrl.RampDist(head));
-      if (mctrl.RampDone() <= 0.2)
-        jprintf("---");
-      else
-        jprintf("%3.1f", mctrl.RampDone());
-      if (tctrl.RampDone() <= 0.2)
-        jprintf(" ---\n");
-      else
-        jprintf(" %3.1f\n", tctrl.RampDone());
-    }
-
     // reiterate command
     DriveAbsolute(tr0, hd0);
 

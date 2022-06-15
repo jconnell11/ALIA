@@ -1,0 +1,34 @@
+// terms associated with "somatic" ops and rules
+// ================================================
+
+// modifier
+
+=[MOD]
+  slowly
+
+
+// direction
+
+=[DIR]
+  right 
+  left
+  up
+  down
+  around
+
+
+// imperative verbs
+
+=[ACT]
+  announce
+  look
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  awake * acomp = more awake
+  awake * asup  = most awake
+

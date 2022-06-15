@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -232,6 +232,23 @@ const char *jhcSlotVal::NextMatches (const char *alist, const char *tag, int n) 
   else 
     order = strcmp(entry, tag);
   return((order == 0) ? tail : NULL);
+}
+
+
+//= Strip any leading slot-value pairs and return alist headed by some fragment (or marker).
+
+const char *jhcSlotVal::StripPairs (const char *alist) const
+{
+  char entry[200];
+  const char *t2, *tail = alist;
+
+  while ((t2 = NextEntry(tail, entry, 200)) != NULL)
+  {
+    if (strchr("!$%", *entry) != NULL)
+      return tail;
+    tail = t2;
+  }
+  return NULL;
 }
 
 
@@ -587,6 +604,23 @@ bool jhcSlotVal::FragHasSlot (const char *alist, const char *slot) const
 }
 
 
+//= Advance to start of next fragment but do not consume any of it.
+
+const char *jhcSlotVal::FragStart (const char *alist) const
+{
+  char entry[200];
+  const char *t2, *tail = alist;
+
+  while ((t2 = NextEntry(tail, entry)) != NULL)
+  {
+    if (strchr("!$%", *entry) != NULL)
+      return tail;
+    tail = t2;
+  }
+  return NULL;
+}
+
+
 //= Look for end of current fragment after possibly skipping fragment head.
 // returns pointer to remaining alist (NULL if not found)
 
@@ -619,7 +653,7 @@ const char *jhcSlotVal::FragClose (const char *alist, int skip) const
 
 const char *jhcSlotVal::ExtractFrag (char *head, char *frag, const char *alist, int hsz, int fsz) const
 {
-  char entry[200];
+  char entry[200] = "";
   const char *tail, *start = alist;
   int n;
 
@@ -636,7 +670,7 @@ const char *jhcSlotVal::ExtractFrag (char *head, char *frag, const char *alist, 
       break;
     start = tail;
   }
-  if (start == NULL)
+  if ((start == NULL) || (*entry == '\0'))
     return NULL;
 
   // copy everything from start up to and including matching delimiter

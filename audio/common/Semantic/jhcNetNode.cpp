@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,11 +82,16 @@ void jhcNetNode::rem_arg (const jhcNetNode *item)
     if (args[i] == item)
     {
       // see if any other args with same slot name (arity decrease)
-      for (j = 0; j < na; j++)
-        if ((j != i) && (strcmp(links[j], links[i]) == 0))
-          break;
-      if ((na > 0) && (j >= na))
-        na0--;
+      if (strcmp(links[i], "wrt") == 0)
+        wrt--;
+      else
+      {
+        for (j = 0; j < na; j++)
+          if ((j != i) && (strcmp(links[j], links[i]) == 0))
+            break;
+        if ((na > 0) && (j >= na))
+          na0--;
+      }
 
       // compact the list to cover hole made by removal
       na--;
@@ -121,6 +126,7 @@ jhcNetNode::jhcNetNode ()
   // no arguments or properties, nothing else in list
   na = 0;
   na0 = 0;
+  wrt = 0;
   np = 0;
   id = 0;
   next = NULL;
@@ -244,11 +250,16 @@ int jhcNetNode::AddArg (const char *slot, jhcNetNode *val)
     return jprintf(">>> More than %d properties in jhcNetNode::AddArg !\n", pmax);
 
   // see if a new kind of link (boosts arity)
-  for (i = 0; i < na; i++)
-    if (strcmp(links[i], slot) == 0)
-      break;
-  if ((na == 0) || (i >= na))
-    na0++;
+  if (strcmp(slot, "wrt") == 0)
+    wrt++;
+  else
+  {
+    for (i = 0; i < na; i++)
+      if (strcmp(links[i], slot) == 0)
+        break;
+    if ((na == 0) || (i >= na))
+      na0++;
+  }
 
   // add as argument to this node
   links[na][0] = '\0';
@@ -286,7 +297,7 @@ void jhcNetNode::SubstArg (int i, jhcNetNode *val)
   val->np += 1;
 }
 
-/*
+
 //= Make sure this node is at the end of the property list for given argument.
 // guarantees that this node will be the first retrieved
 
@@ -317,7 +328,7 @@ void jhcNetNode::RefreshArg (int i)
   val->props[last] = this;
   val->anum[last] = i;
 }
-*/
+
 
 ///////////////////////////////////////////////////////////////////////////
 //                          Property Functions                           //
@@ -458,6 +469,7 @@ bool jhcNetNode::SameArgs (const jhcNetNode *ref, const jhcBindings *b) const
 
 //= Find property node with lex "word" and argument "role" pointing to this node.
 // property node must have matching "neg" and belief above "bth"
+// however if asking for a hypothetical node (bth = 0) then match must have blf = 0
 // returns NULL if no such property found (does not check properties of property)
 
 jhcNetNode *jhcNetNode::FindProp (const char *role, const char *word, int neg, double bth) const
@@ -468,6 +480,8 @@ jhcNetNode *jhcNetNode::FindProp (const char *role, const char *word, int neg, d
   for (i = 0; i < np; i++)
   {
     p = props[i];
+//    if (((p->blf >= bth) || ((bth == 0.0) && (p->blf == 0.0))) &&
+//        (p->inv == neg) && RoleMatch(i, role) && p->LexMatch(word)) 
     if ((p->inv == neg) && (p->blf >= bth) && RoleMatch(i, role) && p->LexMatch(word)) 
       return p;
   }
@@ -502,7 +516,7 @@ const char *jhcNetNode::Name (int i, double bth) const
     for (j = np - 1; j >= 0; j--)
     {
       p = Prop(j);
-      if (RoleMatch(j, "ref") && ((bth <= 0.0) || ((p->inv <= 0) && (p->blf >= bth))))
+      if (RoleMatch(j, "name") && ((bth <= 0.0) || ((p->inv <= 0) && (p->blf >= bth))))
         if (cnt++ >= i)
           return p->Lex();
     }
@@ -519,7 +533,7 @@ bool jhcNetNode::HasName (const char *word, int tru_only) const
 
   if (word != NULL)
     for (i = 0; i < np; i++)
-      if (strcmp(Role(i), "ref") == 0)
+      if (strcmp(Role(i), "name") == 0)
         if (_stricmp(props[i]->lex, word) == 0)     
           return((tru_only <= 0) || (props[i]->inv <= 0));     // ignores belief
   return false;
@@ -600,13 +614,6 @@ int jhcNetNode::Save (FILE *out, int lvl, int k, int n, int r, int detail, const
       arrow[j + 2] = (links[i])[j];
     jfputs(arrow, out); 
     jfprintf(out, "%s", args[i]->Nick());
-/*
-    // parens around arguments which are not in graphlet (for debugging mostly)
-    if ((acc != NULL) && !acc->InDesc(args[i]))
-      jfprintf(out, "(%s)", args[i]->Nick());
-    else
-      jfprintf(out, "%s", args[i]->Nick());
-*/
   }
   return abs(lvl);
 }
@@ -637,7 +644,7 @@ int jhcNetNode::save_tags (FILE *out, int lvl, int r, int detail) const
     jfprintf(out, " %*s %s", -(r + 3), "-str-", quote);
   }
 
-  // add event (success or failure) and negation lines
+  // add event (happened or did not) and negation lines
   if (evt > 0)
   {
     if (ln++ > 0)
@@ -656,7 +663,7 @@ int jhcNetNode::save_tags (FILE *out, int lvl, int r, int detail) const
   {
     if (ln++ > 0)
       jfprintf(out, "\n%*s", lvl, "");
-    jfprintf(out, " %*s 0", -(r + 3), "-ext-");            // add -ext- marker
+    jfprintf(out, " %*s 0", -(r + 3), "-ext-");            // add -ext- marker (hypothetical)
     if (blf0 != 1.0)
       jfprintf(out, "\n%*s %*s %s", lvl, "", -(r + 3), "-blf-", bfmt(txt, blf0));    
   }

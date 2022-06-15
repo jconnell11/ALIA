@@ -1,0 +1,104 @@
+// Homeostasis actions for somatic states
+// ================================================
+
+OP 1 - "If you are awake then announce that and also look around"
+  trig:
+  NOTE[  hq-1 -lex-  awake
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+   >>>
+      DO[ act-1 -lex-  announce
+                -obj-> hq-1 ]
+   +++
+      DO[ act-2 -lex-  look
+          dir-1 -lex-  around
+                -dir-> act-2 ]
+   <<<
+
+
+OP 2 - "If you are tired announce that"
+  trig:
+  NOTE[  hq-1 -lex-  tired
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ act-1 -lex-  announce
+              -obj-> hq-1 ]
+
+
+OP 3 - "If you are overwhelmed announce that"
+  trig:
+  NOTE[  hq-1 -lex-  overwhelmed
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ act-2 -lex-  announce
+              -obj-> hq-1 ]
+
+
+OP 4 - "If you are lonely then announce that and also look around"
+  trig:
+  NOTE[  hq-1 -lex-  lonely
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+   >>>
+      DO[ act-1 -lex-  announce
+                -obj-> hq-1 ]
+   +++
+      DO[ act-2 -lex-  look 
+          dir-1 -lex-  around 
+                -dir-> act-2 ]
+   <<<
+
+
+// ----------------------------------------
+
+OP 5 - "If you are lonely and someone becomes visible then hail them and approach them."
+  trig:   
+  NOTE[  hq-1 -lex-  lonely
+              -hq--> agt-1
+        agt-1 -lex-  me
+         hq-1 -lex-  visible 
+              -hq--> agt-2 
+        ako-1 -lex-  person 
+              -ako-> agt-2 ]
+---------------
+    DO[ act-2 -lex-  hail
+              -obj-> agt-2 ]
+    DO[ act-3 -lex-  approach
+              -obj-> agt-2 ] 
+
+
+OP 6 - "To hail someone say finally, someone to play with"
+  trig:
+    DO[ act-1 -lex-  hail
+              -obj-> agt-1 ]
+---------------
+    DO[ act-3 -lex-   say
+              -dest-> agt-1
+              -obj--> txt-1
+        txt-1 -str-   finally, someone to play with ]
+
+
+OP 7 - "To hail someone say hey there whoever"
+  trig:
+    DO[ act-1 -lex-  hail
+              -obj-> agt-1 ]
+---------------
+    DO[ act-3 -lex-   say
+              -dest-> agt-1
+              -obj--> txt-1
+        txt-1 -str-   hey there ?0 ]
+
+
+OP 8 - "To hail someone say good to see you whoever"
+  trig:
+    DO[ act-1 -lex-  hail
+              -obj-> agt-1 ]
+---------------
+    DO[ act-3 -lex-   say
+              -dest-> agt-1
+              -obj--> txt-1
+        txt-1 -str-   good to see you ?0 ]

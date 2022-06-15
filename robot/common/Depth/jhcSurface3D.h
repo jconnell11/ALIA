@@ -41,12 +41,12 @@ class jhcSurface3D : protected jhcPlaneEst
 // PRIVATE MEMBER VARIABLES
 private:
   jhcMatrix i2m;               // transform from image to map
-  jhcMatrix xform;             // refine matrix for floor projection
   int iw, ih, hw, hh;          // expected image size
 
 
 // PROTECTED MEMBER VARIABLES
 protected:
+  jhcMatrix xform;             // matrix for floor projection
   jhcMatrix m2i;               // transform from map to image
   jhcImg wxyz;                 // cached pixel coordinates
 
@@ -85,6 +85,8 @@ public:
   // local plane fitting
   double CamCalib (double& t, double& r, double& h, const jhcImg& src, double z0, double ztol, 
                    double zlo, double zhi, double ipp, double yoff =0.0, const jhcRoi *area =NULL);
+  double LineTilt (const jhcImg& d16, double x0, double y0, double x1, double y1, 
+                   double f0 =0.2, double f1 =0.8) const;
 
   // standard overhead map
   void BuildMatrices (double cpan, double ctilt, double croll, double x0, double y0, double z0);

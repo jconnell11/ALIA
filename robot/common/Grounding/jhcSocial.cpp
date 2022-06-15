@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ jhcSocial::~jhcSocial ()
 
 jhcSocial::jhcSocial ()
 {
-  ver = 1.40;
+  ver = 1.55;
   strcpy_s(tag, "Social");
   Platform(NULL);
   rpt = NULL;
@@ -176,6 +176,7 @@ int jhcSocial::local_start (const jhcAliaDesc *desc, int i)
   JCMD_SET(soc_approach);
   JCMD_SET(soc_retreat);
   JCMD_SET(soc_follow);
+  JCMD_SET(soc_explore);
   return -2;
 }
 
@@ -190,6 +191,7 @@ int jhcSocial::local_status (const jhcAliaDesc *desc, int i)
   JCMD_CHK(soc_approach);
   JCMD_CHK(soc_retreat);
   JCMD_CHK(soc_follow);
+  JCMD_CHK(soc_explore);
   return -2;
 }
 
@@ -208,10 +210,10 @@ void jhcSocial::dude_seen ()
   int t;
 
   // see if now people when there were not before
-  if ((rpt == NULL) || (rwi == NULL) || !rwi->Readable())
+  if ((rpt == NULL) || (rwi == NULL) || !rwi->Accepting())
     return;
-  t = (rwi->s3).Closest((rwi->nav).rfwd);
-  rwi->ReadDone();                               // release visual data
+//  t = (rwi->s3).Closest((rwi->nav).rfwd);
+  t = rwi->ClosestFace((rwi->nav).rfwd);
 
   // generate event telling of presence
   folks = 0;                                     // assume alone currently
@@ -238,14 +240,14 @@ void jhcSocial::dude_close ()
   int t, id = 0;
 
   // find distance of closest person to front of robot (if any)
-  if ((rpt == NULL) || (rwi == NULL) || !rwi->Readable())
+  if ((rpt == NULL) || (rwi == NULL) || !rwi->Accepting())
     return;
-  if ((t = (rwi->s3).Closest(front)) >= 0)
+//  if ((t = (rwi->s3).Closest(front)) >= 0)
+  if ((t = rwi->ClosestFace(front)) >= 0)
   {
     id = (rwi->s3).PersonID(t);
     dist = rwi->FrontDist((rwi->s3).RefPerson(t));   // defaults to gone
   } 
-  rwi->ReadDone();                                   // release visual data
 
   // possibly generate event telling newly achieved degree of proximity
   rpt->StartNote();
@@ -274,7 +276,7 @@ void jhcSocial::vip_seen ()
 {
   int t, prev = reco;
 
-  if ((rpt == NULL) || (rwi == NULL) || !rwi->Readable())
+  if ((rpt == NULL) || (rwi == NULL) || !rwi->Accepting())
     return;
   if ((t = (rwi->fn).JustNamed()) >= 0)
     if ((reco = (rwi->s3).PersonID(t)) != prev)
@@ -283,7 +285,6 @@ void jhcSocial::vip_seen ()
       agt_node(t);
       rpt->FinishNote();
     }
-  rwi->ReadDone();       
 }
 
 
@@ -338,11 +339,11 @@ jhcAliaDesc *jhcSocial::agt_node (int t)
   // possibly add name if face is recognized
   if ((name != NULL) && (*name != '\0'))
   {
-    rpt->NewProp(agt, "ref", name, 0, 1.0, 1);
+    rpt->NewProp(agt, "name", name, 0, 1.0, 1);
     strcpy_s(first, name);
     if ((end = strchr(first, ' ')) != NULL)
       *end = '\0';
-    rpt->NewProp(agt, "ref", first, 0, 1.0, 1);
+    rpt->NewProp(agt, "name", first, 0, 1.0, 1);
   }
 
   // make eligible for FIND
@@ -364,7 +365,7 @@ int jhcSocial::soc_look0 (const jhcAliaDesc *desc, int i)
 {
   if ((cst[i] = rpt->VisID(desc->Val("arg"), 1)) <= 0)
     return -1;
-  ct0[i] += ROUND(1000.0 * lquit);
+  ct0[i] = jms_now() + ROUND(1000.0 * lquit);
   return 1;
 }
 
@@ -390,7 +391,7 @@ int jhcSocial::soc_look (const jhcAliaDesc *desc, int i)
     return 1;
 
   // re-issue basic command (drive forward if orientation okay)
-  jprintf(1, dbg, ">> REQUEST %d: look at person %d\n", cbid[i], cst[i]);
+  jprintf(1, dbg, "|- Social %d: look at person %d\n", cbid[i], cst[i]);
   rwi->WatchPerson(cst[i], cbid[i]);
   return 0;
 }
@@ -408,7 +409,7 @@ int jhcSocial::soc_approach0 (const jhcAliaDesc *desc, int i)
 {
   if ((cst[i] = rpt->VisID(desc->Val("arg"), 1)) <= 0)
     return -1;
-  ct0[i] += ROUND(10000.0 * aquit);
+  ct0[i] = jms_now() + ROUND(10000.0 * aquit);
   return 1;
 }
 
@@ -420,7 +421,7 @@ int jhcSocial::soc_approach0 (const jhcAliaDesc *desc, int i)
 int jhcSocial::soc_approach (const jhcAliaDesc *desc, int i)
 {
   const jhcMatrix *targ;
-  double ms, td, ta, off, dtol = 2.0;
+  double xs, td, ta, off, dtol = 2.0;
 
   // lock to sensor cycle 
   if ((rwi == NULL) || rwi->Ghost())
@@ -429,9 +430,9 @@ int jhcSocial::soc_approach (const jhcAliaDesc *desc, int i)
     return 0;
 
   // see if timeout then check if person is still there 
-  if ((ms = jms_diff(jms_now(), ct0[i])) > 0)
+  if ((xs = jms_elapsed(ct0[i])) > 0.0)
   {
-    jprintf("{ soc_approach: timeout %3.1f secs [%3.1f] }\n", 1000.0 * ms, aquit);
+    jprintf("{ soc_approach: timeout %3.1f secs [%3.1f] }\n", aquit + xs, aquit);
     return -1;
   }
   if ((targ = (rwi->s3).GetID(cst[i])) == NULL)
@@ -451,9 +452,10 @@ jprintf("soc_approach: off = %3.1f (vs %3.1f), ang = %3.1f (vs %3.1f)\n", off, c
 }
 
   // re-issue basic command (drive forward if orientation okay)
-  jprintf(1, dbg, ">> REQUEST %d: approach person %d\n", cbid[i], cst[i]);
+  jprintf(1, dbg, "|- Social %d: approach person %d\n", cbid[i], cst[i]);
   rwi->WatchPerson(cst[i], cbid[i]);
-  rwi->ServoPolar(td, ta, 1.0, cbid[i], cozy);
+  rwi->MapPath(cbid[i]);
+  rwi->ServoPolar(td, ta, cozy, 1.0, cbid[i]);
   return 0;
 }
 
@@ -466,7 +468,7 @@ int jhcSocial::soc_retreat0 (const jhcAliaDesc *desc, int i)
 {
   if ((cst[i] = rpt->VisID(desc->Val("arg"), 1)) <= 0)
     return -1;
-  ct0[i] += ROUND(10000.0 * aquit);
+  ct0[i] = jms_now() + ROUND(10000.0 * aquit);
   return 1;
 }
 
@@ -478,7 +480,7 @@ int jhcSocial::soc_retreat0 (const jhcAliaDesc *desc, int i)
 int jhcSocial::soc_retreat (const jhcAliaDesc *desc, int i)
 {
   const jhcMatrix *targ;
-  double ms, td, ta, off, safe = 1.2 * cozy, dtol = 2.0;
+  double xs, td, ta, off, safe = 1.2 * cozy, dtol = 2.0;
 
   // lock to sensor cycle 
   if ((rwi == NULL) || rwi->Ghost())
@@ -487,9 +489,9 @@ int jhcSocial::soc_retreat (const jhcAliaDesc *desc, int i)
     return 0;
 
   // see if timeout then check if person is still there 
-  if ((ms = jms_diff(jms_now(), ct0[i])) > 0)
+  if ((xs = jms_elapsed(ct0[i])) > 0.0)
   {
-    jprintf("{ soc_retreat: timeout %3.1f secs [%3.1f] }\n", 1000.0 * ms, aquit);
+    jprintf("{ soc_retreat: timeout %3.1f secs [%3.1f] }\n", aquit + xs, aquit);
     return -1;
   }
   if ((targ = (rwi->s3).GetID(cst[i])) == NULL)
@@ -506,9 +508,10 @@ int jhcSocial::soc_retreat (const jhcAliaDesc *desc, int i)
     return 1;
 
   // re-issue basic command (drive forward if orientation okay)
-  jprintf(1, dbg, ">> REQUEST %d: retreat from person %d\n", cbid[i], cst[i]);
+  jprintf(1, dbg, "|- Social %d: retreat from person %d\n", cbid[i], cst[i]);
   rwi->WatchPerson(cst[i], cbid[i]);
-  rwi->ServoPolar(td, ta, 1.0, cbid[i], safe);
+  rwi->MapPath(cbid[i]);
+  rwi->ServoPolar(td, ta, safe, 1.0, cbid[i]);
   return 0;
 }
 
@@ -558,10 +561,51 @@ int jhcSocial::soc_follow (const jhcAliaDesc *desc, int i)
   }
 
   // re-issue basic command (drive forward if orientation okay)
-  jprintf(1, dbg, ">> REQUEST %d: follow person %d\n", cbid[i], cst[i]);
+  jprintf(1, dbg, "|- Social %d: follow person %d\n", cbid[i], cst[i]);
   rwi->WatchPerson(cst[i], cbid[i]);
-  rwi->ServoPolar(td, ta, 1.5, cbid[i], ideal);
+  rwi->MapPath(cbid[i]);
+  rwi->ServoPolar(td, ta, ideal, 1.5, cbid[i]);
   return 0;
 }
 
 
+///////////////////////////////////////////////////////////////////////////
+//                          Explore Environment                          //
+///////////////////////////////////////////////////////////////////////////
+
+//= Start wandering aimlessly for a while.
+// instance number and bid already recorded by base class
+// returns 1 if okay, -1 for interpretation error
+
+int jhcSocial::soc_explore0 (const jhcAliaDesc *desc, int i)
+{
+  double wtime = 60.0;                 // timeout in secs
+
+  ct0[i] = jms_now() + ROUND(1000.0 * wtime);
+  return 1;
+}
+
+
+//= Continue wandering aimlessly for a while. 
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcSocial::soc_explore (const jhcAliaDesc *desc, int i)
+{
+  double xs, wtime = 120.0;
+
+  // check for timeout then lock to sensor cycle 
+  if ((rwi == NULL) || rwi->Ghost())
+    return -1;
+  if ((xs = jms_elapsed(ct0[i])) > 0.0)
+  {
+    jprintf("{ soc_wander: timeout %3.1f secs [%3.1f] }\n", wtime + xs, wtime);
+    return 1;
+  }
+  if (!rwi->Accepting())
+    return 0;
+
+  // go forward as long as obstacles fairly far away
+  rwi->MapPath(cbid[i]);
+  rwi->Explore(0.5, cbid[i]);
+  return 0;
+}

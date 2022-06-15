@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -243,8 +244,7 @@ int jhcDraw::IndexColor (jhcImg& dest, const jhcImg& src) const
 //   0 = black,  -1 = red,  -2 = green, -3 = yellow, -4 = blue, 
 //  -5 = purple, -6 = aqua, -7 = white, -8 = black again, etc.
 
-int jhcDraw::RectFill (jhcImg& dest, int left, int bot, int w, int h, 
-                       int r, int g, int b) const 
+int jhcDraw::RectFill (jhcImg& dest, int left, int bot, int w, int h, int r, int g, int b) const 
 {
   jhcRoi src(dest);
 
@@ -360,19 +360,30 @@ int jhcDraw::BlockCent (jhcImg& dest, int xc, int yc, int w, int h, int r, int g
 
 
 //= Draw a filled rectangle centered on given coordinates tilted by some angle.
+// can optionally set ROI of destination image tight around rectangle created
 // checks of form: (x - xa) * (yb - ya) > (y - ya) * (xb - xa) for bounding line [xa ya]->[xb yb]
 // computes sum = x * dy - y * dx - th where dx = xb - xa, dy = yb - ya, th = xa * dy - ya * dx 
-// NOTE: between 15-30x slower than BlockCent depending on angle
+// between 15-30x slower than BlockCent depending on angle
+// NOTE: "w" is size along "degs" (since w = x dimension when degs = 0)
 
-int jhcDraw::BlockRot (jhcImg& dest, double xc, double yc, double w, double h, double degs, int r, int g, int b) const
+int jhcDraw::BlockRot (jhcImg& dest, double xc, double yc, double w, double h, double degs, int r, int g, int b, int set) const
 {
   double d0 = fmod(degs, 180.0); 
+  int ix = ROUND(xc), iy = ROUND(yc), iw = ROUND(w), ih = ROUND(h);
 
   // check for simple cases
   if (d0 == 0.0)
-    return BlockCent(dest, ROUND(xc), ROUND(yc), ROUND(w), ROUND(h), r, g, b);
+  {
+    if (set > 0)
+      dest.SetRoi(ix, iy, iw, ih);
+    return BlockCent(dest, ix, iy, iw, ih, r, g, b);
+  }
   if (d0 == 90.0)
-    return BlockCent(dest, ROUND(xc), ROUND(yc), ROUND(h), ROUND(w), r, g, b);
+  {
+    if (set > 0)
+      dest.SetRoi(ix, iy, ih, iw);
+    return BlockCent(dest, ix, iy, ih, iw, r, g, b);
+  }
 
   // general angle case
   double w2 = 0.5 * w, h2 = 0.5 * h, rads = D2R * degs, c = cos(rads), s = sin(rads);
@@ -380,16 +391,17 @@ int jhcDraw::BlockRot (jhcImg& dest, double xc, double yc, double w, double h, d
   double nwx = xc - w2c - h2s, nwy = yc - w2s + h2c, nex = xc + w2c - h2s, ney = yc + w2s + h2c;
   double swx = xc - w2c + h2s, swy = yc - w2s - h2c, sex = xc + w2c + h2s, sey = yc + w2s - h2c; 
 
-  return FillPoly4(dest, nwx, nwy, nex, ney, sex, sey, swx, swy, r, g, b);
+  return FillPoly4(dest, nwx, nwy, nex, ney, sex, sey, swx, swy, r, g, b, set);
 }
 
 
 //= Draw a filled 4 sided polygon with vertexes in clockwise order.
 // actual position of points does not matter (e.g. could start with SW) only their order
 // counterclockwise order fills parts of bounding box (not whole image) outside of polygon
+// can optionally set ROI of destination image tight around shape created
 
 int jhcDraw::FillPoly4 (jhcImg& dest, double nwx, double nwy, double nex, double ney, 
-                        double sex, double sey, double swx, double swy, int r, int g, int b) const
+                        double sex, double sey, double swx, double swy, int r, int g, int b, int set) const
 {
   double v, dx1 = nex - nwx, dy1 = ney - nwy, dx2 = sex - swx, dy2 = sey - swy;
   double v2, dx3 = nex - sex, dy3 = ney - sey, dx4 = nwx - swx, dy4 = nwy - swy;
@@ -464,6 +476,10 @@ int jhcDraw::FillPoly4 (jhcImg& dest, double nwx, double nwy, double nex, double
           d[2] = red;
         }
   }
+
+  // possibly set destination ROI
+  if (set > 0)
+    dest.SetRoi(x0, y0, rw, rh);
   return 1;
 }
 
@@ -764,13 +780,13 @@ int jhcDraw::RectEmpty (jhcImg& dest, const jhcRoi& s, int t, int r, int g, int 
 
 //= Like other RectEmpty but takes fractions of image dimensions.
 
-int jhcDraw::RectEmpty (jhcImg& dest, double left, double bot, double w, double h, 
+int jhcDraw::RectEmpty (jhcImg& dest, double lfrac, double bfrac, double wfrac, double hfrac, 
                         int t, int r, int g, int b) const 
 {
   int iw = dest.XDim(), ih = dest.YDim();
 
-  return RectEmpty(dest, ROUND(left * iw), ROUND(bot * ih), 
-                         ROUND(w * iw), ROUND(h * ih), t, r, g, b);
+  return RectEmpty(dest, ROUND(lfrac * iw), ROUND(bfrac * ih), 
+                         ROUND(wfrac * iw), ROUND(hfrac * ih), t, r, g, b);
 }
 
 
@@ -897,6 +913,7 @@ int jhcDraw::RectEmpty (jhcImg& dest, int lx, int by, int w, int h,
 
 
 //= Specialization of RectEmpty to draw a border around active part of image.
+// generally want t < 0 to draw in from edges of image, t > 0 for outside ROI
 
 int jhcDraw::Border (jhcImg& dest, int t, int r, int g, int b) const 
 {
@@ -905,6 +922,7 @@ int jhcDraw::Border (jhcImg& dest, int t, int r, int g, int b) const
 
 
 //= Only draws vertical borders (left and right sides).
+// t > 0 draws inside image (unlike Border)
 
 int jhcDraw::BorderV (jhcImg& dest, int t, int v) const 
 {
@@ -931,6 +949,7 @@ int jhcDraw::BorderV (jhcImg& dest, int t, int v) const
 
 
 //= Only draws horizontal borders (top and bottom sides).
+// t > 0 draws inside image (unlike Border)
 
 int jhcDraw::BorderH (jhcImg& dest, int t, int v) const 
 {
@@ -1192,6 +1211,7 @@ int jhcDraw::DrawSide (jhcImg& dest, int side, int t, int r, int g, int b) const
 
 //= Draw a rectangular outline centered on given coordinates.
 // can optionally rotate whole shape by given number of degrees
+// NOTE: "w" is size along "degs" (since w = x dimension when degs = 0)
 
 int jhcDraw::RectCent (jhcImg& dest, double xc, double yc, double w, double h, 
                        double degs, int t, int r, int g, int b) const 
@@ -1227,6 +1247,7 @@ int jhcDraw::RectCent (jhcImg& dest, double xc, double yc, double w, double h,
 
 
 //= Draws a centered outline rectangle but coords are fractions of image size.
+// NOTE: "w" is size along "degs" (since w = x dimension when degs = 0)
 
 int jhcDraw::RectFrac (jhcImg& dest, 
                        double xcf, double ycf, double wf, double hf, 
@@ -1315,6 +1336,7 @@ int jhcDraw::CircleEmpty (jhcImg& dest, double xc, double yc, double radius,
 //= Draw an line approximation to some ellipse.
 // works with both RGB and monochrome images (g and b ignored)
 // if r is negative, picks RGB color based on absolute value of r
+// ang is the direction of the len dimension (unlike RectCent)
 
 int jhcDraw::EllipseEmpty (jhcImg& dest, double xc, double yc, double len, double wid, double ang, 
                            int t, int r, int g, int b) const
@@ -1488,6 +1510,17 @@ int jhcDraw::DrawLine (jhcImg& dest, double x0, double y0, double x1, double y1,
   return 1;
 }
 
+
+//= Draw a ray from point (x0 y0) at some angle and extending some length.
+// if len <= 0 then draws to edge of image
+
+int jhcDraw::Ray (jhcImg& dest, double x0, double y0, double ang, double len, int t, int r, int g, int b) const
+{
+  double rads = D2R * ang, d = ((len > 0.0) ? len : dest.XDim() + dest.YDim());
+
+  return DrawLine(dest, x0, y0, x0 + d * cos(rads), y0 + d * sin(rads), t, r, g, b);
+}
+                  
 
 //= Connect a series of corner points with lines (n negative for open curve).
 // takes number of points, line thickness, and line color

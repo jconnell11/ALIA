@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -538,7 +539,7 @@ char *jhcMatrix::List (char *buf, int ssz) const
 
 char *jhcMatrix::ListVec (char *buf, const char *fmt, int ssz) const
 {
-  char temp[40], res[20] = "%+4.2f";
+  char temp[40], res[20] = "%4.2f";
   const char *prec = ((fmt == NULL) ? res : fmt);
   int i;
 
@@ -735,6 +736,28 @@ double jhcMatrix::MinVec () const
 }
 
 
+//= Returns the maximum absolute coordinate in a vector.
+
+double jhcMatrix::MaxAbs () const
+{
+  double v, hi;
+  int i;
+
+#ifdef _DEBUG
+  if (!Vector(1))
+    Fatal("Bad input to jhcMatrix::MaxAbs");
+#endif
+
+  hi = fabs(VRef(0));
+  for (i = 1; i < h; i++)
+  {
+    v = fabs(VRef0(i));
+    hi = __max(v, hi);
+  }
+  return hi;
+}
+
+
 //= Return the dot product of self with some other vector.
 // not for use with homogenous coordinates
 
@@ -922,6 +945,19 @@ double jhcMatrix::MaxAbs3 () const
 }
 
 
+//= Returns the sum of absolute coordinates in a 3D vector.
+
+double jhcMatrix::SumAbs3 () const
+{
+#ifdef _DEBUG
+  if (!Vector(3))
+    Fatal("Bad input to jhcMatrix::SumAbs3");
+#endif
+
+  return(fabs(VRef0(0)) + fabs(VRef0(1)) + fabs(VRef0(2)));
+}
+
+
 //= Returns the minimum coordinate in a 3D vector.
 
 double jhcMatrix::MinVec3 () const
@@ -939,23 +975,75 @@ double jhcMatrix::MinVec3 () const
 
 double jhcMatrix::PosDiff3 (const jhcMatrix& ref) const
 {
-  double dsq, sum;
+  double diff, sum2;
 
 #ifdef _DEBUG
   if (!Vector(4) || !ref.Vector(4))
     Fatal("Bad input to jhcMatrix::PosDiff3");
 #endif
 
-  dsq = VRef0(0) - ref.VRef0(0);
-  dsq *= dsq;
-  sum =  dsq;
-  dsq = VRef0(1) - ref.VRef0(1);
-  dsq *= dsq;
-  sum += dsq;
-  dsq = VRef0(2) - ref.VRef0(2);
-  dsq *= dsq;
-  sum += dsq;
-  return((double) sqrt(sum));
+  diff = VRef0(0) - ref.VRef0(0);
+  sum2 = diff * diff;
+  diff = VRef0(1) - ref.VRef0(1);
+  sum2 += diff * diff;
+  diff = VRef0(2) - ref.VRef0(2);
+  sum2 += diff * diff;
+  return((double) sqrt(sum2));
+}
+
+
+//= Returns the maximum coordinate difference between two points.
+
+double jhcMatrix::MaxDiff3 (const jhcMatrix& ref) const
+{
+  double diff, top;
+
+#ifdef _DEBUG
+  if (!Vector(4) || !ref.Vector(4))
+    Fatal("Bad input to jhcMatrix::MaxDiff3");
+#endif
+
+  top  = fabs(VRef0(0) - ref.VRef0(0));
+  diff = fabs(VRef0(1) - ref.VRef0(1));
+  top = __max(top, diff);
+  diff = fabs(VRef0(2) - ref.VRef0(2));
+  return __max(top, diff);
+}
+
+
+//= Returns the length of the XY difference vector between two positions.
+
+double jhcMatrix::PosDiff2 (const jhcMatrix& ref) const
+{
+  double diff, sum2;
+
+#ifdef _DEBUG
+  if (!Vector(4) || !ref.Vector(4))
+    Fatal("Bad input to jhcMatrix::PosDiff2");
+#endif
+
+  diff = VRef0(0) - ref.VRef0(0);
+  sum2 = diff * diff;
+  diff = VRef0(1) - ref.VRef0(1);
+  sum2 += diff * diff;
+  return((double) sqrt(sum2));
+}
+
+
+//= Returns the maximum planar XY coordinate difference between two points.
+
+double jhcMatrix::MaxDiff2 (const jhcMatrix& ref) const
+{
+  double diff, top;
+
+#ifdef _DEBUG
+  if (!Vector(4) || !ref.Vector(4))
+    Fatal("Bad input to jhcMatrix::MaxDiff2");
+#endif
+
+  top  = fabs(VRef0(0) - ref.VRef0(0));
+  diff = fabs(VRef0(1) - ref.VRef0(1));
+  return __max(top, diff);
 }
 
 
@@ -965,6 +1053,19 @@ double jhcMatrix::PanVec3 () const
 {
   return(R2D * atan2(VRef0(1), VRef0(0)));
 }
+
+
+//= Get the xy plane pan angle to this point from a reference point.
+
+double jhcMatrix::PanRel3 (const jhcMatrix& ref) const
+{
+#ifdef _DEBUG
+  if (!Vector(4) || !ref.Vector(4))
+    Fatal("Bad input to jhcMatrix::PanRel3");
+#endif
+
+  return(R2D * atan2(VRef0(1) - ref.VRef0(1), VRef0(0) - ref.VRef0(0)));
+} 
 
 
 //= Resolve a vector into a tilt angle relative to the Z axis.
@@ -1069,6 +1170,7 @@ double jhcMatrix::ang180 (double ang) const
 
 
 //= Find angular difference of self from reference vector in XY plane.
+// finds pan of each vector wrt origin then subtracts them (as opposed to PanRel3 with ref)
 // vectors are XYZ elements not PTR elements, returns -180 to +180
 
 double jhcMatrix::PanDiff3 (const jhcMatrix& ref) const
@@ -1078,6 +1180,7 @@ double jhcMatrix::PanDiff3 (const jhcMatrix& ref) const
 
 
 //= Find angular difference of self from reference vector relative to XY plane.
+// finds tilt of each vector wrt origin then subtracts them (does not get tilt between)
 // vectors are XYZ elements not PTR elements, returns -180 to +180
 
 double jhcMatrix::TiltDiff3 (const jhcMatrix& ref) const
@@ -1092,7 +1195,7 @@ void jhcMatrix::PanTilt3 (double& pan, double& tilt, const jhcMatrix& targ) cons
 {
   jhcMatrix tmp(4);
 
-  tmp.DiffVec3(targ, *this);
+  tmp.CycDiff3(targ, *this);
   pan = tmp.PanVec3();
   tilt = tmp.TiltVec3();
 }
@@ -1348,29 +1451,57 @@ void jhcMatrix::SubZero3 (const jhcMatrix& replace)
 
 //= Clamp all components to be within +/- limits.
 
-void jhcMatrix::ClampVec3 (const jhcMatrix& lim)
+void jhcMatrix::ClampVec3 (const jhcMatrix& tol)
 {
 #ifdef _DEBUG
-  if (!Vector(3) || !lim.Vector(3))
+  if (!Vector(3) || !tol.Vector(3))
     Fatal("Bad input to jhcMatrix::ClampVec3");
 #endif
-  VSet0(0, __max(-lim.VRef0(0), __min(VRef0(0), lim.VRef0(0))));
-  VSet0(1, __max(-lim.VRef0(1), __min(VRef0(1), lim.VRef0(1))));
-  VSet0(2, __max(-lim.VRef0(2), __min(VRef0(2), lim.VRef0(2))));
+  VSet0(0, __max(-tol.VRef0(0), __min(VRef0(0), tol.VRef0(0))));
+  VSet0(1, __max(-tol.VRef0(1), __min(VRef0(1), tol.VRef0(1))));
+  VSet0(2, __max(-tol.VRef0(2), __min(VRef0(2), tol.VRef0(2))));
 }
 
 
 //= Clamp all components to be within +/- a certain limit.
 
-void jhcMatrix::ClampVec3 (double lim)
+void jhcMatrix::ClampVec3 (double tol)
 {
 #ifdef _DEBUG
   if (!Vector(3))
     Fatal("Bad input to jhcMatrix::ClampVec3");
 #endif
-  VSet0(0, __max(-lim, __min(VRef0(0), lim)));
-  VSet0(1, __max(-lim, __min(VRef0(1), lim)));
-  VSet0(2, __max(-lim, __min(VRef0(2), lim)));
+  VSet0(0, __max(-tol, __min(VRef0(0), tol)));
+  VSet0(1, __max(-tol, __min(VRef0(1), tol)));
+  VSet0(2, __max(-tol, __min(VRef0(2), tol)));
+}
+
+
+//= Take the element-wise maximum across two vectors.
+
+void jhcMatrix::TopVec3 (const jhcMatrix& alt)
+{
+#ifdef _DEBUG
+  if (!Vector(3) || !alt.Vector(3))
+    Fatal("Bad input to jhcMatrix::TopVec3");
+#endif
+  VSet0(0, __max(VRef0(0), alt.VRef0(0)));
+  VSet0(1, __max(VRef0(1), alt.VRef0(1)));
+  VSet0(2, __max(VRef0(2), alt.VRef0(2)));
+}
+
+
+//= Take the element-wise maximum across two vectors.
+
+void jhcMatrix::BotVec3 (const jhcMatrix& alt)
+{
+#ifdef _DEBUG
+  if (!Vector(3) || !alt.Vector(3))
+    Fatal("Bad input to jhcMatrix::BotVec3");
+#endif
+  VSet0(0, __min(VRef0(0), alt.VRef0(0)));
+  VSet0(1, __min(VRef0(1), alt.VRef0(1)));
+  VSet0(2, __min(VRef0(2), alt.VRef0(2)));
 }
 
 
@@ -1773,7 +1904,7 @@ double jhcMatrix::AxisQ (const jhcMatrix& q)
 
 void jhcMatrix::RotatorQ (const jhcMatrix& q)
 {
-  double hcos;
+  double hcos, len;
 
 #ifdef _DEBUG
   if (!Vector(3) || !q.Vector(4))
@@ -1782,15 +1913,14 @@ void jhcMatrix::RotatorQ (const jhcMatrix& q)
 
   // find cosine of half rotation angle from fourth component  
   hcos = q.VRef0(3);
-  if (hcos == 1.0)
-  {
-    Zero(0.0);                        
-    return;
-  }
   hcos = __max(-1.0, __min(hcos, 1.0));
+  len = q.LenVec3();
 
   // extract rotation axis from first 3 components then scale it
-  ScaleVec3(q, 2.0 * R2D * acos(hcos) / q.LenVec3(), 0.0);  
+  if ((len == 0.0) || (hcos == 1.0))
+    Zero(0.0);                        
+  else
+    ScaleVec3(q, 2.0 * R2D * acos(hcos) / len, 0.0);  
 }
 
 
@@ -2255,7 +2385,10 @@ int jhcMatrix::inv_core (const jhcMatrix& ref)
 
     // fail if nothing > zero found, else mark biggest as used
     if (big <= 0.0)
+    {
+      delete [] fixed;
       return 0;
+    }
     fixed[diag] = 1;                   
 
     // swap rows to put pivot value on diagonal (column swap implicit)

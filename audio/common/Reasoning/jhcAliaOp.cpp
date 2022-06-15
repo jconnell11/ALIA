@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@
 // limitations under the License.
 // 
 ///////////////////////////////////////////////////////////////////////////
+
+#include <ctype.h>
 
 #include "Interface/jhcMessage.h"   // common video
 
@@ -41,15 +43,50 @@ jhcAliaOp::~jhcAliaOp ()
 
 
 //= Default constructor initializes certain values.
+// with no argument assumes JDIR_DO with time0 = 0
 
 jhcAliaOp::jhcAliaOp (JDIR_KIND k)
 {
+  // basic info
+  next = NULL;
+  *gist = '\0';
   kind = k;
   id = 0;
   lvl = 3;             // default = newly told
   pref = 1.0;
-  next = NULL;
+
+  // expected duration
+  tavg = ((k == JDIR_NOTE) ? t0 : 0.0);
+  tstd = ((k == JDIR_NOTE) ? s0 : 0.0);
+  time0 = Budget();
+
+  // learned overrides
+  *prov = '\0';
+  pnum = 0;
+  pref0 = 1.0;
+
+  // run-time status
   meth = NULL;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                            Simple Functions                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Remember human readable utterance that generated this operator.
+
+void jhcAliaOp::SetGist (const char *sent)
+{
+  char *end;
+
+  *gist = '\0';
+  if (sent == NULL)
+    return;
+  strcpy_s(gist, ((*sent == '"') ? sent + 1 : sent));
+  gist[0] = (char) toupper(gist[0]);
+  if ((end = strrchr(gist, '"')) != NULL)
+    *end = '\0';
 }
 
 
@@ -77,7 +114,7 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth)
     for (i = 0; i < nc; i++) 
     {
       item = cond.Item(i);
-      if ((occ = f.SameBin(*item)) <= 0)
+      if ((occ = f.SameBin(*item, NULL)) <= 0)
         return 0;                                // pattern unmatchable!
       if ((best <= 0) || (occ < best))
       {
@@ -98,7 +135,8 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth)
   if (k == JDIR_CHK)
     while ((mate = (dir.key).NextNode(mate)) != NULL)
     {
-      // CHK triggers can start matching anywhere in description
+      // CHK triggers can start matching anywhere in description (ignore negation)
+      chkmode = 1;                                                   
       if ((found = try_mate(focus, mate, dir, f)) < 0)
         return found;
       cnt += found;
@@ -222,6 +260,19 @@ bool jhcAliaOp::SameEffect (const jhcBindings& b1, const jhcBindings& b2) const
 }
 
 
+//= Revise exponential moving average with elapsed time to new termination.
+// termination allows lengthening without actual success and
+// shortening due to pre-emptive stopping (e.g. "quit it!")
+
+void jhcAliaOp::AdjTime (double secs)
+{
+  double tvar, v0 = tstd * tstd, dt = secs - tavg, tmix = 0.1;
+
+  tvar = (1.0 - tmix) * (v0 + tmix * dt * dt);
+  SetTime(tavg + tmix * dt, sqrt(tvar));
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                              File Functions                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -231,8 +282,21 @@ bool jhcAliaOp::SameEffect (const jhcBindings& b1, const jhcBindings& b2) const
 
 int jhcAliaOp::Load (jhcTxtLine& in)
 {
+  const char *item;
   int ans;
 
+  // required header ("OP <pnum> - <gist>" where gist is optional)
+  if (in.NextContent() == NULL)
+    return -1;
+  if (((item = in.Token()) == NULL) || (_stricmp(item, "OP") != 0))
+    return 0;
+  if (((item = in.Token()) == NULL) || (sscanf_s(item, "%d", &pnum) != 1))
+    return 0;
+  if (((item = in.Token()) != NULL) && (strcmp(item, "-") == 0))
+    SetGist(in.Head());
+
+  // body of operator
+  in.Flush();
   if (in.NextContent() == NULL)
     return -1;
   ClrTrans();
@@ -248,6 +312,7 @@ int jhcAliaOp::Load (jhcTxtLine& in)
 int jhcAliaOp::load_pattern (jhcTxtLine& in)
 {
   jhcAliaDir dir;
+  const char *tail;
   int ans;
 
   // get trigger condition as a directive and copy important parts
@@ -258,6 +323,13 @@ int jhcAliaOp::load_pattern (jhcTxtLine& in)
     return ans;
   kind = dir.kind;
   cond.Copy(dir.key);
+
+  // set free choice NOTE default completion time (default JDIR_DO is zero)
+  if (kind == JDIR_NOTE)
+  {
+    tavg = t0;
+    tstd = s0;
+  }
 
   // check for caveats
   nu = 0;
@@ -281,9 +353,25 @@ int jhcAliaOp::load_pattern (jhcTxtLine& in)
     in.Skip("pref:");
     if (sscanf_s(in.Head(), "%lf", &pref) != 1)
       return 0;
+    pref0 = pref;
     if (in.Next(1) == NULL)
       return 0;
   }
+
+  // get expected duration (defaults to 0.0 generally)
+  if (in.Begins("time:"))
+  {
+    in.Skip("time:");
+    if (sscanf_s(in.Head(), "%lf", &tavg) != 1)
+      return 0;
+    if ((tail = strchr(in.Head(), '+')) == NULL)
+      return 0;
+    if (sscanf_s(tail + 1, "%lf", &tstd) != 1)
+      return 0;
+    if (in.Next(1) == NULL)
+      return 0;
+  }
+  time0 = Budget();
 
   // get associated action sequence
   if (!in.Begins("----"))
@@ -305,14 +393,18 @@ int jhcAliaOp::Save (FILE *out, int detail)
   jhcAliaDir dir;
   int i;
 
-  // operator number
+  // header ("OP <id> - <gist>") and optional provenance
+  if ((detail >= 2) && (*prov != '\0'))
+    jfprintf(out, "// originally operator %d from %s\n\n", pnum, prov);  
+  jfprintf(out, "OP");
   if (id > 0)
-    jfprintf(out, "// OPERATOR %d\n", id);
-  else
-    jfprintf(out, "// OPERATOR\n");
+    jfprintf(out, " %d", id);
+  if ((detail >= 2) && (*gist != '\0'))
+    jfprintf(out, " - \"%s\"", gist);
+  jfprintf(out, "\n");
 
   // trigger graphlet (converted to directive)
-  jfprintf(out, "trig:\n");
+  jfprintf(out, "  trig:\n");
   dir.kind = kind;
   (dir.key).Copy(cond);
   dir.Save(out, 2, detail);
@@ -327,13 +419,16 @@ int jhcAliaOp::Save (FILE *out, int detail)
 
   // selection preference
   if (pref != 1.0)
-    jfprintf(out, "pref: %4.2f\n", pref);
+    jfprintf(out, "  pref: %5.3f\n", pref);
+
+  // expected duration for free choice NOTE completion
+  if ((kind == JDIR_NOTE) && ((tavg != t0) || (tstd != s0)))
+    jfprintf(out, "  time: %3.1f + %3.1f\n", tavg, tstd);
 
   // associated expansion
   jfprintf(out, "-----------------\n");
   if (meth != NULL)
     meth->Save(out, 2, NULL, detail);
-  jfprintf(out, "\n");
   return((ferror(out) != 0) ? -1 : 1);
 }
 

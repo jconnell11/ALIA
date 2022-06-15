@@ -66,6 +66,7 @@ double jhcMotRamp::RampNext (double now, double tupd, double lead)
 // "tupd" is the time since last call, presumed to be approximate time to next call also
 // special command of rt = 0 freezes control at pose where first issued (prevents drift)
 // sets member variable "drem" with remaining distance to goal
+// NOTE: uses ideal velocity computed by alter_vel and current true direction to goal
 
 void jhcMotRamp::RampNext (jhcMatrix& stop, const jhcMatrix& now, double tupd, double lead) 
 {
@@ -100,32 +101,39 @@ void jhcMotRamp::RampNext (jhcMatrix& stop, const jhcMatrix& now, double tupd, d
 }
 
 
+//= Replace some or all stop position coordinates with final command coordinates.
+// imm bits: 2 = Z, 1 = Y, 0 = X specify which coordinates to replace
+// if all components overwritten then sets speed state variable to zero
+
+void jhcMotRamp::ExactNext (jhcMatrix& stop, int imm) 
+{
+  int i, mask = 0x1;
+
+  // make sure vector is okay and possibly stop all profiling
+  if (!stop.Vector(4))
+    Fatal("Bad input to jhcMotRamp::ExactNext");
+  if ((imm & 0x7) == 0x7)
+    sp = 0.0;
+
+  // copy selected coordinates and reset their motion state
+  for (i = 0; i < 3; i++, mask <<= 1)
+    if ((imm & mask) != 0)
+    {
+      stop.VSet(i, cmd.VRef(i));
+      vel.VSet(i, 0.0);
+    }
+}
+
+
 //= Find vector in direction of target from current position.
 // also monitors whether progress is being made (distance is decreasing)
 // returns remaining distance to target (unsigned)
 
 double jhcMotRamp::goal_dir (jhcMatrix& dir, const jhcMatrix& now, double tupd)
 {
-  double dist;
-
-  // find direction to target and remaining distance 
   if (done < 0)
-    dist = dir.RotDir3(cmd, now);
-  else
-    dist = dir.DirVec3(cmd, now);
-
-  // check if making progress
-  if ((d0 - dist) > fabs(done))
-  {
-    d0 = dist;
-    stuck = 0.0;
-  }
-  else
-  {
-    d0 = __max(d0, dist);
-    stuck += tupd;
-  }
-  return dist;
+    return dir.RotDir3(cmd, now);
+  return dir.DirVec3(cmd, now);
 }
 
 
@@ -144,6 +152,7 @@ double jhcMotRamp::goal_dir (jhcMatrix& dir, const jhcMatrix& now, double tupd)
 // if goal suddenly becomes closer, will cut speed instantly or by dmax (safer)
 // sets member variable "sp" to scalar speed of new velocity vector
 // sets member variable "rev" positive to indicate travel in wrong direction
+// NOTE: "vel" is the only state vector maintained for the system (no position)
 
 void jhcMotRamp::alter_vel (const jhcMatrix& dir, double dist, double tupd) 
 {

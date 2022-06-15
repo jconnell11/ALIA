@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,9 +28,12 @@
 
 #include "jhcGlobal.h"
 
+#include "Processing/jhcDraw.h"        // common video
+
 #include "Body/jhcEliBody.h"           // common robot
 #include "Eli/jhcEliWatch.h"
 #include "Environ/jhcLocalOcc.h"
+#include "Environ/jhcTable.h"
 #include "Objects/jhcSurfObjs.h"
 #include "People/jhcFaceName.h"
 #include "People/jhcSpeaker.h"
@@ -74,26 +77,28 @@
 //             PlaneEst
 //         +SmTrack
 //       +PatchProps
+//     +Table                supporting surfaces
 //     +EliWatch             gaze behaviors
+//     +EliGrab              manipulation
 // 
 // </pre>
 
-class jhcEliGrok : public jhcBackgRWI
+class jhcEliGrok : public jhcBackgRWI, private jhcDraw
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  jhcImg mark, mark2;
+  jhcImg limb, mark, mark2;
   UL32 tnow;
   int phy, seen, reflex, batt;
 
   // high-level commands
-  double sx, sy, ssp, vd, va, vsp, voff;
-  int wlock, wwin, slock, vlock;
+  double sx, sy, ssp, vd, va, vsp, voff, xsp;
+  int wlock, wwin, slock, vlock, xlock, flock;
 
   // navigation goal 
-  int approach, follow, feet;
-  double sweep;
-  char nmode[20];
+  UL32 ahead;
+  int feet, act;
+  char nmode[4][20];
 
 
 // PUBLIC MEMBER VARIABLES
@@ -111,7 +116,8 @@ public:
   jhcFaceName fn;                      // face ID and gaze for heads
   jhcSpeaker tk;                       // sound location vs head
   jhcLocalOcc nav;                     // navigation obstacles
-  jhcSurfObjs tab;                     // depth-based object detection
+  jhcSurfObjs sobj;                    // depth-based object detection
+  jhcTable tab;                        // supporting surfaces
 
   // innate behaviors
   jhcEliWatch watch;
@@ -119,6 +125,10 @@ public:
   // head visibility parameters
   jhcParam vps;
   double lvis, rvis, tvis, bvis, gtime, side, btime;
+
+  // saccade control parameters
+  jhcParam sps;
+  double hem, umat, sacp, sact, sact2, road, cruise;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -129,9 +139,9 @@ public:
   void BindBody (jhcEliBody *b);
   const jhcImg *HeadView () const {return &mark;}
   const jhcImg *MapView () const  {return &mark2;}
+  const char *NavGoal () const    {return(((act < 0) || (act > 3)) ? NULL : nmode[act]);}
   const char *Watching (int dash =1) const   
     {return watch.Behavior((phy <= 0) ? -1 : neck->GazeWin(), dash);}
-  const char *NavGoal ();
   bool Ghost () const   {return(phy <= 0);}
   UL32 CmdTime () const {return tnow;}
 
@@ -146,6 +156,10 @@ public:
   int Update (int voice =0, UL32 resume =0);
   void Stop ();
 
+  // combination sensing
+  int ClosestFace (double front =0.0, int cnt =1) const;
+  int CentralFace (double aim =0.0, int cnt =1) const;
+
   // high-level people commands
   int WatchPerson (int id, int bid =10);
   void OrientToward (const jhcMatrix *targ, int bid);
@@ -155,10 +169,22 @@ public:
   int SeekLoc (double tx, double ty, double sp =1.0, int bid =10);
   int SeekLoc (const jhcMatrix& targ, double sp =1.0, int bid =10) 
     {return SeekLoc(targ.X(), targ.Y(), sp, bid);}
-  int ServoPolar (double td, double ta, double sp =1.0, int bid =10, double off =0.0);
+  int ServoPolar (double td, double ta, double off =0.0, double sp =1.0, int bid =10);
+  int ServoLoc (const jhcMatrix& targ, double off =0.0, double sp =1.0, int bid =10)
+    {return ServoPolar(targ.PlaneVec3(), targ.PanVec3() - 90.0, off, sp, bid);}
   double FrontDist (double td, double ta) const;
   double FrontDist (const jhcMatrix *targ) const
     {return((targ == NULL) ? -1.0 : FrontDist(targ->PlaneVec3(), targ->PanVec3() - 90.0));} 
+  int Explore (double sp =1.0, int bid =10);
+  int MapPath (int bid =10);
+  bool Survey () const {return((feet >= 1) && (feet <= 4));}
+
+  // debugging graphics
+  int Skeleton (jhcImg& dest, double ray =6.0) const;
+  int MapArm (jhcImg& map, double ray =6.0) const;
+  const jhcImg *ArmMask (jhcImg& map, int clr =1) const;
+  double ImgJt (double& ix, double& iy, int jt) const;
+  double ImgVeer (int mx, int my, int jt1, int jt0) const;
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -168,6 +194,7 @@ private:
   
   // processing parameters
   int vis_params (const char *fname);
+  int sacc_params (const char *fname);
 
   // high-level people commands
   void assert_watch ();
@@ -175,7 +202,9 @@ private:
   // high-level navigation commands
   void assert_seek ();
   void assert_servo ();
-  int quick_survey ();
+  void assert_explore ();
+  void assert_scan ();
+  int quick_survey (int bid);
 
   // interaction overrrides and helpers
   void body_update ();
@@ -183,6 +212,7 @@ private:
   void interpret2 ();
   void body_issue ();
   void adjust_heads ();
+  int base_mode ();
 
   // debugging graphics
   void cam_img ();

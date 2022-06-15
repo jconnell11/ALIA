@@ -175,6 +175,18 @@ bool jhcStare3D::Named (int i, int trk) const
 }
 
 
+//= See if the current track index is likely to be visible.
+
+bool jhcStare3D::Visible (int i, int trk) const
+{
+  if (i < 0)
+    return false;
+  if (trk <= 0) 
+    return((i < NumRaw()) && ((raw[i]).vis > 0));
+  return((i < NumPotential()) && ((dude[i]).vis > 0));
+}
+
+
 //= Retrieve data for a person with a particular index number.
 
 const jhcBodyData *jhcStare3D::GetPerson (int i, int trk) const

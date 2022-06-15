@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -533,7 +534,7 @@ int jhcHist::HistAvgs (jhcArr& avgs, const jhcImg& vals, const jhcImg& bins)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Stretch contrast of image for better viewing.
-// can optionally set some subarea for contrast calculation
+// can optionally set some rectangular subarea for contrast calculation
 // parameters for last enhancement available in member variables "sc" and "off"
 
 int jhcHist::Enhance (jhcImg& dest, const jhcImg& src, double smax, const jhcRoi *area, int omax)  
@@ -542,60 +543,28 @@ int jhcHist::Enhance (jhcImg& dest, const jhcImg& src, double smax, const jhcRoi
     return Fatal("Bad inputs to jhcHist::Enhance");
 
   // local variables
-  double sc2, lpct = 0.05, hpct = 0.95;
-  int x, y, i, val, f, bot, top, ilo = 20, ihi = 240, hsm = 4; 
-  int sum, rcnt = dest.RoiCnt(), rh = dest.RoiH(), rsk = dest.RoiSkip();
-  UC8 *d = dest.RoiDest();
-  const UC8 *s = src.RoiSrc();
   jhcArr ihist(256);
   UC8 scaled[256];
+  int x, y, rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  UC8 *d = dest.RoiDest();
+  const UC8 *s = src.RoiSrc();
 
-  // find original intensity distribution parameters
+  // find correction for relevant part of intensity distribution
   if (area != NULL)
     HistRegion(ihist, src, *area);
   else
     HistAll(ihist, src);
-  ihist.ASet(0, 0);
-  ihist.ASet(255, 0);
-  ihist.Smooth(hsm);
-  bot = ihist.Percentile(lpct);
-  top = ihist.Percentile(hpct);
-
-  // compute stretching linear correction
-  // if too much stretching, opt for darker image
-  sc  = (ihi - ilo) / (double)(top - bot);
-  sc2 = (255 - ilo) / (double)(255 - bot);   // retain white
-  sc = __max(sc, sc2);
-  sc = __min(sc, smax);
-  off = ROUND(ilo / sc - bot);
-  if (omax > 0)
-    off = __max(off, -omax);
-  if (sc <= 1.0)
-    return dest.CopyArr(src);
-
-  // compute answers for all possible values
-  f = ROUND(256.0 * sc);
-  sum = ROUND(f * off + 128);
-  for (i = 0; i <= 255; i++)
-  {
-    val = (int)(sum >> 8);
-    scaled[i] = BOUND(val);
-    sum += f;
-  }
+  off = linear_fix(sc, scaled, ihist, smax, omax);
 
   // apply stretching to image
-  for (y = rh; y > 0; y--)
-  {
-    for (x = rcnt; x > 0; x--)
-      *d++ = scaled[*s++];
-    d += rsk;
-    s += rsk;
-  }
+  for (y = rh; y > 0; y--, d += rsk, s += rsk)
+    for (x = rw; x > 0; x--, d++, s++)
+      *d = scaled[*s];
   return 1;
 }
 
 
-//= Stretch contrast of image for better viewing within given mask.
+//= Stretch contrast of image using data from arbitrary shaped mask.
 // parameters for last enhancement available in member variables "sc" and "off"
 
 int jhcHist::Enhance (jhcImg& dest, const jhcImg& src, const jhcImg& mask, double smax, int omax)  
@@ -604,51 +573,99 @@ int jhcHist::Enhance (jhcImg& dest, const jhcImg& src, const jhcImg& mask, doubl
     return Fatal("Bad inputs to jhcHist::Enhance");
 
   // local variables
-  double lpct = 0.05, hpct = 0.95;
-  int x, y, i, val, f, sum, bot, top, ilo = 20, ihi = 240, hsm = 4; 
-  int rcnt = dest.RoiCnt(), rh = dest.RoiH(), rsk = dest.RoiSkip();
-  UC8 *d = dest.RoiDest();
-  const UC8 *s = src.RoiSrc();
   jhcArr ihist(256);
   UC8 scaled[256];
+  int x, y, rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  UC8 *d = dest.RoiDest();
+  const UC8 *s = src.RoiSrc();
+
+  // find correction for relevant part of intensity distribution
+  HistOver(ihist, src, mask);
+  off = linear_fix(sc, scaled, ihist, smax, omax);
+
+  // apply stretching to image
+  for (y = rh; y > 0; y--, d += rsk, s += rsk)
+    for (x = rw; x > 0; x--, d++, s++)
+      *d = scaled[*s];
+  return 1;
+}
+
+
+//= Stretch contrast of each color channel for better definition and color cast removal.
+// can optionally set some subarea for contrast calculation
+// parameters for last enhancement "sc", "gsc", "bsc" and "off", "goff", "boff"
+
+int jhcHist::Enhance3 (jhcImg& dest, const jhcImg& src, double smax, const jhcRoi *area, int omax)  
+{
+  if (!src.Valid() || !src.SameFormat(dest))
+    return Fatal("Bad inputs to jhcHist::Enhance3");
+
+  // local variables
+  jhcArr rhist(256), ghist(256), bhist(256);
+  UC8 rlut[256], glut[256], blut[256];
+  int x, y, rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  UC8 *d = dest.RoiDest();
+  const UC8 *s = src.RoiSrc();
 
   // find original intensity distribution parameters
-  HistOver(ihist, src, mask);
-  ihist.ASet(0, 0);
-  ihist.ASet(255, 0);
-  ihist.Smooth(hsm);
-  bot = ihist.Percentile(lpct);
-  top = ihist.Percentile(hpct);
+  if (area != NULL)
+    HistRGB(rhist, ghist, bhist, src, *area);
+  else
+    HistRGB(rhist, ghist, bhist, src);
+
+  // get channel correction tables
+  off  = linear_fix( sc, rlut, rhist, smax, omax);
+  goff = linear_fix(gsc, glut, ghist, smax, omax);
+  boff = linear_fix(bsc, blut, bhist, smax, omax);
+
+  // apply stretching to image
+  for (y = rh; y > 0; y--, d += rsk, s += rsk)
+    for (x = rw; x > 0; x--, d += 3, s += 3)
+    {
+      d[0] = blut[s[0]];
+      d[1] = glut[s[1]];
+      d[2] = rlut[s[2]];
+    }
+  return 1;
+}
+
+
+//= Compute linear offset and scaling for some intensity histogram.
+// fills in lookup table for converting old values to new values
+// returns offset used and scaling factor
+
+int jhcHist::linear_fix (double& isc, UC8 scaled[], jhcArr& hist, double smax, int omax) const
+{
+  double sc2, lpct = 0.05, hpct = 0.95;
+  int bot, top, ioff, f, sum, i, val, ilo = 20, ihi = 240, hsm = 4; 
+
+  // get red channel histogram cut points
+  hist.ASet(0, 0);
+  hist.ASet(255, 0);
+  hist.Smooth(hsm);
+  bot = hist.Percentile(lpct);
+  top = hist.Percentile(hpct);
 
   // compute stretching linear correction
   // if too much stretching, opt for darker image
-  sc = (ihi - ilo) / (double)(top - bot);
-  sc = __min(sc, smax);
-  off = ROUND(ilo / sc - bot);
+  isc = (ihi - ilo) / (double)(top - bot);
+  sc2 = (255 - ilo) / (double)(255 - bot);   // retain white
+  isc = __max(isc, sc2);
+  isc = __min(isc, smax);
+  ioff = ROUND(ilo / isc - bot);
   if (omax > 0)
-    off = __max(off, -omax);
-  if (sc <= 1.0)
-    return dest.CopyArr(src);
+    ioff = __max(ioff, -omax);
 
   // compute answers for all possible values
-  f = ROUND(256.0 * sc);
-  sum = ROUND(f * off + 128);
+  f = ROUND(256.0 * isc);
+  sum = ROUND(f * ioff + 128);
   for (i = 0; i <= 255; i++)
   {
     val = (int)(sum >> 8);
     scaled[i] = BOUND(val);
     sum += f;
   }
-
-  // apply stretching to image
-  for (y = rh; y > 0; y--)
-  {
-    for (x = rcnt; x > 0; x--)
-      *d++ = scaled[*s++];
-    d += rsk;
-    s += rsk;
-  }
-  return 1;
+  return ioff;
 }
 
 

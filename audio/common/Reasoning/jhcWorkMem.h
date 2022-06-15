@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@
 
 class jhcWorkMem : public jhcNodePool
 {
+  static const int emax = 50;          /** Max external references. */
+
 // PRIVATE MEMBER VARIABLES
 private:
   // main vs halo separation
@@ -53,8 +55,8 @@ private:
   double skep;               // global condition belief threshold (skepticism)
 
   // external linkages
-  jhcNetNode *nref[20];
-  int ext[20];
+  jhcNetNode *nref[emax];
+  int ext[emax], cat[emax];
 
 
 // PROTECTED MEMBER VARIABLES
@@ -86,7 +88,7 @@ public:
   jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const;
   int Length () const {return NodeCnt();}
   bool Prohibited (const jhcNetNode *n) const;
-  int SameBin (const jhcNetNode& focus) const;
+  int SameBin (const jhcNetNode& focus, const jhcBindings *b) const;
 
   // halo functions
   void ClearHalo () {halo.PurgeAll();}
@@ -95,12 +97,13 @@ public:
 
   // truth maintenance
   void RevealAll (const jhcGraphlet& desc);
-  void Endorse (const jhcGraphlet& key, int dbg =0);
+  int Endorse (const jhcGraphlet& key, int dbg =0);
 
   // external nodes
-  int ExtLink (int rnum, jhcNetNode *obj, int agt =0);
-  jhcNetNode *ExtRef (int rnum, int agt =0) const;
-  int ExtRef (const jhcNetNode *obj, int agt =0) const;
+  int ExtLink (int rnum, jhcNetNode *obj, int kind =0);
+  jhcNetNode *ExtRef (int rnum, int kind =0) const;
+  int ExtRef (const jhcNetNode *obj, int kind =0) const;
+  int ExtEnum (int rnum, int kind =0) const;
 
   // debugging
   void PrintMain ()  

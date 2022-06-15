@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,8 +44,6 @@ jhcEliArm::jhcEliArm ()
   int i;
 
   // set size for local vectors
-  miss.SetSize(4);
-  dmiss.SetSize(4);
   stop.SetSize(4);
   dstop.SetSize(4);
   tool.SetSize(4);
@@ -101,7 +99,7 @@ jhcEliArm::jhcEliArm ()
 
 
 //= Set up standard values describing the arm geometry.
-// really needs step = 0.2 for small moves and stiff = 20 for smoothness
+// really needs stiff = 20 for smoothness and step = 0.2 for small moves
 // step = 0.1 with stiff = 10 seems a reasonable compromise
 // vmax = 100 degs/sec is fine for most things
 // coordinate center = table height (down 4.1" from upper arm link center)
@@ -110,31 +108,31 @@ jhcEliArm::jhcEliArm ()
 void jhcEliArm::std_geom ()
 {
   // shoulder (9.625 + 2.1 = 9.85"/12.31deg, zero at 135 degs) 
-  jt[0].SetServo(  2,    0,     20.0,   0.031,  90.0,  180.0,  180.0,  -2.0 );  // needs 20 slope 
-  jt[0].SetGeom(   0.0,  9.85,  12.31,  0.0 ,   -1.5, -135.0,    0.0, 180.0 );    
+  jt[0].SetServo(  2,    0,     20.0,   0.12,   90.0,  360.0,  360.0,  -2.0 );  // 20 for shake, 0.12 for move
+  jt[0].SetGeom(   0.0,  9.85,  12.31,  0.0 ,    0.0, -135.0,  -12.0, 180.0 );    
  
   // elbow joint - reversed (origin in middle)
-  jt[1].SetServo( -3,    0,     10.0,   0.031,  90.0,  180.0,  180.0,  -2.0 );  
-  jt[1].SetGeom(   0.0,  2.8,   76.8,  90.0,     1.0,    0.0,  -75.0,  75.0 );  
+  jt[1].SetServo( -3,    0,     20.0,   0.1,    90.0,  360.0,  360.0,  -2.0 );  // 20 for shake, 0.1 for move
+  jt[1].SetGeom(   0.0,  2.8,   76.8,  90.0,     0.0,    0.0,  -75.0,  80.0 );  // 90 - 12.31
 
   // lift joint (origin in middle)
-  jt[2].SetServo(  5,   -4,     10.0,   0.031,  90.0,  180.0,  180.0,  -2.0 );  // needs 10 slope
-  jt[2].SetGeom(   1.2,  0.6, -135.0, -90.0,     3.0,    0.0,  -60.0,  90.0 );  // 1.2 was 1.4, -90.0
+  jt[2].SetServo(  5,   -4,     20.0,   0.1,    90.0,  360.0,  360.0,  -2.0 );  // 20 for smooth, 0.1 for move
+  jt[2].SetGeom(   1.2,  0.6, -135.0, -90.0,     0.0,    0.0,  -60.0,  90.0 );  // 1.2 was 1.4, -90.0
 
   // wrist (origin under right lift) = roll 
-  jt[3].SetServo(  6,    0,      7.0,   0.031,  90.0,  360.0,  360.0,  -2.0 );  // jitters when 0.1 at end?
-  jt[3].SetGeom(   4.7,  0.6,   90.0,  90.0,     0.5,    0.0, -120.0, 120.0 );  // 0.6 was 0.8
+  jt[3].SetServo(  6,    0,     10.0,   0.031,  90.0,  360.0,  360.0,  -2.0 );  // jitters when 0.1 at end?
+  jt[3].SetGeom(   4.7,  0.8,   90.0,  90.0,     0.0,    0.0, -120.0, 120.0 );  // 0.8 was 0.6
 
-  // finger veer (origin in yaw servo) = yaw
-  jt[4].SetServo(  7,    0,      7.0,   0.031,  90.0,  360.0,  360.0,  -2.0 );
-  jt[4].SetGeom(   2.5,  0.0,  -90.0,  90.0,     5.0,    0.0, -120.0, 120.0 );  
+  // finger veer (origin in yaw servo) = yaw (pan)
+  jt[4].SetServo(  7,    0,     10.0,   0.031,  90.0,  360.0,  360.0,  -2.0 );
+  jt[4].SetGeom(   2.5,  0.0,  -90.0,  90.0,     0.0,    0.0, -120.0, 120.0 );  
 
-  // finger up/dn (origin at grip servo) = pitch
-  jt[5].SetServo( -8,    0,      7.0,   0.031,  90.0,  360.0,  360.0,  -2.0 );
-  jt[5].SetGeom(  -1.6,  1.5,  -45.0,  90.0,    -6.1,    0.0,  -60.0, 150.0 );  
+  // finger up/dn (origin at grip servo) = pitch (tilt)
+  jt[5].SetServo( -8,    0,     10.0,   0.031,  90.0,  360.0,  360.0,  -2.0 );
+  jt[5].SetGeom(  -1.7,  1.5,  -45.0,  90.0,     0.0,    0.0,  -60.0, 150.0 );  // 1.7 was 1.6
 
   // gripper (x axis points backward)
-  jt[6].SetServo( -9,    0,     20.0,   0.031, 180.0,  180.0,  360.0,  -2.0 );  // slope 20 for sensing (was 10)
+  jt[6].SetServo( -9,    0,     20.0,   0.031, 180.0,  180.0,  360.0,  -2.0 );  // 20 for sensing (was 10)
   jt[6].SetGeom(  0.0,   0.0,  180.0,   0.0,     0.0,  -56.0,   -5.0,  55.0 ); 
 }
 
@@ -153,14 +151,14 @@ int jhcEliArm::traj_params (const char *fname)
   int ok;
 
   ps->SetTag("arm_traj", 0);
-  ps->NextSpecF( &(dctrl.vstd), 180.0,  "Rotation speed (dps)");       // 0.5 sec for 90 degs
-  ps->NextSpecF( &(dctrl.astd), 180.0,  "Rotation accel (dps^2)");     // 1 sec to full speed
-  ps->NextSpecF( &(dctrl.dstd), 180.0,  "Rotation decel (dps^2)");     // 1 sec from full speed
-  ps->NextSpecF( &(pctrl.vstd),  24.0,  "Translation speed (ips)");    // 0.25 sec for 12" 
-  ps->NextSpecF( &(pctrl.astd),  48.0,  "Translation accel (ips^2)");  // 0.5 sec to full speed 
-  ps->NextSpecF( &(pctrl.dstd),  48.0,  "Translation decel (ips^2)");  // 0.5 sec from full speed
+  ps->NextSpecF( &(dctrl.vstd), 180.0,  "Rotation speed (dps)");        // 0.5 sec for 90 degs
+  ps->NextSpecF( &(dctrl.astd), 180.0,  "Rotation accel (dps^2)");      // 1 sec to full speed
+  ps->NextSpecF( &(dctrl.dstd), 180.0,  "Rotation decel (dps^2)");      // 1 sec from full speed
+  ps->NextSpecF( &(pctrl.vstd),  24.0,  "Translation speed (ips)");     // 0.5 sec for 12" travel
+  ps->NextSpecF( &(pctrl.astd),  96.0,  "Translation accel (ips^2)");   // 0.25 sec to full speed (was 48)
+  ps->NextSpecF( &(pctrl.dstd),  24.0,  "Translation decel (ips^2)");   // 1.0 sec from full speed (was 48)
 
-  ps->NextSpecF( &zf,             0.05, "Z error integral gain");      // was 0.2
+  ps->NextSpecF( &zf,             0.07, "Z error integral gain");       // was 0.2 then 0.05
   ps->NextSpecF( &zlim,           1.0,  "Max gravity offset (in)");   
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
@@ -177,15 +175,15 @@ int jhcEliArm::force_params (const char *fname)
   int ok;
 
   ps->SetTag("arm_force", 0);
-  ps->NextSpecF( &(wctrl.vstd),   6.0,   "Grip speed (ips)");           // 0.5 sec full close
-  ps->NextSpecF( &(wctrl.astd),  24.0,   "Grip accel (ips^2)");         // 0.25 sec to full speed (was 6)
-  ps->NextSpecF( &(wctrl.dstd),  24.0,   "Grip decel (ips^2)");         // 0.25 sec to full speed (was 6)
+  ps->NextSpecF( &(wctrl.vstd),   6.0,   "Grip speed (ips)");            // 0.5 sec full close
+  ps->NextSpecF( &(wctrl.astd),  24.0,   "Grip accel (ips^2)");          // 0.25 sec to full speed (was 6)
+  ps->NextSpecF( &(wctrl.dstd),  24.0,   "Grip decel (ips^2)");          // 0.25 sec to full speed (was 6)
   ps->NextSpecF( &fadj,           0.005, "Grip adjust factor (in/oz)");     
-  ps->NextSpecF( &fhold,         16.0,   "Default holding force");         // was 11
+  ps->NextSpecF( &fhold,         16.0,   "Default holding force");       // was 11
   ps->NextSpecF( &fnone,          8.0,   "Default open compliance");   
 
   ps->NextSpecF( &fmix,           0.2,   "End XY force update");           
-  ps->NextSpecF( &fmix2,          0.2,   "End Z force update");            // was 0.1
+  ps->NextSpecF( &fmix2,          0.2,   "End Z force update");          // was 0.1
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -202,12 +200,12 @@ int jhcEliArm::iter_params (const char *fname)
   int ok;
 
   ps->SetTag("arm_ikin", 0);
-  ps->NextSpec4( &tries,   3,    "Max step sizes");
-  ps->NextSpec4( &loops, 150,    "Max iterations");
-  ps->Skip();
-  ps->NextSpecF( &step,    0.30, "Position step");   
-  ps->NextSpecF( &dstep,   0.20, "Direction step");    
+  ps->NextSpec4( &tries,   4,    "Max step sizes");        
+  ps->NextSpec4( &loops,  30,    "Max refinements");       // was 150 then 30
+  ps->NextSpecF( &step,    0.60, "Position step");   
+  ps->NextSpecF( &dstep,   0.40, "Direction step");    
   ps->NextSpecF( &shrink,  0.5,  "Step shrinkage");
+  ps->NextSpecF( &osc,     1.0 , "Max Q wrt previous");    // was 1.2 then 1.1
 
   ps->NextSpecF( &close,   0.1,  "Default stop inches");  
   ps->NextSpecF( &align,   2.0,  "Default stop degrees");  
@@ -228,13 +226,13 @@ int jhcEliArm::stow_params (const char *fname)
   ps->SetTag("arm_stow", 0);
   ps->NextSpecF( &retx,  -2.0, "Tucked x postion (in)");   
   ps->NextSpecF( &rety,  10.5, "Tucked y position (in)");  
-  ps->NextSpecF( &retz,  -1.5, "Tucked z position (in)");
+  ps->NextSpecF( &retz,  -2.0, "Tucked z position (in)");        // was -1 then -3
   ps->NextSpecF( &rdir, 180.0, "Tucked point direction (deg)");
-  ps->NextSpecF( &rtip, -15.0, "Tucked tip direction (deg)");
-  ps->Skip();
+  ps->NextSpecF( &rtip, -15.0, "Tucked tip direction (deg)");    
+  ps->NextSpecF( &rgap,   0.5, "Initial grip width (in)");
 
-  ps->NextSpec4( &ms,    33,   "Blocking update time (ms)");
-  ps->NextSpec4( &prt,  100,   "Print loop time (ms)"); 
+  ps->NextSpecF( &rets, -12.0, "Tight shoulder angle (deg)");    // SetGeom must allow
+  ps->NextSpecF( &rete,  80.0, "Tight elbow angle (in)");        // SetGeom must allow
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -253,11 +251,11 @@ int jhcEliArm::geom_params (const char *fname)
   ps->NextSpecF( &ax0, -3.3, "Shoulder right of wheels (in)");  
   ps->NextSpecF( &ay0,  6.9, "Shoulder fwd of wheels (in)");  
   ps->NextSpecF( &az0,  2.4, "Shoulder up from shelf (in)");  
-  ps->Skip(2);
   ps->NextSpecF( &fc,   3.6, "Crease distance from axis (in)"); 
-
   ps->NextSpecF( &fp,   4.0, "Pad distance from axis (in)");   
   ps->NextSpecF( &ft,   4.4, "Tip distance from axis (in)");  
+
+  ps->NextSpecF( &dpad, 1.0, "Grip point in from pad (in)");   // was 0.6 then 0.4
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -367,7 +365,7 @@ int jhcEliArm::Reset (int rpt, int chk)
   HandClear();
 
   // set up kinematic parameters 
-  FingerTool();
+  FingerTool(dpad);
   StdTols();
   zint = 0.0;
   fwin = -1.0;
@@ -419,15 +417,20 @@ int jhcEliArm::Reset (int rpt, int chk)
     if (jt[i].Reset() <= 0)
       return fail(rpt);
 
-  // possibly find gripper close point (x2)
+  // possibly normalize joint angles
   if (rpt > 0)
-    jprintf("  grip zero ...\n");
-  ZeroGrip();
+    jprintf("  untwist ...\n");
+  Untwist();
 
   // possibly find elbow servo balance
   if (rpt > 0)
     jprintf("  lift balance ...\n");
   ShareLift();
+
+  // possibly find gripper close point (x2)
+  if (rpt > 0)
+    jprintf("  grip zero ...\n");
+  ZeroGrip();
 
   // freeze arm (and sync profile generators)
   if (rpt > 0)
@@ -453,6 +456,7 @@ int jhcEliArm::Reset (int rpt, int chk)
   now = 0;
   iarm = 0.0;
   igrip = 0.0;
+  parked = 0;
 
   // finished
   if (rpt > 0)
@@ -530,9 +534,9 @@ double jhcEliArm::Voltage ()
 
 //= Set working point to be some distance in from the pad location.
 
-void jhcEliArm::FingerTool (double dpad)
+void jhcEliArm::FingerTool (double deep)
 {
-  SetTool(fp - dpad, 0.0, 0.0);
+  SetTool(fp - deep, 0.0, 0.0);
 }
 
 
@@ -671,7 +675,7 @@ int jhcEliArm::Update (int mega)
 {
   jhcMatrix orig(4), diff(4);
   UL32 last = now;
-  double s, a, g, wprev = w0, mix = 0.5;
+  double s, a, g, wprev = w0, mix = 0.5, twang = 3.0;      // 3 ips = 0.1" / 33 ms
   int i;
 
   // make sure hardware is working
@@ -721,6 +725,12 @@ int jhcEliArm::Update (int mega)
       iarm  += mix * (a - iarm); 
       igrip += mix * (g - igrip); 
     }
+
+  // do qualitative evaluation of motion
+  if (iarm >= twang)
+    parked = __min(0, parked - 1);
+  else
+    parked = __max(1, parked + 1);
 
   // set up for new target arbitration
   clr_locks(0);
@@ -787,7 +797,7 @@ void jhcEliArm::clr_locks (int hist)
 int jhcEliArm::Issue (double tupd, double lead, int send)
 {
   jhcMatrix ang(7), err(4); 
-  double w;
+  double w, zerr, ztol = 0.1, crazy = 25.0;
   int doit;
 
   // check for working communication and reasonable arguments
@@ -810,11 +820,7 @@ int jhcEliArm::Issue (double tupd, double lead, int send)
     // set default if no arm target specified
     doit = (((alock <= 0) && (plock <= 0) && (dlock <= 0)) ? 1 : 0);
     FreezeArm(doit, 0.0);
-/*
-char txt[80], txt2[80];
-jprintf("Arm: loc = %s -> %s\n", loc.ListVec3(txt), (pctrl.cmd).ListVec3(txt2));
-jprintf("     dir = %s -> %s\n", aim.ListVec3(txt), (dctrl.cmd).ListVec3(txt2));
-*/
+
     // check if mode is joint angles or Cartesian 
     if ((alock > plock) && (alock > dlock))
     {
@@ -823,20 +829,29 @@ jprintf("     dir = %s -> %s\n", aim.ListVec3(txt), (dctrl.cmd).ListVec3(txt2));
     }
     else
     {
-      // choose gripper position, orientation, and width 
+      // compare current height to original height of PREVIOUS trajectory stop point
+      zerr = loc.Z() - (stop.Z() - zint);
+
+      // choose gripper trajectory point position, orientation, and width
       pctrl.RampNext(stop, loc, tupd, lead);
+      pctrl.ExactNext(stop, pmode);
       dctrl.RampNext(dstop, aim, tupd, lead);
+      dctrl.ExactNext(dstop, dmode);
       w = wctrl.RampNext(Width(), tupd, lead);
 
-      // apply gravity compensation
-      pctrl.RampErr(err, loc, 0);
-      zint -= zf * err.Z();
+      // apply gravity compensation with deadband
+      if (fabs(zerr) > ztol)
+        zint -= zf * zerr;
       zint = __max(-zlim, __min(zint, zlim));
-//jprintf("  zerr = %3.1f --> zint = %4.2f (target = %4.2f)\n", err.Z(), zint, pctrl.RampCmd(2));
       stop.IncZ(zint);
 
+//char txt[80], txt2[80];
+//jprintf("ISSUE:  goal pos = %s, gdir = %s, zint = %3.1f\n", (pctrl.cmd).ListVec3(txt, "%5.1f"), (dctrl.cmd).ListVec3(txt2, "%5.1f"), zint);
+//jprintf("  pmode = %02X, dmode = %02X\n", pmode & 0x7, dmode & 0x7);
+
       // convert to joint space and send servo commands 
-      q = pick_angles(ang, stop, dstop, w, &ang0, 0);
+      if (pick_angles(ang, stop, dstop, w, &ang0, 0) >= crazy)
+        ang.Copy(ang0);
       simul_move(ang, ang0, lead * tupd);
     }
   }
@@ -897,14 +912,16 @@ void jhcEliArm::simul_move (const jhcMatrix& ang1, const jhcMatrix& ang0, double
   for (i = 0; i < 7; i++)
   {
     dps = fabs(ang1.VRef(i) - ang0.VRef(i)) / secs;
-    f = jt[i].vstd / dps;
-    sc = __min(sc, f);
+    if (dps > 0.0)
+    {
+      f = jt[i].vstd / dps;
+      sc = __min(sc, f);
+    }
   }
 
   // assemble basic command and add to big packet
   for (i = 0; i < 7; i++)
   {
-
     dps = sc * fabs(ang1.VRef(i) - ang0.VRef(i)) / secs;
     n += jt[i].ServoCmd(id, pos, vel, n, ang1.VRef(i), dps);
   }
@@ -981,7 +998,7 @@ double jhcEliArm::get_pose (jhcMatrix& end, jhcMatrix& dir, const jhcMatrix& ang
 //                            Inverse Kinematics                         //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Convert an opening width to a gripper joitn angle.
+//= Convert an opening width to a gripper joint angle.
 
 double jhcEliArm::w2deg (double w) const
 {
@@ -1000,25 +1017,25 @@ double jhcEliArm::v2dps (double v, double w) const
 //= Takes an endpoint offset and figures joint angles to move it to the specified pose.
 // aim is a vector of gripper yaw, pitch, and roll angles plus opening width
 // assumes cfg array is set to starting configuration (not strictly necessary)
+// if oscillation then reduces step size, stops after full loop count at some scale
 // returns max ratio of error (pos or dir) to tolerance (i.e. solved means <= 1.0)
-// about 16us per loop (so typical 40 loops = 0.6ms) on a 3.2GHz Xeon
+// about 16us per loop with transpose (so typical 40 loops = 0.6ms) on a 3.2GHz Xeon
 
 double jhcEliArm::pick_angles (jhcMatrix& ang, const jhcMatrix& end, const jhcMatrix& aim, 
                                double sep, const jhcMatrix *cfg, int finger)
 {
   jhcMatrix jinv(3, 6), djinv(3, 6);
-  jhcMatrix pos(4), dir(4), diff(4), ddiff(4);
-  jhcMatrix err(4), derr(4), err0(4), derr0(4);
-  jhcMatrix ang0(7), best(7), adj(6), dadj(6);
-  double q, dq, bq = -1.0, f = step, df = dstep; 
-  int i, n, any = 0;
+  jhcMatrix ang0(7), win(7), adj(6);
+  jhcMatrix pos(4), dir(4), pfix(4), dfix(4);
+  double pq, dq, qcfg, pq0, dq0, best = -1.0, f = step, df = dstep;
+  int scale, n, i;
 
   if (!ang.Vector(7) || !end.Vector(3) || !aim.Vector(3) || 
       ((cfg != NULL) && !cfg->Vector(7)))
     Fatal("Bad input to jhcEliArm::pick_angles");
 
-//end.PrintVec3("goal: end", "%3.1f", 0, 0);
-//aim.PrintVec3(", aim");
+//end.PrintVec3("PICK_ANGLES: via", "%5.1f", 0, 0);
+//aim.PrintVec3(", vdir", "%5.1f");
 
   // copy starting configuration (if any) and directly solve for gripper opening 
   ang0.Zero();
@@ -1026,87 +1043,93 @@ double jhcEliArm::pick_angles (jhcMatrix& ang, const jhcMatrix& end, const jhcMa
     ang0.Copy(*cfg);
   ang0.VSet(6, w2deg(sep));
 
-  // adjust step size until solution found
-  iter = 0;
-  for (size = 0; size < tries; size++)
-  {
-    // take multiple partial steps until goal pose is achieved
-    ang.Copy(ang0);
+//get_pose(pos, dir, ang0, finger);
+//pos.PrintVec3("        now: pos", "%5.1f", 0, 0);
+//dir.PrintVec3(",  dir", "%5.1f");
+//char txt4[80];
+//jprintf("  now: %s\n", ang0.ListVec(txt4));
 
+  // keep using smaller step size until solution found
+  for (scale = 0; scale < tries; scale++)
+  {
+    // take multiple partial steps from current configuration 
+    ang.Copy(ang0);
     for (n = 0; n <= loops; n++)
     {
-      // needs position and difference from previous iteration
       if (n > 0)
       {
-        // compute transpose of current Jacobian as the inverse
+        // compute transpose of current Jacobian to get adjustment hints
+        // Note: true inverse prefers changing X with wrist instead of shoulder!
         j_trans(jinv, djinv, pos);
 
-        // adjust joint angles for better position and direction
-        diff.ScaleVec3(f);
-        adj.MatVec0(jinv, diff);
-        ang.IncVec(adj);
-        ddiff.ScaleVec3(df);
-        dadj.MatVec0(djinv, ddiff);
-        ang.IncVec(dadj);
+        // adjust joint angles for either better position or better direction
+        if (pq >= dq)
+        {
+          pfix.ScaleVec3(f);           // scales position shift
+          adj.MatVec0(jinv, pfix);
+          ang.IncVec(adj);
+        }
+        else
+        {
+          dfix.ScaleVec3(df);          // scales rotation angle
+          adj.MatVec0(djinv, dfix);
+          ang.IncVec(adj);
+        }
 
         // make sure joint angles respect movement limits
         for (i = 0; i < 7; i++)
           ang.VSet(i, jt[i].Clamp(ang.VRef(i)));
+        pq0 = pq;
+        dq0 = dq;
       }
 
-      // find new pose and residual errors
+      // find new pose and calculate errors relative to tolerances
       get_pose(pos, dir, ang, finger);
-      q  = pos_diff(diff, err, end, pos);
-//double pq = q;
-      dq = dir_diff(ddiff, derr, aim, dir);
-      q  = __max(q, dq);
-/*
-if ((n == 0) && (size == 0))
-{
-pos.PrintVec3(" ipos", "%3.1f", 0, 0);
-dir.PrintVec3(", idir");
-jprintf(" initial Q = %3.1f (%3.1f %3.1f)\n", q, pq, dq); 
-}
-*/
-      // see if best so far (for oscillation) or if goal achieved  
-      if ((bq < 0.0) || (q < bq))
-      {
-        best.Copy(ang);
-        bq = q;
-        err0.Copy(err);
-        derr0.Copy(derr);
-        any = 1;
+      pq = pos_diff(pfix, end, pos);
+      dq = dir_diff(dfix, aim, dir);
+      qcfg = __max(pq, dq);
+
+//char txt[80], txt2[80];
+//jhcMatrix derr(4);
+//derr.DiffVec3(aim, dir);  
+//derr.CycNorm3();
+//jprintf("    frac %4.2f [%2d]: perr %s, derr %s -> %5.2f %5.2f : %5.2f %c\n", 
+//        f, n, pfix.ListVec3(txt, "%5.2f"), derr.ListVec3(txt2, "%5.2f"), pq, dq, qcfg,
+//        ((qcfg < best) ? '<' : ' '));
+
+      // save if best so far then check if goal achieved  
+      if ((best < 0.0) || (qcfg < best))
+      { 
+        win.Copy(ang);
+        best = qcfg;
+        if (best <= 1.0)
+          break;
       }
-      if (bq <= 1.0)
-        break;
+      else if (n > 0) 
+      {               
+        // quit this scale if q is oscillating (i.e. increases)                   
+        if (((pq0 >= dq0) && (pq >= (osc * pq0))) ||    
+            ((dq0 >  pq0) && (dq >= (osc * dq0))))
+        break; 
+      }
     }
 
-    // see if done or no progress
-    iter += n;
-    if ((bq <= 1.0) || (any <= 0))
+    // unless done or scale fully scanned shrink scale and try again
+    if ((best <= 1.0) || (n >= loops))
       break;
-
-    // shrink step sizes and try again
     f  *= shrink;
     df *= shrink;
-    any = 0;
   }
   
   // make sure best configuration selected and save statistics of run
-  ang.Copy(best);
-  miss.Copy(err0);
-  dmiss.Copy(derr0);
-/*
-if (bq > 1.5)
-{
-jprintf("    ** bad Q = %3.1f : ", bq);
-miss.PrintVec3("perr", NULL, 0, 0);
-dmiss.PrintVec3(", derr");
-}
-*/
-// if really bad, aim for middle of workspace?
+  ang.Copy(win);
 
-  return bq;
+//win.DiffVec(ang, ang0);
+//char txt3[80];
+//jprintf("  Q = %4.2f, change %s\n", best, win.ListVec(txt3, "%4.2f"));
+//jprintf("  cmd: %s\n", ang.ListVec(txt3));
+
+  return best;
 }
 
 
@@ -1133,57 +1156,50 @@ void jhcEliArm::j_trans (jhcMatrix& jact, jhcMatrix& djact, const jhcMatrix& pos
     jact.MSet(0, i, mv.X());
     jact.MSet(1, i, mv.Y());
     jact.MSet(2, i, mv.Z());
-    djact.MSet(0, i, axis->X());
-    djact.MSet(1, i, axis->Y());
-    djact.MSet(2, i, axis->Z());
+    djact.MSet(0, i, axis->X());       
+    djact.MSet(1, i, axis->Y());       
+    djact.MSet(2, i, axis->Z());       
   }
 }
 
 
 //= Determines the position error of end point relative to goal.
-// computes error vector and component wise absolute errors
-// returns max coordinate difference wrt tolerance
+// returns max coordinate difference wrt tolerance (shows progress better than avg)
 
-double jhcEliArm::pos_diff (jhcMatrix& fix, jhcMatrix& err, 
-                            const jhcMatrix& end, const jhcMatrix& pos) const
+double jhcEliArm::pos_diff (jhcMatrix& fix, const jhcMatrix& end, const jhcMatrix& pos) const
 { 
   double diff, scd, worst = 0.0;
   int i;
 
   // find which direction to move the end point
   fix.DiffVec3(end, pos);
-
   for (i = 0; i < 3; i++)
   {
-    // find component-wise absolute differences in positions
-    diff = fabs(end.VRef(i) - pos.VRef(i));
-    err.VSet(i, diff);
-
-    // scale by associated tolerance to find worst fit
+    // scale absolute difference by associated tolerance to find worst fit
+    diff = fabs(fix.VRef(i));
     scd = diff / tol.VRef(i);
     worst = __max(worst, scd);
   }
-  err.VSet(3, 0.0);               // homogeneous entry irrelevant
   return worst; 
 }
 
 
 //= Determines the orientation error of end point relative to goal direction.
 // both aim and dir are vectors of pan, tilt, and roll angles
-// computes axis of desired composite rotation scaled by amount of rotation
-// makes a vector of the angle-wise absolute errors of three orientation angles
-// returns max error relative to tolerance for that degree of freedom
+// if d0mode < 0 then ignores all pan errors
+// computes XYZ axis of desired composite rotation scaled by amount of rotation
+// returns max error relative to tolerances for command PTR angles (shows progress better than avg)
 
-double jhcEliArm::dir_diff (jhcMatrix& dfix, jhcMatrix& derr, 
-                            const jhcMatrix& aim, const jhcMatrix& dir) const
+double jhcEliArm::dir_diff (jhcMatrix& dfix, const jhcMatrix& aim, const jhcMatrix& dir) const
 {
   jhcMatrix now(4), goal(4), q1(4), q2(4), q3(4), slew(4);
   double dot, degs, diff, scd, worst = 0.0;
-  int i;
+  double pan   = (((dmode & 0x8) != 0) ? dir.P() : aim.P());         
+  int i, start = (((dmode & 0x8) != 0) ? 1 : 0);
 
   // convert angle specs into pointing vectors based on pan and tilt (only)
   now.EulerVec3(dir.P(), dir.T());
-  goal.EulerVec3(aim.P(), aim.T());
+  goal.EulerVec3(pan, aim.T());
 
   // form quaternion to rotate around current gripper pointing vector
   q1.Quaternion(now, aim.R() - dir.R());
@@ -1201,14 +1217,13 @@ double jhcEliArm::dir_diff (jhcMatrix& dfix, jhcMatrix& derr,
   // compose rotations and convert back to scaled rotation axis and total angle 
   q3.CascadeQ(q1, q2);
   dfix.RotatorQ(q3);
- 
-  for (i = 0; i < 3; i++)
+
+  for (i = start; i < 3; i++)
   {
-    // find component-wise absolute differences in angles
+    // find component-wise absolute differences in PTR angles (not XYZ angles)
     diff = fabs(aim.VRef(i) - dir.VRef(i));
     if (diff > 180.0)
       diff = 360.0 - diff;
-    derr.VSet(i, diff);
 
     // scale by associated tolerance to find worst fit
     scd = diff / dtol.VRef(i);
@@ -1282,6 +1297,17 @@ int jhcEliArm::SqueezeTarget (double force, int bid)
   // set force level
   fwin = __max(0.0, force);
   return 1;
+}
+
+
+//= Set finger physical separation or grasp force (if sep < 0).
+// returns 1 if newly set, 0 if pre-empted by higher priority
+
+int jhcEliArm::HandTarget (double sep, double rate, int bid)
+{
+  if (sep < 0.0)
+    return SqueezeTarget(-sep, bid);
+  return WidthTarget(sep, rate, bid); 
 }
 
 
@@ -1366,6 +1392,7 @@ void jhcEliArm::ArmPose (jhcMatrix& pos, jhcMatrix& dir) const
 
 
 //= Get current position of finger crease using cached values.
+// x is to right, y is forward, z is up in global system
 // NOTE: coordinates relative to center of wheelbase and bottom of shelf
 
 void jhcEliArm::Position (jhcMatrix& pos) const
@@ -1377,7 +1404,8 @@ void jhcEliArm::Position (jhcMatrix& pos) const
 
 
 //= Get current direction of fingers using cached values.
-// NOTE: x is to right, y is forward, z is up
+// "dir" gets a vector of gripper yaw, pitch, and roll ANGLES plus opening width
+// Note: pan axis bisects finger creases, but hand shape not quite symmetric around this
 
 void jhcEliArm::Direction (jhcMatrix& dir) const
 {
@@ -1390,7 +1418,8 @@ void jhcEliArm::Direction (jhcMatrix& dir) const
 //= Interpret wrist errors as a force through grip point.
 // computes direction of force (unit vec) scaled by magnitude (oz)
 // this is the force applied to (not generated by) the fingers
-// can subtract off a presumed gravity loading
+// can subtract off a presumed gravity loading (e.g. z0 = -10)
+// NOTE: static force not very reliable when arm is moving 
 
 int jhcEliArm::ForceVect (jhcMatrix &dir, double z0, int raw) const
 {
@@ -1402,15 +1431,49 @@ int jhcEliArm::ForceVect (jhcMatrix &dir, double z0, int raw) const
 }
 
 
-//= Resolve wrist errors to find finger force along a given axis.
+//= Resolve wrist errors to find finger force (oz) along a given axis.
 // does not compensate for gravity loading in Z direction
-// returns approximate ounces 
+// NOTE: static force not very reliable when arm is moving 
 
-double jhcEliArm::Force (const jhcMatrix &dir, int raw) const
+double jhcEliArm::ForceAlong (const jhcMatrix &dir, int raw) const
 {
   if (!dir.Vector(4))
-    Fatal("Bad input to jhcEliArm::Force");
+    Fatal("Bad input to jhcEliArm::ForceAlong");
   return dir.DotVec3(((raw > 0) ? fvec : fsm));
+}
+
+
+//= Get estimate of vertical force acting on gripper (oz).
+// can subtract off an initial value (e.g. gravity loading z0 = -10)
+// negative is downward (weight), positive is upward (surface contact)
+// hand load approximately = -0.4 * arm->ForceZ(-18.5) 
+// NOTE: static force not very reliable when arm is moving 
+
+double jhcEliArm::ForceZ (double z0, int raw) const
+{
+  if (raw > 0)
+   return(fvec.Z() - z0);
+  return(fsm.Z() - z0);
+}
+
+
+//= Estimates weight (oz) of held object using only main lift joint.
+// fsc = 0.57 suggests tmax = 120 rather than 214 calculated from voltage
+// ignores actual mass distibution of forearm and lift angle for gravity load
+// ignores changes due to wrist pose, but object moment arm depends on wrist pan 
+// NOTE: most accurate after a short vertical lift
+
+double jhcEliArm::ObjectWt (double grav, double fsc) const
+{
+  jhcMatrix base(4);
+  double dx, dy, dot, oz, tq = jt[2].Torque(tmax), rads = D2R * Forearm();
+
+  LiftBase(base);
+  dx = loc.X() - base.X();
+  dy = loc.Y() - base.Y();
+  dot = dx * cos(rads) + dy * sin(rads);   // moment arm
+  oz = fsc * (tq / dot) - grav;            // linear correction
+  return __max(0.0, oz);
 }
 
 
@@ -1430,7 +1493,7 @@ void jhcEliArm::CfgClear ()
 
 
 //= Request the arm joints to assume the given angles at a single rate.
-// rate is speed relative to standard reorientation speed
+// rate is ramping speed relative to standard reorientation speed
 // negative rate does not scale acceleration (for snappier response)
 // returns 1 if newly set, 0 if pre-empted by higher priority
 
@@ -1444,7 +1507,7 @@ int jhcEliArm::CfgTarget (const jhcMatrix& ang, double rate, int bid)
 
 
 //= Request the arm joints to assume the given angles at the given rates.
-// rate is speed relative to standard reorientation speed
+// rate is ramping speed relative to standard reorientation speed
 // negative rate does not scale acceleration (for snappier response)
 // returns 1 if newly set, 0 if pre-empted by higher priority
 
@@ -1470,7 +1533,7 @@ int jhcEliArm::CfgTarget (const jhcMatrix& ang, const jhcMatrix& rates, int bid)
 
 //= Request both a finger position and gripper orientation (but not force).
 // x is to right, y is forward, z is up
-// rate is speed relative to standard move speed
+// rate is ramping speed relative to standard move speed
 // negative rate does not scale acceleration (for snappier response)
 // NOTE: coordinates relative to center of wheelbase and bottom of shelf
 // returns 1 if newly set, 0 if pre-empted by higher priority
@@ -1480,23 +1543,56 @@ int jhcEliArm::ArmTarget (const jhcMatrix& pos, const jhcMatrix& dir, double p_r
   double dr = ((d_rate != 0.0) ? d_rate : p_rate);
   int pok, dok;
 
-  pok = PosTarget(pos, p_rate, bid);
-  dok = DirTarget(dir, dr, bid);
+  pok = PosTarget(pos, p_rate, bid, 0x0);
+  dok = DirTarget(dir, dr, bid, 0x0);
   return __min(pok, dok);
 }
 
 
-//= Request a particular Cartesian finger position.
+//= Request a particular Cartesian finger position in local arm coordinates.
 // x is to right, y is forward, z is up
-// rate is speed relative to standard move speed
+// rate is ramping speed relative to standard move speed
 // negative rate does not scale acceleration (for snappier response)
+// mode bits: 2 = exact Z, 1 = exact Y, 0 = exact X
 // NOTE: coordinates relative to center of wheelbase and bottom of shelf
 // returns 1 if newly set, 0 if pre-empted by higher priority
 
-int jhcEliArm::PosTarget (const jhcMatrix& pos, double rate, int bid)
+int jhcEliArm::PosTarget (const jhcMatrix& pos, double rate, int bid, int mode)
 {
   if (!pos.Vector(4))
     Fatal("Bad input to jhcEliArm::PosTarget");
+  return PosTarget(pos.X(), pos.Y(), pos.Z(), rate, bid, mode);
+}
+
+
+//= Request a Cartesion finger grab point in discrete local arm coordinates.
+// NOTE: coordinates relative to center of wheelbase and bottom of shelf
+// returns 1 if newly set, 0 if pre-empted by higher priority
+
+int jhcEliArm::PosTarget (double ax, double ay, double az, double rate, int bid, int mode)
+{
+  // see if previous command takes precedence (trumps equal cfg)
+  if ((bid <= plock) || (bid < alock))
+    return 0;
+  plock = bid;
+
+  // set up command
+  stiff = 1;
+  pctrl.RampTarget(ax, ay, az, rate);
+  pmode = mode;
+  return 1;
+}
+
+
+//= Request a particular Cartesian finger position in global coordinates.
+// converts to local arm coordinates by subtracting off height of shelf
+// mode bits: 2 = exact Z, 1 = exact Y, 0 = exact X
+// returns 1 if newly set, 0 if pre-empted by higher priority
+
+int jhcEliArm::PosTarget3D (const jhcMatrix& pos, double ht, double rate, int bid, int mode)
+{
+  if (!pos.Vector(4))
+    Fatal("Bad input to jhcEliArm::PosTarget3D");
 
   // see if previous command takes precedence (trumps equal cfg)
   if ((bid <= plock) || (bid < alock))
@@ -1505,18 +1601,20 @@ int jhcEliArm::PosTarget (const jhcMatrix& pos, double rate, int bid)
 
   // set up command
   stiff = 1;
-  pctrl.RampTarget(pos, rate);
+  pctrl.RampTarget(pos.X(), pos.Y(), pos.Z() - ht, rate);
+  pmode = mode;
   return 1;
 }
 
 
 //= Request a particular Cartesian gripper orientation.
 // x is to right, y is forward, z is up
-// rate is speed relative to standard reorientation speed
+// rate is ramping speed relative to standard reorientation speed
 // negative rate does not scale acceleration (for snappier response)
+// mode bits: 3 = any pan, 2 = exact roll, 1 = exact tilt, 0 = exact pan
 // returns 1 if newly set, 0 if pre-empted by higher priority
 
-int jhcEliArm::DirTarget (const jhcMatrix& dir, double rate, int bid)
+int jhcEliArm::DirTarget (const jhcMatrix& dir, double rate, int bid, int mode)
 {
   if (!dir.Vector(4))
     Fatal("Bad input to jhcEliArm::DirTarget");
@@ -1529,24 +1627,26 @@ int jhcEliArm::DirTarget (const jhcMatrix& dir, double rate, int bid)
   // set up command
   stiff = 1;
   dctrl.RampTarget(dir, rate);
+  dmode = mode;
   return 1;
 }
 
 
 //= Request a finger position which is an offset from the current position.
 // x is to right, y is forward, z is up
-// rate is speed relative to standard move speed
+// rate is ramping speed relative to standard move speed
 // negative rate does not scale acceleration (for snappier response)
+// mode bits: 2 = exact Z, 1 = exact Y, 0 = exact X
 // returns 1 if newly set, 0 if pre-empted by higher priority
 
-int jhcEliArm::ShiftTarget (const jhcMatrix& dpos, double rate, int bid)
+int jhcEliArm::ShiftTarget (const jhcMatrix& dpos, double rate, int bid, int mode)
 {
   jhcMatrix p2(4);
 
   if (!dpos.Vector(4))
     Fatal("Bad input to jhcEliArm::ShiftTarget");
   p2.AddVec(loc, dpos);
-  return PosTarget(p2, rate, bid);
+  return PosTarget(p2, rate, bid, mode);
 }
 
 
@@ -1580,6 +1680,10 @@ void jhcEliArm::CfgErr (jhcMatrix& aerr, const jhcMatrix& ang, int abs) const
   for (i = 0; i < 6; i++)
   {
     diff = jt[i].CycNorm(ang.VRef(i)) - ang0.VRef(i);
+    while (diff > 180.0)
+      diff -= 360.0;
+    while (diff <= -180.)
+      diff += 360.0;   
     aerr.VSet(i, ((abs > 0) ? fabs(diff) : diff));
   } 
 }
@@ -1587,7 +1691,7 @@ void jhcEliArm::CfgErr (jhcMatrix& aerr, const jhcMatrix& ang, int abs) const
 
 //= Computes difference from given goal in all components of pose.
 // first is XYZ position of end point, second is pan-tilt-roll 
-// can optionally record absolute value of component errors instead
+// can optionally save absolute value of component errors instead
 
 void jhcEliArm::ArmErr (jhcMatrix& perr, jhcMatrix& derr, 
                         const jhcMatrix& pos, const jhcMatrix& dir, int abs) const
@@ -1597,10 +1701,11 @@ void jhcEliArm::ArmErr (jhcMatrix& perr, jhcMatrix& derr,
 }
 
 
-//= Computes difference from given goal postion.
-// can optionally return absolute value of component errors
+//= Computes difference from given local coordinate goal position in x, y, and z.
+// can optionally save absolute value of component errors
+// returns max of absolute difference across all coordinates
 
-void jhcEliArm::PosErr (jhcMatrix& perr, const jhcMatrix& pos, int abs) const
+double jhcEliArm::PosErr (jhcMatrix& perr, const jhcMatrix& pos, int abs) const
 {
   if (!perr.Vector(4) || !pos.Vector(4))
     Fatal("Bad input to jhcEliArm::PosErr");
@@ -1608,13 +1713,50 @@ void jhcEliArm::PosErr (jhcMatrix& perr, const jhcMatrix& pos, int abs) const
   perr.DiffVec3(loc, pos);  
   if (abs > 0)
     perr.Abs();
+  return perr.MaxAbs3();
 }
 
 
-//= Computes difference from given goal orientaiton.
-// can optionally return absolute value of component errors
+//= Computes difference from given global coordinate goal position in x, y, and z.
+// needs height of shelf to correct arm z value
+// can optionally save absolute value of component errors
+// returns max of absolute differences across all coordinates
 
-void jhcEliArm::DirErr (jhcMatrix& derr, const jhcMatrix& dir, int abs) const
+double jhcEliArm::PosErr3D (jhcMatrix& perr, const jhcMatrix& pos, double ht, int abs) const
+{
+  if (!perr.Vector(4) || !pos.Vector(4))
+    Fatal("Bad input to jhcEliArm::PosErr3D");
+
+  perr.DiffVec3(loc, pos);  
+  perr.IncZ(ht);
+  if (abs > 0)
+    perr.Abs();
+  return perr.MaxAbs3();
+}
+
+
+//= Computes Cartesian distance from given global coordinate goal to nominal hand point.
+// needs height of shelf to correct arm z value
+
+double jhcEliArm::PosOffset3D (const jhcMatrix& pos, double ht) const
+{
+  double dx, dy, dz;
+
+  if (!pos.Vector(4))
+    Fatal("Bad input to jhcEliArm::PosOffset3D");
+
+  dx = loc.X() - pos.X();
+  dy = loc.Y() - pos.Y();
+  dz = (loc.Z() + ht) - pos.Z();
+  return sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+
+//= Computes difference from given goal orientation in pan, tilt, and roll.
+// can optionally save absolute value of component errors instead
+// returns max of absolute differences across all pose angles
+
+double jhcEliArm::DirErr (jhcMatrix& derr, const jhcMatrix& dir, int abs) const
 {
   if (!derr.Vector(4) || !dir.Vector(4))
     Fatal("Bad input to jhcEliArm::DirErr");
@@ -1623,6 +1765,22 @@ void jhcEliArm::DirErr (jhcMatrix& derr, const jhcMatrix& dir, int abs) const
   derr.CycNorm3();
   if (abs > 0)
     derr.Abs();
+  return derr.MaxAbs3();
+}
+
+
+//= Computes the deviation of gripper pan angle from desired value.
+// can optionally return absolute value
+
+double jhcEliArm::PanErr (double pan, int abs) const
+{
+  double diff = pan - aim.P();
+
+  if (diff > 180.0)
+    diff -= 360.0;
+  while (diff <= -180.0)
+    diff += 360.0;
+  return((abs > 0) ? fabs(diff) : diff);
 }
 
 
@@ -1638,32 +1796,6 @@ double jhcEliArm::CfgOffset (const jhcMatrix& ang) const
 
   CfgErr(aerr, ang, 1);
   return aerr.MaxVec();
-}
-
-
-//= Arm is nearly in the commanded joint configuration.
-
-bool jhcEliArm::CfgClose (double tol) const
-{
-  int i;
-
-  for (i = 0; i < 6; i++)
-    if (jt[i].RampDist(jt[i].Angle()) > tol)
-      return false;
-  return true;
-}
-
-
-//= Arm joint trajectories have all been finished for a while.
-
-bool jhcEliArm::CfgFail (double secs) const
-{
-  int i;
-
-  for (i = 0; i < 6; i++)
-    if (jt[i].RampDone() <= secs)
-      return false;
-  return true;
 }
 
 
@@ -1866,18 +1998,45 @@ double jhcEliArm::ArmRate (const jhcMatrix& pos2, const jhcMatrix& dir2,
 //= Get rough position of joint's servo (largely for graphics).
 // assumes joint matrices have already been updated with get_pose
 
-int jhcEliArm::JtPos (jhcMatrix& loc, int n) const
+int jhcEliArm::JtPos (jhcMatrix& pos, int n) const
 {
   const jhcMatrix *zdir, *orig;
 
-  if (!loc.Vector(4) || (n < 0) || (n > 6))
+  if (!pos.Vector(4) || (n < 0) || (n > 6))
     Fatal("Bad input to jhcEliArm::JtPos");
 
   zdir = jt[n].AxisZ();
   orig = jt[n].Axis0();
-  loc.ScaleVec3(*zdir, jt[n].dhd, 1.0);
-  loc.IncVec3(*orig);
+  pos.ScaleVec3(*zdir, jt[n].dhd, 1.0);
+  pos.IncVec3(*orig);
   return 1;
+}
+
+
+//= Find global position of lift axis shifted laterally to center of forearm link.
+// side is offset wrt original joint point (neg = lf, pos = rt)
+// looks better for arm skeleton and to get forearm tilt
+
+void jhcEliArm::LiftBase (jhcMatrix& pos, double side) const
+{
+  jhcMatrix off(4);
+
+  if (!pos.Vector(4))
+    Fatal("Bad input to jhcEliArm::LiftBase");
+  off.SetVec3(0.0, -side, 0.0);
+  jt[2].GlobalMap(pos, off);
+}
+
+
+//= Give the planar xy direction of the forearm link.
+
+double jhcEliArm::Forearm () const
+{
+  jhcMatrix lift(4), wrist(4);
+
+  LiftBase(lift);
+  JtPos(wrist, 3);
+  return wrist.PanRel3(lift);
 }
 
 
@@ -1892,7 +2051,7 @@ int jhcEliArm::ZeroGrip (int always)
 {
   jhcJoint *g = jt + 6;
   double z, z0 = g->zero, a0 = g->amin, a1 = g->amax;
-  double lo = 0.3, hi = 0.4, dps = 30.0, adj = 10.0;  
+  double lo = 0.3, hi = 0.4, dps = 30.0, adj = 10.0; 
   int k, i = 0, j = 0, fwd = 100, back = 20, time = 33;
 
   // skip if done recently else check hardware
@@ -1937,7 +2096,7 @@ int jhcEliArm::ZeroGrip (int always)
     }
   }
 
-  // stop all motion and then get current postion 
+  // stop all motion and then get current position 
   g->Limp();
   jms_sleep(time);
   g->GetState();
@@ -2023,7 +2182,7 @@ int jhcEliArm::ShareLift (int always)
 int jhcEliArm::Grab (double fhold)
 {
 double fwait = 2.0;
-int stab = 5;
+int stab = 5, ms = 33;
   jhcMatrix pos(4), dir(4);
   int n = ROUND(fwait / (0.001 * ms)), i = 0, gcnt = 0, ok = 1;
 
@@ -2036,13 +2195,6 @@ int stab = 5;
   WidthTarget(-0.5);
   while (!SqueezeSome() || !WidthStop())
   {
-    // check for timeout
-    if (WidthFail())
-    {
-      ok = 0;
-      break;
-    }
-
     // reiterate command (only one finger moves so arm must compensate)
     ArmTarget(pos, dir);
     WidthTarget(-0.5);
@@ -2094,7 +2246,7 @@ int jhcEliArm::Drop ()
 {
   jhcMatrix pos(4), dir(4);
   double open = MaxWidth();
-  int ok = 1;
+  int ok = 1, ms = 33;
 
   // check hardware 
   if (Update() <= 0)
@@ -2105,13 +2257,6 @@ int jhcEliArm::Drop ()
   WidthTarget(open);
   while (!WidthClose())
   {
-    // see if timed out
-    if (WidthFail())
-    {
-      ok = 0;
-      break;
-    }
-
     // reiterate command (only one finger moves so arm must compensate)
     ArmTarget(pos, dir);
     WidthTarget(open);
@@ -2129,31 +2274,40 @@ int jhcEliArm::Drop ()
 
 
 //= Set arm to some particular angular configuration.
+// can also ask for some gripper width if 7th element of "ang"
 // Note: BLOCKS until goal achieved or times out
 
 int jhcEliArm::SetConfig (const jhcMatrix& ang, double rate)
 {
-  int ok = 1;
+  char txt[80];
+  double quit = 5.0;
+  UL32 start = jms_now();
+  int n = ang.Rows(), ok = 1, ms = 33;
 
   // check arguments then hardware 
-  if (!ang.Vector(6))
+  if (n < 6)
     return Fatal("Bad input to jhcEliArm::SetConfig");
   if (Update() <= 0)
-    return -2;
+    return -1;
 
   // wait until all the angles are close
   CfgTarget(ang);
-  while (!CfgClose())
+  if (n >= 7)
+    WidthTarget(ang.VRef(6));
+  while ((CfgOffset(ang) > align) || ((n >= 7) && !WidthClose()))
   {
     // check for timeout
-    if (CfgFail())
+    if (jms_elapsed(start) > quit)
     {
+      jprintf(">>> Timeout %s in jhcEliArm::SetConfig !\n", ang.ListVec(txt, "%3.1f"));
       ok = 0;
       break;
     }
 
     // reissue command
     CfgTarget(ang);
+    if (n >= 7)
+      WidthTarget(ang.VRef(6));
 
     // move arm a little more
     Issue(0.001 * ms);
@@ -2163,21 +2317,61 @@ int jhcEliArm::SetConfig (const jhcMatrix& ang, double rate)
 
   // command done
   CfgClear();
+  if (n >= 7)
+    HandClear();
   Freeze();
   return ok;
 }
 
 
-//= Tucks the arm in suitable for travel.
+//= Tucks the arm in suitably for travel.
 // Note: BLOCKS until goal achieved or times out
 
-int jhcEliArm::Stow (int hold)
+int jhcEliArm::Stow (int fix)
 {
-  jhcMatrix end(4), dir(4);
+  jhcMatrix end(4), dir(4), cfg(6);
+  int ans = 1;
 
+  // get arm into roughly normal state
+  if (fix > 0)
+    Untwist();
+
+  // move hand to retracted position
   end.SetVec3(retx, rety, retz);        
   dir.SetVec3(rdir, rtip, 0.0, 0.0);
-  return Reach(end, dir, hold);
+  if (Reach(end, dir, rgap) <= 0)
+    ans = 0;
+
+  // make sure elbow is tight to chest
+  ArmConfig(cfg);
+  cfg.VSet(0, rets);
+  cfg.VSet(1, rete);
+  if (SetConfig(cfg) <= 0)
+    ans = 0;
+  return ans;
+}
+
+
+//= Get the arm back into a semi-standard set of joint angles.
+// alters angles to canonical values one at a time in some order
+
+void jhcEliArm::Untwist ()
+{
+  // joint num:       S0    E1    L2    R3    P4    T5    W6
+  double canon[7] = {10.0, 70.0, 45.0,  0.0,  0.0, 45.0,  0.5};  
+  int seq[7] = {2, 5, 6, 4, 3, 1, 0};
+  jhcMatrix cfg(7);
+  int i, j;
+
+  Update();
+  ArmConfig(cfg);
+  cfg.VSet(6, Width());
+  for (i = 0; i < 7; i++)
+  {
+    j = seq[i];
+    cfg.VSet(j, canon[j]);
+    SetConfig(cfg);
+  }
 }
 
 
@@ -2189,7 +2383,9 @@ int jhcEliArm::Stow (int hold)
 int jhcEliArm::Reach (const jhcMatrix& pos, const jhcMatrix& dir, double wid,  
                       double qlim, double inxy, double inz, double degs)
 {
-  int ok = 1;
+  double quit = 5.0;
+  UL32 start = jms_now();
+  int ok = 1, ms = 33;
 
   // check arguments then hardware and feasibility
   if (!pos.Vector(4) || !dir.Vector(4))
@@ -2209,9 +2405,10 @@ int jhcEliArm::Reach (const jhcMatrix& pos, const jhcMatrix& dir, double wid,
   // keep reasserting command until success or failure
   while (!ArmClose() || !HandClose(wid))
   {
-    // see if motion should be done already
-    if (ArmFail() && HandFail(wid))
+    // check for timeout
+    if (jms_elapsed(start) > quit)
     {
+      jprintf(">>> More than %3.1f secs in jhcEliArm::Reach !\n", quit);
       ok = 0;
       break;
     }
@@ -2249,6 +2446,7 @@ void jhcEliArm::JointLoop (int n, int once)
   jhcMatrix ang(7);
   const jhcMatrix *pos, *prev;
   char v1[40], v2[40];
+  int prt = 100;
 
   if ((n < 0) || (n > 6))
     return;
@@ -2292,9 +2490,10 @@ void jhcEliArm::FingerLoop ()
 {
   jhcMatrix pos(4), dir(4), ang(7);
   char v1[40], v2[40];
+  int prt = 100;
 
   jprintf("Finger crease (hit any key to exit) ...\n\n");
-  FingerTool();
+  FingerTool(dpad);
   while (_kbhit())
     _getch();
 

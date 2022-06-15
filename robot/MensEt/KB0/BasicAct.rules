@@ -1,0 +1,15 @@
+// standard inferences for Manus robot base
+// ================================================
+
+RULE 1 - "A hand is a gripper"
+    if: ako-1 -lex-  hand
+              -ako-> obj-3
+  then: ako-4 -lex-  gripper
+              -ako-> obj-3
+
+
+
+ 
+
+
+

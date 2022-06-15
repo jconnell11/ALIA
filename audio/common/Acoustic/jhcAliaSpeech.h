@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,8 +75,7 @@ public:
 
   // timing parameters
   jhcParam tps;
-  double stretch, splag, thz, shz;  
-  int wait;
+  double stretch, splag, wait, thz, shz;  
 
   // externally settable I/O parameters
   int spin, amode, tts, acc;
@@ -101,6 +100,7 @@ public:
 
   // main functions
   int Reset (const char *rname =NULL, const char *vname =NULL);
+  void AddName (const char* name);
   int VoiceInit ();
   int UpdateSpeech ();
   int Respond (int alert =0);
@@ -110,7 +110,7 @@ public:
 
   // intercepted I/O
   bool Accept (const char *in, int quit =0);
-  const char *NewInput ();
+  const char *NewInput (int clean =0);
   const char *NewOutput ();
 
   // debugging

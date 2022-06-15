@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,13 +61,14 @@ protected:
 
 // PRIVATE MEMBER VARIABLES
 private:
-  double cx[pmax][cmax];         /** X center of search patch.          */
-  double cy[pmax][cmax];         /** Y center of search patch.          */
-  double rot[pmax][cmax];        /** Image rotation of search patch.    */
-  jhcImg crop[pmax][cmax];       /** Rotated patch searched for face.   */
-  jhcRoi face[pmax][cmax];       /** Face detection wrt rotated patch.  */
-  int tried[pmax][cmax];         /** Whether any image areas checked.   */ 
-  int fcnt[pmax][cmax];          /** Consecutive frontal face count.    */
+  double cx[pmax][cmax];         /** X center of search patch.         */
+  double cy[pmax][cmax];         /** Y center of search patch.         */
+  double rot[pmax][cmax];        /** Image rotation of search patch.   */
+  jhcImg crop[pmax][cmax];       /** Rotated patch searched for face.  */
+  jhcRoi face[pmax][cmax];       /** Face detection wrt rotated patch. */
+  int tried[pmax][cmax];         /** Whether any image areas checked.  */ 
+  int fcnt[pmax][cmax];          /** Consecutive frontal face count.   */
+  int seen[pmax][cmax];          /** Total number of face detections.  */
 
 
 // PUBLIC MEMBER VARIABLES
@@ -115,6 +117,7 @@ public:
   int FrontMax () const;
   int FrontNew (int cam =0, int fmin =1) const;
   int FrontBest (jhcRoi& area, int p, int fmin =1) const;
+  int FaceCnt (int p, int cam =-1) const;
   int FaceMid (double& fx, double& fy, int p, int cam =0, double sc =1.0) const;
 
   // read-only access

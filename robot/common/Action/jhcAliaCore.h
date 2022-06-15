@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@
 #include "Action/jhcAliaStats.h"
 #include "Action/jhcEchoFcn.h"     
 #include "Grounding/jhcTalkFcn.h"          
+#include "Grounding/jhcIntrospect.h"          
 
 
 //= Top-level coordinator of components in ALIA system.
@@ -80,9 +81,10 @@
 //         SlotVal
 //         +MorphFcns
 //     +TalkFcn              text output
-//       TimedFcns
-//         AliaKernal
-//     +EchoFcn
+//       AliaKernel
+//     +Introspect           call stack examiner
+//       AliaKernel
+//     +EchoFcn              missing function catcher
 //       AliaKernel
 //     +AliaMood             operator preference
 //     +AliaStats
@@ -96,8 +98,11 @@ private:
   static const int dmax = 30;  /** Maximum extra grounding DLLs. */
 
   jhcTalkFcn talk;             // literal text output
+  jhcIntrospect why;           // call stack examiner
+
   jhcAssocMem amem;            // working memory expansions
   jhcProcMem pmem;             // reactions and expansions
+  char rob[40];                // name of active robot
 
   jhcAliaDLL gnd[dmax];        // extra grounding DLLs
   int ndll;                    // number of DLLs added
@@ -105,6 +110,9 @@ private:
 
   double pess;                 // preference threshold (pessimism)
   double wild;                 // respect for operator preference
+  double det;                  // determination to achieve intent
+  double argh;                 // wait before retry of intention
+  double waver;                // initial period to all re-FIND-ing
 
   int svc;                     // which focus is being worked on
   int bid;                     // importance of next activity in focus
@@ -126,7 +134,8 @@ public:
   jhcNetBuild net;             // language to network conversion
   jhcAliaStats stat;           // monitor for various activities
   jhcAliaMood mood;            // time varying goal preferences
-  char cfile[80];              // preferred log file for conversions
+  char cfile[80];              // preferred log file for conversions  
+  int vol;                     // load volition operators
   int noisy;                   // controls diagnostic messages
 
 
@@ -138,8 +147,11 @@ public:
   double Version () const {return ver;}
   double Wild () const    {return wild;}
   double MinPref () const {return pess;}
+  double Retry () const   {return argh;}
+  double Dither () const  {return waver;}
   int NextBid () const    {return bid;}
   int LastTop () const    {return topval;}
+  double Stretch (double secs) const {return(det * secs);}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL)       
@@ -200,7 +212,8 @@ public:
   void DumpLearned () const;
   void DumpSession () const;
   void DumpAll () const;
-
+int Conf2 () const {return amem.Alterations("foo.conf");}
+int ConfAdj (const char *fname) {return amem.Overrides(fname);}
 
 // PRIVATE MEMBER FUNCTIONS
 private:
@@ -211,6 +224,8 @@ private:
   // main functions
   void gather_stats ();
 
+  // debugging
+  void copy_file (const char *dest, const char *src) const;
 
 };
 

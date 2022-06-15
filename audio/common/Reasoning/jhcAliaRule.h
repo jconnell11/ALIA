@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,14 +51,15 @@ class jhcAliaRule : public jhcSituation
 friend class jhcAssocMem;              // collection
 friend class jhcGraphizer;             // creation
 
-
 // PRIVATE MEMBER VARIABLES
 private:
   static const int hmax = 50;          /** Max halo instantiations. */
 
   // core information
   jhcGraphlet result;
+  char gist[200];       
   jhcAliaRule *next;
+  double conf0, conf;
   int id, lvl;
 
   // run-time status
@@ -68,14 +69,25 @@ private:
   int nh, show;
 
 
+// PUBLIC MEMBER VARIABLES
+public:
+  // source of info
+  char prov[80];
+  int pnum;
+
+
 // PUBLIC MEMBER FUNCTIONS
 public:
-  // read only access
-  int RuleNum () const {return id;}
+  // simple functions
+  int RuleNum () const    {return id;}
+  double Conf () const    {return conf;}
+  void SetConf (double v) {conf = 0.01 * ROUND(100.0 * v); result.ForceBelief(conf);}
+  void SetGist (const char *sent);
 
   // main functions
   int AssertMatches (jhcWorkMem& f, double mth, int add =0, int noisy =0);
   void Inferred (jhcGraphlet& key, const jhcBindings& b) const;
+  void AdjConf (double dv) {SetConf(conf + dv);}
 
   // halo consolidation
   void AddCombo (jhcBindings& m2c, const jhcAliaRule& step1, const jhcBindings& b1);
@@ -85,8 +97,8 @@ public:
 
   // file functions
   int Load (jhcTxtLine& in);
-  int Save (FILE *out, int detail =1) const;
-  int Print (int detail =1) const {return Save(stdout, detail);}
+  int Save (FILE *out, int detail =0) const;
+  int Print (int detail =0) const {return Save(stdout, detail);}
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -108,12 +120,6 @@ private:
 
   // file functions
   int load_clauses (jhcTxtLine& in);
-
-int TryBinding0 (const jhcNetNode *focus, jhcNetNode *mate, jhcBindings *m, int& mc, 
-                 const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
-int try_bare0 (jhcBindings *m, int& mc, const jhcGraphlet& pat, 
-               const jhcNodeList& f, const jhcNodeList *f2);
-
 
 };
 

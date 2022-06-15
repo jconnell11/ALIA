@@ -80,8 +80,6 @@ int jhcSmTrack::SetSize (int n)
     dealloc();
 
   // create status vectors
-  if ((ena = new int [n]) == NULL)
-    return 0;
   if ((id  = new int [n]) == NULL)
     return 0;
   if ((cnt = new int [n]) == NULL)
@@ -155,13 +153,11 @@ void jhcSmTrack::dealloc ()
   delete [] fwd;
   delete [] cnt;
   delete [] id;
-  delete [] ena;
   
   // clear previous pointers 
   pos  = NULL;
   var  = NULL;
   dist = NULL;
-  ena  = NULL;
   id   = NULL;
   cnt  = NULL;
   fwd  = NULL;
@@ -327,24 +323,29 @@ void jhcSmTrack::Reset (int dbg)
 }
 
 
-//= Set updating eligibility for all non-empty tracks.
+//= Prevent the match count or match miss field from going below zero.
+// typically used to preserve some occluded thing, like object in hand
 
-void jhcSmTrack::EnableAll (int active)
-{
-  int i;
-
-  for (i = 0; i < valid; i++)
-    ena[i] = active;
-}
-
-
-//= Set updating eligibility for a particular track.
-
-void jhcSmTrack::SetEnable (int i, int active)
+void jhcSmTrack::NoMiss (int i)
 {
   if ((i < 0) || (i >= valid))
     return;
-  ena[i] = active;
+  if (cnt[i] < 0)
+    cnt[i] = 0;
+}
+
+
+//= Force the position of some object to be a particular value.
+// does not alter variance in measurements used by pseudo-Kalman tracking
+// typcially appled when altering an occluded object moved by the hand
+
+void jhcSmTrack::ForcePos (int i, double x, double y, double z)
+{
+  if ((i < 0) || (i >= valid))
+    return;
+  (pos[i])[0] = x;
+  (pos[i])[1] = y;
+  (pos[i])[2] = z;
 }
 
 
@@ -397,7 +398,7 @@ void jhcSmTrack::score_all (const double * const *detect, int n, const double * 
   {
     // just use position difference
     for (i = 0; i < valid; i++)
-      if ((id[i] >= 0) && (ena[i] > 0))
+      if (id[i] >= 0) 
         for (j = 0; j < n; j++)
           (dist[i])[j] = get_d2(i, detect[j]);
   }
@@ -405,7 +406,7 @@ void jhcSmTrack::score_all (const double * const *detect, int n, const double * 
   {
     // use shape differences also
     for (i = 0; i < valid; i++)
-      if ((id[i] >= 0) && (ena[i] > 0))
+      if (id[i] >= 0) 
         for (j = 0; j < n; j++)
           (dist[i])[j] = get_d2s(i, detect[j], shp[j]);
   }
@@ -413,7 +414,7 @@ void jhcSmTrack::score_all (const double * const *detect, int n, const double * 
   {
     // use axis-independent position and shape 
     for (i = 0; i < valid; i++)
-      if ((id[i] >= 0) && (ena[i] > 0))
+      if (id[i] >= 0) 
         for (j = 0; j < n; j++)
           (dist[i])[j] = get_d2i(i, detect[j], shp[j]);
   }
@@ -560,7 +561,7 @@ void jhcSmTrack::greedy_pair (const double * const *detect, int n, int solid)
     // find smallest remaining distance between unpaired items
     best = -1.0;
     for (i = 0; i < valid; i++)
-      if ((id[i] >= th) && (ena[i] > 0))
+      if (id[i] >= th) 
         if (fwd[i] < 0)
           for (j = 0; j < n; j++)
             if ((back[j] < 0) && ((dist[i])[j] >= 0.0))
@@ -580,7 +581,7 @@ void jhcSmTrack::greedy_pair (const double * const *detect, int n, int solid)
        // find second best solid track for selected detection
        best2 = -1.0;
        for (i = 0; i < valid; i++)
-         if ((id[i] > 0) && (ena[i] > 0))
+         if (id[i] > 0) 
            if ((fwd[i] < 0) && (i != iwin))
              if ((dist[i])[jwin] >= 0.0)
                if ((best2 < 0.0) || ((dist[i])[jwin] < best2))
@@ -689,7 +690,7 @@ void jhcSmTrack::Prune ()
   int i;
 
   for (i = 0; i < valid; i++)
-    if ((id[i] >= 0) && (ena[i] > 0))
+    if (id[i] >= 0) 
       if (fwd[i] < 0)
         mark_miss(i);
 }
@@ -702,7 +703,7 @@ double jhcSmTrack::Dist2 (int i, const double *item) const
 {
   if ((i < 0) || (i >= valid))
     return -3.0;
-  if ((id[i] < 0) || (ena[i] <= 0))
+  if (id[i] < 0) 
     return -2.0;
   return get_d2(i, item);
 }
@@ -721,8 +722,6 @@ int jhcSmTrack::Update (int i, const double *item)
     return add_track(item);
 
   // alter existing item if position change is acceptable
-  if (ena[i] <= 0)
-    return 0;
   if (get_d2(i, item) >= 0.0)
     return shift_pos(i, item);
 
@@ -758,7 +757,6 @@ int jhcSmTrack::add_track (const double *item)
   state[i] = 0;
 
   // assign brand new track to item (probationary at start)
-  ena[i] = 1;
   cnt[i] = 0;
   mark_hit(i);
   return i;
@@ -837,7 +835,8 @@ void jhcSmTrack::Penalize (int i)
 {
   if ((i < 0) || (i >= valid))
     return;
-  if ((id[i] < 0) || (ena[i] <= 0))
+//  if ((id[i] < 0) || (ena[i] <= 0))
+  if (id[i] < 0) 
     return;
   mark_miss(i);
 }
@@ -916,16 +915,6 @@ int jhcSmTrack::Valid (int i) const
 }
 
 
-//= Tell whether specified track is eligiby for updating.
-
-int jhcSmTrack::Enabled (int i) const
-{
-  if ((i < 0) || (i >= valid))
-    return 0;
-  return ena[i];
-}
-
-
 //= Return which track matched a certain recent detection.
 // returns -1 if invalid index
 
@@ -971,4 +960,13 @@ const double *jhcSmTrack::Coords (int i) const
   return pos[i];
 }
 
+
+//= Tell planar XY distance of detection from origin of coordinate system.
+
+double jhcSmTrack::DistXY (int i) const
+{
+  if ((i < 0) || (i >= valid))
+    return 0.0;
+  return sqrt(pos[i][0] * pos[i][0] + pos[i][1] * pos[i][1]);
+}
 

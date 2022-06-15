@@ -136,6 +136,7 @@ public:
   void AreaThresh (int ath, int sth =0, int good =1, int bad =0);
   void AreaThreshBB (int ath, int sth =0, int bad =0);
   void AspectThreshBB (double asp, int sth =0, int good =1, int bad =0);
+  void ElongThreshBB (double asp, int sth =0, int good =1, int bad =0);
   void FillThreshBB (double fill, int sth =0, int good =1, int bad =0);
   void WidthThreshBB (int wid, int sth =0, int good =1, int bad =0);
   void HeightThreshBB (int ht, int sth =0, int good =1, int bad =0);

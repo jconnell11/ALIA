@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,6 +72,7 @@ public:
   bool InPat (const jhcNetNode *n) const {return cond.InDesc(n);}
 
   // helpers for construction
+  void ClrCond ()    {cond.Clear(); BuildIn(&cond);}
   void BuildCond ()  {BuildIn(&cond);}
   int BuildUnless () {if (nu >= umax) return 0; BuildIn(unless + nu); return ++nu;}
   void CmdHead (jhcNetNode *cmd) {cond.SetMain(cmd);}
@@ -80,9 +81,8 @@ public:
 
   // main functions
   int MatchGraph (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2 =NULL);
-  int TryBinding (const jhcNetNode *focus, jhcNetNode *mate, 
-                  jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2 =NULL);
-                  
+  jhcNetNode *FindRef (const jhcNetNode *focus, const jhcNodeList& wmem);              
+
 
 // PRIVATE MEMBER FUNCTIONS
 private:
@@ -91,10 +91,12 @@ private:
   int try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
   int try_bare (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
   int try_hash (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2);
+  int try_binding (const jhcNetNode *focus, jhcNetNode *mate, 
+                   jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2 =NULL);
   int consistent (const jhcNetNode *mate, const jhcNetNode *focus, const jhcGraphlet& pat, const jhcBindings *b, double th) const;
 
   // virtuals to override
-  virtual int match_found (jhcBindings *m, int& mc) {return 1;}
+  virtual int match_found (jhcBindings *m, int& mc) {mc--; return 1;}
 
 
 };

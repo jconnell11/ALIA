@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ jhcAssocMem::jhcAssocMem ()
   nr = 0;
   noisy = 2;
   detail = 0;
-//detail = 14;               // show detailed matching for some rule 
+//detail = 169;              // show detailed matching for some rule 
 }
 
 
@@ -80,7 +80,7 @@ jhcAssocMem::jhcAssocMem ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Add new rule onto tail of list.
-// returns id number of item added, 0 if not added (consider deleting)
+// returns 1 if successful, 0 or negative for some problem (consider deleting)
 
 int jhcAssocMem::AddRule (jhcAliaRule *r, int ann)
 {
@@ -89,11 +89,22 @@ int jhcAssocMem::AddRule (jhcAliaRule *r, int ann)
   // check for likely duplication
   if (r == NULL)
     return 0;
+  if ((r->result).Empty())
+  {
+    jprintf(1, ann, "  ... new rule rejected because result is empty\n\n");
+    return -1;
+  }
   if (r->Tautology())
-    return jprintf(1, ann, "  ... new rule rejected as a tautology\n\n");
+  {
+    jprintf(1, ann, "  ... new rule rejected as a tautology\n\n");
+    return -2;
+  }
   while ((prev = NextRule(prev)) != NULL)
     if (r->Identical(*prev))
-      return jprintf(1, ann, "  ... new rule rejected as identical to rule %d\n\n", prev->RuleNum());
+    {
+      jprintf(1, ann, "  ... new rule rejected as identical to rule %d\n\n", prev->RuleNum());
+      return -3;
+    }
 
   // add to end of list
   if (r0 == NULL)
@@ -112,11 +123,11 @@ int jhcAssocMem::AddRule (jhcAliaRule *r, int ann)
   // possibly announce formation
   if ((ann > 0) && (noisy >= 1))
   {
-    jprintf("\n---------------------------------\n");
+    jprintf("\n.................................\n");
     r->Print();
-    jprintf("---------------------------------\n\n");
+    jprintf(".................................\n\n");
   }
-  return nr;
+  return 1;
 }
 
 
@@ -133,21 +144,23 @@ void jhcAssocMem::Remove (const jhcAliaRule *rem)
     return;
   while (r != NULL)
   {
-     // possibly splice out of list and delete
+     // possibly splice out of list
     if (r == rem)
     {
       if (prev != NULL)
         prev->next = r->next;
       else
         rules = r->next;
-      delete r;
-      return;
+      break;
     }
 
     // move on to next list entry
     prev = r;
     r = r->next;
   }
+
+  // delete given item even if it was not in list
+  delete rem;
 }
 
 
@@ -167,7 +180,7 @@ int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, int dbg) const
 
 //dbg = 2;                         // quick way to show halo inferences
 
-jtimer(13, "RefreshHalo");
+jtimer(14, "RefreshHalo");
   // PASS 1 - erase all previous halo deductions
   jprintf(1, dbg, "HALO refresh ...\n");
   wmem.ClearHalo();
@@ -193,7 +206,7 @@ jtimer(13, "RefreshHalo");
   // report result
   jprintf(1, dbg, "  %d + %d rule invocations\n\n", cnt, cnt2);
 //wmem.PrintHalo();
-jtimer_x(13);
+jtimer_x(14);
   return cnt;
 }
 
@@ -222,7 +235,7 @@ int jhcAssocMem::Consolidate (const jhcBindings& b, int dbg)
       // merge step-1 halo rule into consolidated rule (possibly create)
       if (mix == NULL)
       {
-        jprintf(1, dbg, "CONSOLIDATE: rule %d <== rule %d", r2->RuleNum(), r1->RuleNum());
+        jprintf(1, dbg, "\nCONSOLIDATE: rule %d <== rule %d", r2->RuleNum(), r1->RuleNum());
         mix = new jhcAliaRule;
         m2c.Clear();
       }
@@ -284,22 +297,39 @@ int jhcAssocMem::next_halo (jhcAliaRule **r, jhcBindings **b, jhcBindings& list,
 // appends to existing rules unless add <= 0
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation
 // ignores actual rule IDs from file and assigns new ones
+// typically give base file name like "KB/kb_072721_1038", fcn adds ".rules"
 // returns number of rules read, 0 or negative for problem
 
-int jhcAssocMem::Load (const char *fname, int add, int rpt, int level)
+int jhcAssocMem::Load (const char *base, int add, int rpt, int level)
 {
   jhcTxtLine in;
+  char full[200], src[80] = "";
+  const char *fname = base;
   jhcAliaRule *r;
+  char *end;
   int ans = 1, n = 0;
 
   // possibly clear old stuff then try to open file
   if (add <= 0)
     clear();
+  if (strchr(base, '.') == NULL)
+  {
+    sprintf_s(full, "%s.rules", base);
+    fname = full;
+  }
   if (!in.Open(fname))
   {
-    jprintf(">>> Could not open rule file: %s !\n", fname);
+    jprintf("  >>> Could not read rule file: %s !\n", fname);
     return -1;
   }
+
+  // determine provenance string to use
+  if (level <= 1)
+  {
+    strcpy_s(src, fname);
+    if ((end = strrchr(src, '.')) != NULL)
+      *end = '\0';
+  } 
 
   // try reading rules from file  
   while (ans >= 0)
@@ -310,7 +340,7 @@ int jhcAssocMem::Load (const char *fname, int add, int rpt, int level)
     {
       // delete and purge input if parse error 
       if (!in.End())
-        jprintf("Bad syntax at line %d in: %s\n", in.Last(), fname);
+        jprintf(">> Bad syntax at line %d in: %s\n", in.Last(), fname);
       delete r;
       if (in.NextBlank() == NULL)
         break;
@@ -319,6 +349,7 @@ int jhcAssocMem::Load (const char *fname, int add, int rpt, int level)
     {
       // add rule to list if not a duplicate (unlikely)
       r->lvl = level;
+      strcpy_s(r->prov, src);
       if (AddRule(r, 0) <= 0)
         delete r; 
       n++;
@@ -335,16 +366,32 @@ int jhcAssocMem::Load (const char *fname, int add, int rpt, int level)
 
 
 //= Save all current rules at or above some level to a file.
+// typically give base file name like "KB/kb_072721_1038", fcn adds ".rules"
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
 // returns number of rules saved, negative for problem
 
-int jhcAssocMem::Save (const char *fname, int level) const
+int jhcAssocMem::Save (const char *base, int level) const
 {
+  char full[200];
+  const char *fname = base;
   FILE *out;
   int cnt;
 
+  if (strchr(base, '.') == NULL)
+  {
+    sprintf_s(full, "%s.rules", base);
+    fname = full;
+  }
   if (fopen_s(&out, fname, "w") != 0)
+  {
+    jprintf("  >>> Could not write rule file: %s !\n", fname);
     return -1;
+  }
+  if (level >= 2)
+  {
+    fprintf(out, "// newly learned rules not in KB0 or KB2\n");
+    fprintf(out, "// ======================================\n\n");
+  }
   cnt = save_rules(out, level);
   fclose(out);
   return cnt;
@@ -363,10 +410,118 @@ int jhcAssocMem::save_rules (FILE *out, int level) const
   {
     if (r->lvl >= level)
       if (r->Save(out, 2) > 0)
+      {
+        fprintf(out, "\n\n");
         cnt++;
+      }
     r = r->next;
   }
   return cnt;
 }
 
 
+//= Store alterations of confidence values relative to KB0 and KB2 rules.
+// typically give base file name like "KB/kb_072721_1038", fcn adds ".conf"
+// returns number of exceptions stored (writes file)
+
+int jhcAssocMem::Alterations (const char *base) const
+{
+  char full[200];
+  const char *fname = base;
+  FILE *out;
+  const jhcAliaRule *r = rules;
+  int na = 0;
+
+  // try opening file and writing header
+  if (strchr(base, '.') == NULL)
+  {
+    sprintf_s(full, "%s.conf", base);
+    fname = full;
+  }
+  if (fopen_s(&out, fname, "w") != 0)
+  {
+    jprintf("  >>> Could not write confidence file: %s !\n", fname);
+    return -1;
+  }
+  fprintf(out, "// learned changes to default rule confidences\n\n");
+
+  // scan through rules for altered values
+  while (r != NULL)
+  {
+    if ((*(r->prov) != '\0') && (r->conf != r->conf0))
+    {
+      fprintf(out, "%s %d = %4.2f\n", r->prov, r->pnum, r->conf);
+      na++; 
+    }  
+    r = r->next;
+  }
+
+  // clean up
+  fclose(out);
+  return na;
+}
+
+
+//= Change default confidence values of KB0 and KB2 rules based on learning.
+// typically give base file name like "KB/kb_072721_1038", fcn adds ".conf"
+// returns number of rules altered (reads file)
+
+int jhcAssocMem::Overrides (const char *base)
+{
+  jhcTxtLine in;
+  char full[200], src[40];
+  const char *item, *fname = base;
+  jhcAliaRule *r;
+  double cf;
+  int n, na = 0;
+
+  // try opening file
+  if (strchr(base, '.') == NULL)
+  {
+    sprintf_s(full, "%s.conf", base);
+    fname = full;
+  }
+  if (!in.Open(fname))
+  {
+    jprintf("  >>> Could not read confidence file: %s !\n", fname);
+    return -1;
+  }
+
+  // read and parse each line
+  while (in.NextContent() != NULL)
+  {
+    // extract provenance file and original number
+    if ((item = in.Token()) == NULL)
+      break;
+    strcpy_s(src, item);
+    if ((item = in.Token()) == NULL)
+      break;
+    if (sscanf_s(item, "%d", &n) != 1)
+      break;
+
+    // extract updated confidence value
+    if ((item = in.Token()) == NULL)
+      break;
+    if (strcmp(item, "=") != 0)
+      break;
+    if ((item = in.Token()) == NULL)
+      break;
+    if (sscanf_s(item, "%lf", &cf) != 1)
+      break;
+
+    // find matching rule (if any)
+    r = rules;
+    while (r != NULL)
+    {
+      if ((*(r->prov) != '\0') && (r->pnum == n) && (strcmp(r->prov, src) == 0))
+      {
+        // update confidence value
+        r->conf = cf;
+        na++;
+        break;
+      }
+      r = r->next;
+    }
+  }
+  return na;
+}

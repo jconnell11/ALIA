@@ -1,0 +1,8 @@
+// Category definitions and rules for Support kernel
+// ========================================================
+
+RULE 1 - "Surfaces are tables"
+    if: ako-1 -lex-  surface
+              -ako-> obj-1
+  then: ako-2 -lex-  table
+              -ako-> obj-1

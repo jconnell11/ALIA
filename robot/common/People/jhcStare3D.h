@@ -36,6 +36,7 @@
 
 
 //= Finds and tracks people using a multiple fixed sensors.
+// for single cam analyzes height in wide range (typ. -2" to +84")
 // handles fusion of sensors into a unified overhead view
 // links sensors to detection and tracking part
 // <pre>
@@ -82,6 +83,7 @@ public:
   int PersonID (int i, int trk =1) const;
   int PersonState (int i, int trk =1) const;
   bool Named (int i, int trk =1) const;
+  bool Visible (int i, int trk =1) const;
   const jhcBodyData *GetPerson (int i, int trk =1) const;
   jhcBodyData *RefPerson (int i, int trk =1);
   const jhcBodyData *GetID (int id, int trk =1) const;

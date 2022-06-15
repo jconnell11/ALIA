@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,6 +119,7 @@ void jhcFrontal::Reset ()
     {
       tried[p][c] = 0;  
       fcnt[p][c] = -1;
+      seen[p][c] = 0;
     }
 }
 
@@ -156,7 +158,7 @@ int jhcFrontal::FaceChk (int p, const jhcImg& src, const jhcRoi& area, double an
 
   // stretch contrast based on middle portion
   mid.CenterWithin(0.5, 0.5, 0.5, 0.5, *clip);         // 0.3 also OK
-  Enhance(*clip, *clip, 4.0, &mid);
+  Enhance3(*clip, *clip, 4.0, &mid);
 
   // get bounding box from face finder
   det = &(face[p][cam]);
@@ -167,7 +169,10 @@ int jhcFrontal::FaceChk (int p, const jhcImg& src, const jhcRoi& area, double an
     fdy[p][cam] = (det->RoiAvgY() - y0) / det->RoiH();
     fcnt[p][cam] = 0;
     if ((fabs(fdx[p][cam]) <= xsh) && (fabs(fdy[p][cam]) <= ysh))
+    {
       fcnt[p][cam] = n + 1;
+      seen[p][cam] += 1;
+    }
   }
   return fcnt[p][cam];
 }
@@ -191,6 +196,7 @@ int jhcFrontal::DoneChk ()
       {
         tried[p][c] = 0;
         fcnt[p][c] = -1;
+        seen[p][c] = 0;                      // track not valid
         continue;
       }
 
@@ -314,6 +320,24 @@ int jhcFrontal::FrontBest (jhcRoi& area, int p, int fmin) const
   if (win >= 0)
     area.CopyRoi(face[p][win]);
   return win;
+}
+
+
+//= Total number of times a face has been seen associated with this person.
+// if cam < 0 then checks across all cameras instead of a specific one
+// Note: if face detected simultaneously in several cameras count is artifically high
+
+int jhcFrontal::FaceCnt (int p, int cam) const
+{
+  int c, sum = 0;
+
+  if ((p < 0) || (p >= pmax) || (cam > cmax))
+    return Fatal("Bad input to jhcFrontal::FaceCnt");
+  if (cam >= 0)
+    return seen[p][cam];
+  for (c = 0; c < cmax; c++)
+    sum += seen[p][c];
+  return sum;
 }
 
 

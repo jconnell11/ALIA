@@ -9,6 +9,7 @@
   <np> <vp> (<np>) to <cmd>
   <np> <vp> (<np>) <%fact-g>
   <%obj-i0> <$add>
+  <%obj-i> <$add>
   <%obj> <$add>
   there is <%obj-i>
 
@@ -68,6 +69,9 @@
 
 =[!do]
   (you <PREF>) (<adv3>) <ACT> (<np> (<np>)) (<vmod3>)
+  (you <PREF>) (<adv3>) <ACT-2> <np> <$dest> (<manner>)
+  (you <PREF>) (<adv3>) <ACT-2> <np> <DIR> (<manner>)
+  (you <PREF>) (<adv3>) <ACT-2> <DIR> <np> (<manner>)
   (you <PREF>) (<adv3>) <SAY> (to <np>) <QUOTE>
   <STOP> <ACT-G> (<np> (<np>)) (<vmod3>)
   <NEG-V> <ACT> (<np> (<np>)) (<vmod3>)
@@ -120,6 +124,7 @@
 =[!find]
   find (out) <query>
   find <np>
+  look for <np>
 
 
 // implicit tell for answering wh-question
@@ -140,9 +145,10 @@
   <$q-ako>
   <$q-hq>
   <$q-desc>
-  <$q-ref>
+  <$q-name>
   <$q-loc>
   <$q-cnt>
+  <$q-has>
 
 
 // hypothetical FIND for prohibitions
@@ -177,7 +183,8 @@
 
 =[$q-hq]
   what <AKO> (<be>) <np> (<be>)
-  what (is) the <AKO> of <np> (is)
+  what (is) the <AKO> <%obj-pp> (is)
+  what (is) <%obj-p> <AKO> (is)
   how <HQ> (<be>) <np> (<be>)
 
 
@@ -197,9 +204,8 @@
 
 // question about the reference word for an item
 
-=[$q-ref]
-  what (<be>) <WRT> name (<be>)
-  what (<be>) <n-poss> name (<be>)
+=[$q-name]
+  what (<be>) <%obj-p> name (<be>)
   what (<be>) the name of <np> (<be>)
 
 
@@ -215,6 +221,14 @@
   how many <np-s> (are) there (are)
   how many <np-s> (do) you see
   how many <np-s>
+
+
+// question about ownership
+
+=[$q-has]
+  who has <np-any>
+  what (<%obj-q>) has <np-any>
+  which <%obj-q> has <np-any>
 
 
 // --------------------------------------------------
@@ -237,6 +251,7 @@
 
 =[!chk-t]
   <be> <%fact>
+  <AUX-D> <%fact>
 
 
 // ==================================================
@@ -294,7 +309,6 @@
 
 =[$dest]
   to <np>
-  to <place>
-  
-
+  (to) <place>
+  <LOC-D> <np>
 

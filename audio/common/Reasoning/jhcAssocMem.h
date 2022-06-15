@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,9 +73,11 @@ public:
   int Consolidate (const jhcBindings& b, int dbg =1);
 
   // file functions
-  int Load (const char *fname, int add =0, int rpt =0, int level =1);
-  int Save (const char *fname, int level =1) const;
+  int Load (const char *base, int add =0, int rpt =0, int level =1);
+  int Save (const char *base, int level =1) const;
   int Print (int level =1) const {return save_rules(stdout, level);}
+  int Alterations (const char *base) const;
+  int Overrides (const char *base);
 
 
 // PRIVATE MEMBER FUNCTIONS

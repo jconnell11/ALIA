@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 
 #include "jhcGlobal.h"
 
+#include "Language/jhcMorphTags.h"     // for convenience
 #include "Parse/jhcSlotVal.h"
 
 
@@ -75,10 +76,20 @@ public:
   int AddVocab (class jhcSpeechX *p, const char *fname, int rpt =0);
  
   // derived forms
-  const char *SurfWord (const char *base, UL32 tags);
+  const char *SurfWord (char *surf, const char *base, UL32 tags, int ssz) const;
+  template <size_t ssz> 
+    const char *SurfWord (char (&surf)[ssz], const char *base, UL32 tags) const
+      {return SurfWord(surf, base, tags, ssz);}
+  const char *SurfWord (const char *base, UL32 tags) 
+    {return SurfWord(stemp, base, tags);}
 
   // normalization
-  const char *BaseWord (const char *surf, UL32 tags);
+  const char *BaseWord (char *base, const char *surf, UL32 tags, int ssz) const;
+  template <size_t ssz> 
+    const char *BaseWord (char (&base)[ssz], const char *surf, UL32 tags) const
+      {return BaseWord(base, surf, tags, ssz);}
+  const char *BaseWord (const char *surf, UL32 tags) 
+    {return BaseWord(btemp, surf, tags);}
   
   // graphizer functions
   const char *NounLex (UL32& tags, char *pair) const;
@@ -105,12 +116,13 @@ private:
   int trim_tail (char *dest, const char *start, const char *end, int ssz) const;
 
   // derived forms
-  const char *lookup_surf (const char *surf, UL32 tags);
+  const char *lookup_surf (const char *surf, UL32 tags) const;
   char *noun_morph (char *val, UL32 tags) const;
   char *verb_morph (char *val, UL32 tags) const;
   char *adj_morph (char *val, UL32 tags) const;
   char *add_s (char *val, int ssz) const;
   char *add_vowel (char *val, const char *suffix, int ssz) const;
+  char *add_ss (char *val, int ssz, int chk) const;
 
   // normalization
   const char *lookup_base (const char *surf, UL32 tags) const;
@@ -119,6 +131,7 @@ private:
   char *adj_stem (char *val, UL32 tags) const;
   char *rem_s (char *val) const;
   char *rem_vowel (char *val, int strip) const;
+  char *rem_ss (char *val) const;
 
   // shared functions
   const char *scan_for (const char *probe, const char key[][40], const char val[][40], int n) const;

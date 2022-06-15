@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@
 
 //= Find objects on surfaces using single mobile depth scanner.
 // uses surface height estimate to make local map of beam region
+// analyzes height in narrow range around table (typ. -2" to +18")
 // map itself is sensor relative, but objects have global coordinates
 // objects are either depth protrusion or isolated surface markings 
 // <pre>
@@ -68,7 +69,11 @@ private:
 
   // object mask and segmentation alternation
   jhcImg cmsk;          
+  const jhcImg *kill;
   int phase;
+
+  // top portion finding
+  jhcImg high;
 
   // object color analysis and cached data
   jhcPatchProps pp;
@@ -81,8 +86,8 @@ private:
 public:
   // depth segmentation parameters
   jhcParam zps;
-  double lrel, flip, sfar, wexp;
-  int ppel, pth, cup, bej;
+  double sfar, wexp;
+  int pth, cup, bej, rmode;
 
   // color segmentation parameters
   jhcParam gps;
@@ -103,20 +108,37 @@ public:
 
   // main functions
   void Reset ();
-  void AdjTracks (const jhcMatrix& loc, const jhcMatrix& dir);
-  int FindObjects (const jhcImg& col, const jhcImg& d16);
+  void AdjBase (double dx0, double dy0, double dr);
+  void AdjNeck (const jhcMatrix& loc, const jhcMatrix& dir);
+  int FindObjects (const jhcImg& col, const jhcImg& d16, const jhcImg *mask =NULL);
 
   // object properties
   int Closest () const;
   double DistXY (int i) const;
   double World (jhcMatrix& loc, int i) const;
+  double World (double& wx, double& wy, int i) const;
+  double FullTop (double& wx, double& wy, double& wid, double& len, int i, double slice =0.3);
+  int NearTable (jhcMatrix& tpt, int i) const;
+  void ForcePose (int i, double wx, double wy, double wz, double ang);
   int Spectralize (const jhcImg& col, const jhcImg& d16, int i, int clr =0);
   int DegColor (int i, int cnum) const;
   double AmtColor (int i, int cnum) const;
 
+  // coordinate transforms
+  void FullXY (double& wx, double& wy, double mx, double my) const;
+  void PelsXY (double& wx, double& wy, double ix, double iy) const;
+  double FullAngle (double mdir) const;
+  double FullOrient (double mdir) const;
+  void ViewXY (double& mx, double& my, double wx, double wy) const;
+  void ViewPels (double& ix, double& iy, double wx, double wy) const;
+  void ViewPels (int& ix, int& iy, double wx, double wy) const;
+  double ViewAngle (double wdir) const;
+  double ViewOrient (double wdir) const;
+
   // debugging graphics
-  int AttnCam (jhcImg& dest, int most =5, int pick =2);
- 
+  int AttnCam (jhcImg& dest, int pick =2, int known =3, int all =5);
+  int MarkCam (jhcImg& dest, const jhcMatrix& wpt, int col =6);
+
 
 // PRIVATE MEMBER FUNCTIONS
 private:
@@ -127,9 +149,6 @@ private:
   int tall_params (const char *fname);  
   int flat_params (const char *fname);
 
-  // main functions 
-  void adj_tracks (double sx, double sy, double pan);
-
   // segmentation
   int tall_objs ();
   int flat_objs ();
@@ -139,8 +158,11 @@ private:
   virtual double find_hmax (int i, const jhcRoi *area);
   void occluded () {}
 
+  // object properties
+  void obj_slice (jhcImg& dest, int lab, double up) const;
+
   // debugging graphics
-  void attn_obj (jhcImg& dest, int i, int col);
+  void attn_obj (jhcImg& dest, int i, int t, int col);
 
 
 };

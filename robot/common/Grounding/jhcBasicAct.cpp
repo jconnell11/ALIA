@@ -303,7 +303,7 @@ int jhcBasicAct::base_stop (const jhcAliaDesc *desc, int i)
     return 0;
 
   // re-issue command
-  jprintf(1, dbg, ">> REQUEST %d: stop motion\n", cbid[i]);
+  jprintf(1, dbg, "|- BasicAct %d: stop motion\n", cbid[i]);
   (rwi->body)->MoveVel(0.0, cbid[i]);
   (rwi->body)->TurnVel(0.0, cbid[i]);
   return 0;
@@ -351,7 +351,7 @@ int jhcBasicAct::base_drive (const jhcAliaDesc *desc, int i)
     return 0;
 
   // re-issue command
-  jprintf(1, dbg, ">> REQUEST %d: move @ %3.1f ips\n", cbid[i], csp[i]);
+  jprintf(1, dbg, "|- BasicAct %d: move @ %3.1f ips\n", cbid[i], csp[i]);
   (rwi->body)->MoveVel(csp[i], cbid[i]);
   return 0;
 }
@@ -468,7 +468,7 @@ int jhcBasicAct::base_turn (const jhcAliaDesc *desc, int i)
     return 0;
 
   // re-issue command
-  jprintf(1, dbg, ">> REQUEST %d: turn @ %3.1f dps\n\n", cbid[i], csp[i]);
+  jprintf(1, dbg, "|- BasicAct %d: turn @ %3.1f dps\n\n", cbid[i], csp[i]);
   (rwi->body)->TurnVel(csp[i], cbid[i]);
   return 0;
 }
@@ -573,7 +573,7 @@ int jhcBasicAct::base_lift (const jhcAliaDesc *desc, int i)
     return 0;
 
   // re-issue command
-  jprintf(1, dbg, ">> REQUEST %d: lift @ %3.1f ips\n\n", cbid[i], csp[i]);
+  jprintf(1, dbg, "|- BasicAct %d: lift @ %3.1f ips\n\n", cbid[i], csp[i]);
   (rwi->body)->LiftVel(csp[i], cbid[i]);
   return 0;
 }
@@ -656,7 +656,7 @@ int jhcBasicAct::base_grip (const jhcAliaDesc *desc, int i)
       return(((csp[i] > 0.0) && (rwi->body)->Empty()) ? -1 : 1);
 
   // re-issue command
-  jprintf(1, dbg, ">> REQUEST %d: grip %s\n\n", cbid[i], ((csp[i] > 0.0) ? "CLOSE" : "open"));
+  jprintf(1, dbg, "|- BasicAct %d: grip %s\n\n", cbid[i], ((csp[i] > 0.0) ? "CLOSE" : "open"));
   (rwi->body)->Grab((int) csp[i], cbid[i]);
   cst[i] = 1;                                  // mark requested
   return 0;

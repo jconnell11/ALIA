@@ -41,6 +41,7 @@ jhcBBox::~jhcBBox ()
 
 
 //= Default constructor.
+// NOTE: assumes size = 0 causing FindBBox to barf
 
 jhcBBox::jhcBBox ()
 {
@@ -498,11 +499,12 @@ int jhcBBox::CopyItem (int index, const jhcBBox& src, int si)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Fills bbox list with parameters based on segmented image.
-// Ignores blobs labelled as zero (presumably the background).
-// Records intial ranges of pixels in xlo, xhi, ylo, yhi variables
-// Sets "valid" to reflect range of entries filled.
+// ignores blobs labelled as zero (presumably the background)
+// records intial ranges of pixels in xlo, xhi, ylo, yhi variables
+// sets "valid" to reflect range of entries filled
 // unused indices have status "val0"
 // returns total span of active boxes (scan 1 to n-1 checking status > 0)
+// NOTE: if nothing seems to be found make sure SetSize was called
 
 int jhcBBox::FindBBox (const jhcImg& src, int val0)
 {
@@ -1439,6 +1441,7 @@ void jhcBBox::AreaThreshBB (int ath, int sth, int bad)
 
 //= Marks as invalid any bboxes below aspect ratio specified.
 // If limit is negative, invalidate bboxes above limit.
+// Note: this ALWAYS compares box height (y) to width (x)
 
 void jhcBBox::AspectThreshBB (double asp, int sth, int good, int bad)
 {
@@ -1456,6 +1459,37 @@ void jhcBBox::AspectThreshBB (double asp, int sth, int good, int bad)
     if (status[i] > sth)
     {
       if (items[i].RoiAspect() >= val)
+        status[i] = over;
+      else
+        status[i] = under;
+    }
+}
+
+
+//= Marks as invalid any bboxes with object that are not long and skinny.
+// If limit is negative, invalidate bboxes above limit.
+// estimates elongation (len / wid) using len = diagonal and wid = area / len
+// Note: sometimes better than AspectThreshBB for thin but curved things
+
+void jhcBBox::ElongThreshBB (double asp, int sth, int good, int bad)
+{
+  int i, rw, rh, over = good, under = bad;
+  double elong, val = asp;
+
+  if (val < 0)
+  {
+    val = -asp;
+    over = bad;
+    under = good;
+  }
+
+  for (i = 1; i < valid; i++)
+    if (status[i] > sth)
+    {
+      rw = items[i].RoiW();
+      rh = items[i].RoiH();
+      elong = (rw * rw + rh * rh) / (double)(pixels[i]);
+      if (elong >= val)
         status[i] = over;
       else
         status[i] = under;
@@ -1853,7 +1887,7 @@ int jhcBBox::PoisonOver (const jhcImg& labels, const jhcImg& marks, int th)
   const US16 *n = (const US16 *) labels.RoiSrc();
   const UC8 *m = marks.RoiSrc(labels);
 
-  if (th > 0)
+  if (th >= 0)
   {
     for (y = rh; y > 0; y--, m += msk, n += lsk)
       for (x = rw; x > 0; x--, m++, n++)
@@ -1864,7 +1898,7 @@ int jhcBBox::PoisonOver (const jhcImg& labels, const jhcImg& marks, int th)
   {
     for (y = rh; y > 0; y--, m += msk, n += lsk)
       for (x = rw; x > 0; x--, m++, n++)
-        if ((*m <=-th) && (*n > 0) && (*n < valid))
+        if ((*m <= -th) && (*n > 0) && (*n < valid))
           status[*n] = 0;
   }
   return 1;
@@ -2025,7 +2059,7 @@ int jhcBBox::MarkBlob (jhcImg& dest, const jhcImg& src, int index, int val, int 
 int jhcBBox::TightMask (jhcImg& dest, const jhcImg& src, int index, int pad) const
 {
   if (!dest.Valid(1) || !dest.SameSize(src, 2))
-    return Fatal("Bad images to jhcBBox::MarkBlob");
+    return Fatal("Bad images to jhcBBox::TightMask");
 
   // adjust destination ROI to match blob
   if ((index <= 0) || (index >= valid))
@@ -2155,7 +2189,9 @@ int jhcBBox::HighestPels (jhcImg& dest, const jhcImg& src, int index, int cnt, i
 ///////////////////////////////////////////////////////////////////////////
 
 //= Passes all parts of the image that fall into at least one bbox.
-// Can restrict to bboxes with status at or above specified value.
+// can restrict to bboxes with status at or above specified value
+// copies rectangular patches of original image containing valid objects
+// Note: does not zero rest of destination image (so inserts patches)
 
 int jhcBBox::OverGate (jhcImg& dest, const jhcImg& src, int sth) const
 {
@@ -2267,6 +2303,7 @@ int jhcBBox::OnlyOutline (jhcImg& dest, int sth, double mag, int t, int r, int g
            
  
 //= Passes pixels of original image that match valid bounding boxes.
+// makes 8 bit binary image given 16 bit connected component image
 
 int jhcBBox::ThreshValid (jhcImg& dest, const jhcImg& src, int sth, int mark) const
 {

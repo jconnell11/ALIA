@@ -59,8 +59,8 @@ jhcPatchProps::jhcPatchProps ()
   hhist.SetSize(256);
 
   // processing parameters
-  SetFind(9, 200, 25, 60, 245, 170, 80);
-  SetHue(17, 32, 49, 120, 175, 250);
+  SetFind(3, 180, 35, 25, 245, 100, 50);
+  SetHue(250, 30, 49, 130, 170, 220);
   SetPrimary(0.2, 2.0, 0.3, 0.05);
 
   // processing parameters
@@ -81,8 +81,8 @@ int jhcPatchProps::cfind_params (const char *fname)
   int ok;
 
   ps->SetTag("prop_cfind", 0);
-  ps->NextSpec4( &csm,   "Mask shrinkage (pel)");  
-  ps->NextSpec4( &cth,   "Shrink shape threshold");  
+  ps->NextSpec4( &csm,   "Mask shrinkage (pel)");       // was 3 then 9
+  ps->NextSpec4( &cth,   "Shrink shape threshold");     // was 50 then 180
   ps->Skip(); 
   ps->NextSpec4( &smin,  "Min saturation for color");   // was 30, 50, then 35
   ps->NextSpec4( &imin,  "Min intensity for color");    // was 50, 80, then 120
@@ -122,8 +122,8 @@ int jhcPatchProps::hue_params (const char *fname)
   ps->NextSpec4( clim + 1, "Orange-yellow boundary");  // was 26, 33, then 30
   ps->NextSpec4( clim + 2, "Yellow-green boundary");   // was 45, 47, then 55, then 50
   ps->NextSpec4( clim + 3, "Green-blue boundary");  
-  ps->NextSpec4( clim + 4, "Blue-purple boundary");    // was 170
-  ps->NextSpec4( clim + 5, "Purple-red boundary");     // was 234
+  ps->NextSpec4( clim + 4, "Blue-purple boundary");    // was 170 then 180
+  ps->NextSpec4( clim + 5, "Purple-red boundary");     // was 234 then 240
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;

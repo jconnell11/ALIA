@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,7 +116,8 @@ public:
   virtual int Length () const {return NodeCnt();}
   virtual bool InList (const jhcNetNode *n) const;
   virtual int NumBins () const {return nbins;}
-  virtual int SameBin (const jhcNetNode& focus) const {return BinCnt(focus.Code());}
+  virtual int SameBin (const jhcNetNode& focus, const jhcBindings *b) const 
+    {return((b != NULL) ? BinCnt(b->LexBin(focus)) : focus.Code());}
     
   // writing functions
   int Save (const char *fname, int lvl =0) const;

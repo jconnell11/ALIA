@@ -28,12 +28,13 @@
 #include "jhcGlobal.h"
 
 #include "Body/jhcManusX.h"            // common robot
-#include "Action/jhcTimedFcns.h"       
+
+#include "Action/jhcStdKern.h"       
 
 
 //= Interface to Manus sensor sequence kernel for ALIA system.
 
-class jhcLocalSeq : public jhcTimedFcns
+class jhcLocalSeq : public jhcStdKern
 {
 // PRIVATE MEMBER VARIABLES
 private:

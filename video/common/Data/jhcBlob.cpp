@@ -39,6 +39,7 @@ jhcBlob::~jhcBlob ()
 
 
 //= Default constructor (default constructor for base called automatically).
+// NOTE: assumes size = 0 causing FindParams to barf
 
 jhcBlob::jhcBlob ()
 {
@@ -324,12 +325,13 @@ int jhcBlob::BlobMinor (double& x0, double& y0, double& x1, double& y1, int inde
 ///////////////////////////////////////////////////////////////////////////
 
 //= Fills blob list with parameters based on segmented image.
-// Returns the actual number of blobs analyzed.
-// Forces highly eccentric blobs to be 1 pixel wide.
-// Angles munged for good display (CCW from 0 at 3 o'clock).
-// Ignores blobs labelled as zero (presumably the background).
-// Sets "valid" to reflect range of entries filled.
-// Can optionally append newly found blobs to end of current list.
+// forces highly eccentric blobs to be 1 pixel wide
+// angles munged for good display (CCW from 0 at 3 o'clock)
+// ignores blobs labelled as zero (presumably the background)
+// sets "valid" to reflect range of entries filled
+// can optionally append newly found blobs to end of current list
+// returns the actual number of blobs analyzed (incl. null blob 0)
+// NOTE: if nothing seems to be found make sure SetSize was called
 
 int jhcBlob::FindParams (const jhcImg& src, int append, int val0)
 {

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,6 +110,11 @@ public:
 
   // object bottoms
   int SmallGapH (jhcImg& dest, const jhcImg& src, int wmax) const;
+
+  // object accomodation
+  int FitsBox (jhcImg& dest, const jhcImg& src, int wid, int ht, int th =0) const;
+  int FitsH (jhcImg& dest, const jhcImg& src, int wid, int th =0) const;
+  int FitsV (jhcImg& dest, const jhcImg& src, int ht, int th =0) const;
 
 
 // PRIVATE MEMBER FUNCTIONS

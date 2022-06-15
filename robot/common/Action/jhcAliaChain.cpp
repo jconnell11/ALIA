@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "Interface/jms_x.h"           // common video
+
 #include "Action/jhcAliaCore.h"        // common robot - since only spec'd as class in header    
 #include "Action/jhcAliaDir.h"         
 #include "Action/jhcAliaPlay.h"
@@ -41,23 +43,17 @@
 jhcAliaChain::~jhcAliaChain ()
 {
   // detect loops and delete only once
-
   if (cut <= 0)               
     cut_loops();
 
   // get rid of payload object (whichever)
   delete d;
   delete p;
-  d = NULL;
-  p = NULL;
 
   // get rid of rest of (branched) chain
   delete cont;
-  cont = NULL;
   delete alt; 
-  alt = NULL; 
   delete fail;
-  fail = NULL;
 }
 
 
@@ -120,10 +116,22 @@ jhcAliaChain::jhcAliaChain ()
   core = NULL;
   level = 0;
   backstop = NULL;
+  spew = 0;
 
   // set up payload to run
+  avoid = NULL;
   prev = 0;
   done = 0;
+}
+
+
+//= Get access to main action tree (i.e. working memory plus foci).
+
+jhcActionTree *jhcAliaChain::ATree () 
+{
+  if (core == NULL)
+    return NULL;
+  return &(core->atree);
 }
 
 
@@ -200,7 +208,7 @@ jhcAliaChain *jhcAliaChain::StepN (int n)
 
 //= Return second to last step in normal continuation path.
 
-jhcAliaChain *jhcAliaChain::Penult ()
+jhcAliaChain *jhcAliaChain::Penult () 
 {
   jhcAliaChain *prev = NULL, *step = this;
 
@@ -215,13 +223,27 @@ jhcAliaChain *jhcAliaChain::Penult ()
 
 //= Return last step in normal continuation path.
 
-jhcAliaChain *jhcAliaChain::Last ()
+jhcAliaChain *jhcAliaChain::Last () 
 {
   jhcAliaChain *step = this;
  
   while (step->cont != NULL)
     step = step->cont;
   return step;
+}
+
+
+//= Return directive key of last step in normal continuation path.
+
+jhcGraphlet *jhcAliaChain::LastKey ()
+{
+  const jhcAliaChain *last = Last();
+  jhcAliaDir *dir;
+
+  if (last != NULL)
+    if ((dir = last->GetDir()) != NULL)
+      return &(dir->key);
+  return NULL;
 }
 
 
@@ -497,25 +519,51 @@ void jhcAliaChain::MarkSeeds (int head)
 }
 
 
+//= Allow chain to act as a generator where it backtracks even on success.
+// forces terminal step(s) to always fail (chain is typically a method for FIND)
+// spew starts as 0 but no way to reset it to zero after this
+
+void jhcAliaChain::Enumerate ()
+{
+  // check for looping then check if this is a final step
+  if (spew > 0)
+    return;
+  spew = 2;
+  if ((cont == NULL) && (alt == NULL) && (fail == NULL))
+    return;
+  spew = 1;
+
+  // try all other branches
+  if (cont != NULL)
+    cont->Enumerate();
+  if (alt != NULL)
+    alt->Enumerate();
+  if (fail != NULL)
+    fail->Enumerate();
+}
+ 
+
 ///////////////////////////////////////////////////////////////////////////
 //                            Main Functions                             //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Start processing this sequence given core and current level.
 // used for a new chain with no FIND retry or previous scoping
+// negative level used to partially restart any initial play
 // returns: 0 = working, -2 = fail 
 
 int jhcAliaChain::Start (jhcAliaCore *all, int lvl)
 {
   core = all;
-  level = lvl;
-  backstop = NULL;
+  level = abs(lvl);
+  mt0 = jms_now();                     // start of method
   scoping.Clear();
-  return start_payload();
+  backstop = NULL;
+  return start_payload(lvl);
 }
 
 
-//= Start processing this sequence with enviroment from prior step.
+//= Start processing this sequence with environment from prior step.
 // FIND retry calls with prior = NULL to retain previous values
 // returns: 0 = working, -2 = fail 
 
@@ -525,39 +573,37 @@ int jhcAliaChain::Start (jhcAliaChain *prior)
 
   // possibly remove failed binding if this is a FIND retry
   if (prior == NULL)
-  {
     scoping.Pop();
-    if ((core != NULL) && ((d0 = GetDir()) != NULL))
-      jprintf(1, core->noisy, "\n%*s@@@ unwind and retry %s[ %s ]\n", level, "", d0->KindTag(), (d0->key).MainTag());
-  }
   else
   {
     // copy basic information
     core = prior->core;
     level = prior->level;
+    mt0 = prior->mt0;
     scoping.Copy(prior->scoping);
 
-    // if previous step a FIND, remember as a possible FIND retry point
+    // possibly set a new backtracking point if coming from a FIND/BIND
     d0 = prior->GetDir();
     if ((d0 != NULL) && d0->ConcreteFind())
       backstop = prior;
     else
       backstop = prior->backstop;
   }
-  return start_payload();
+  return start_payload(level);
 }
 
 
 //= Start processing whatever payload is bound (directive or play).
+// negative level used to partially restart any initial play
 // returns: 0 = working, -2 = fail 
 
-int jhcAliaChain::start_payload ()
+int jhcAliaChain::start_payload (int lvl)
 {
   prev = 0;
   if (d != NULL)
     done = d->Start(this);
   else if (p != NULL)
-    done = p->Start(core, level);
+    done = p->Start(core, lvl);
   return done;
 }
 
@@ -567,6 +613,7 @@ int jhcAliaChain::start_payload ()
 
 int jhcAliaChain::Status ()
 {
+  const jhcAliaDir *d0;
   int first = ((prev == 0) ? 1 : 0);
 
   // remember current state for next call
@@ -590,12 +637,34 @@ int jhcAliaChain::Status ()
     // dispatch to correct type 
     if (d != NULL)
       done = d->Status();
-    else if (p != NULL)
+    else if (p != NULL) 
       done = p->Status();
 
-    // if payload fails, unwind to most recent FIND
-    if ((done == -2) && (backstop != NULL))
+    // if payload fails, unwind to most recent FIND (if not too far committed yet)
+//    if ((done == -2) && (backstop != NULL) && (jms_elapsed(mt0) <= core->Dither()))
+if ((done == -2) && (backstop != NULL))
+{
+  double secs = jms_elapsed(mt0);
+  jprintf("@@@ possible retry - %4.2f secs [%4.2f]\n", secs, core->Dither());
+  if (secs <= core->Dither())
+
+
+    {
+      if ((core != NULL) && ((d0 = backstop->d) != NULL))
+        jprintf(1, core->noisy, "\n%*s@@@ unwind and retry %s[ %s ]\n", level, "", d0->KindTag(), d0->KeyTag());
       return backstop->Start(NULL);
+    }
+
+}
+
+    // if method for FIND/BIND can be restarted, use as a generator/enumerator
+    if ((d != NULL) && ((d->kind == JDIR_FIND) || (d->kind == JDIR_BIND)))     
+      if ((done == 1) && (spew >= 2))
+      {
+        if (core != NULL)
+          jprintf(1, core->noisy, "\n%*s@@@ generate variants FIND[ %s ]\n", level, "", d->KeyTag());
+        return Start(NULL);
+      }
 
     // see if control will be transferred next cycle
     if (((done ==  1) && (cont != NULL)) ||

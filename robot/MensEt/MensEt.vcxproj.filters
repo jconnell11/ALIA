@@ -420,9 +420,6 @@
     <ClCompile Include="..\common\Grounding\jhcTalkFcn.cpp">
       <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Action\jhcTimedFcns.cpp">
-      <Filter>Source Files\common robot\Action</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Grounding\jhcBasicAct.cpp">
       <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
@@ -464,6 +461,12 @@
     </ClCompile>
     <ClCompile Include="..\common\Action\jhcAliaMood.cpp">
       <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcStdKern.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcIntrospect.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -785,9 +788,6 @@
     <ClInclude Include="..\common\Grounding\jhcTalkFcn.h">
       <Filter>Header Files\common robot\Grounding</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\Action\jhcTimedFcns.h">
-      <Filter>Header Files\common robot\Action</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Grounding\jhcBasicAct.h">
       <Filter>Header Files\common robot\Grounding</Filter>
     </ClInclude>
@@ -835,6 +835,12 @@
     </ClInclude>
     <ClInclude Include="..\common\Action\jhcAliaMood.h">
       <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcStdKern.h">
+      <Filter>Header Files\common robot\Action</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcIntrospect.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

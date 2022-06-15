@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,9 +71,6 @@ jhcActionTree::jhcActionTree ()
   chock = 0;
   svc = -1;
   now = 0;
-
-  // external interface
-  dir0 = NULL;
 
   // debugging
   noisy = 3;           // usually copied from jhcAliaCore (=1)
@@ -156,6 +153,25 @@ jhcAliaChain *jhcActionTree::FocusN (int n) const
 }
 
 
+//= Return last explicit error message associated with the current focus.
+
+jhcGraphlet *jhcActionTree::Error () 
+{
+  if ((svc < 0) || (svc >= fill) || err[svc].Empty())
+    return NULL;
+  return &(err[svc]);
+}
+
+
+//= Clear any error message associated with the current focus.
+
+void jhcActionTree::ClearErr ()
+{
+  if ((svc >= 0) && (svc < fill))
+    err[svc].Clear();
+}
+
+
 //= Tells whether the chain has been started yet or not.
 
 bool jhcActionTree::NeverRun (int n) const
@@ -227,6 +243,7 @@ int jhcActionTree::ClrFoci (int init, const char *rname)
   {
     delete focus[i];
     focus[i] = NULL;
+    err[i].Clear();
   }
   fill = 0;
   chock = 0;
@@ -235,7 +252,8 @@ int jhcActionTree::ClrFoci (int init, const char *rname)
     return 1;
 
   // clear halo and working memory
-  FinishNote(0);
+  nkey.Clear();
+  BuildIn(NULL);
   Reset();
   InitPeople(rname);
   return 1;
@@ -341,7 +359,10 @@ int jhcActionTree::Update (int gc)
   {
     prune_foci();
     for (i = 0; i < fill; i++)
+    {
       focus[i]->MarkSeeds();           // make sure to keep these
+      err[i].MarkSeeds();
+    }
     CleanMem(noisy - 4);
   }
 
@@ -394,6 +415,7 @@ void jhcActionTree::rem_compact (int n)
   else if (noisy == 1)
     jprintf(">>> Removing inactive focus %d\n", Inactive());
   delete focus[n];
+  err[n].Clear();
   fill--;
   chock--;
 
@@ -401,6 +423,7 @@ void jhcActionTree::rem_compact (int n)
   for (i = n; i < fill; i++)
   {
     // status
+    err[i].Copy(err[i + 1]);
     focus[i] = focus[i + 1];
     done[i]  = done[i + 1];
     mark[i]  = mark[i + 1];
@@ -413,6 +436,7 @@ void jhcActionTree::rem_compact (int n)
     active[i] = active[i + 1];
   }
   focus[fill] = NULL;                  // for safety
+  err[fill].Clear();
   if (svc > n)
     svc--;                             // important for ServiceWt
 }
@@ -427,12 +451,12 @@ void jhcActionTree::rem_compact (int n)
 // only looks at nodes with belief > 0 so ignores inferences based on hypotheticals
 // returns surprise encountered for matching graphlet
 
-double jhcActionTree::CompareHalo (const jhcGraphlet& key)
+double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
 {
   jhcAliaDesc *evt;
   const jhcNetNode *mate;
   jhcNetNode *focus, *fact;
-  const jhcAliaRule *r;
+  jhcAliaRule *r;
   const jhcBindings *b;
   double s, blf, blf2, blf3, lo, hi = 0.0;
   int i, ni = key.NumItems(), detail = 1;
@@ -460,8 +484,12 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key)
         else if ((blf2 < MinBlf()) && (mate->Neg() == focus->Neg()))
           fact->SetBelief(blf2 + binc);
         if ((blf3 = fact->Belief()) != blf2)
-          jprintf(1, detail, "ADJUST: rule %d --> %s %s to %4.2f\n", r->RuleNum(), 
-                  ((blf3 > blf2) ? "raise" : "lower"), fact->Nick(), blf3);
+        {
+          r->SetConf(blf3);
+          mood.Believe(blf3 - blf2);
+          jprintf(1, detail, "  ADJUST: rule %d --> %s conf to %4.2f\n", r->RuleNum(), 
+                  ((blf3 > blf2) ? "raise" : "lower"), blf3);
+        }
       }
 
       // calculate change of belief relative to selected halo prediction
@@ -606,38 +634,41 @@ jhcNetNode *jhcActionTree::pick_halo (int& step, const jhcBindings& b, const jhc
 
 void jhcActionTree::StartNote ()
 {
-  FinishNote(0);
-  dir0 = new jhcAliaDir;
-  BuildIn(&(dir0->key));
+  nkey.Clear();
+  BuildIn(&nkey);
 }
 
 
-//= Add current note as a focus or delete it.
-// return number of focus if added, -2 if deleted
+//= Add current note as a focus, possibly marking some part as the main error.
+// return number of focus if added, -2 if empty
 
-int jhcActionTree::FinishNote (int keep)
+int jhcActionTree::FinishNote (jhcAliaDesc *fail)
 {
   jhcAliaChain *ch0;
+  jhcAliaDir *d0;
   int ans = -2;
 
-  // make sure something was started
-  if (dir0 == NULL)
+  // make sure something was started then rearrange if needed (could add)
+  if (nkey.Empty())
     return ans;
+  if (fail != NULL)
+    nkey.SetMain(dynamic_cast<jhcNetNode *>(fail));
+  nkey.MainProp();           
   
-  // abort construction or add as focus
-  if ((keep <= 0) || (dir0->key).Empty())
-    delete dir0; 
-  else
-  {
-    ch0 = new jhcAliaChain;
-    ch0->BindDir(dir0);
-    (dir0->key).MainProp();            // rearrange for nicer look
-    ans = AddFocus(ch0);
-  }
+  // possibly set failure message for top level
+  if ((fail != NULL) && (svc >= 0))
+    err[svc].Copy(nkey);
+
+  // add NOTE as new attentional focus
+  ch0 = new jhcAliaChain;
+  d0 = new jhcAliaDir;
+  (d0->key).Copy(nkey);
+  ch0->BindDir(d0);
+  ans = AddFocus(ch0);
 
   // general cleanup
   BuildIn(NULL);
-  dir0 = NULL;
+  nkey.Clear();
   return ans;
 }
 
@@ -673,7 +704,7 @@ int jhcActionTree::LoadFoci (const char *fname, int app)
     {
       // delete and purge input if parse error 
       if (!in.End())
-        jprintf("Bad syntax at line %d in: %s\n", in.Last(), fname);
+        jprintf(">> Bad syntax at line %d in: %s\n", in.Last(), fname);
       delete f;
       if (in.NextBlank() == NULL)
         break;

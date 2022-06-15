@@ -1,0 +1,43 @@
+// basic interface to ELI robot's person finder
+// ================================================
+
+OP 1 - "To look at someone ..."
+  trig:   
+    DO[ act-1 -lex-  look
+        loc-1 -lex-  at
+              -loc-> act-1
+              -wrt-> dude-1 
+        ako-1 -lex-  person 
+              -ako-> dude-1 ]
+---------------
+   FCN[ fcn-1 -lex-  soc_look
+              -arg-> dude-1 ]
+
+
+OP 2 - "To approach someone ..."
+  trig:   
+    DO[ act-1 -lex-  approach
+              -obj-> dude-1 
+        ako-1 -lex-  person 
+              -ako-> dude-1 ]
+---------------
+   FCN[ fcn-1 -lex-  soc_approach
+              -arg-> dude-1 ]
+
+
+OP 3 - "To follow someone ..."
+  trig:   
+    DO[ act-1 -lex-  follow
+              -obj-> dude-1 
+        ako-1 -lex-  person 
+              -ako-> dude-1 ]
+---------------
+   FCN[ fcn-1 -lex-  soc_follow
+              -arg-> dude-1 ]
+
+
+OP 4 - "To wander ..."
+  trig:   
+    DO[ act-1 -lex- wander ]
+---------------
+   FCN[ fcn-1 -lex- soc_explore ]

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,29 @@
 
 //= Turns parser alist into network structures.
 // set "dbg" in base class to 1 to see call sequence on input
+// verb links:
+//   "obj"   object affected
+//   "dest"  location for action 
+//   "src"   starting point for action
+//   "cmd"   embedded action as object
+//   "agt"   agent performing action
+// property links:
+//   "ako"   general noun class
+//     "of"  for noun-noun modification ("baseball bat")
+//     "wrt" for vague ownership (e.g. "my hand" = ako hand wrt me)
+//   "hq"    general adjective class
+//     "alt" for comparative adjectives ("than")
+//   "loc"   spatial prepositional phrases 
+//     "ref" anchor location for relation ("on the table")
+//   "with"  generally tool used in action
+//   "name"  proper name for object (e.g. "Dan")
+//   "cnt"   how many of an object there are
+//   "has"   descriptive part (e.g. "with a red top")
+// modifier links:
+//   "deg"  for properties (e.g "very")
+//   "mod"  general adverb ("quickly")
+//   "amt"  for command verbs (e.g. "far")
+//   "dir"  for command verbs (e.g. "down")
 
 class jhcGraphizer : protected jhcSlotVal
 {
@@ -84,9 +107,10 @@ public:
 private:
   // attention items
   int cvt_attn (const char *alist);
-  int append_ynq (jhcAliaChain *seq, jhcNodePool& pool) const;
+  int append_ynq (jhcAliaChain *seq, jhcNodePool& pool) const;  
   int append_whq (jhcAliaChain *seq, jhcNodePool& pool) const;
   int append_exist (jhcAliaChain *seq, jhcNodePool& pool) const;
+  int append_find (jhcAliaChain *seq, jhcNodePool& pool) const;
   jhcAliaChain *tell_step (const char *verb, jhcNodePool& pool) const;
 
   // rules
@@ -124,6 +148,7 @@ private:
   // object phrases
   jhcNetNode *build_obj (const char **after, const char *alist, jhcNodePool& pool, 
                          jhcNetNode *f0 =NULL, double blf =1.0, int qcnt =0);
+  jhcNetNode *obj_owner (const char *alist, jhcNodePool& pool);
   jhcNetNode *ref_props (jhcNetNode *n, jhcNodePool& pool, const char *pron) const;
   bool match_any (const char *txt, const char *val, const char *val2, const char *val3 =NULL, const char *val4 =NULL) const;
 

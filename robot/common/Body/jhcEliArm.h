@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,6 +112,10 @@ private:
   int plock0, plock;                    /** Winning bid for position command.      */
   int dlock0, dlock;                    /** Winning bid for orientation command.   */
 
+  // exceptions to profiled move
+  int pmode;                            /** Disabled position ramping axes.    */
+  int dmode;                            /** Disabled orientation ramping axes. */
+
   // arm profiled move state
   int stiff;                            /** Whether the arm is under active control. */
   int ice;                              /** Whether arm is already in frozen mode.   */
@@ -120,6 +124,7 @@ private:
   // speed estimates
   UL32 now;
   double iarm, igrip;
+  int parked;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -131,9 +136,7 @@ public:
   jhcMotRamp wctrl, pctrl, dctrl;
 
   // trajectory debugging information
-  jhcMatrix miss, dmiss, stop, dstop;
-  int size, iter;
-  double q;
+  jhcMatrix stop, dstop;
 
   // trajectory generation
   jhcParam tps;
@@ -142,7 +145,7 @@ public:
   // inverse kinematics solver
   jhcParam ips;
   int tries, loops;
-  double step, dstep, shrink, close, align;
+  double step, dstep, shrink, osc, close, align;
 
   // arm and finger force interpretation
   jhcParam fps;
@@ -150,13 +153,12 @@ public:
 
   // arm stowing position
   jhcParam sps;
-  int ms, prt;
-  double retx, rety, retz, rdir, rtip;
+  double retx, rety, retz, rdir, rtip, rgap, rets, rete;
 
   // residual geometric calibration
   jhcParam gps;
-  double ax0, ay0, az0, fc, fp, ft;
-  
+  double ax0, ay0, az0, fc, fp, ft, dpad;
+ 
 
 // PUBLIC MEMBER FUNCTIONS
 public:
@@ -178,7 +180,7 @@ public:
   int SaveCfg (const char *fname) const;
 
   // kinematic controls
-  void FingerTool (double dpad =1.0);
+  void FingerTool (double deep =0.0);
   void SetTool (double dx, double dy, double dz) 
     {tool.SetVec3(dx, dy, dz);}
   void StdTols ();
@@ -205,7 +207,9 @@ public:
 
   // current hand information
   double Width () const {return w0;}
+  const double *Gap () const {return &w0;}
   double Squeeze () const {return sqz;}
+  const double *Crush () const {return &sqz;}
   bool WidthStop (double wch =0.1) const {return(fabs(w00 - w0) < wch);}
   bool SqueezeSome (double f =8.0) const {return(sqz >= f);}
   bool HoldMode () const  {return(fwin > 0.0);}
@@ -215,19 +219,15 @@ public:
   void HandClear () {wctrl.RampReset();}
   int WidthTarget (double sep, double rate =1.0, int bid =10);
   int SqueezeTarget (double force =16.0, int bid =10);
+  int HandTarget (double sep, double rate =1.0, int bid =10);
 
   // hand motion progress
   double WidthErr (double sep, int abs =1) const;
   double SqueezeErr (double f, int abs =1) const;
-  bool WidthClose (double wtol =0.1) const {return(wctrl.RampDist(w0) <= wtol);}
+  bool WidthClose (double wtol =0.1) const   {return(wctrl.RampDist(w0) <= wtol);}
   bool SqueezeClose (double ftol =2.0) const {return(fabs(sqz - fwin) <= ftol);}
   bool HandClose (double wid, double wtol =0.1, double ftol =2.0) const
-   {return(((wid >= 0.0) && !WidthClose(wtol)) || ((wid < 0.0) && !SqueezeClose(ftol)));}
-  bool WidthFail (double secs =0.5) const {return(wctrl.RampDone() > secs);}
-  bool SqueezeFail (double secs =0.5) const {return WidthFail(secs);}
-  bool HandFail (double wid, double secs =0.5) const
-    {return(((wid >= 0.0) && WidthFail(secs)) || ((wid < 0.0) && SqueezeFail(secs)));}
-          
+    {return(((wid >= 0.0) && WidthClose(wtol)) || ((wid < 0.0) && SqueezeClose(ftol)));}
 
   // --------------------- HAND EXTRAS ---------------------------
 
@@ -263,15 +263,18 @@ public:
 
   // current arm information
   void ArmConfig (jhcMatrix& ang) const;
-  const jhcMatrix *ArmConfig () const {return &ang0;}
-  void ArmPose (jhcMatrix& pos, jhcMatrix& dir) const; 
+  const jhcMatrix *ArmConfig () const {return &ang0;}                // values continually updated
+  void ArmPose (jhcMatrix& pos, jhcMatrix& dir) const;              
   void Position (jhcMatrix& pos) const; 
   void Direction (jhcMatrix& dir) const;
-  const jhcMatrix *Position () const  {return &loc;} 
-  const jhcMatrix *Direction () const {return &aim;} 
+  const jhcMatrix *Position () const  {return &loc;}                 // values continually updated
+  const jhcMatrix *Direction () const {return &aim;}                 // values continually updated
   int ForceVect (jhcMatrix &fdir, double z0 =0.0, int raw =0) const;
-  double Force (const jhcMatrix &dir, int raw =0) const;
+  double ForceAlong (const jhcMatrix &dir, int raw =0) const;
+  double ForceZ (double z0 =0.0, int raw =0) const; 
+  double ObjectWt (double grav =4.0, double fsc =0.57) const;
   double ArmIPS () const {return iarm;}
+  int Static () const {return parked;}
 
   // arm goal specification commands
   void CfgClear ();
@@ -279,30 +282,31 @@ public:
   int CfgTarget (const jhcMatrix& ang, double rate =1.0, int bid =10);
   int CfgTarget (const jhcMatrix& ang, const jhcMatrix& rates, int bid =10);
   int ArmTarget (const jhcMatrix& pos, const jhcMatrix& dir, double p_rate =1.0, double d_rate =0.0, int bid =10);
-  int PosTarget (const jhcMatrix& pos, double rate =1.0, int bid =10);
-  int DirTarget (const jhcMatrix& dir, double rate =1.0, int bid =10);
-  int ShiftTarget (const jhcMatrix& dpos, double rate =1.0, int bid =10);
+  int PosTarget (const jhcMatrix& pos, double rate =1.0, int bid =10, int mode =0x0);
+  int PosTarget (double ax, double ay, double az, double rate =1.0, int bid =10, int mode =0x0);
+  int PosTarget3D (const jhcMatrix& pos, double ht, double rate =1.0, int bid =10, int mode =0x0);
+  int DirTarget (const jhcMatrix& dir, double rate =1.0, int bid =10, int mode =0x0);
+  int ShiftTarget (const jhcMatrix& dpos, double rate =1.0, int bid =10, int mode =0x0);
   int ArmStop (double rate =1.5, int bid =1);
 
   // arm motion progress
   void CfgErr (jhcMatrix& aerr, const jhcMatrix& ang, int abs =1) const;
   void ArmErr (jhcMatrix& perr, jhcMatrix& derr, 
                const jhcMatrix& pos, const jhcMatrix& dir, int abs =1) const;
-  void PosErr (jhcMatrix& perr, const jhcMatrix& pos, int abs =1) const;
-  void DirErr (jhcMatrix& derr, const jhcMatrix& dir, int abs =1) const;
+  double PosErr (jhcMatrix& perr, const jhcMatrix& pos, int abs =1) const;
+  double PosErr3D (jhcMatrix& perr, const jhcMatrix& pos, double ht, int abs =1) const;
+  double PosOffset (const jhcMatrix& pos) const  {return loc.PosDiff3(pos);}
+  double PosOffset3D (const jhcMatrix& pos, double ht) const;
+  double PosMax3 (const jhcMatrix& pos) const    {return loc.MaxDiff3(pos);}
+  double PlanarMax2 (const jhcMatrix& pos) const {return loc.MaxDiff2(pos);}
+  double ErrZ (const jhcMatrix& pos) const       {return fabs(pos.Z() - loc.Z());}
+  double DirErr (jhcMatrix& derr, const jhcMatrix& dir, int abs =1) const;
+  double DirOffset (const jhcMatrix& dir) const  {return aim.RotDiff3(dir);}
+  double PanErr (double pan, int abs =1) const; 
   double CfgOffset (const jhcMatrix& ang) const;
-  double PosOffset (const jhcMatrix& pos) const {return loc.PosDiff3(pos);}
-  double DirOffset (const jhcMatrix& dir) const {return aim.RotDiff3(dir);}
-  double ErrZ (const jhcMatrix& pos) const {return fabs(pos.Z() - loc.Z());}
-
-  bool CfgClose (double tol =2.0) const;
-  bool ArmClose (double xyz =0.25, double atol =5.0) const {return(PosClose(xyz) && DirClose(atol));}
-  bool PosClose (double tol =0.25) const {return(pctrl.RampDist(loc) <= tol);}
-  bool DirClose (double tol =15.0) const  {return(dctrl.RampDist(aim) <= tol);}
-  bool CfgFail (double secs =0.5) const;
-  bool ArmFail (double secs =0.5) const {return(PosFail(secs) && DirFail(secs));}
-  bool PosFail (double secs =0.5) const {return(pctrl.RampDone() > secs);}
-  bool DirFail (double secs =0.5) const {return(dctrl.RampDone() > secs);}
+  bool ArmClose (double xyz =0.7, double atol =5.0) const {return(PosClose(xyz) && DirClose(atol));}
+  bool PosClose (double tol =0.7) const {return(pctrl.RampDist(loc) <= tol);}
+  bool DirClose (double tol =5.0) const {return(dctrl.RampDist(aim) <= tol);}
     
   // --------------------- ARM EXTRAS ---------------------------
 
@@ -356,14 +360,19 @@ public:
     {return DirRate(dir, aim, secs);}
 
   // arm read only access
-  void ArmGoal (jhcMatrix& tpos, jhcMatrix& tdir) const 
-   {tpos.Copy(pctrl.cmd); tdir.Copy(dctrl.cmd);}
+  void ArmGoal (jhcMatrix& tpos, jhcMatrix& tdir, double ht =0.0) const 
+    {tpos.Copy(pctrl.cmd); tpos.IncZ(ht); tdir.Copy(dctrl.cmd);}
+  void PosGoal (jhcMatrix& tpos, double ht =0.0) const 
+    {tpos.Copy(pctrl.cmd); tpos.IncZ(ht);}
+  void DirGoal (jhcMatrix& tdir) const 
+    {tdir.Copy(dctrl.cmd);}
   double PosSpeed () const {return pctrl.rt;}
   double DirSpeed () const {return dctrl.rt;}
-  int CfgWin () const {return alock0;}
-  int ArmWin () const {return __max(plock0, dlock0);}
-  int PosWin () const {return plock0;}
-  int DirWin () const {return dlock0;}
+  int CfgWin () const  {return alock0;}
+  int ArmWin () const  {return __max(plock0, dlock0);}
+  int PosWin () const  {return plock0;}
+  int DirWin () const  {return dlock0;}
+  double IntZ () const {return zint;}
 
   // individual joint status
   const char *JtName (int n) const {return jt[__max(0, __min(n, 6))].name;}
@@ -374,7 +383,10 @@ public:
   char JtChar (int n) const  {return *(jt[__max(0, __min(n, 6))].name);}
   jhcParam *JtServo (int n)  {return &(jt[__max(0, __min(n, 6))].sps);}
   jhcParam *JtGeom (int n)   {return &(jt[__max(0, __min(n, 6))].gps);}
-  int JtPos (jhcMatrix& loc, int n) const;
+  int JtPos (jhcMatrix& pos, int n) const;
+  void LiftBase (jhcMatrix& pos, double side =0.0) const;
+  double Forearm () const;
+  double ToolX() const {return tool.X();}
 
   // trajectory generator state
   double CtrlVel (int n) const  {return jt[__max(0, __min(n, 6))].RampVel();}
@@ -390,7 +402,8 @@ public:
   int Grab (double fhold =16.0);
   int Drop ();
   int SetConfig (const jhcMatrix& ang, double rate =1.0);
-  int Stow (int hold =0);
+  int Stow (int fix =1);
+  void Untwist ();
   int Reach (const jhcMatrix& pos, const jhcMatrix& dir, double wid =3.0,
              double qlim =10.0, double inxy =0.5, double inz =1.0, double degs =5.0);  
 
@@ -430,14 +443,10 @@ private:
   double pick_angles (jhcMatrix& ang, const jhcMatrix& end, const jhcMatrix& aim, 
                       double sep, const jhcMatrix *ang0, int finger);
   void j_trans (jhcMatrix& jact, jhcMatrix& djact, const jhcMatrix& pos) const;
-  double pos_diff (jhcMatrix& fix, jhcMatrix& err, 
-                   const jhcMatrix& pos, const jhcMatrix& end) const;
-  double dir_diff (jhcMatrix& dfix, jhcMatrix& derr, 
-                   const jhcMatrix& dir, const jhcMatrix& aim) const; 
+  double pos_diff (jhcMatrix& fix, const jhcMatrix& pos, const jhcMatrix& end) const;
+  double dir_diff (jhcMatrix& dfix, const jhcMatrix& dir, const jhcMatrix& aim) const; 
   void jt3x3 (jhcMatrix& f2t) const;
 
-  // arm goal specification
-  void sync_xyz ();
 
 };
 

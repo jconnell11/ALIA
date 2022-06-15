@@ -1,88 +1,39 @@
-// Respond to internal state changes
+// Response to internal state changes
 // ================================================
 
-// OP - "If you are awake then announce that and look around"
-trig:
-  NOTE[  hq-1 -lex-  awake
-              -hq--> obj-1
-        obj-1 -lex-  you ]
------------------
-   >>>
-      DO[ act-1 -lex-  announce
-                -obj-> hq-1 ]
-   +++
-      DO[ act-2 -lex-  look around ]
-   <<<
-
-
-// OP - "To look around gaze right slowly then ..."
-trig:
-    DO[ act-1 -lex-  look around]
------------------
-    DO[ act-3 -lex-  gaze
-        dir-3 -lex-  right
-              -dir-> act-3 
-        mod-3 -lex-  slowly 
-              -mod-> act-3 ]
-    DO[ act-4 -lex-  gaze
-        dir-4 -lex-  down
-              -dir-> act-4 
-        amt-2 -lex-  slightly
-              -amt-> act-4 ]
-    DO[ act-5 -lex-  gaze
-        dir-5 -lex-  left
-              -dir-> act-5 
-        mod-5 -lex-  slowly 
-              -mod-> act-5 ]
-
-
-// OP - "Before looking around gaze left then gaze up slightly"
-trig:
-  ANTE[ act-1 -lex-  look around]
------------------
-    DO[ act-2 -lex-  gaze
-        dir-1 -lex-  left
-              -dir-> act-2 ]
-    DO[ act-3 -lex-  gaze
-        dir-2 -lex-  up
-              -dir-> act-3 
-        amt-1 -lex-  slightly
-              -amt-> act-3 ]
-
-
-// OP - "To announce that you are awake say ready to go"
-trig:
+OP 1 - "To announce that you are awake say ready to go"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1 
          hq-1 -lex-  awake
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  ready to go ]
 
 
-// OP - "To announce that you are awake say time to rise and shine"
-trig:
+OP 2 - "To announce that you are awake say time to rise and shine"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1 
          hq-1 -lex-  awake
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  time to rise and shine ]
 
 
-// OP - "To announce that you are awake say that was a nice nap, but now I'm wide awake"
-trig:
+OP 3 - "To announce that you are awake say that was a nice nap, but now I'm wide awake"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1 
          hq-1 -lex-  awake
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
@@ -91,49 +42,39 @@ trig:
 
 // ----------------------------------------
 
-// OP - "If you are tired then announce that"
-trig:
-  NOTE[  hq-1 -lex-  tired
-              -hq--> obj-1
-        obj-1 -lex-  you ]
------------------
-    DO[ act-1 -lex-  announce
-              -obj-> hq-1 ]
-
-
-// OP - "To announce that you are tired say Aww, come on, I'm so tired"
-trig:
+OP 4 - "To announce that you are tired say Aww, come on, I'm so tired"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1 
          hq-1 -lex-  tired
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  Aww, come on, I'm so tired]
 
 
-// OP - "To announce that you are tired say I'm pretty low on juice"
-trig:
+OP 5 - "To announce that you are tired say I'm pretty low on juice"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1 
          hq-1 -lex-  tired
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  I'm pretty low on juice]
 
 
-// OP - "To announce that you are tired say I could use a snack"
-trig:
+OP 6 - "To announce that you are tired say I could use a snack"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1 
          hq-1 -lex-  tired
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
@@ -142,59 +83,39 @@ trig:
 
 // ----------------------------------------
 
-// OP - "If you are bored then look around"
-trig:
-  NOTE[  hq-1 -lex-  bored
-              -hq--> obj-1
-        obj-1 -lex-  you ]
------------------
-    DO[ act-2 -lex-  look around ]
-
-
-// OP - "If you are bored you could announce that"
-trig:
-  NOTE[  hq-1 -lex-  bored
-              -hq--> obj-1
-        obj-1 -lex-  you ]
-pref: 0.5
------------------
-    DO[ act-2 -lex-  announce
-              -obj-> hq-1 ]
-
-
-// OP - "To announce that you are bored say I'm bored"
-trig:
+OP 7 - "To announce that you are bored say I'm bored"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  bored
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  I'm bored ]
 
 
-// OP - "To announce that you are bored say I wish I had something to do"
-trig:
+OP 8 - "To announce that you are bored say I wish I had something to do"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  bored
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  I wish I had something to do ]
 
 
-// OP - "To announce that you are bored say boring boring boring"
-trig:
+OP 9 - "To announce that you are bored say boring boring boring"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  bored
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
@@ -203,101 +124,119 @@ trig:
 
 // ----------------------------------------
 
-// OP - "If you are overwhelmed then announce that"
-trig:
-  NOTE[  hq-1 -lex-  overwhelmed
-              -hq--> obj-1
-        obj-1 -lex-  you ]
-pref: 0.5
------------------
-    DO[ act-2 -lex-  announce
-              -obj-> hq-1 ]
-
-
-// OP - "To announce that you are overwhelmed say I can't think this fast"
-trig:
+OP 10 - "To announce that you are overwhelmed say I can't think this fast"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  overwhelmed
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  I can't think this fast ]
 
 
-// OP - "To announce that you are overwhelmed say yikes, I need to slow down"
-trig:
+OP 11 - "To announce that you are overwhelmed say yikes, I need to slow down"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  overwhelmed
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  yikes, I need to slow down ]
 
 
-// OP - "To announce that you are overwhelmed say my brain is melting down"
-trig:
+OP 12 - "To announce that you are overwhelmed say my brain is melting whoever"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  overwhelmed
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
-        txt-1 -str-  my brain is melting down ]
+        txt-1 -str-  my brain is melting ?0 ]
 
 // ----------------------------------------
 
-// OP - "If you are lonely announce that"
-trig:
-  NOTE[  hq-1 -lex-  lonely
-              -hq--> obj-1
-        obj-1 -lex-  you ]
------------------
-    DO[ act-2 -lex-  announce
-              -obj-> hq-1 ]
-
-
-// OP - "To announce that you are lonely say yoo-hoo, anyone there?"
-trig:
+OP 13 - "To announce that you are lonely say yoo-hoo, anyone there?"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  lonely
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  yoo-hoo, anyone there? ]
 
 
-// OP - "To announce that you are lonely say I need someone to talk to"
-trig:
+OP 14 - "To announce that you are lonely say I need someone to talk to"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  lonely
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  I need someone to talk to ]
 
 
-// OP - "To announce that you are lonely say anyone want to do stuff?"
-trig:
+OP 15 - "To announce that you are lonely say anyone want to do stuff?"
+  trig:
     DO[ act-1 -lex-  announce
               -obj-> hq-1
          hq-1 -lex-  lonely
               -hq--> obj-1
-        obj-1 -lex-  you ]
+        obj-1 -lex-  me ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  anyone want to do stuff? ]
+
+
+// ----------------------------------------
+
+OP 16 - "To look around look right slowly then ..."
+  trig:
+    DO[ act-1 -lex-  look 
+        dir-1 -lex-  around
+              -dir-> act-1 ]
+-----------------
+    DO[ act-3 -lex-  look
+        dir-3 -lex-  right
+              -dir-> act-3 
+        mod-3 -lex-  slowly 
+              -mod-> act-3 ]
+    DO[ act-4 -lex-  look
+        dir-4 -lex-  down
+              -dir-> act-4 ]
+    DO[ act-5 -lex-  look
+        dir-5 -lex-  left
+              -dir-> act-5 
+        mod-5 -lex-  slowly 
+              -mod-> act-5 ]
+
+
+OP 17 - "Before looking around look left then look up slightly"
+  trig:
+  ANTE[ act-1 -lex-  look 
+        dir-1 -lex-  around
+              -dir-> act-1 ]
+-----------------
+    DO[ act-2 -lex-  look
+        dir-2 -lex-  left
+              -dir-> act-2 ]
+    DO[ act-3 -lex-  look
+        dir-3 -lex-  up
+              -dir-> act-3 
+        amt-1 -lex-  slightly
+              -amt-> act-3 ]

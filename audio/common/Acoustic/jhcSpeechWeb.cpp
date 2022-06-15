@@ -26,7 +26,7 @@
 
 #include "Data/jhcParam.h"             // common video
 
-#include "Acoustic/sp_reco_web.h"      // common audio
+#include "Acoustic/sp_reco_web.h"      // common audio (DLL interface)
 
 #include "Acoustic/jhcSpeechWeb.h"
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ jhcBumps::jhcBumps (int n)
   strcpy_s(name, "bump");
   total = 0;
   alt_blob = NULL;                     // for jhcSurfObjs  
+  alt_cc = NULL;
   SetCnt(n);
 
   // surface height histogram and peak histogram
@@ -56,7 +57,7 @@ jhcBumps::jhcBumps (int n)
 
   // set default tracking values
   pos.SetName("bump");
-  pos.SetTrack(1.0, 1.0, 1.0, 0.5, 0.0, 0.0, 2.0, 0.1);        // was 8", 2", 1", 12" (12Hz), then 6" 
+  pos.SetTrack(4.0, 4.0, 2.0, 0.0, 0.0, 0.0, 2.0, 0.1);        // was 8", 2", 1", 12" (12Hz), then 6" 
   pos.SetFilter(noise, noise, noise, 0.8, 0.8, 0.2, 10, 30);   // was all 0.1 then 0.2
 
   // background thread parameter
@@ -102,6 +103,9 @@ void jhcBumps::SetCnt (int n)
   ralt = new int [rlim];
   rlab = new int [rlim];
 
+  // whether detection-based updating is disabled
+  lock = new int [rlim];
+
   // auxiliary object-person array
   touch = new int [total];
 }
@@ -115,6 +119,9 @@ void jhcBumps::dealloc ()
 
   // auxiliary object-person array
   delete [] touch;
+
+  // detection-based updating
+  delete [] lock;
 
   // detection method and raw component label
   delete [] rlab; 
@@ -154,9 +161,9 @@ int jhcBumps::detect_params (const char *fname)
   ps->SetTag(tag, 0);
   ps->NextSpec4( &sm,     5,    "Map interpolation (pel)");    // was 9 then 11 then 7
   ps->NextSpec4( &pmin,   4,    "Min averaging (pel)");        // was 3, 0, 22 then 10
-  ps->NextSpecF( &hobj,   0.75, "Object ht threshold (in)");   // was 0.5 then 1.0
-  ps->NextSpecF( &htol,   0.25, "Object ht tolerance (in)");   
-  ps->NextSpec4( &sc,     7,    "Evidence smoothing (pel)");   // was 5
+  ps->NextSpecF( &hobj,   0.35, "Object ht threshold (in)");   // was 0.75, 1.0, then 0.5
+  ps->NextSpecF( &htol,   0.1,  "Object ht tolerance (in)");   // was 0.25
+  ps->NextSpec4( &sc,     5,    "Evidence smoothing (pel)");   // was 7
   ps->NextSpec4( &sth,   60,    "Shape binary threshold");     // was 80
 
   ps->NextSpec4( &amin, 150,    "Min blob area (pel)");        // was 50, 20, 200, then 100
@@ -379,7 +386,7 @@ int jhcBumps::Analyze (int trk)
 
 //= Find candidate object pixels in overhead map.
 // uses image "map" to yield info in "cc" image and "blob" analyzer
-// overridden by jhcSurfObjs
+// NOTE: overridden by jhcSurfObjs
 
 void jhcBumps::raw_objs (int trk)
 {
@@ -443,7 +450,7 @@ void jhcBumps::obj_boxes (jhcBlob *b, int flat)
       xyz = raw[nr];
       xyz[0] = P2I(b->BoxAvgX(i)) - x0;
       xyz[1] = P2I(b->BoxAvgY(i)) - y0;
-      xyz[2] = 0.5 * ht + ztab;
+      xyz[2] = 0.5 * ht + ztab;                 // accurate for jhcSurfObjs also
 
       // record dimensions (compensate for bloat)
       xyz[3] = xyf * P2I(b->BoxW(i));
@@ -471,6 +478,7 @@ void jhcBumps::obj_boxes (jhcBlob *b, int flat)
 //= Find maximum value inside some component given its bounding box.
 // used to find single max, now uses histogram for noise robustness
 // returns converted height value in inches (relative to table)
+// NOTE: overridden by jhcSurfObjs to use correct surface plane
 
 double jhcBumps::find_hmax (int i, const jhcRoi *area) 
 {
@@ -498,6 +506,7 @@ void jhcBumps::adj_shapes ()
   double *wlh, *xyz;
   int i, j, n = pos.Limit();
 
+  // update object shape if new detection (except if locked)
   for (i = 0; i < n; i++)
     if ((j = pos.DetectFor(i)) >= 0)
     {
@@ -515,8 +524,11 @@ void jhcBumps::adj_shapes ()
         wlh[3] = xyz[6];
         wlh[4] = xyz[7];
         wlh[5] = xyz[8];
+
+        // generally allow shape to be updated in future
+        lock[i] = 0;
       }
-      else
+      else if (lock[i] <= 0)
       {
         // apply IIR filter to box dimensions
         wlh[0] += xymix * (xyz[3] - wlh[0]); 
@@ -542,6 +554,8 @@ void jhcBumps::adj_shapes ()
           ang += 180.0;
         wlh[5] = ang;
       }
+      else
+        lock[i] = 0;                   // only locked for one cycle
     }
 }
 
@@ -955,6 +969,7 @@ const char *jhcBumps::ObjDesc (int i, int trk) const
 
 
 //= Bounding box center X of object.
+// world values wrt projection (not pixels)
 
 double jhcBumps::PosX (int i, int trk) const
 {
@@ -965,6 +980,7 @@ double jhcBumps::PosX (int i, int trk) const
 
 
 //= Bounding box center Y of object.
+// world values wrt projection (not pixels)
 
 double jhcBumps::PosY (int i, int trk) const
 {
@@ -975,6 +991,7 @@ double jhcBumps::PosY (int i, int trk) const
 
 
 //= Bounding box center Z of object.
+// world values wrt projection (not pixels)
 
 double jhcBumps::PosZ (int i, int trk) const  
 {
@@ -985,6 +1002,7 @@ double jhcBumps::PosZ (int i, int trk) const
 
 
 //= Bounding box X size of object.
+// world values wrt projection (not pixels)
 
 double jhcBumps::SizeX (int i, int trk) const 
 {
@@ -995,6 +1013,7 @@ double jhcBumps::SizeX (int i, int trk) const
 
 
 //= Bounding box Y size of object.
+// world values wrt projection (not pixels)
 
 double jhcBumps::SizeY (int i, int trk) const 
 {
@@ -1005,6 +1024,7 @@ double jhcBumps::SizeY (int i, int trk) const
 
 
 //= Bounding box Z size of object.
+// world values wrt projection (not pixels)
 
 double jhcBumps::SizeZ (int i, int trk) const 
 {
@@ -1014,7 +1034,8 @@ double jhcBumps::SizeZ (int i, int trk) const
 }
 
 
-//= Longest dimension of equivalent ellipse dimension for object.
+//= Longest dimension of equivalent ellipse for object.
+// world values wrt projection (not pixels)
 
 double jhcBumps::Major (int i, int trk) const 
 {
@@ -1024,7 +1045,8 @@ double jhcBumps::Major (int i, int trk) const
 }
 
 
-//= Shortest dimension of equivalent ellipse dimension for object.
+//= Shortest dimension of equivalent ellipse for object.
+// world values wrt projection (not pixels)
 
 double jhcBumps::Minor (int i, int trk) const 
 {
@@ -1056,6 +1078,7 @@ double jhcBumps::Elongation (int i, int trk) const
 
 
 //= Tells the longest viewpoint-independent direction (Z and major).
+// world values wrt projection (not pixels)
 
 double jhcBumps::MaxDim (int i, int trk) const
 {
@@ -1074,6 +1097,48 @@ bool jhcBumps::ok_idx (int i, int trk) const
   if (trk > 0)
     return((i >= 0) && (i < pos.Limit())); 
   return((i >= 0) && (i < nr2));
+}
+
+
+//= Find binding box aligned with ellipse angle for most recent detection of an object.
+// can optionally analyze wrt 90 degs (axis = 0), e.g. roundish objects with ecc < eth
+// len and wid are symmetric around (xm ym) center point (generally not same as centroid) 
+// returns angle for convenience, negative for problem
+// world values wrt projection (not pixels)
+
+double jhcBumps::Aligned (double& xm, double& ym, double& len, double& wid, int i, int axis) const
+{
+  const jhcBlob *b;
+  const jhcImg *src;
+  double ix, iy, il, iw, ang = 90.0;
+  int det, label; 
+
+  // find object specs using most recent raw detection (flat or depth)
+  if ((det = pos.DetectFor(i)) < 0) 
+    return -1.0;
+  b = ((ralt[det] > 0) ? alt_blob : &blob);
+  label = rlab[det];
+
+  // default to bounding box values (axis = 90 degs)
+  ix = b->BoxAvgX(label);
+  iy = b->BoxAvgY(label);
+  il = b->BoxH(label);
+  iw = b->BoxW(label);
+
+  // possibly re-analyze component pixels along axis instead
+  if (axis > 0)
+  {
+    src = ((ralt[det] > 0) ? alt_cc : &cc);
+    b->ABox(ix, iy, il, iw, *src, label, 0.0);
+    ang = b->BlobAngleEcc(label, 0.0, 1);
+  }
+
+  // convert to real world measurements
+  xm = P2I(ix) - x0;
+  ym = P2I(iy) - y0;
+  len = xyf * P2I(il);
+  wid = xyf * P2I(iw);
+  return ang;
 }
 
 
@@ -1102,6 +1167,28 @@ int jhcBumps::Component (int i) const
   int det = pos.DetectFor(i);
 
   return((det >= 0) ? rlab[det] : -1);
+}
+
+
+//= Keep all objects with established tracks.
+
+void jhcBumps::RetainAll ()
+{
+  int i, n = pos.Limit();
+
+  for (i = 0; i < n; i++)
+    if (pos.Valid(i) > 0)
+      pos.NoMiss(i);
+}
+
+
+//= Prevent new detections from changing remembered shape of some object.
+// useful for object in hand which might have strange visual detection
+
+void jhcBumps::KeepShape (int i) 
+{
+  if ((i >= 0) && (i < pos.Limit())) 
+    lock[i] = 1;
 }
 
 
@@ -1612,6 +1699,19 @@ int jhcBumps::RawBox (jhcImg& dest, int i, int num, int invert)
 }
 
 
+//= Draw oriented ellipse around tracked object in overhead map view.
+// dimensions are exaggerated by factor "mag"
+
+int jhcBumps::FatEllipse (jhcImg& dest, int t, double mag, int col) const
+{
+  if (!dest.Valid(1, 3))
+    return Fatal("Bad input to jhcBumps::FatEllipse");
+  if (!ObjOK(t))
+    return 0;
+  return EllipseEmpty(dest, MapX(t), MapY(t), mag * I2P(Major(t)), mag * I2P(Minor(t)), Angle(t), 3, -col);
+}
+
+
 //= Show current object locations and numbers on color or depth input image.
 // needs to know which sensor input to plot relative to
 // can optionally show raw or tracked version (trk < 0 is multi-color tracked)
@@ -1676,6 +1776,38 @@ const char *jhcBumps::label (int i, int style)
   else if (style >= 2)
     strcpy_s(tmp, txt);
   return tmp;
+}
+
+
+//= Mark pixels in destination that belong to currently detected object track (tall or flat).
+
+int jhcBumps::DetPels (jhcImg& dest, int t, int col) const
+{
+  int label, det = pos.DetectFor(t);
+
+  // sanity check
+  if (det < 0) 
+    return 0;
+  if (!dest.SameFormat(map))
+    return Fatal("Bad images to jhcBumps::DetPels");
+  label = rlab[det];
+
+  // pixel drawing parameters
+  const jhcImg *src = ((ralt[det] > 0) ? alt_cc : &cc); 
+  const jhcBBox *b = ((ralt[det] > 0) ? alt_blob : &blob);
+  const jhcRoi *box = b->ReadRoi(label);
+  int x0 = box->RoiX(), y0 = box->RoiY(), rw = box->RoiW(), rh = box->RoiH();
+  int x, y, sk = dest.RoiSkip(rw), sk2 = src->RoiSkip(rw) >> 1;
+  UC8 v = BOUND(col);
+  const US16 *s = (const US16 *) src->RoiSrc(x0, y0);
+  UC8 *d = dest.RoiDest(x0, y0);
+
+  // scan portion of component image for match
+  for (y = rh; y > 0; y--, d += sk, s += sk2)
+    for (x = rw; x > 0; x--, d++, s++)
+      if (*s == label)
+        *d = v;
+  return 1;
 }
 
 

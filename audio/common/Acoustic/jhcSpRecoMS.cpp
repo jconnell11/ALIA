@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -130,7 +131,7 @@ int jhcSpRecoMS::BindParse (const char *fname, const char *cfg, int start)
 const char *jhcSpRecoMS::reco_version (char *spec, int ssz) const 
 {
   if (spec != NULL)
-    strcpy_s(spec, ssz, "1.70 Microsoft");  // change in parse_version also !!!
+    strcpy_s(spec, ssz, "1.75 Microsoft");  // change in parse_version also !!!
   return spec;
 }
 
@@ -1125,7 +1126,7 @@ int jhcSpRecoMS::reco_speaker (char *name, int ssz) const
 const char *jhcSpRecoMS::parse_version (char *spec, int ssz) const
 {
   if (spec != NULL)
-    strcpy_s(spec, ssz, "1.70 Microsoft");
+    strcpy_s(spec, ssz, "1.75 Microsoft");
   return spec;
 }
 
@@ -1643,7 +1644,7 @@ int jhcSpRecoMS::load_jhc (const char *fname, int flush)
 {
   FILE *in;
   SPSTATEHANDLE top;
-  char dir[200], extra[200], text[500];
+  char dir[200], extra[200], text[500], rpat[80];
   char *start, *end;
   int rule = 0;
 
@@ -1692,11 +1693,17 @@ int jhcSpRecoMS::load_jhc (const char *fname, int flush)
           start = trim_wh(start + 1);
           nonterm_chk(start, fname);
           add_rule(&top, start);
+          sprintf_s(rpat, "<%s>", start);
           rule = 1;
         }
     }
     else if (rule > 0)
+    {
+      // cannot make directly recursive expansions
+      if (strstr(start, rpat) != NULL)
+        jprintf(">>> Direct self reference in %s from %s !\n", rpat, fname);
       build_phrase(start, &top, 0);
+    }
 
   // close file
   fclose(in);

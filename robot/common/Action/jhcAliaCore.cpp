@@ -1,3 +1,4 @@
+
 // jhcAliaCore.cpp : top-level coordinator of components in ALIA system
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
@@ -5,7 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,20 +48,24 @@ jhcAliaCore::~jhcAliaCore ()
 jhcAliaCore::jhcAliaCore ()
 {
   // global variables
-  ver = 2.65;
+  ver = 2.90;
+  vol = 1;                   // enable free will reactions
   noisy = 1;
 
-  // add literal text output to function repertoire
+  // add literal text output and stack crawler to function repertoire
+  talk.Bind(&(net.mf));
   kern.AddFcns(&talk);
+  kern.AddFcns(&why);
   ndll = 0;
 
   // connect language to network converter
   net.Bind(this);
                       
   // clear state
+  *rob = '\0';
   *cfile = '\0';
   log = NULL;
-  Reset();
+  Reset(0, NULL, 0);
 }
 
 
@@ -118,7 +123,7 @@ int jhcAliaCore::Baseline (const char *list, int add, int rpt)
     op0 = pmem.ClearOps();
   }
   if (fopen_s(&in, list, "r") != 0)
-    return jprintf(1, rpt, ">>> Could not open baseline knowledge file: %s !\n", list);
+    return jprintf(1, rpt, ">>> Could not read baseline knowledge file: %s !\n", list);
   jprintf(1, rpt, "Adding baseline knowledge from: %s\n", list);
 
   // save directory part of path
@@ -177,12 +182,14 @@ int jhcAliaCore::add_info (const char *dir, const char *base, int rpt, int level
   if (readable(fname, 200, "%s%s.rules", dir, base))
     if (amem.Load(fname, 1, rpt, level) > 0)      
       cnt++;
+  if (readable(fname, 200, "%s%s_v.rules", dir, base))
+    if (amem.Load(fname, 1, rpt, level) > 0)      
+      cnt++;
   return cnt;
 }
 
 
 //= Assemble a file name and see if it is readable.
-// leaves assembled name in variable "fname"
 
 bool jhcAliaCore::readable (char *fname, int ssz, const char *msg, ...) const
 {
@@ -253,12 +260,8 @@ int jhcAliaCore::AddOn (const char *fname, void *body, int rpt)
       continue;
     }
 
-    // add associated operators
-    sprintf_s(name, "%s%s.ops", dir, line);
-    if (pmem.Load(name, 1, 2, 0) <= 0)
-      continue;
-
-    // success so link things up
+    // add associated operators and rules then link things up
+    add_info(dir, line, rpt, 0);
     gnd[ndll].Bind(body);
     kern.AddFcns(gnd + ndll);
     ndll++;
@@ -272,28 +275,28 @@ int jhcAliaCore::AddOn (const char *fname, void *body, int rpt)
 }
 
 
-//= Add in new rule or operator suggested by user.
-// two step process allows rejection if user disliked for some reason
-// should NULL pointers in caller afterward (amem or pmem will delete)
-// returns 1 if successful, -2 for problem
+//= Add in new rule or operator suggested by user (typcially only one or the other).
+// acceptance moved into jhcAliaDir to allow rejection if user disliked for some reason
+// should NULL pointers in caller afterward if successful (amem or pmem will delete at end)
+// returns 1 if successful, 0 or negative for problem (consider deleting explicitly)
 
 int jhcAliaCore::Accept (jhcAliaRule *r, jhcAliaOp *p)
 {
+  int ans = 1;
+
   if ((r == NULL) && (p == NULL))
     return -2;
   if (r != NULL)
   {
-    if (amem.AddRule(r, 1) <= 0)
-      return -2;
-    mood.Infer();
+    if ((ans = amem.AddRule(r, 1)) > 0)
+      mood.Infer();
   }
   if (p != NULL)
   {
-    if (pmem.AddOperator(p, 1) <= 0)
-      return -2;
-    mood.React();
+    if ((ans = pmem.AddOperator(p, 1)) > 0)
+      mood.React();
   }
-  return 1;
+  return ans;
 }
 
 
@@ -316,7 +319,7 @@ int jhcAliaCore::MainGrammar (const char *gfile, const char *top, const char *rn
   {
     // add robot full name as attention word ("Eli Banzai")
     gr.ExtendRule("ATTN", rname); 
-    atree.AddProp(atree.Robot(), "ref", rname, 0, -1.0);
+    atree.AddProp(atree.Robot(), "name", rname, 0, -1.0);
 
     // possibly add just first name also ("Eli")
     strcpy_s(first, rname);
@@ -324,7 +327,7 @@ int jhcAliaCore::MainGrammar (const char *gfile, const char *top, const char *rn
     {
       *sep = '\0';
       gr.ExtendRule("ATTN", first); 
-      atree.AddProp(atree.Robot(), "ref", first, 0, -1.0);
+      atree.AddProp(atree.Robot(), "name", first, 0, -1.0);
     }
   }
   gr.MarkRule(top);
@@ -354,10 +357,18 @@ void jhcAliaCore::Reset (int forget, const char *rname, int spact)
     pmem.ClearOps();
   }
 
+  // remember robot name (if any)
+  *rob = '\0';
+  if (rname != NULL)
+    strcpy_s(rob, rname);
+
   // reset affective modulation
   atree.InitSkep(0.5);
-  pess = 0.5;
-  wild = 0.5;
+  pess  = 0.5;
+  wild  = 0.5;
+  det   = 1.0;
+  argh  = 1.0;               // secs
+  waver = 2.0;               // secs
 
   // communicate debugging level
   atree.noisy = noisy;
@@ -390,7 +401,7 @@ int jhcAliaCore::Interpret (const char *input, int awake, int amode)
 
   // check if name mentioned and get parse results
   attn = gr.NameSaid(sent, amode);
-  if ((nt = gr.Parse(sent)) > 0)
+  if ((nt = gr.Parse(sent, 1)) > 0)
     gr.AssocList(alist, 1);
   if ((awake == 0) && (attn <= 0))
     return 0;
@@ -402,7 +413,7 @@ int jhcAliaCore::Interpret (const char *input, int awake, int amode)
     mood.Hear((int) strlen(input));      // reduces "lonely" (even if not understood)
     gr.PrintResult(3, 1);
   }
-  spact = net.Convert(alist);            // nt = 0 gives huh? response
+  spact = net.Convert(alist, sent);      // nt = 0 gives huh? response
   net.Summarize(log, sent, nt, spact);
   return((attn > 0) ? 2 : 1);
 }
@@ -430,7 +441,7 @@ int jhcAliaCore::RunAll (int gc)
     gather_stats();                              // build graphs
   }
   if (atree.Active() > 0)
-    jprintf(2, noisy, "============================= %s =============================\n\n", jms_elapsed(time, t0));
+    jprintf(2, noisy, "============================= %s =============================\n\n", jms_offset(time, t0));
 
 
   // go through the foci from newest to oldest
@@ -680,25 +691,73 @@ int jhcAliaCore::SayStop (const jhcGraphlet& g, int inst)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Load all rules and operators beyond baseline and kernels.
+// always loads whatever is in the "learned" version of files
 
 void jhcAliaCore::LoadLearned ()
 {
   jprintf(1, noisy, "Reloading learned knowledge:\n");
-  pmem.Load("learned.ops",   1, noisy + 1, 2);         // 2 = accumulated level
-  amem.Load("learned.rules", 1, noisy + 1, 2);         
+  pmem.Load("KB/learned.ops",   1, noisy + 1, 2);          // 2 = accumulated level
+  amem.Load("KB/learned.rules", 1, noisy + 1, 2);         
+  pmem.Overrides("KB/learned.pref");
+  amem.Overrides("KB/learned.conf");
+  jprintf(1, noisy, "\n");
 }
 
 
 //= Save all rules and operators beyond baseline and kernels.
+// saves a copy with time and date stamp as well as "learned" version
 
 void jhcAliaCore::DumpLearned () const
 {
+  char base[80] = "KB/kb_";
   int nop, nr;
 
-  jprintf(1, noisy, "Saving learned knowledge:\n");
-  nop = pmem.Save("learned.ops", 2);                   // 2 = accumulated level
-  nr  = amem.Save("learned.rules", 2);                 
-  jprintf(1, noisy, " TOTAL = %d operators, %d rules\n\n", nop, nr);
+  // save rules and operators  
+  jprintf(1, noisy, "\nSaving learned knowledge:\n");
+  jms_date(base + 6, 0, 74);
+  nr = amem.Save(base, 2);                                 // 2 = accumulated level
+  nop = pmem.Save(base, 2);                               
+  amem.Alterations(base);                 
+  pmem.Alterations(base);
+
+  // make copies as generic database
+  copy_file("KB/learned.rules", base);
+  copy_file("KB/learned.ops",   base);
+  copy_file("KB/learned.conf",  base);
+  copy_file("KB/learned.pref",  base);
+  jprintf(1, noisy, " TOTAL = %d operators, %d rules\n", nop, nr);
+}
+
+
+//= Completely copy one file to another (irregardless of operating system).
+
+void jhcAliaCore::copy_file (const char *dest, const char *base) const
+{
+  char buf[8192];
+  char src[80];
+  const char *ext;
+  FILE *in, *out;
+  size_t sz;
+
+  // copy extension from destination to create full source name
+  strcpy_s(src, base);
+  if ((ext = strrchr(dest, '.')) != NULL)
+    strcat_s(src, ext);
+
+  // try opening files
+  if (fopen_s(&in, src, "rb") != 0)
+    return;
+  if (fopen_s(&out, dest, "wb") != 0)
+  {
+    fclose(in);
+    return;
+  }
+
+  // copy chunk by chunk then clean up
+  while ((sz = fread(buf, 1, 8192, in)) > 0) 
+    fwrite(buf, 1, sz, out);
+  fclose(out);
+  fclose(in);
 }
 
 
@@ -716,6 +775,6 @@ void jhcAliaCore::DumpSession () const
 
 void jhcAliaCore::DumpAll () const
 {
-  pmem.Save("all.ops", 0);
   amem.Save("all.rules", 0);
+  pmem.Save("all.ops", 0);
 }

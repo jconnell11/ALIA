@@ -1,0 +1,122 @@
+// newly learned operators not in KB0 or KB2
+// ==========================================
+
+OP 1 - "If you are bored announce that and find an interesting thing"
+  trig:
+  NOTE[  hq-1 -lex-  bored
+              -hq--> agt-1
+        agt-1 -lex-  me ]
+-----------------
+    DO[ act-1 -lex-  announce
+              -obj-> hq-1 ]
+  FIND[ obj-1 
+         hq-2 -lex-  interesting
+              -hq--> obj-1 ]
+
+
+OP 2 - "To find an interesting thing find a red object"
+  trig:
+  FIND[ obj-1
+         hq-2 -lex-  interesting
+              -hq--> obj-1 ]
+-----------------
+  FIND[  obj-3 
+          hq-4 -lex-  red
+               -hq--> obj-3
+        kind-5 -lex-  object
+               -ako-> obj-3 ]
+
+
+OP 3 - "To find an object look at a surface then find an object on it"
+  trig:
+  FIND[  obj-1 
+        kind-2 -lex-  object
+               -ako-> obj-1 ]
+-----------------
+  FIND[  obj-5 
+        kind-6 -lex-  surface
+               -ako-> obj-5 ]
+    DO[ act-3 -lex-  look
+        loc-4 -lex-  at
+              -loc-> act-3
+              -ref-> obj-5 ]
+  FIND[  obj-7 
+        kind-8 -lex-  object
+               -ako-> obj-7
+         loc-9 -lex-  on
+               -loc-> obj-7
+               -ref-> obj-5 ]
+
+
+OP 4 - "To find a surface look around"
+  trig:
+  FIND[  obj-1 
+        kind-2 -lex-  surface
+               -ako-> obj-1 ]
+-----------------
+    DO[ act-3 -lex-  look 
+        dir-1 -lex-  around 
+              -dir-> act-3 ]
+
+
+// ----------------------------------------------
+
+OP 5 - "if there is an interesting thing take it then claim it as you walk away"
+  trig:
+  NOTE[  hq-1 -lex-  interesting
+              -hq--> obj-1 ]
+-----------------
+    DO[ act-1 -lex-  take
+              -obj-> obj-1 ]
+   >>>
+      DO[ act-2 -lex-  claim
+                -obj-> obj-1 ]
+   +++
+      DO[ act-3 -lex-  walk
+          dir-1 -lex-  away 
+                -dir-> act-3 ]
+   <<<
+
+
+OP 6 - "to walk away turn around then wander"
+  trig:
+    DO[ act-1 -lex-  walk
+        dir-1 -lex-  away 
+              -dir-> act-1 ]
+-----------------
+    DO[ act-2 -lex-  turn 
+        dir-1 -lex-  around 
+              -dir-> act-2 ]
+    DO[ act-3 -lex-  wander ]
+ 
+
+OP 7 - "to claim something say I really like this"
+  trig:
+    DO[ act-1 -lex-  claim
+              -obj-> obj-1 ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1 
+        txt-1 -str-  I really like this ]
+
+
+OP 8 - "to claim something say mine all mine"
+  trig:
+    DO[ act-1 -lex-  claim
+              -obj-> obj-1 ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1 
+        txt-1 -str-  mine all mine ]
+
+
+OP 9 - "to claim something say this belongs to me now"
+  trig:
+    DO[ act-1 -lex-  claim
+              -obj-> obj-1 ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1 
+        txt-1 -str-  this belongs to me now ]
+
+

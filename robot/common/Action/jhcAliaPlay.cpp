@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -170,21 +170,23 @@ int jhcAliaPlay::NumGoals (int leaf) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Start processing this parallel set.
+// negative level used to partially restart any initial play
 // returns: 0 = working, -2 = fail 
 
 int jhcAliaPlay::Start (jhcAliaCore *all, int lvl)
 {
-  int i;
+  int i, level = abs(lvl);
 
   // start all concurrent activities (if any)
   for (i = 0; i < ng; i++)
-    if ((gstat[i] = guard[i]->Start(all, lvl)) < 0)
+    if ((gstat[i] = guard[i]->Start(all, level)) < 0)
       return fail();
 
-  // start all main activities (if any)
+  // start or re-start most main activities (if any)
   for (i = 0; i < na; i++)
-    if ((status[i] = main[i]->Start(all, lvl)) < 0)
-      return fail();
+    if ((status[i] <= 0) || (lvl >= 0))
+      if ((status[i] = main[i]->Start(all, level)) < 0)
+        return fail();
 
   // report current status
   verdict = 0;

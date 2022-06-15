@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,9 +38,11 @@
 //= Node in semantic network for ALIA system.
 // holds pointers to arguments and properties of an item
 // instances should only be created and deleted within a jhcNodePool
-// "evt" field: 0 = state, 1 = completed event ("neg" tells success/failure)
+// "evt" field: 0 = state, 1 = completed event ("inv" tells success/failure)
 // "inv" field: 0 = positive assertion (success), 1 = negative assertion (failed)
-// "blf" field: pos = valid belief, 0 = hypothetical, neg = hidden
+// "blf" field: pos = valid belief, 0 = hypothetical, neg = suppressed
+// "vis" field: 0 = hidden, 1 = eligible for matching 
+// NOTE: should convert blf/blf0 to blf + "hyp" flag (cleaner)
 
 class jhcNetNode : public jhcAliaDesc
 {
@@ -66,7 +68,7 @@ private:
   int anum[pmax];      
   jhcNetNode *args[amax];    
   jhcNetNode *props[pmax]; 
-  int na, np, na0;
+  int na, np, na0, wrt;
 
   // membership and id (largely for jhcNodePool)
   jhcNetNode *next;  
@@ -89,18 +91,20 @@ public:
   // basic information
   const char *Kind () const     {return base;}
   const char *Lex () const      {return((*lex == '\0') ? NULL : lex);}
+  int LexVar () const           {return((*lex == '*') ? 1 : 0);}
   const char *Nick () const     {return nick;}
   const char *Literal () const  {return quote;}
   int Inst () const             {return id;}
   bool Halo () const            {return(id < 0);}
   bool Hyp () const             {return(blf <= 0.0);}
+  bool DefHyp () const          {return(blf0 <= 0.0);}
   bool Visible () const         {return(vis > 0);}
   int Actual () const           {return((blf > 0.0) ? 1 : -1);}
   int Code () const             {return hash;}
   bool String () const          {return(quote != NULL);}
   int Generation () const       {return gen;}
   int LastRef () const          {return((vis > 0) ? ref : 0);}
-  void XferRef (jhcNetNode *n)  {if (n != NULL) {ref = n->ref; n->ref = 0;}}
+  void XferRef (jhcNetNode *n)  {if ((n != NULL) && (n != this)) {ref = n->ref; n->ref = 0;}}
   void TopMax (int tval)        {top = __max(top, tval);}
   void SetKind (const char *k)  {strcpy_s(base, k);}
   void GenMax (int ver)         {if (ver > 0) gen = __max(gen, ver);}
@@ -127,10 +131,11 @@ public:
   int Actualize (int ver);
 
   // argument functions
-  int NumArgs () const      {return na;}
-  int Arity () const        {return na0;}
-  bool ArgsFull () const    {return(na >= amax);}
-  bool ObjNode () const     {return(na <= 0);}
+  int NumArgs () const   {return na;}
+  int Arity (int all =1) const 
+    {return(((all > 0) && (wrt > 0)) ? na0 + 1 : na0);}
+  bool ArgsFull () const {return(na >= amax);}
+  bool ObjNode () const  {return(na <= 0);}
   const char *Slot (int i =0) const
     {return(((i < 0) || (i >= na)) ? NULL : links[i]);}
   jhcNetNode *Arg (int i =0) const 
@@ -139,11 +144,12 @@ public:
   jhcNetNode *Val (const char *slot, int i =0) const;
   int AddArg (const char *slot, jhcNetNode *val);
   void SubstArg (int i, jhcNetNode *val);
-//  void RefreshArg (int i);
+  void RefreshArg (int i);
 
   // property functions
   int NumProps () const   {return np;}
   bool PropsFull () const {return(np >= pmax);}
+  bool Naked () const     {return(np <= 0);}
   const char *Role (int i =0) const
     {return(((i < 0) || (i >= np)) ? NULL : props[i]->Slot(anum[i]));}
   bool RoleMatch (int i, const char *link) const

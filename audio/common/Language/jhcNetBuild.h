@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,11 +56,13 @@ public:
 
   // main functions
   int NameSaid (const char *alist, int mode =2) const;
-  int Convert (const char *alist);
+  int Convert (const char *alist, const char *sent =NULL);
   void Summarize (FILE *log, const char *sent, int nt, int spact) const;
 
-  // utilities
-  int AutoVals (const char *kern, const char *fcn =NULL) const;
+  // value range rules
+  int AutoVals (const char *kern);
+
+  // vocabulary generation
   int HarvestLex (const char *kern);
 
 
@@ -71,17 +73,22 @@ private:
   int hail_tag () const;
   int greet_tag () const;
   int farewell_tag () const;
-  int add_tag (int rule, const char *alist);
+  int add_tag (int rule, const char *alist, const char *sent);
   int attn_tag (int spact, const char *alist) const;
   jhcAliaChain *build_tag (jhcNetNode **node, const char *alist) const;
+  jhcAliaChain *guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const;
+  jhcAliaChain *exp_fail (jhcNetNode *plan) const;
+  jhcAliaChain *ack_given (jhcNetNode *input) const;
 
-  // utilities
+  // value range rules
   int range_rules (FILE *out, const char *cat, const char *lo, const char *hi, int nr) const;
   int value_rules (FILE *out, const char *cat, const char *val, int n) const;
+  int exclude_rules (FILE *out, const char *lo, const char *hi, int nr) const;
   int mutex_rule (FILE *out, const char *val, const char *alt, int n) const;
+  int opposite_rule (FILE *out, const char *v1, const char *v2, int n) const;
   int alias_rules (FILE *out, const char *cat, const char *val, const char *alt, int n) const;
-  int range_ops (FILE *out, const char *pre, const char *cat, int np) const;
-  int list_ops (FILE *out, const char *pre, const char *cat, int np) const;
+
+  // vocabulary generation
   int scan_lex (const char *fname);
   void save_word (char (*list)[40], int& cnt, const char *term) const;
   int gram_cats (const char *fname, const char *label) const;

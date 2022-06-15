@@ -254,8 +254,8 @@ void jhcStackSeg::Reset ()
 int jhcStackSeg::Analyze (const jhcImg& src)
 {
   // image cleanup and color separation
-//  Enhance(enh, src, 2.0);                    // was x8
-enh.CopyArr(src);
+  Enhance3(enh, src, 2.0);             // was x8
+//enh.CopyArr(src);
   Flywheel(enh);
   MaxColor(boost, est, 5.0);
   ColorDiffs(rg, yb, boost);

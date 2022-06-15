@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2021 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,7 +36,8 @@ int jms_diff (UL32 now, UL32 before);
 double jms_secs (UL32 now, UL32 before);
 UL32 jms_wait (UL32 tref, int delay);
 int jms_resume (UL32 cont);
-char *jms_elapsed (char *dest, UL32 tref, int ssz);
+double jms_elapsed (UL32 tref);
+char *jms_offset (char *dest, UL32 tref, int ssz);
 
 // absolute time
 char *jms_date (char *dest, int res, int ssz);
@@ -45,8 +46,8 @@ bool jms_expired (int mon, int yr, int smon =0, int syr =0);
 
 // convenience
 template <size_t ssz> 
-  char *jms_elapsed (char (&dest)[ssz], UL32 tref)
-    {return jms_elapsed(dest, tref, ssz);}
+  char *jms_offset (char (&dest)[ssz], UL32 tref)
+    {return jms_offset(dest, tref, ssz);}
 template <size_t ssz> 
   char *jms_date (char (&dest)[ssz], int res =0) 
     {return jms_date(dest, res, ssz);}

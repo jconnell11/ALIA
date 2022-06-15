@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,6 +86,8 @@ public:
 // PUBLIC MEMBER FUNCTIONS
 public:
   jhcSlotVal () {dbg = 0;}
+  bool IsFrag (const char *entry) const {return(strchr("!$%", *entry) != NULL);}
+  bool IsPair (const char *entry) const {return(strchr(entry, '=') != NULL);}
 
   // main functions
   void CallList (int lvl, const char *fcn, const char *alist, int skip =0, const char *entry = NULL) const;
@@ -97,6 +99,7 @@ public:
   const char *StripEntry (const char *alist) const {return NextEntry(alist, NULL, 0);}
   const char *NextEntry (const char *alist, char *entry, int ssz) const;
   const char *NextMatches (const char *alist, const char *tag, int n =0) const;
+  const char *StripPairs (const char *alist) const;
 
   // main functions - convenience
   template <size_t ssz>
@@ -138,6 +141,7 @@ public:
   const char *FragNextFrag (const char *alist, char *frag, int ssz) const;
   const char *FragNextPair (const char *alist, char *pair, int ssz) const;
   bool FragHasSlot (const char *alist, const char *slot) const;
+  const char *FragStart (const char *alist) const;
   const char *FragClose (const char *alist, int skip =1) const;
 
   // fragment functions - convenience

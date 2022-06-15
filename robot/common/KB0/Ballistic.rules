@@ -1,0 +1,20 @@
+// Category definitions and rules for Ballistic kernel
+// ========================================================
+
+RULE 1 - "Robots have arms"
+    if: ako-1 -lex-  robot
+              -ako-> agt-1
+  then: has-1 -lex-  have
+              -agt-> agt-1
+              -obj-> obj-1
+        ako-2 -lex-  arm
+              -ako-> obj-1
+
+RULE 2 - "Robots have hands"
+    if: ako-1 -lex-  robot
+              -ako-> agt-1
+  then: has-1 -lex-  have
+              -agt-> agt-1
+              -obj-> obj-1
+        ako-2 -lex-  hand
+              -ako-> obj-1

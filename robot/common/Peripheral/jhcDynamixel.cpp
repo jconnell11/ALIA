@@ -186,10 +186,11 @@ int jhcDynamixel::SetMargin (int id, double ccw, double cw)
 
 //= Set compliance slope (in degrees) for softer stops.
 // <pre>
-// discrete steps: 0.0, 0.3, 0.9, 1.5, 2.6, 5.0, 9.7, 19.1   
-//                  *    *    *    *    *    *    *    *
-//                  |--0-|--1-|--2-|--3-|--4-|--5-|--6-|--7-|
-// typical value:     0.2  0.5   1    2    4    7   10   20
+//    band limit:          0.9   2.0   4.4   9.1  18.5  37.2  74.5
+//                          <     <     <     <     <     <     <
+//    log2(steps)  |----1---|--2--|--3--|--4--|--5--|--6--|--7--|
+//     ramp degs:     0.58    1.2   2.3   4.7   9.4   18.8  37.5   
+// typical value:      0.5     1     3     7     10    20    40   
 // </pre>
 
 int jhcDynamixel::SetSlope (int id, double ccw, double cw)
@@ -839,7 +840,7 @@ int jhcDynamixel::degs2pos (double degs)
 
 
 //= Converts a velocity in degrees per second to a Dynamixel value.
-// can take negative values for wheel mode
+// can take negative values for wheel mode (normally always positive)
 // Note: never generates 0 since this is fastest!
 
 int jhcDynamixel::dps2vel (double dps)
@@ -847,7 +848,7 @@ int jhcDynamixel::dps2vel (double dps)
   int vel = ROUND(fabs(dps) * SV_VEL);
   int v = __max(1, __min(vel, 0x3FF));
 
-  if (dps < 0.0)
+  if (dps < 0.0)             // continuous rotation only!
     v |= 0x400;
   return v;
 }

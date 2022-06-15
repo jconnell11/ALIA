@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,10 +71,10 @@ int jhcAliaMood::busy_params (const char *fname)
 
   ps->SetTag("mood_busy", 0);
   ps->NextSpecF( &frantic,  25.0, "Overwhelmed threshold");
-  ps->NextSpecF( &engaged,  12.0, "Optimum threshold");
-  ps->NextSpecF( &idle,      5.0, "Low activity threshold");
+  ps->NextSpecF( &engaged,  15.0, "Optimum threshold");
+  ps->NextSpecF( &idle,     10.0, "Low activity threshold");
   ps->NextSpecF( &bored,     1.0, "Bored threshold");
-  ps->NextSpecF( &nag,      40.0, "Whine interval (sec)");
+  ps->NextSpecF( &nag,      30.0, "Whine interval (sec)");
   ps->NextSpec4( &very,      3,   "Very bored on repeat");
 
   ps->NextSpecF( &tc,        3.5, "Activity decay (sec)");  
@@ -94,9 +94,9 @@ int jhcAliaMood::lonely_params (const char *fname)
   ps->SetTag("mood_lonely", 0);
   ps->NextSpecF( &attn,    1.5, "Attention threshold");  
   ps->NextSpecF( &sat,     5.0, "Attention saturation");  
-  ps->NextSpecF( &prod,   60.0, "Prod interval (sec)");
-  ps->NextSpecF( &ramp,   10.0, "Shorten interval (sec)"); 
-  ps->NextSpecF( &needy,  20.0, "Minimum interval (sec)");
+  ps->NextSpecF( &prod,   90.0, "Prod interval (sec)");
+  ps->NextSpecF( &ramp,    5.0, "Shorten interval (sec)"); 
+  ps->NextSpecF( &needy,  40.0, "Minimum interval (sec)");
   ps->NextSpec4( &bereft,  4,   "Very lonely on repeat");
 
   ps->NextSpecF( &fade,   10.0, "User input decay (sec)");  
@@ -121,7 +121,7 @@ int jhcAliaMood::tired_params (const char *fname)
   ps->NextSpecF( &repeat, 180.0, "Complaint repeat (sec)");  
   ps->NextSpecF( &urgent,  30.0, "Fastest repeat (sec)");  
 
-  ps->NextSpecF( &calm,    1.0, "Surprise decay (sec)");
+  ps->NextSpecF( &calm,    1.0,  "Surprise decay (sec)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -203,7 +203,7 @@ void jhcAliaMood::clr_data ()
 
 //= Set up for next round of data collection.
 
-void jhcAliaMood::Update (jhcAliaNote& rpt)
+void jhcAliaMood::Update (jhcAliaNote& rpt, int nag)
 {
   double dt = 0.0;
   UL32 last = now;
@@ -228,10 +228,11 @@ fill++;
   rpt.StartNote();
   if (last == 0)                                 // start up
     rpt.NewProp(rpt.Self(), "hq", "awake");
-  else if (chk_busy(rpt) <= 0)                   // might be overwhelmed
-    if (busy <= idle)                            // only complain if idle
-      if (chk_lonely(rpt) <= 0)
-        chk_tired(rpt);
+  else if (nag > 0)                              // see if nags enabled
+    if (chk_busy(rpt) <= 0)                      // might be overwhelmed
+      if (busy <= idle)                          // only complain if idle
+        if (chk_lonely(rpt) <= 0)
+          chk_tired(rpt);
   rpt.FinishNote();
 }
 
@@ -242,7 +243,7 @@ fill++;
 int jhcAliaMood::chk_busy (jhcAliaNote& rpt)
 {
   // clear hysteretic states (explicitly retract assertions)
-  if (busy <= engaged)
+  if (busy < engaged)
   {
     if (yikes > 0)
       rpt.NewProp(rpt.Self(), "hq", "overwhelmed", 1);
@@ -265,7 +266,7 @@ int jhcAliaMood::chk_busy (jhcAliaNote& rpt)
   }
 
   // check for boredom (waits a while then complains regularly)
-  if ((busy <= bored) && (blah <= 0))
+  if ((busy < bored) && (blah <= 0))
   {
     kvetch = now;
     blah = 1;

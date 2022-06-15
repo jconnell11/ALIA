@@ -33,6 +33,7 @@
 
 //= Uses DLL to access Microsoft Azure Speech Services.
 // only allows one engine/session at a time (i.e. cannot handle two robots)
+// project for sp_reco_web.dll is generally under code/deriv/sp_reco_web
 
 class jhcSpeechWeb
 {
@@ -60,7 +61,7 @@ public:
   jhcSpeechWeb ();
   const char *Version () const;
   int LoadFix (const char *fname) {return canon.LoadList(fname);}
-  int Fixes () const {return(canon.NumKeys() - 1);}
+  int Fixes () const {return canon.TotalVals();}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -282,8 +282,6 @@ int jhcNodePool::Assert (const jhcGraphlet& pat, jhcBindings& b, double conf, in
       probe = focus->Arg(j);
       if ((arg = lookup_make(probe, b, univ)) == NULL)
         return -2;
-//      if (conf < 0.0)
-//        arg->SetBelief(-conf);
       arg->TopMax(tval);
       arg->GenMax(ver);                          // re-check fluents
       if (!mate->HasVal(focus->Slot(j), arg))
@@ -304,7 +302,7 @@ jhcNetNode *jhcNodePool::lookup_make (jhcNetNode *n, jhcBindings& b, const jhcNo
   if ((focus == NULL) && ((univ == NULL) || !univ->InList(n)))
   {
     // make a new node similar to reference (adds to acc)
-    focus = MakeNode(n->base, n->lex, n->inv, n->blf0, n->evt);  
+    focus = MakeNode(n->base, b.LexSub(n), n->inv, n->blf0, n->evt);  
     focus->tags = n->tags;
     focus->SetString(n->Literal());
     b.Bind(n, focus);                  // might be used later
@@ -333,7 +331,7 @@ jhcNetNode *jhcNodePool::SetGen (jhcNetNode *n, int v) const
 }
  
 
-//= If pre-exsiting item re-used, update its recency and make sure it is in any graphlet.
+//= If pre-existing item re-used, update its recency and make sure it is in any graphlet.
 
 jhcNetNode *jhcNodePool::MarkRef (jhcNetNode *n)
 {
@@ -352,11 +350,16 @@ jhcNetNode *jhcNodePool::MarkRef (jhcNetNode *n)
 int jhcNodePool::Refresh (jhcNetNode *n)
 {
   jhcNetNode *prev;
-  int bin;
+  int i, na, bin;
 
-  // see if already at head of list and find node before this one in list
+  // make sure most this property is the most likely to be enumerated 
   if (n == NULL)
     return 0;
+  na = n->NumArgs();
+  for (i = 0; i < na; i++)
+    n->RefreshArg(i);
+
+  // see if already at head of list and find node before this one in list
   bin = ((nbins <= 1) ? 0 : n->hash);
   prev = bucket[bin];
   if (prev == n)
@@ -671,7 +674,7 @@ jhcNetNode *jhcNodePool::FindName (const char *full) const
     while (n != NULL)
     {
       if ((n->Neg() <= 0) && n->LexMatch(full))
-        if ((p = n->Val("ref")) != NULL)
+        if ((p = n->Val("name")) != NULL)
           return p;
       n = n->next;
     }
@@ -689,7 +692,7 @@ jhcNetNode *jhcNodePool::FindName (const char *full) const
     while (n != NULL)
     {
       if ((n->Neg() <= 0) && n->LexMatch(first))
-        if ((p = n->Val("ref")) != NULL)
+        if ((p = n->Val("name")) != NULL)
           return p;
       n = n->next;
     }
@@ -1028,11 +1031,7 @@ int jhcNodePool::Load (jhcTxtLine& in, int tru)
 
     // possibly get new topic node (always need one)
     if (in.Blank())
-    {
-      topic = NULL;
-      in.Flush();
-      continue;
-    }
+      return 1;
     if ((topic = chk_topic(topic, in, tru)) == NULL)
       return 0;
     if (acc != NULL)
@@ -1187,12 +1186,7 @@ int jhcNodePool::get_lex (jhcNetNode *item, jhcTxtLine& in)
   char txt[80];
   int i, n, ans = 1;
 
-  // check for negation then copy most of string to destination
-  if (in.Begins("*"))
-  {
-    item->inv = 1;                     // negative assertion
-    in.Skip("*");
-  }
+  // copy most of string to destination
   strcpy_s(txt, in.Clean());
   n = (int) strlen(txt);
 

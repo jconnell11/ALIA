@@ -177,6 +177,34 @@
 #define ID_MOOD_ENERGYLEVEL             32904
 #define ID_MOOD_INTERACTIONLEVEL        32905
 #define ID_SOCIAL_FOOTCHECK             32906
+#define ID_ROOM_ROBOTDIMS               32907
+#define ID_SOCIAL_SACCADES              32908
+#define ID_MOTION_CALIBWRIST            32909
+#define ID_MOTION_CALIBARM              32910
+#define ID_MANIPULATION_HANDEYE         32912
+#define ID_MANIPULATION_GOTOVIA         32913
+#define ID_MANIPULATION_ADJUSTZ         32914
+#define ID_MANIPULATION_SNATCH          32915
+#define ID_MANIPULATION_ADJUSTXY        32916
+#define ID_MANIPULATION_MOVEOBJ         32917
+#define ID_DETECTION_GAZESURFACE        32918
+#define ID_DETECTION_GAZEOBJECT         32919
+#define ID_MANIPULATION_ACQUIREFULL     32920
+#define ID_OBJECTS_GRASPPOINT           32921
+#define ID_OBJECTS_TRAJECTORYCTRL       32922
+#define ID_OBJECTS_MOTIONDONE           32923
+#define ID_OBJECTS_PHASETIMEOUT         32924
+#define ID_SOCIAL_SURFFIND              32925
+#define ID_TABLE_SURFACE                32926
+#define ID_OBJECTS_SURFHEIGHT           32927
+#define ID_OBJECTS_SURFLOCATION         32928
+#define ID_MOTION_INVKINEMATICS         32929
+#define ID_OBJECTS_WORKSPACE            32930
+#define ID_MANIPULATION_DEPOSIT         32931
+#define ID_OBJECTS_EMPTYSPOT            32932
+#define ID_ROOM_LIFTCALIB               32933
+#define ID_GRAB_BODYSHIFT               32934
+#define ID_ROOM_FORKCALIB               32935
 
 // Next default values for new objects
 // 
@@ -184,7 +212,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32907
+#define _APS_NEXT_COMMAND_VALUE         32936
 #define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

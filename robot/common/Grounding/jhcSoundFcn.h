@@ -30,13 +30,13 @@
 
 #include "Interface/jhcString.h"       // common video
 
-#include "Action/jhcTimedFcns.h"       // common robot
+#include "Action/jhcStdKern.h"         // common robot
 
 
 //= Sound effect output for ALIA system.
 // waits until audio output is available then waits until sound finished
 
-class jhcSoundFcn : public jhcTimedFcns
+class jhcSoundFcn : public jhcStdKern
 {
 // PUBLIC MEMBER VARIABLES
 public:

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 #include <string.h>
 
 #include "Acoustic/jhcSpeechX.h"       // since only spec'd as class in header
-#include "Language/jhcMorphTags.h"
 #include "Parse/jhcGenParse.h"         // since only spec'd as class in header
 
 #include "Language/jhcMorphFcns.h"
@@ -427,21 +426,22 @@ int jhcMorphFcns::AddVocab (jhcSpeechX *p, const char *fname, int rpt)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Get appropriate surface form of some base word given desired categories.
-// NOTE: string might be member variable "stemp" which can be rewritten (use soon)
+// return pointer may be to fixed element (irregular), not into given "surf" string
+// with member variable "stemp" be aware that it can be rewritten (so use soon)
 
-const char *jhcMorphFcns::SurfWord (const char *base, UL32 tags)
+const char *jhcMorphFcns::SurfWord (char *surf, const char *base, UL32 tags, int ssz) const
 {
   const char *irr;
 
   if ((irr = lookup_surf(base, tags)) != NULL)
     return irr;
-  strcpy_s(stemp, base);
-  if ((tags & JTAG_NOUN) != 0)
-    return noun_morph(stemp, tags);
+  strcpy_s(surf, ssz, base);
+  if (((tags & JTAG_NOUN) != 0) || ((tags & JTAG_PROPER) != 0))
+    return noun_morph(surf, tags);
   if ((tags & JTAG_VERB) != 0)
-    return verb_morph(stemp, tags);
+    return verb_morph(surf, tags);
   if ((tags & JTAG_ADJ) != 0)
-    return adj_morph(stemp, tags);
+    return adj_morph(surf, tags);
   return NULL;
 }
 
@@ -450,9 +450,9 @@ const char *jhcMorphFcns::SurfWord (const char *base, UL32 tags)
 // needs specification of what POS mask should be applied to base form
 // returns special form if known, NULL if assumed regular 
 
-const char *jhcMorphFcns::lookup_surf (const char *base, UL32 tags) 
+const char *jhcMorphFcns::lookup_surf (const char *base, UL32 tags) const
 {
-  // nouns
+  // nouns (possessives always regular)
   if ((tags & JTAG_NPL) != 0)
     return scan_for(base, nsing, npl, nn);
 
@@ -479,10 +479,19 @@ const char *jhcMorphFcns::lookup_surf (const char *base, UL32 tags)
 
 char *jhcMorphFcns::noun_morph (char *val, UL32 tags) const
 {
+  // proper nouns 
+  if ((tags & JTAG_NAME) != 0)
+    return val;
+  if ((tags & JTAG_NAMEP) != 0)
+    return add_ss(val, 80, 0);
+
+  // common nouns
   if ((tags & JTAG_NSING) != 0)
     return val;
   if ((tags & JTAG_NPL) != 0)
     return add_s(val, 80);
+  if ((tags & JTAG_NPOSS) != 0)
+    return add_ss(val, 80, 1);
   return NULL;
 }
 
@@ -491,15 +500,34 @@ char *jhcMorphFcns::noun_morph (char *val, UL32 tags) const
 
 char *jhcMorphFcns::verb_morph (char *val, UL32 tags) const
 {
+  char rest[80] = "";
+  char *tail;
+
+  // simplest case is base form
   if ((tags & JTAG_VIMP) != 0)
     return val;
+
+  // split multi-word verbs like "tuck in"
+  if ((tail = strchr(val, ' ')) != NULL)
+  {
+    strcpy_s(rest, tail);
+    *tail = '\0';
+  }  
+
+  // add ending to first word
   if ((tags & JTAG_VPRES) != 0)
-    return add_s(val, 80);
-  if ((tags & JTAG_VPROG) != 0)
-    return add_vowel(val, "ing", 80);          
-  if ((tags & JTAG_VPAST) != 0)
-    return add_vowel(val, "ed", 80); 
-  return NULL;
+    add_s(val, 80);
+  else if ((tags & JTAG_VPROG) != 0)
+    add_vowel(val, "ing", 80);          
+  else if ((tags & JTAG_VPAST) != 0)
+    add_vowel(val, "ed", 80); 
+  else
+    return NULL;
+
+  // reassemble phrase (if needed)
+  if (*rest != '\0')
+    strcat_s(val, 80, rest);
+  return val;
 }
 
 
@@ -535,8 +563,8 @@ char *jhcMorphFcns::add_s (char *val, int ssz) const
            ((strcmp(end - 2, "ch") == 0) || 
             (strcmp(end - 2, "sh") == 0)))
     strcat_s(val, ssz, "es");                              // ends in ch or sh
-  else if ((n >= 1) && (strchr("sz", end[-1]) != NULL))
-    strcat_s(val, ssz, "es");                              // ends in s or z
+  else if ((n >= 1) && (strchr("sxz", end[-1]) != NULL))
+    strcat_s(val, ssz, "es");                              // ends in s, x, or z
   else
     strcat_s(val, ssz, "s");
   return val;
@@ -579,26 +607,43 @@ char *jhcMorphFcns::add_vowel (char *val, const char *suffix, int ssz) const
 }
 
 
+//= Add -'s to end of word for possessives.
+// can optionally only add -' if word ends in vowel
+
+char *jhcMorphFcns::add_ss (char *val, int ssz, int chk) const
+{
+  int n = (int) strlen(val);
+  char *end = val + n;
+
+  if ((chk > 0) && (n >= 1) && (end[-1] == 's'))
+    strcat_s(val, ssz, "'");
+  else
+    strcat_s(val, ssz, "'s");
+  return val;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                             Normalization                             //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Get appropriate base form of some surface word given known categories.
-// NOTE: string might be member variable "btemp" which can be rewritten (use soon)
+// return pointer may be to fixed element (irregular), not into given "base" string
+// with member variable "btemp" be aware that it can be rewritten (so use soon)
 
-const char *jhcMorphFcns::BaseWord (const char *surf, UL32 tags)
+const char *jhcMorphFcns::BaseWord (char *base, const char *surf, UL32 tags, int ssz) const
 {
   const char *irr;
 
   if ((irr = lookup_base(surf, tags)) != NULL)
     return irr;
-  strcpy_s(btemp, surf);
-  if ((tags & JTAG_NOUN) != 0)
-    return noun_stem(btemp, tags);
+  strcpy_s(base, ssz, surf);
+  if (((tags & JTAG_NOUN) != 0) || ((tags & JTAG_PROPER) != 0))
+    return noun_stem(base, tags);
   if ((tags & JTAG_VERB) != 0)
-    return verb_stem(btemp, tags);
+    return verb_stem(base, tags);
   if ((tags & JTAG_ADJ) != 0)
-    return adj_stem(btemp, tags);
+    return adj_stem(base, tags);
   return NULL;
 }
 
@@ -637,10 +682,19 @@ const char *jhcMorphFcns::lookup_base (const char *surf, UL32 tags) const
 
 char *jhcMorphFcns::noun_stem (char *val, UL32 tags) const
 {
+  // proper nouns
+  if ((tags & JTAG_NAME) != 0)
+    return val;
+  if ((tags & JTAG_NAMEP) != 0)
+    return rem_ss(val);
+
+  // common nouns
   if ((tags & JTAG_NSING) != 0)
     return val;
   if ((tags & JTAG_NPL) != 0)
     return rem_s(val);
+  if ((tags & JTAG_NPOSS) != 0)
+    return rem_ss(val);
   return NULL;
 }
 
@@ -720,6 +774,7 @@ char *jhcMorphFcns::rem_s (char *val) const
     end[-1] = '\0';                                        // remove -s
   else if ((n >= 3) && 
            ((strcmp(end - 3, "zes") == 0) ||
+            (strcmp(end - 3, "xes") == 0) ||
             (strcmp(end - 3, "ses") == 0)))
     end[-2] = '\0';                                        // remove -es
   else if ((n >= 3) && (strcmp(end - 3, "ies") == 0))
@@ -769,6 +824,21 @@ char *jhcMorphFcns::rem_vowel (char *val, int strip) const
   }
   else
     end[0] = '\0';                                         // just strip
+  return val;
+}
+
+
+//= Removes final -'s from word and attempts to restore base.
+
+char *jhcMorphFcns::rem_ss (char *val) const
+{
+  int n = (int) strlen(val);
+  char *end = val + n;
+
+  if ((n >= 1) && (end[-1] == '\''))
+    end[-1] = '\0';
+  else if ((n >= 2) && (strcmp(end - 2, "'s") == 0))
+    end[-2] = '\0';         
   return val;
 }
 
@@ -829,7 +899,7 @@ const char *jhcMorphFcns::NounLex (UL32& tags, char *pair) const
       return NULL;
 
   // determine tags then generate base form
-  t = gram_tag(pair) & JTAG_NOUN;
+  t = gram_tag(pair) & (JTAG_NOUN | JTAG_PROPER);
   if (t == 0)
     return NULL;
   tags = t;
@@ -898,14 +968,22 @@ const char *jhcMorphFcns::AdjLex (UL32& tags, char *pair) const
 
 UL32 jhcMorphFcns::gram_tag (const char *pair) const
 {
-  // noun counts
+  // proper nouns (possessive)
+  if (SlotMatch(pair, "NAME"))
+    return JTAG_NAME;
+  if (SlotMatch(pair, "NAME-P"))
+    return JTAG_NAMEP;
+  
+  // common nouns (count and possessive)
   if (SlotMatch(pair, "AKO"))          
     return JTAG_NSING;
   if (SlotMatch(pair, "AKO-S"))
     return JTAG_NPL;
-  
+  if (SlotMatch(pair, "AKO-P"))
+    return JTAG_NPOSS;
+
   // verb tenses
-  if (SlotMatch(pair, "ACT"))     
+  if (SlotMatch(pair, "ACT") || SlotMatch(pair, "ACT-2")) 
     return JTAG_VIMP;
   if (SlotMatch(pair, "ACT-S"))
     return JTAG_VPRES;
@@ -958,8 +1036,8 @@ const char *jhcMorphFcns::PropKind (char *form, const char *adj, int ssz) const
 
 //= Generate a derived lexicon grammar file from a base open-class grammar file.
 // should check this by eye to find cases where incorrect forms are produced
-// looks for =[AKO], =[HQ], and =[ACT] sections of input file
-// generates =[AKO-S], =[HQ-ER], =[HQ-EST], =[ACT-S], =[ACT-G], and =[ACT-D]
+// looks for =[NAME], =[AKO], =[HQ], and =[ACT] sections of input file
+// generates =[NAME-P], =[AKO-S], =[AKO-P], =[HQ-ER], =[HQ-EST], =[ACT-S], =[ACT-G], and =[ACT-D]
 // assumes morphology patterns have already been loaded
 // returns number of inversion errors (chk > 0) or negative for problem
 
@@ -996,9 +1074,11 @@ int jhcMorphFcns::LexDeriv (const char *gram, int chk, const char *deriv)
   // produce derived forms
   fprintf(out, "// forms derived from grammar: %s\n", name);
   fprintf(out, "// ================================================\n\n");
-  cnt += base2surf(out, in, JTAG_NPL, chk);
+  cnt += base2surf(out, in, JTAG_NAMEP, chk);
+  cnt += base2surf(out, in, JTAG_NPL,   chk);
+  cnt += base2surf(out, in, JTAG_NPOSS, chk);
   cnt += base2surf(out, in, JTAG_ACOMP, chk);
-  cnt += base2surf(out, in, JTAG_ASUP, chk);
+  cnt += base2surf(out, in, JTAG_ASUP,  chk);
   fprintf(out, "// -----------------------------------------\n\n");
   cnt += base2surf(out, in, JTAG_VPRES, chk);
   cnt += base2surf(out, in, JTAG_VPROG, chk);
@@ -1008,7 +1088,7 @@ int jhcMorphFcns::LexDeriv (const char *gram, int chk, const char *deriv)
   fclose(out);
   fclose(in);
   if (chk > 0)
-    jprintf("- Found %d inconsistent derived forms\n", cnt);
+    jprintf("- Found %d inconsistent DERIVED forms\n", cnt);
   return cnt;
 }
 
@@ -1064,6 +1144,8 @@ int jhcMorphFcns::base2surf (FILE *out, FILE *in, UL32 tags, int chk)
 
 bool jhcMorphFcns::base_sec (const char *line, UL32 tags) const
 {
+  if ((tags & JTAG_PROPER) != 0)
+    return(strncmp(line, "=[NAME]", 7) == 0);
   if ((tags & JTAG_NOUN) != 0)
     return(strncmp(line, "=[AKO]", 6) == 0);
   if ((tags & JTAG_VERB) != 0)
@@ -1080,12 +1162,16 @@ void jhcMorphFcns::cat_hdr (FILE *out, UL32 tags) const
 {
   const char *cat = cat_txt(tags);
 
-  if ((tags & JTAG_NPL) != 0)
+  if ((tags & JTAG_NAMEP) != 0)
+    fprintf(out, "// possessive name (%s)\n\n=[NAME-P]\n", cat);
+  else if ((tags & JTAG_NPL) != 0)
     fprintf(out, "// plural noun (%s)\n\n=[AKO-S]\n", cat);
+  else if ((tags & JTAG_NPOSS) != 0)
+    fprintf(out, "// possessive noun (%s)\n\n=[AKO-P]\n", cat);
   else if ((tags & JTAG_ACOMP) != 0)
-    fprintf(out, "// comparative adjectives (%s)\n\n=[HQ-ER]\n", cat);
+    fprintf(out, "// comparative adjective (%s)\n\n=[HQ-ER]\n", cat);
   else if ((tags & JTAG_ASUP) != 0)
-    fprintf(out, "// superlative adjectives (%s)\n\n=[HQ-EST]\n", cat);
+    fprintf(out, "// superlative adjective (%s)\n\n=[HQ-EST]\n", cat);
   else if ((tags & JTAG_VPRES) != 0)
     fprintf(out, "// present verb (%s)\n\n=[ACT-S]\n", cat);
   else if ((tags & JTAG_VPROG) != 0)
@@ -1097,7 +1183,7 @@ void jhcMorphFcns::cat_hdr (FILE *out, UL32 tags) const
 
 //= Generate a list of base words from a derived lexicon file.
 // should check to make sure no weird stemming problems occur
-// looks for =[AKO-S], =[HQ-ER], =[HQ-EST], =[ACT-S], =[ACT-G], and =[ACT-D]
+// looks for =[NAME-P], =[AKO-S], =[AKO-], =[HQ-ER], =[HQ-EST], =[ACT-S], =[ACT-G], and =[ACT-D]
 // assumes morphology patterns have already been loaded
 // returns number of inversion errors (chk > 0) or negative for problem
 
@@ -1128,9 +1214,11 @@ int jhcMorphFcns::LexBase (const char *deriv, int chk, const char *morph)
     return 0;
 
   // produce derived forms
-  cnt += surf2base(out, in, JTAG_NPL, chk);
+  cnt += surf2base(out, in, JTAG_NAMEP, chk);
+  cnt += surf2base(out, in, JTAG_NPL,   chk);
+  cnt += surf2base(out, in, JTAG_NPOSS, chk);
   cnt += surf2base(out, in, JTAG_ACOMP, chk);
-  cnt += surf2base(out, in, JTAG_ASUP, chk);
+  cnt += surf2base(out, in, JTAG_ASUP,  chk);
   cnt += surf2base(out, in, JTAG_VPRES, chk);
   cnt += surf2base(out, in, JTAG_VPROG, chk);
   cnt += surf2base(out, in, JTAG_VPAST, chk);
@@ -1139,7 +1227,7 @@ int jhcMorphFcns::LexBase (const char *deriv, int chk, const char *morph)
   fclose(out);
   fclose(in);
   if (chk > 0)
-    jprintf("- Found %d inconsistent base forms\n", cnt);
+    jprintf("- Found %d inconsistent BASE forms\n", cnt);
   return cnt;
 }
 
@@ -1195,8 +1283,12 @@ int jhcMorphFcns::surf2base (FILE *out, FILE *in, UL32 tags, int chk)
 
 bool jhcMorphFcns::surf_sec (const char *line, UL32 tags) const
 {
+  if ((tags & JTAG_NAMEP) != 0)
+    return(strncmp(line, "=[NAME-P]", 9) == 0);
   if ((tags & JTAG_NPL) != 0)
     return(strncmp(line, "=[AKO-S]", 8) == 0);
+  if ((tags & JTAG_NPOSS) != 0)
+    return(strncmp(line, "=[AKO-P]", 8) == 0);
   if ((tags & JTAG_ACOMP) != 0)
     return(strncmp(line, "=[HQ-ER]", 8) == 0);
   if ((tags & JTAG_ASUP) != 0)
@@ -1215,8 +1307,12 @@ void jhcMorphFcns::deriv_hdr (FILE* out, UL32 tags) const
 {
   const char *cat = cat_txt(tags);
 
-  if ((tags & JTAG_NPL) != 0)
+  if ((tags & JTAG_NAMEP) != 0)
+    fprintf(out, "// names from possessives (%s)\n", cat);
+  else if ((tags & JTAG_NPL) != 0)
     fprintf(out, "// nouns from plurals (%s)\n", cat);
+  else if ((tags & JTAG_NPOSS) != 0)
+    fprintf(out, "// nouns from possessives (%s)\n", cat);
   else if ((tags & JTAG_ACOMP) != 0)
     fprintf(out, "// adjectives from comparatives (%s)\n", cat);
   else if ((tags & JTAG_ASUP) != 0)

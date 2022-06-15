@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
+// Copyright 2021-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -134,6 +135,7 @@ public:
   double Len2Vec () const;
   double MaxVec () const;
   double MinVec () const;
+  double MaxAbs () const;
   double DotVec (const jhcMatrix& ref) const;
   void FillVec (double val);
   void IncVec (const jhcMatrix& ref);
@@ -183,9 +185,14 @@ public:
   double PlaneVec3 () const;
   double MaxVec3 () const;
   double MaxAbs3 () const;
+  double SumAbs3 () const;
   double MinVec3 () const;
   double PosDiff3 (const jhcMatrix& ref) const;
+  double MaxDiff3 (const jhcMatrix& ref) const;
+  double PosDiff2 (const jhcMatrix& ref) const;
+  double MaxDiff2 (const jhcMatrix& ref) const;
   double PanVec3 () const;
+  double PanRel3 (const jhcMatrix& ref) const;
   double TiltVec3 () const;
   double DotVec3 (const jhcMatrix& ref) const;
   double DotVec4 (const jhcMatrix& ref) const;
@@ -211,8 +218,10 @@ public:
   void MixVec3 (const jhcMatrix& a, const jhcMatrix& b, double f);
   void MixVec3 (const jhcMatrix& target, double f);
   void SubZero3 (const jhcMatrix& replace);
-  void ClampVec3 (const jhcMatrix& lim);
-  void ClampVec3 (double lim);
+  void ClampVec3 (const jhcMatrix& tol);
+  void ClampVec3 (double tol);
+  void TopVec3 (const jhcMatrix& alt);
+  void BotVec3 (const jhcMatrix& alt);
   void FlipVec3 (const jhcMatrix& ref, double homo =1.0);
   void CompVec3 (const jhcMatrix& wrt, double homo =1.0);
   void MultVec3 (const jhcMatrix& sc, double homo =1.0);

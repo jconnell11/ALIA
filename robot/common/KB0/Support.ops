@@ -1,0 +1,49 @@
+// Basic interface to "Support" kernel
+// ================================================
+
+OP 1 - "To find some surface ..."
+  trig:
+  FIND[ obj-1 
+        ako-1 -lex-  surface
+              -ako-> obj-1 ]
+----------
+   FCN[ fcn-1 -lex-  surf_enum 
+              -arg-> obj-1 ] 
+
+
+OP 2 - "To check if some object is on some surface ..."
+  trig:
+   CHK[ loc-1 -lex-  on
+              -loc-> obj-1
+              -ref-> surf-1
+        ako-1 -lex-  object
+              -ako-> obj-1
+        ako-2 -lex-  surface
+              -ako-> surf-1 ]
+----------
+   FCN[ fcn-1 -lex-   surf_on_ok 
+              -arg--> obj-1 
+              -arg2-> surf-1 ] 
+    
+
+OP 3 - "To approach some surface ..."
+  trig:
+    DO[ act-1 -lex-  approach
+              -obj-> surf-1
+        ako-1 -lex-  surface
+              -ako-> surf-1 ]
+----------
+   FCN[ fcn-1 -lex-  surf_goto
+              -arg-> surf-1 ] 
+
+
+OP 4 - "To look at some surface ..."
+  trig:
+    DO[ act-1 -lex-  look
+        loc-1 -loc-> act-1
+              -ref-> surf-1
+        ako-1 -lex-  surface
+              -ako-> surf-1 ]
+----------
+   FCN[ fcn-1 -lex-  surf_look
+              -arg-> surf-1 ] 

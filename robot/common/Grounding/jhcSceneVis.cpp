@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@
 //                             Terminology                               //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Range categories with high and low value terms and superlatives (get from jhcMorphFcns?).
+//= Range categories with high and low value terms.
 //                                            0           1        2         3          4           5
 
 const char * const jhcSceneVis::rng[]  = {"distance", "size",  "length",  "width",  "thickness", "height"};
@@ -38,7 +38,7 @@ const char * const jhcSceneVis::rng0[] = {"close",    "small", "compact", "narro
 const char * const jhcSceneVis::rng1[] = {"far",      "big",   "long",    "wide",   "thick",     "tall"  };
 
 
-//= Color description terms with superlatives.
+//= Color description terms.
 //                                           6       7         8        9       10       11       12       13      14
 
 const char * const jhcSceneVis::col[]  = {"red", "orange", "yellow", "green", "blue", "purple", "black", "gray", "white"};
@@ -66,7 +66,7 @@ jhcSceneVis::~jhcSceneVis ()
 
 jhcSceneVis::jhcSceneVis ()
 {
-  ver = 1.40;
+  ver = 1.70;
   strcpy_s(tag, "SceneVis");
   Platform(NULL);
   rpt = NULL;
@@ -77,12 +77,12 @@ jhcSceneVis::jhcSceneVis ()
 
 void jhcSceneVis::Platform (jhcEliGrok *io) 
 {
-  rwi = io;
-  seg = NULL;
+  rwi = io;                  
+  sobj = NULL;
   body = NULL;
   if (rwi != NULL)
   {
-    seg = &(rwi->tab);
+    sobj = &(rwi->sobj);
     body = rwi->body;
   }
 }
@@ -171,6 +171,7 @@ int jhcSceneVis::comp_params (const char *fname)
   ps->NextSpecF( &hood,   3.0, "Near distance wrt size");
 
   ps->NextSpec4( &cmax,   7,   "Max subit count (else \"lots\")"); 
+  ps->NextSpecF( &flr,    4.0, "Max height for floor (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -226,7 +227,6 @@ void jhcSceneVis::local_reset (jhcAliaNote *top)
   noisy = 0;
 
   // state variables
-  nearby = -1;
   some = 0;
   close = 0;
 
@@ -245,6 +245,7 @@ void jhcSceneVis::local_volunteer ()
   alert_any();
   alert_close();
   mark_attn();
+  lost_tracks();
 }
 
 
@@ -306,16 +307,16 @@ void jhcSceneVis::alert_any ()
   int item;
 
   // wait for next sensor cycle then lock visual data
-  if ((rwi == NULL) || (rpt == NULL) || !rwi->Readable())
+  if ((rwi == NULL) || (rpt == NULL) || !rwi->Accepting())
     return;
-  item = seg->Closest();
+  item = sobj->Closest();
 
   // see if newly close (use hysteresis)
   if (item < 0)
     some = 0;
   else
   {
-    xy = seg->DistXY(item);
+    xy = sobj->DistXY(item);
     if (xy > (dist2 + dvar))
       some = 0;                        // no longer anything
     else if (xy <= (dist2 - dvar))
@@ -335,7 +336,6 @@ void jhcSceneVis::alert_any ()
     obj_node(item);
     rpt->FinishNote();
   }
-  rwi->ReadDone();                     // release visual data
 }
 
 
@@ -344,25 +344,25 @@ void jhcSceneVis::alert_any ()
 //   hq-1 -lex- close
 //        -hq-> obj-N
 // </pre>
+// now shares distance threshold across all objects ("nearby" not unique)
+// previously over-generated when two things were almost tied
 
 void jhcSceneVis::alert_close ()
 {
   double dist;
-  int prev = nearby;
+  int nearby;
 
   // wait for next sensor cycle then lock visual data
-  if ((rwi == NULL) || (rpt == NULL) || !rwi->Readable())
+  if ((rwi == NULL) || (rpt == NULL) || !rwi->Accepting())
     return;
-  nearby = seg->Closest();
-  if (nearby != prev)
-    close = 0;                         // reset if different object
+  nearby = sobj->Closest();
 
   // see if newly close (use hysteresis)
   if (nearby < 0)
     close = 0;
   else
   {
-    dist = seg->DistXY(nearby);
+    dist = sobj->DistXY(nearby);
     if (dist > (dist1 + dvar))
       close = 0;                       // no longer close
     else if (dist <= (dist1 - dvar))
@@ -382,7 +382,6 @@ void jhcSceneVis::alert_close ()
     rpt->NewDeg(obj_node(nearby), "hq", "close", ((dist < dist0) ? "very" : NULL));  
     rpt->FinishNote();
   }
-  rwi->ReadDone();                     // release visual data
 }
 
 
@@ -399,24 +398,42 @@ void jhcSceneVis::mark_attn ()
     return;
 
   // see if any associated nodes have disappeared
-  nt = seg->ObjLimit(1);
+  nt = sobj->ObjLimit(1);
   for (t = 0; t < nt; t++)
-    if (seg->ObjOK(t))
+    if (sobj->ObjOK(t))
     {
-      label = seg->GetTag(t);
+      label = sobj->GetTag(t);
       if ((*label != '\0') && (trk2node(t) == NULL))
-        seg->SetTag(t, "");
-      if (seg->GetState(t) >= 2)       // newly marked
+        sobj->SetTag(t, "");
+      if (sobj->GetState(t) >= 2)      // newly marked
         any = 1;
     }
 
   // possibly change all state 1->0 and state 2->1
+  // ensures that only one object shows as green (state > 0)
   if (any > 0)
     for (t = 0; t < nt; t++)
-      if (seg->ObjOK(t))
-        if ((st = seg->GetState(t)) > 0)
-          seg->SetState(t, st - 1);
+      if (sobj->ObjOK(t))
+        if ((st = sobj->GetState(t)) > 0)
+          sobj->SetState(t, st - 1);
   rwi->ReadDone();                     // release visual data
+}
+
+
+//= Remove the "visible" quality from any nodified objects which are no longer tracked.
+
+void jhcSceneVis::lost_tracks ()
+{
+  int id = 0;
+
+  while ((id = rpt->VisEnum(id)) > 0)
+    if (!sobj->OkayID(id))
+    {
+      rpt->StartNote();
+      rpt->NewProp(rpt->NodeFor(id), "hq", "visible", 1);
+      rpt->FinishNote();
+      rpt->VisAssoc(id, NULL);                   // erase entry
+    }
 }
 
 
@@ -445,7 +462,7 @@ int jhcSceneVis::vis_value0 (const jhcAliaDesc *desc, int i)
 
 
 //= Determine category of information requested from HQ type.
-// returns 0-5, negative if unknown
+// returns category 0-5, negative if unknown
 
 int jhcSceneVis::net2rng (const jhcAliaDesc *hq) const
 {
@@ -476,7 +493,7 @@ int jhcSceneVis::vis_value (const jhcAliaDesc *desc, int i)
     return 0;
   if ((t = node2trk(obj)) < 0)
     return rwi->ReadDone(-1);
-  seg->SetState(t, 2);                 // display as green
+  sobj->SetState(t, 2);                // display as green
 
   // compute the desired property and assert it in net
   rpt->StartNote();
@@ -488,12 +505,12 @@ int jhcSceneVis::vis_value (const jhcAliaDesc *desc, int i)
 
 //= First call to measurement verifier but not allowed to fail.
 // answers "Is X close/big/wide?" although mutex rules may also cover this
+// sets cst[i] to range category and camt[i] to desired value
 // returns 1 if okay, -1 for interpretation error
 
 int jhcSceneVis::vis_val_ok0 (const jhcAliaDesc *desc, int i)
 {
   const jhcAliaDesc *hq;
-  int des;
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -501,57 +518,45 @@ int jhcSceneVis::vis_val_ok0 (const jhcAliaDesc *desc, int i)
     return -1;
   if (hq->Val("hq") == NULL)
     return -1;
-  if ((cst[i] = net2des(des, hq)) < 0)
+  if ((camt[i] = net2des(cst[i], hq)) <= 0)
     return -1;
-  camt[i] = des;
   return 1;
 }
 
 
 //= Determines category and desired range value from semantic net.
 // "very long" -> cat = 2 and des = 5, "medium thick" -> cat = 4 and des = 3
-// saves target (1-5) in "des" and returns category (0-5), negative for problem
+// returns desired value (1-5) while setting "cat" (0-5), zero or negative for problem
 
-int jhcSceneVis::net2des (int& des, const jhcAliaDesc *hq) const
+int jhcSceneVis::net2des (int& cat, const jhcAliaDesc *p) const
 { 
   char mid[40];
-  const jhcAliaDesc *mod;
-  const char *val = hq->Lex();
-  int cat, i;
+  const jhcAliaDesc *d;
+  const char *val = p->Lex();
+  int des, i = 0;
 
   // see default value then scan kinds of measurement
-  des = 0;
   for (cat = 0; cat <= 5; cat++)
   {
-    // look for basic HQ of low, medium, or high in this category
+    // check for some pertinent value term for category
+    // distance -> "medium close" not "medium far"
+    sprintf_s(mid, "medium %s", ((cat <= 0) ? rng0[cat] : rng1[cat]));
+    if (strcmp(val, mid) == 0)
+      return 3;
     if (strcmp(val, rng0[cat]) == 0)  
       des = 2;
     else if (strcmp(val, rng1[cat]) == 0)
       des = 4;
     else
-    {
-      // use "medium close" not "medium far" for distance
-      sprintf_s(mid, "medium %s", ((cat <= 0) ? rng0[cat] : rng1[cat]));
-      if (strcmp(val, mid) == 0)
-        des = 3;
-    }
+      continue;
 
-    // see if this category was pertinent
-    if (des != 0)
-    {
-      i = 0;
-      if ((des == 2) || (des == 4))
-        while ((mod = hq->Fact("deg", i++)) != NULL)
-          if (mod->Visible() && (mod->Neg() <= 0) && mod->LexMatch("very"))
-          {
-            // "very" amplifies desired value
-            des = ((des > 3) ? 5 : 1);
-            break;
-          }
-      return cat;
-    }
+    // check for "very" modifier
+    while ((d = p->Fact("deg", i++)) != NULL)
+      if (d->Visible() && (d->Neg() <= 0) && d->LexMatch("very"))
+        return((des > 3) ? 5 : 1);
+    return des;
   }
-  return -1;
+  return 0;
 }
 
 
@@ -569,7 +574,7 @@ int jhcSceneVis::vis_val_ok (const jhcAliaDesc *desc, int i)
     return 0;
   if ((t = node2trk(obj)) < 0)
     return rwi->ReadDone(-1);
-  seg->SetState(t, 2);                 // display as green
+  sobj->SetState(t, 2);                // display as green
 
   // compute the desired property and assert or deny it in net
   rpt->StartNote();
@@ -610,17 +615,17 @@ int jhcSceneVis::vis_color (const jhcAliaDesc *desc, int i)
     return 0;
   if ((t = node2trk(obj)) < 0)
     return rwi->ReadDone(-1);
-  seg->SetState(t, 2);                                     // display as green
-  n = seg->Spectralize(body->Color(), body->Range(), t);
+  sobj->SetState(t, 2);                                    // display as green
+  n = sobj->Spectralize(body->Color(), body->Range(), t);
   if (n <= 0)
-    return rwi->ReadDone(1);
+    return rwi->ReadDone(-1);
 
   // assert values in net (add linking "and" node if multiple colors)
   rpt->StartNote();
   if (n > 1)
     mix = rpt->NewNode("conj", "and");
   for (cnum = 0; cnum <= 8; cnum++)
-    if (seg->DegColor(t, cnum) >= 2)
+    if (sobj->DegColor(t, cnum) >= 2)
     {
       hq = rpt->NewProp(obj, "hq", col[cnum], 0, 1.0, 1);           
       if (mix != NULL) 
@@ -679,12 +684,12 @@ int jhcSceneVis::vis_col_ok (const jhcAliaDesc *desc, int i)
     return 0;
   if ((t = node2trk(obj)) < 0)
     return rwi->ReadDone(-1);
-  seg->SetState(t, 2);                                       // display as green
-  n = seg->Spectralize(body->Color(), body->Range(), t);
+  sobj->SetState(t, 2);                                      // display as green
+  n = sobj->Spectralize(body->Color(), body->Range(), t);
 
   // directly assert or refute in net
   rpt->StartNote();
-  if (seg->DegColor(t, cnum) < 2)
+  if (sobj->DegColor(t, cnum) < 2)
     rpt->NewProp(obj, "hq", col[cnum], 1, 1.0, 1);           // "not red"
   else if (n > 1)
     rpt->NewDeg(obj, "hq", col[cnum], "partly", 0, 1.0, 1);  // missing "and" node
@@ -722,9 +727,10 @@ int jhcSceneVis::vis_position0 (const jhcAliaDesc *desc, int i)
 
 int jhcSceneVis::vis_position (const jhcAliaDesc *desc, int i)
 {
-  const jhcAliaDesc *ref, *pos = desc->Val("arg");
-  jhcAliaDesc *hq, *obj = pos->Val("loc");
-  const char *lex;
+  const jhcAliaDesc *pos = desc->Val("arg");
+  jhcAliaDesc *hq, *ref = NULL, *obj = pos->Val("loc");
+  char prep[20] = "on";
+  const char *lex = prep;
   double dx, dy, dist, best;
   int t, r, nt, side, prox, anchor = -1;
 
@@ -735,15 +741,15 @@ int jhcSceneVis::vis_position (const jhcAliaDesc *desc, int i)
     return rwi->ReadDone(-1);
 
   // scan through other objects that have a node used in conversation
-  nt = seg->ObjLimit();
+  nt = sobj->ObjLimit();
   for (r = 0; r < nt; r++)
-    if ((r != t) && seg->ObjOK(r))
+    if ((r != t) && sobj->ObjOK(r))
       if ((ref = trk2node(r)) != NULL)
         if (ref->LastRef() > 0)                  // user knows about
         {
           // find distance to query object
-          dx = seg->PosX(t) - seg->PosX(r);
-          dy = seg->PosY(t) - seg->PosY(r);
+          dx = sobj->PosX(t) - sobj->PosX(r);
+          dy = sobj->PosY(t) - sobj->PosY(r);
           dist = sqrt(dx * dx + dy * dy);
  
           // save the closest thing as a spatial anchor
@@ -754,20 +760,27 @@ int jhcSceneVis::vis_position (const jhcAliaDesc *desc, int i)
           }
         }
 
-  // choose most meaningful spatial relation
-  if (anchor < 0)
-    return rwi->ReadDone(-1);    
-  if ((side = side_of(t, anchor)) > 0)
-    lex = loc[side];                             // left of/right of/in front of/behind
-  else if ((prox = near_to(t, anchor)) > 0)
-    lex = loc[prox + 4];                         // near/next to
-  else 
-    return rwi->ReadDone(-1);         
+  // choose most meaningful spatial relation (if some reference object)
+  if (anchor >= 0)
+  {
+    ref = trk2node(anchor);       
+    if ((side = side_of(t, anchor)) > 0)
+      lex = loc[side];                           // left of/right of/in front of/behind
+    else if ((prox = near_to(t, anchor)) > 0)
+      lex = loc[prox + 4];                       // near/next to
+    else 
+      return rwi->ReadDone(-1);  
+  }
    
-  // directly assert or refute in net
+  // directly assert or refute in net (default = "on the surface")
   rpt->StartNote();
+  if (anchor < 0)
+  {
+    ref = rpt->NewNode("surf");
+    rpt->NewProp(ref, "ako", (((rwi->tab).SurfHt() <= flr) ? "floor" : "surface"));
+  }
   hq = rpt->NewProp(obj, "loc", lex, 0, 1.0, 1, 2);
-  rpt->AddArg(hq, "wrt", trk2node(anchor));  
+  rpt->AddArg(hq, "ref", ref);
   rpt->FinishNote();
   return rwi->ReadDone(1);
 }
@@ -785,11 +798,11 @@ int jhcSceneVis::vis_pos_ok0 (const jhcAliaDesc *desc, int i)
     return -1;
   if ((pos = desc->Val("arg")) == NULL)
     return -1;
-  if ((pos->Val("loc") == NULL) || (pos->Val("wrt") == NULL))
+  if ((pos->Val("loc") == NULL) || (pos->Val("ref") == NULL))
     return -1;
   if ((cst[i] = txt2pos(pos->Lex())) < 0)
     return -1;
-  if ((cst[i] == 0) && (pos->Val("wrt", 1) == NULL))       // between
+  if ((cst[i] == 0) && (pos->Val("ref", 1) == NULL))       // between
     return -1;
   return 1;
 }
@@ -817,7 +830,7 @@ int jhcSceneVis::txt2pos (const char *txt) const
 int jhcSceneVis::vis_pos_ok (const jhcAliaDesc *desc, int i)
 {
   jhcAliaDesc *pos = desc->Val("arg"), *obj = pos->Val("loc");
-  jhcAliaDesc *ref = pos->Val("wrt"), *ref2 = pos->Val("wrt", 1);
+  jhcAliaDesc *ref = pos->Val("ref"), *ref2 = pos->Val("ref", 1);
   int t, r, r2, rel = cst[i], neg = 1;
 
   // find the referenced objects and possibly analyze their color
@@ -828,7 +841,7 @@ int jhcSceneVis::vis_pos_ok (const jhcAliaDesc *desc, int i)
   if ((r = node2trk(ref)) < 0)
     return rwi->ReadDone(-1);
   r2 = node2trk(ref2);
-  seg->SetState(t, 2);                                     // display as green
+  sobj->SetState(t, 2);                                    // display as green
 
   // check if selected spatial relation holds
   if (rel == 0)                                            // between
@@ -841,9 +854,9 @@ int jhcSceneVis::vis_pos_ok (const jhcAliaDesc *desc, int i)
   // directly assert or refute in net
   rpt->StartNote();
   pos = rpt->NewProp(obj, "loc", loc[rel], neg, 1.0, 1, 2);
-  rpt->AddArg(pos, "wrt", ref);
+  rpt->AddArg(pos, "ref", ref);
   if (ref2 != NULL)
-    rpt->AddArg(pos, "wrt", ref2);
+    rpt->AddArg(pos, "ref", ref2);
   rpt->FinishNote();
   return rwi->ReadDone(1);
 }
@@ -865,7 +878,7 @@ int jhcSceneVis::vis_comp_ok0 (const jhcAliaDesc *desc, int i)
     return -1;
   if ((hq = desc->Val("arg")) == NULL)
     return -1;
-  if ((hq->Val("hq") == NULL) || (hq->Val("wrt") == NULL))
+  if ((hq->Val("hq") == NULL) || (hq->Val("alt") == NULL))
     return -1;
   if ((cst[i] = txt2comp(hq->Lex())) == 0)
     return -1;
@@ -904,7 +917,7 @@ int jhcSceneVis::txt2comp (const char *txt) const
 int jhcSceneVis::vis_comp_ok (const jhcAliaDesc *desc, int i)
 {
   const jhcAliaDesc *hq = desc->Val("arg");
-  jhcAliaDesc *hq2, *obj = hq->Val("hq"), *ref = hq->Val("wrt");
+  jhcAliaDesc *hq2, *obj = hq->Val("hq"), *ref = hq->Val("alt");
   const char *lex = NULL;
   int t, r, val, comp = cst[i], cat = abs(comp) - 1, neg = 1;
 
@@ -915,13 +928,13 @@ int jhcSceneVis::vis_comp_ok (const jhcAliaDesc *desc, int i)
     return rwi->ReadDone(-1);
   if ((r = node2trk(ref)) < 0)
     return rwi->ReadDone(-1);
-  seg->SetState(t, 2);                     // display as green
+  sobj->SetState(t, 2);                    // display as green
 
   // get relevant raw values and test 
   if ((cat >= 6) && (cat <= 14))
   {
-    seg->Spectralize(body->Color(), body->Range(), t);
-    seg->Spectralize(body->Color(), body->Range(), r);
+    sobj->Spectralize(body->Color(), body->Range(), t);
+    sobj->Spectralize(body->Color(), body->Range(), r);
     val = trk2ccomp(cat + 18, t, r);       // redder (6) -> cat = 24
   }
   else 
@@ -940,7 +953,7 @@ int jhcSceneVis::vis_comp_ok (const jhcAliaDesc *desc, int i)
   // directly assert or refute in net
   rpt->StartNote();
   hq2 = rpt->NewProp(obj, "hq", lex, neg, 1.0, 1, 2);
-  rpt->AddArg(hq2, "wrt", ref);
+  rpt->AddArg(hq2, "alt", ref);
   rpt->GramTag(hq2, JTAG_ACOMP);
   rpt->FinishNote();
   return rwi->ReadDone(1);
@@ -984,16 +997,17 @@ int jhcSceneVis::vis_subit (const jhcAliaDesc *desc, int i)
   if (cvt_refs(r, r2, ref, ref2) <= 0)
     return rwi->ReadDone(-1);
   if ((r >= 0) && (cc > 0))
-    seg->Spectralize(body->Color(), body->Range(), r);
+    sobj->Spectralize(body->Color(), body->Range(), r);
 
   // count objects matching description and mark them for display
-  nt = seg->ObjLimit();
+  nt = sobj->ObjLimit();
   for (t = 0; t < nt; t++)
-    if (suitable(props, t, r, r2) > 0) 
+    if (sobj->ObjOK(t) && (suitable(props, t, r, r2) > 0))
     {
       cnt++;
-      seg->SetState(t, 2);                       // display as green
+      sobj->SetState(t, 2);                      // display as green
     }
+  jprintf("vis_subit: found %d (out of %d)\n", cnt, sobj->CntValid());
 
   // report resulting count
   rpt->StartNote();
@@ -1022,12 +1036,13 @@ int jhcSceneVis::vis_enum0 (const jhcAliaDesc *desc, int i)
   if (desc->Val("arg") == NULL)
     return -1;
   cst[i] = 0;                          // nothing reported yet
+  cmode[i] = 0;                        // no delay for first suggestion
   return 1;
 }
 
 
 //= Basic call to object detector returns one new object matching description each step.
-// enumeration limits kept in cst[i] and camt[i], irrelevant if a superlative was used
+// enumeration limits kept in cst[i], irrelevant if a superlative was used
 // returns 1 if done, 0 if still working, -1 for failure
 
 int jhcSceneVis::vis_enum (const jhcAliaDesc *desc, int i)
@@ -1036,66 +1051,81 @@ int jhcSceneVis::vis_enum (const jhcAliaDesc *desc, int i)
   jhcAliaDesc *ref, *ref2, *obj = desc->Val("arg");
   int cc, r, r2, sel, t, nt, win, pref, cnt = 0;
 
-  // determine selection criteria for objects based on query node properties
+  // sync to sensors, possibly skip a cycle if just made a suggestion
   if (!rwi->Readable())
     return 0;
+  if (cmode[i] > 0)
+  {
+    cmode[i] = 0;
+    return rwi->ReadDone(0);
+  }
+
+  // determine selection criteria for objects based on query node properties
   cc = obj_specs(props, &ref, &ref2, obj);
   if (cvt_refs(r, r2, ref, ref2) <= 0)
     return rwi->ReadDone(-1);
   sel = net2super(obj);
   if ((r >= 0) && ((cc > 0) || ((sel >= 7) && (sel <= 15))))
-    seg->Spectralize(body->Color(), body->Range(), r);
+    sobj->Spectralize(body->Color(), body->Range(), r);
 
-  // mark previously unreported objects that pass all criteria 
-  nt = seg->ObjLimit();
-  for (t = 0; t < nt; t++)
+  // keep picking objects until something new in semantic network
+  while (cst[i] < 8)
   {
-    seg->SetState(t, 0);
-    if (seg->ObjOK(t) && !already(i, t))
-      if (seg->SetState(t, suitable(props, t, r, r2)) > 0)
-      {
-        win = t;                       // in case only one
-        cnt++;
-      }
-  }
-  if (cnt <= 0)
-  {
-    jprintf(1, noisy, "vis_enum %d ==> nothing\n", cst[i]);
-    return rwi->ReadDone(1);
-  }
-
-  // choose among alternatives either by superlative or innate preference
-  if (cnt > 1)
-  {
-    pref = ((sel != 0) ? sel : pref_prop(props));
-    if (pref == 0)
-      win = pick_num();
-    else if (pref == -100)             // beyond props[] (middle)
-      win = pick_mid();
-    else
+    // mark previously unreported objects that pass all criteria 
+    nt = sobj->ObjLimit();
+    for (t = 0; t < nt; t++)
     {
-      cache_color(pref, props);     
-      win = pick_best(pref, r, r2);    // including +/-35 (leftmost/rightmost)
+      sobj->SetState(t, 0);
+      if (sobj->ObjOK(t) && !already(i, t))
+        if (sobj->SetState(t, suitable(props, t, r, r2)) > 0)
+        {
+          win = t;                     // in case only one
+          cnt++;
+        }
     }
+    if (cnt <= 0)
+    {
+      jprintf(1, noisy, "vis_enum %d ==> nothing\n", cst[i]);
+      return rwi->ReadDone(-1);
+    }
+
+    // choose (or gate) either by superlative or innate preference
+    if (cnt > 1)
+    {
+      pref = ((sel != 0) ? sel : pref_prop(props));
+      if (pref == 0)
+        win = pick_num();
+      else if (pref == -100)           // beyond props[] (middle)
+        win = pick_mid();
+      else
+      {
+        cache_color(pref, props);     
+        win = pick_best(pref, r, r2);  // including +/-35 (leftmost/rightmost)
+      }
+    }
+
+    // clean up object marks then add to NRI list
+    for (t = 0; t < nt; t++)
+      sobj->SetState(t, 0);
+    if (win < 0)
+      return rwi->ReadDone(1);
+    record(i, win);
+
+    // get semantic network node for object and assert that it meets all criteria
+    rpt->StartNote();                      
+    obj = obj_node(win);               // either track node or new one 
+    prop2net(obj, props, ref, ref2);
+    super2net(obj, sel);
+    jprintf(1, noisy, "vis_enum %d ==> %s\n", cst[i], obj->Nick());
+    if ((rpt->FinishNote() > 0) || (sel > 0))
+      break;
   }
-
-  // clean up object marks and add to NRI list
-  for (t = 0; t < nt; t++)
-    seg->SetState(t, 0);
-  if (win < 0)
-    return rwi->ReadDone(1);
-  record(i, win);
-
-  // get semantic network node for object and assert that it meets all criteria
-  rpt->StartNote();                      
-  obj = obj_node(win);                 // either track node or new one 
-  jprintf(1, noisy, "vis_enum %d ==> %s\n", cst[i], obj->Nick());
-  prop2net(obj, props, ref, ref2);
-  super2net(obj, sel);
-  rpt->FinishNote();
 
   // more objects might appear by next call if just enumerating
-  return rwi->ReadDone(((sel != 0) || (cst[i] >= 8)) ? 1 : 0); 
+  if ((sel != 0) || (cst[i] >= 8))
+    return rwi->ReadDone(1);
+  cmode[i] = 1;                        // delay next suggestion
+  return rwi->ReadDone(0);
 }
 
 
@@ -1129,7 +1159,7 @@ int jhcSceneVis::pref_prop (int props[]) const
 
 bool jhcSceneVis::already (int i, int t) const
 {
-  int j, nr = __min(8, cst[i]), id = seg->ObjID(t);
+  int j, nr = __min(8, cst[i]), id = sobj->ObjID(t);
 
   for (j = 0; j < nr; j++)
     if (((j < 4)  && (cpos[i].VRef(j) == id)) ||
@@ -1144,7 +1174,7 @@ bool jhcSceneVis::already (int i, int t) const
 
 void jhcSceneVis::record (int i, int t)
 {
-  int j = cst[i], id = seg->ObjID(t);
+  int j = cst[i], id = sobj->ObjID(t);
 
   if ((j < 0) || (j >= 8))
     return;
@@ -1162,11 +1192,11 @@ void jhcSceneVis::record (int i, int t)
 int jhcSceneVis::pick_num () const
 {
   const jhcAliaDesc *n;
-  int t, id, nt = seg->ObjLimit(), hi = -1, win = -1;
+  int t, id, nt = sobj->ObjLimit(), hi = -1, win = -1;
 
   // look for already nodified object with highest node id
   for (t = 0; t < nt; t++)
-    if (seg->GetState(t) > 0) 
+    if (sobj->GetState(t) > 0) 
       if ((n = trk2node(t)) != NULL)
       {
         id = n->Inst();
@@ -1181,9 +1211,9 @@ int jhcSceneVis::pick_num () const
 
   // look for object with highest tracking ID (most recent)
   for (t = 0; t < nt; t++)
-    if (seg->GetState(t) > 0) 
+    if (sobj->GetState(t) > 0) 
     {
-      id = seg->ObjID(t);
+      id = sobj->ObjID(t);
       if (id > hi)   
       {
         win = t;
@@ -1200,14 +1230,14 @@ int jhcSceneVis::pick_num () const
 int jhcSceneVis::pick_mid () const
 {
   double x, y, lf, rt, bot, top, mx, my, d2, best;
-  int t, nt = seg->ObjLimit(), any = 0, win = -1;
+  int t, nt = sobj->ObjLimit(), any = 0, win = -1;
 
   // find span of suitable objects using lateral position
   for (t = 0; t < nt; t++)
-    if (seg->GetState(t) > 0) 
+    if (sobj->GetState(t) > 0) 
     {
-      x = seg->PosX(t);
-      y = seg->PosY(t);
+      x = sobj->PosX(t);
+      y = sobj->PosY(t);
       if (any <= 0) 
       {
         lf  = x;
@@ -1229,10 +1259,10 @@ int jhcSceneVis::pick_mid () const
   mx = 0.5 * (lf + rt);
   my = 0.5 * (bot + top);
   for (t = 0; t < nt; t++)
-    if (seg->GetState(t) > 0) 
+    if (sobj->GetState(t) > 0) 
     {
-      x = seg->PosX(t) - mx;
-      y = seg->PosY(t) - my;
+      x = sobj->PosX(t) - mx;
+      y = sobj->PosY(t) - my;
       d2 = x * x + y * y;
       if ((win < 0) || (d2 < best))
       {
@@ -1248,7 +1278,7 @@ int jhcSceneVis::pick_mid () const
 
 void jhcSceneVis::cache_color (int pref, int props[])
 {
-  int cat, t, nt = seg->ObjLimit();
+  int cat, t, nt = sobj->ObjLimit();
 
   // see if preference is "the reddest" or equivalent
   if ((pref < 7) || (pref > 15))                 
@@ -1264,8 +1294,8 @@ void jhcSceneVis::cache_color (int pref, int props[])
 
   // color not needed up to now so compute for all passed objects
   for (t = 0; t < nt; t++)
-    if (seg->GetState(t) > 0)
-      seg->Spectralize(body->Color(), body->Range(), t);
+    if (sobj->GetState(t) > 0)
+      sobj->Spectralize(body->Color(), body->Range(), t);
 }
 
 
@@ -1275,14 +1305,34 @@ void jhcSceneVis::cache_color (int pref, int props[])
 
 int jhcSceneVis::pick_best (int pref, int r, int r2) const
 {
-  double v, best;
-  int t, nt = seg->ObjLimit(), cat = abs(pref) - 1, win = -1;
+  double v, best = 0.0;
+  int t, nt = sobj->ObjLimit(), cat = abs(pref) - 1, win = -1;
 
+  // greatest amount of some color (must be more than some minimum)
+  if ((cat >= 7) && (cat <= 15)) 
+  {
+    best = 0.05;                       // at least a little bit
+    for (t = 0; t < nt; t++)
+      if (sobj->GetState(t) > 0) 
+      {
+        v = pref_val(cat, t, r, r2);
+        if (v > best)
+        {
+          win = t;
+          best = v;
+        }
+      } 
+    return win;
+  }
+
+  // highest or lowest in some value or position
   for (t = 0; t < nt; t++)
-    if (seg->GetState(t) > 0) 
+    if (sobj->GetState(t) > 0) 
     {
       v = pref_val(cat, t, r, r2);
-      if ((win < 0) || ((pref > 0) && (v > best)) || ((pref < 0) && (v < best)))
+      if (pref < 0)
+        v = -v;
+      if ((win < 0) || (v > best))
       {
         win = t;
         best = v;
@@ -1392,12 +1442,12 @@ int jhcSceneVis::col_test (int props[], int t, int r) const
       break;
   if (cnum > 8)
     return 1;
-  seg->Spectralize(body->Color(), body->Range(), t);
+  sobj->Spectralize(body->Color(), body->Range(), t);
 
   // test if desired colors for object track are present or not
   for (cnum = 0; cnum <= 8; cnum++)
     if (props[cnum + 6] > 0)         
-      if (seg->DegColor(t, cnum) < 2)   
+      if (sobj->DegColor(t, cnum) < 2)   
         return 0;
 
   // test if comparison of color percentages between track and reference is as desired
@@ -1482,12 +1532,12 @@ double jhcSceneVis::rng_val (int cat, int t) const
 
   // handle non-dimension 
   if (cat == 0)                 // distance
-    return seg->DistXY(t);     
+    return sobj->DistXY(t);     
 
   // get some basic object measurements
-  maj = seg->Major(t);
-  min = seg->Minor(t); 
-  ht  = seg->SizeZ(t);
+  maj = sobj->Major(t);
+  min = sobj->Minor(t); 
+  ht  = sobj->SizeZ(t);
   lo  = __min(ht, __min(maj, min));
   hi  = __max(ht, __max(maj, min));
   vol = maj * min * ht;
@@ -1503,7 +1553,7 @@ double jhcSceneVis::rng_val (int cat, int t) const
   if (cat == 4)
     return lo / mid;           // thickness = ratio
   if (cat == 5)
-    return ht;                 // height = abs z
+    return sobj->OverZ(t);     // height = abs top vs. table
   return -1.0;
 }
 
@@ -1551,9 +1601,9 @@ int jhcSceneVis::trk2loc (int cat, int t, int r, int r2) const
 
 int jhcSceneVis::twixt (int t, int r, int r2) const
 {
-  double rx = seg->PosX(r), ry = seg->PosY(r), r2x = seg->PosX(r2), r2y = seg->PosY(r2);
+  double rx = sobj->PosX(r), ry = sobj->PosY(r), r2x = sobj->PosX(r2), r2y = sobj->PosY(r2);
   double sx = rx - r2x, sy = ry - r2y, len = sqrt(sx * sx + sy * sy);
-  double dx = seg->PosX(t) - 0.5 * (rx + r2x), dy = seg->PosY(t) - 0.5 * (ry + r2y);
+  double dx = sobj->PosX(t) - 0.5 * (rx + r2x), dy = sobj->PosY(t) - 0.5 * (ry + r2y);
 
   if ((t == r) || (t == r2))
     return 0;
@@ -1562,6 +1612,7 @@ int jhcSceneVis::twixt (int t, int r, int r2) const
 
 
 //= Decides whether object is left/right of reference object based on reference endpoints.
+// decides based on angle between centers, ignores separation (could be very far)
 // returns 1 (left), 2 (right), 3 (front), 4 (behind), or diagonal (0)
 
 int jhcSceneVis::side_of (int t, int r) const
@@ -1572,8 +1623,8 @@ int jhcSceneVis::side_of (int t, int r) const
   // get direction of focus object (-180 to 180) where Y is forward
   if (t == r)
     return 0;
-  seg->World(tloc, t);
-  seg->World(rloc, r);
+  sobj->World(tloc, t);
+  sobj->World(rloc, r);
   ang = R2D * atan2(tloc.Y() - rloc.Y(), tloc.X() - rloc.X());
 
   // resolve into one of four zones (or none)
@@ -1594,8 +1645,8 @@ int jhcSceneVis::side_of (int t, int r) const
 
 int jhcSceneVis::near_to (int t, int r) const
 {
-  double maj = seg->Major(r), min = seg->Minor(r), ht = seg->SizeZ(r);
-  double dx = seg->PosX(t) - seg->PosX(r), dy = seg->PosY(t) - seg->PosY(r);
+  double maj = sobj->Major(r), min = sobj->Minor(r), ht = sobj->OverZ(r);
+  double dx = sobj->PosX(t) - sobj->PosX(r), dy = sobj->PosY(t) - sobj->PosY(r);
   double dim = __max(__max(maj, min), ht), dist = sqrt(dx * dx + dy * dy);
 
   if (t == r)
@@ -1622,8 +1673,8 @@ int jhcSceneVis::trk2ccomp (int cat, int t, int r) const
   // sanity check
   if ((cat < 24) || (cat > 32))
     return 0;
-  vt = seg->AmtColor(t, cat - 24);
-  vr = seg->AmtColor(r, cat - 24);
+  vt = sobj->AmtColor(t, cat - 24);
+  vr = sobj->AmtColor(r, cat - 24);
 
   // significance comparison (already in fractions of area)
   if (vt > (vr + cdom))
@@ -1646,27 +1697,27 @@ double jhcSceneVis::pref_val (int cat, int t, int r, int r2) const
   if ((cat >= 0) && (cat <= 5))
     return rng_val(cat, t);
   if ((cat >= 6) && (cat <= 14)) 
-    return seg->AmtColor(t, cat - 6);
+    return sobj->AmtColor(t, cat - 6);
   
   // locations relative to reference(s)
   if (cat == 15)
   {
     // best tween = distance to middle (always min)
-    dx = seg->PosX(t) - 0.5 * (seg->PosX(r) + seg->PosX(r2));
-    dy = seg->PosY(t) - 0.5 * (seg->PosY(r) + seg->PosY(r2));
+    dx = sobj->PosX(t) - 0.5 * (sobj->PosX(r) + sobj->PosX(r2));
+    dy = sobj->PosY(t) - 0.5 * (sobj->PosY(r) + sobj->PosY(r2));
     return sqrt(dx * dx + dy * dy);    
   }
   if (cat == 16)
   {
     // best side = robot-based X coordinate (either max or min)
-    seg->World(loc, t);
+    sobj->World(loc, t);
     return loc.X();
   }
   if (cat == 17)
   {
     // best prox = simple distance (always min)
-    dx = seg->PosX(t) - seg->PosX(r);
-    dy = seg->PosY(t) - seg->PosY(r);
+    dx = sobj->PosX(t) - sobj->PosX(r);
+    dy = sobj->PosY(t) - sobj->PosY(r);
     return sqrt(dx * dx + dy * dy);
   }
 
@@ -1676,12 +1727,12 @@ double jhcSceneVis::pref_val (int cat, int t, int r, int r2) const
 
   // color values relative to reference (never reported in net)
   if ((cat >= 24) && (cat <= 32)) 
-    return seg->AmtColor(t, cat - 24);
+    return sobj->AmtColor(t, cat - 24);
 
   // special naked superlative (leftmost / rightmost)
   if (cat == 100)                       
   {
-    seg->World(loc, t);
+    sobj->World(loc, t);
     return loc.X();
   }
   return -1.0;
@@ -1726,14 +1777,14 @@ int jhcSceneVis::obj_specs (int props[], jhcAliaDesc **ref, jhcAliaDesc **ref2, 
 
 
 //= Get putative quantized value for some property category given a semantic network node.
-// only responds to categories 0-5 (DSLWTH)
+// only responds to range categories 0-5 (DSLWTH)
 // returns 1-5 typically, 0 if no requirement for this category
 
 int jhcSceneVis::net2val (const jhcAliaDesc *obj, int cat) const
 {
   char mid[40];
   const jhcAliaDesc *p, *d;
-  int i = 0, j = 0;
+  int val, i = 0, j = 0;
 
   // sanity check
   if ((obj == NULL) || (cat < 0) || (cat > 5))
@@ -1741,33 +1792,27 @@ int jhcSceneVis::net2val (const jhcAliaDesc *obj, int cat) const
 
   // search for positive HQ facts
   while ((p = obj->Fact("hq", i++)) != NULL)
-    if (p->Visible() && (p->Neg() <= 0) && (p->Val("wrt") == NULL))         
+    if (p->Visible() && (p->Neg() <= 0) && (p->Val("alt") == NULL))         
     {
-      // value ranges 1-5: distance -> "medium close" not "medium far"
-      if (p->LexMatch(rng0[cat]))
-      {
-        // check for "very" modifier
-        while ((d = p->Fact("deg", j++)) != NULL)
-          if (d->LexMatch("very"))
-            return 1;
-        return 2;
-      }
-      if (p->LexMatch(rng1[cat]))
-      {
-        // check for "very" modifier
-        while ((d = p->Fact("deg", j++)) != NULL)
-          if (d->LexMatch("very"))
-            return 5;
-        return 4;
-      }
+      // check for some pertinent value term for category
+      // distance -> "medium close" not "medium far"
       sprintf_s(mid, "medium %s", ((cat <= 0) ? rng0[cat] : rng1[cat]));
       if (p->LexMatch(mid))
         return 3;
+      if (p->LexMatch(rng0[cat]))
+        val = 2;
+      else if (p->LexMatch(rng1[cat]))
+        val = 4;
+      else 
+        continue;
+
+      // check for "very" modifier on high or low term
+      while ((d = p->Fact("deg", j++)) != NULL)
+        if (d->LexMatch("very"))
+          return((val > 3) ? 5 : 1);
+      return val;
     }
-      else if ((cat >= 6) && (cat <= 14))
-        if (p->LexMatch(col[cat - 6]))             // color: only 0 or 3
-          return 3;
-   return 0;
+  return 0;
 }
 
 
@@ -1785,7 +1830,7 @@ int jhcSceneVis::net2col (const jhcAliaDesc *obj, int cnum) const
 
   // search for positive HQ facts
   while ((p = obj->Fact("hq", i++)) != NULL)
-    if (p->Visible() && (p->Neg() <= 0) && (p->Val("wrt") == NULL))         
+    if (p->Visible() && (p->Neg() <= 0) && (p->Val("alt") == NULL))         
       if (p->LexMatch(col[cnum]))             // color: only 0 or 3
         return 3;
   return 0;
@@ -1804,13 +1849,13 @@ int jhcSceneVis::net2pos (jhcAliaDesc **ref, jhcAliaDesc **ref2, const jhcAliaDe
  
   // scan through relative spatial locations for object
   while ((p = obj->Fact("loc", i++)) != NULL)
-    if (p->Visible() && (p->Neg() <= 0) && ((wrt = p->Val("wrt")) != NULL))
-      if (((*ref == NULL) || (wrt == *ref)) && !wrt->LexMatch("all"))
+    if (p->Visible() && (p->Neg() <= 0) && ((wrt = p->Val("ref")) != NULL))
+      if (((*ref == NULL) || (wrt == *ref)) && !wrt->LexMatch("all"))          // "all" not needed?
       {
         if (cat == 15)                 
         {
           // "between"
-          if ((wrt2 = p->Val("wrt", 1)) != NULL)
+          if ((wrt2 = p->Val("ref", 1)) != NULL)
             if (((*ref2 == NULL) || (wrt2 == *ref2)) && p->LexMatch(loc[0]))
             {
               *ref = wrt;
@@ -1861,7 +1906,7 @@ int jhcSceneVis::net2comp (jhcAliaDesc **ref, const jhcAliaDesc *obj, int cat) c
 
   // look at all positive HQ assertions that are relative
   while ((p = obj->Fact("hq", i++)) != NULL)
-    if (p->Visible() && (p->Neg() <= 0) && ((wrt = p->Val("wrt")) != NULL))
+    if (p->Visible() && (p->Neg() <= 0) && ((wrt = p->Val("alt")) != NULL))
       if (((*ref == NULL) || (wrt == *ref)) && !wrt->LexMatch("all"))
       {
         // test for max or min of some range value (dslwth)
@@ -1911,7 +1956,7 @@ int jhcSceneVis::net2super (const jhcAliaDesc *obj) const
         return 101;
 
       // check for correct reference ("all")
-      if ((r = p->Val("wrt")) == NULL)
+      if ((r = p->Val("alt")) == NULL)
         continue;
       if (!r->LexMatch("all"))
         continue;
@@ -1972,11 +2017,11 @@ jhcAliaDesc *jhcSceneVis::obj_node (int t)
     obj = rpt->NewNode("obj");
     rpt->NewProp(obj, "ako", "object", 0, 1.0, 1);
     rpt->NewProp(obj, "hq", "visible", 0, 1.0, 1);
-    rpt->VisAssoc(seg->ObjID(t), obj);
-    seg->SetTag(t, obj->Nick());
+    rpt->VisAssoc(sobj->ObjID(t), obj);
+    sobj->SetTag(t, obj->Nick());
   }
   rpt->NewFound(obj);                  // make eligible for FIND
-  seg->SetState(t, 2);                 // display as green
+  sobj->SetState(t, 2);                // display as green
   return obj;
 }
 
@@ -2014,9 +2059,9 @@ void jhcSceneVis::prop2net (jhcAliaDesc *obj, int props[], jhcAliaDesc *ref, jhc
 
       // add relationship with reference(s)
       p = rpt->NewProp(obj, ((cat <= 17) ? "loc" : "hq"), lex, 0, 1.0, 1, 2);
-      rpt->AddArg(p, "wrt", ref);
+      rpt->AddArg(p, ((cat <= 17) ? "ref" : "alt"), ref);
       if (cat == 15)
-        rpt->AddArg(p, "wrt", ref2);
+        rpt->AddArg(p, "ref", ref2);
     }
 } 
 
@@ -2084,7 +2129,7 @@ void jhcSceneVis::des2net (jhcAliaDesc *obj, int cat, int des, int val)
   }
   else if (des >= 4)
   {
-    hq = rpt->NewProp(obj, "hq", rng1[cat], ((val >= 2) ? 0 : 1), 1.0, 1);     
+    hq = rpt->NewProp(obj, "hq", rng1[cat], ((val >= 4) ? 0 : 1), 1.0, 1);     
     if (des >= 5)
       rpt->NewProp(hq, "deg", "very", ((val >= 5) ? 0 : 1), 1.0, 1);
   }
@@ -2122,11 +2167,12 @@ void jhcSceneVis::super2net (jhcAliaDesc *obj, int sel) const
     return;
   if (abs(sel) >= 100)
     hq = rpt->NewProp(obj, "hq", val, 0, 1.0, 1);
-  else
+  else 
   {
-    // add reference object for most 
+    // add dummy reference object for superlative (but only if new HQ)
     hq = rpt->NewProp(obj, "hq", val, 0, 1.0, 1, 2);
-    rpt->AddArg(hq, "wrt", rpt->NewNode("obj", "all"));
+    if (hq->Val("alt") == NULL)
+      rpt->AddArg(hq, "alt", rpt->NewNode("obj", "all"));
     rpt->GramTag(hq, JTAG_ASUP);
   }
 }

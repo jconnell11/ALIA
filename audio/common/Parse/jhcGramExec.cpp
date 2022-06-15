@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@
 jhcGramExec::jhcGramExec ()
 {
   // current version
-  ver = 1.60;
+  ver = 1.70;
 
   // max number of words that "+" can match
   dict_n = 5; 
@@ -271,13 +271,13 @@ int jhcGramExec::ExtendRule (const char *name, const char *phrase)
 // returns number of top level interpretations (0 if out of grammar)
 // about 11 ms on 3 GHz i5 for 3000 parse states (7 possible parses)
 
-int jhcGramExec::Parse (const char *sent)
+int jhcGramExec::Parse (const char *sent, int fix)
 {
   int i, w, k, n, w0, k0, n0;
 
   // do basic work (assume correct top level rules already activated)
   *norm = '\0';
-  if (parse_analyze(sent) > 1)
+  if (parse_analyze(expand(sent, fix)) > 1)
     for (i = 0; i < nt; i++)
     {
       // pick interpretation with most words (least wildcards),
@@ -302,6 +302,84 @@ int jhcGramExec::Parse (const char *sent)
       norm[strlen(norm) - 1] = '\0';    
   txt2.SetSource(norm);
   return nt;
+}
+
+
+//= Expand some standard contractions (e.g. "I'm" -> "I am").
+// fix: 0 = change nothing, 1 = only pronouns, 2 = negative forms also
+// similar to jhcTalkFcn::fix_abbrev but in reverse
+// returns pointer to expanded string
+
+const char *jhcGramExec::expand (const char *sent, int fix)
+{
+  // check for simplest case of no changes
+  if ((fix <= 0) || (sent == NULL) || (*sent == '\0'))
+    return sent;
+  strcpy_s(full, sent);
+
+  // pronoun-be separation
+  subst_all("i'm",   "I am");          // odd lowercase
+  subst_all("I'm",   "I am");
+  subst_all("'re",   " are");          // you're, we're, they're
+  subst_all("he's",  "he is");
+  subst_all("He's",  "He is");         // capitalized
+  subst_all("she's", "she is");
+  subst_all("She's", "She is");        // capitalized
+  subst_all("it's",  "it is");
+  subst_all("It's",  "It is");         // capitalized
+  subst_all("who's", "who is");  
+  subst_all("Who's", "Who is");        // capitalized
+  subst_all("'d",    " would");        // might be "had"
+
+  // expand negations
+  if (fix < 2)
+    return full;
+  subst_all("n't", " not");
+  return full;
+}
+
+
+//= Convert every occurrence of pattern string into replacement string.
+// operates on member variable "full" (assumes long enough)
+// assumes "pat" no longer than "rep" (i.e. a contraction) 
+// <pre>
+// 
+// I'm -> I_amm                  p = 3, r = 5, sh = 2
+// 
+//  hit:          *              i = 10 (% = terminator)
+// full:  tell_me_I'm_a_hero%
+//        0123456789012345678
+//  wrt:          0123456789012
+//                     _a_hero%
+//                I_amm
+// tail:               *                     
+//
+// </pre>
+
+void jhcGramExec::subst_all (const char *pat, const char *rep)
+{
+  char *fix;
+  const char *hit, *tail = full;
+  int i, r = (int) strlen(rep), p = (int) strlen(pat), sh = r - p;
+
+  // look for every occurrence of pattern
+  if (sh < 0)
+    return;
+  while ((hit = strstr(tail, pat)) != NULL)
+  {
+    // get equivalent modifiable pointer into string
+    fix = full + (int)(hit - full);
+
+    // move remainder of string to right
+    if (sh > 0)
+      for (i = (int) strlen(hit); i >= p; i--)
+        fix[i + sh] = fix[i];
+
+    // copy in replacement (no null termination)
+    for (i = 0; i < r; i++)     
+      fix[i] = rep[i];
+    tail = hit + r;
+  }
 }
 
 
@@ -812,6 +890,8 @@ int jhcGramExec::parse_load (const char *grammar)
   char *start, *end;
 
   // try opening file 
+  if ((grammar == NULL) || (*grammar == '\0'))
+    return 0;
   if (fopen_s(&in, grammar, "r") != 0)
     return jprintf(">>> Could not open %s in jhcGramExec::parse_load!\n", grammar);
 

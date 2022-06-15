@@ -127,7 +127,6 @@ public:
   void IncludeRoi (int x, int y);
   void CenterRoi (int cx, int cy, int wid =-1, int ht =-1);
   void CenterRoi (double cx, double cy, double wid, double ht =0.0);
-  void CFracRoi (double cx, double cy, double wid, double ht);
   void ShiftRoi (const jhcRoi& src, double alpha =0.5, int force =0);
   void ZoomRoi (const jhcRoi& src, double cx, double cy, double sc);
   void InvertRoi (int w, int h);

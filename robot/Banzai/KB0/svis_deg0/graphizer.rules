@@ -1,0 +1,117 @@
+// standard interpretation of semantic network constructs
+// ================================================
+
+RULE 1 - "If something is more somehow than something else then the something else is not more somehow than it"
+  if: hq-1 -lex-  ***-1
+           -hq--> obj-1
+           -alt-> obj-2
+then: hq-2 -lex-  ***-1
+           -neg-  1
+           -hq--> obj-2
+           -alt-> obj-1
+
+
+// ------------------------------------------------
+
+RULE 2 - "If something is very somehow then it is somehow"
+  if:  hq-1 -lex-  ***-1
+            -blf-  0
+            -hq--> obj-1
+      deg-1 -lex-  very
+            -deg-> hq-1
+then:  hq-2 -lex-  ***-1
+            -hq--> obj-1
+
+
+RULE 3 - "If something is not somehow then it is not very somehow"
+  if:  hq-1 -lex-  ***-1
+            -neg-  1
+            -hq--> obj-1
+then:  hq-2 -lex-  ***-1
+            -blf-  0
+            -hq--> obj-1
+      deg-1 -lex-  very
+            -neg-  1
+            -deg-> hq-2
+
+
+RULE 4 - "If something is somehow then it is not medium somehow"
+  if:  hq-1 -lex-  ***-1
+            -hq--> obj-1
+then:  hq-2 -lex-  ***-1
+            -blf-  0
+            -hq--> obj-1
+      deg-1 -lex-  medium
+            -neg-  1
+            -deg-> hq-2
+
+
+RULE 5 - "If something is medium somehow then it is not somehow"
+  if:  hq-1 -lex-  ***-1
+            -blf-  0
+            -hq--> obj-1
+      deg-1 -lex-  medium
+            -deg-> hq-1
+then:  hq-2 -lex-  ***-1
+            -neg-  1
+            -hq--> obj-1
+
+
+// ------------------------------------------------
+
+RULE 6 - "If something is very somewhere then it is somewhere"
+  if: loc-1 -lex-  ***-1
+            -blf-  0
+            -loc-> obj-1
+            -ref-> obj-2
+      deg-1 -lex-  very
+            -deg-> loc-1
+then: loc-2 -lex-  ***-1
+            -loc-> obj-1
+            -ref-> obj-2
+
+
+RULE 7 - "If something is not somewhere then it is not very somewhere" 
+  if: loc-1 -lex-  ***-1
+            -neg-  1
+            -loc-> obj-1
+            -ref-> obj-2
+then: loc-2 -lex-  ***-1
+            -blf-  0
+            -loc-> obj-1
+            -ref-> obj-2
+      deg-1 -lex-  very
+            -neg-  1
+            -deg-> loc-2
+
+
+RULE 8 - "If something is somewhere then it is not medium somewhere"
+  if: loc-1 -lex-  ***-1
+            -loc-> obj-1
+            -ref-> obj-2
+then: loc-2 -lex-  ***-1
+            -blf-  0
+            -loc-> obj-1
+            -ref-> obj-2
+      deg-1 -lex-  medium
+            -neg-  1
+            -deg-> loc-2
+
+
+RULE 9 - "If something is medium somewhere then it is not somewhere"
+  if: loc-1 -lex-  ***-1
+            -blf-  0
+            -loc-> obj-1
+            -ref-> obj-2
+      deg-1 -lex-  medium
+            -deg-> loc-1
+then: loc-2 -lex-  ***-1
+            -neg-  1
+            -loc-> obj-1
+            -ref-> obj-2
+
+
+
+
+
+

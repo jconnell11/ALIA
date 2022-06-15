@@ -30,22 +30,26 @@
   with
 
 
-// locations 
+// locations requiring a reference item
 
 =[LOC]
-  behind
-  outside (of)
-  inside (of)
-  at
-  on
-  in
-  next to
-  near (to)
-  close to
-  in front of
-  in back of
   (to the) left of 
   (to the) right of
+  in front of
+  in back of
+  behind
+  near (to)
+  close to
+  next to
+  on (top of)
+  at
+  in
+  inside (of)
+  outside (of)
+  under
+  underneath
+  over (top of)
+  toward
 
 
 // standalone view-dependent locations (but not superlatives)
@@ -57,10 +61,26 @@
   in back
 
 
-// dual location phrase
+// locations requiring two references
 
 =[LOC-2]
   between
+
+
+// location implying a destination
+
+=[LOC-D]
+  onto
+  on to
+  into
+  in to
+
+
+// any article (definite or indefinite)
+
+=[art]
+  <def>
+  <ind>
 
 
 // indefinite article
@@ -144,9 +164,15 @@
 
 =[WRT]
   my
+  mine
   your
+  yours
   its
   their
+  theirs
+  his 
+  her
+  hers
 
 
 // degree for an adjective (generally an adverb)
@@ -189,6 +215,7 @@
 =[AUX-D]
   did
   does
+  do
 
 
 // infinitive
@@ -284,12 +311,21 @@
 
 =[BEFORE]
   before
+  first
 
 
 // after attempting action
 
 =[AFTER]
   after
+
+
+// introductory conjunctions
+
+=[so]
+  so
+  thus
+  therefore
 
 
 // conditions

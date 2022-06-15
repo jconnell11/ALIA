@@ -198,7 +198,7 @@ void jhcAliaStats::Wheels (jhcDisplay *d, int i, int j)
 void jhcAliaStats::Neck (jhcDisplay *d, int i, int j) 
 {
   int pc = pcmd.MaxAbs(), pv = pdeg.MaxAbs(), tc = tcmd.MaxAbs(), tv = tdeg.MaxAbs();
-  int x, y, ppk = __max(pc, pv), tpk = __max(tc, tv);
+  int x, y, ppk = __max(1000, __max(pc, pv)), tpk = __max(1000, __max(tc, tv));
 
   // panning speed
   if (corner(x, y, i, j, d) <= 0)

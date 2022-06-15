@@ -1,0 +1,12 @@
+// standard interpretation of semantic network constructs
+// ================================================
+
+RULE 1 - "If something is more somehow than something else then the something else is not more somehow than it"
+  if: hq-1 -lex-  ***-1
+           -hq--> obj-1
+           -alt-> obj-2
+then: hq-2 -lex-  ***-1
+           -neg-  1
+           -hq--> obj-2
+           -alt-> obj-1
+

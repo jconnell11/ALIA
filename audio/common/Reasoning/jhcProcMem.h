@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,8 +43,8 @@ class jhcProcMem
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  // expansions for different kinds of directives
-  jhcAliaOp *resp[JDIR_MAX];
+  // total collection of operators (no binning)
+  jhcAliaOp *ops;
   int np;
 
 
@@ -71,9 +71,11 @@ public:
   int FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth) const;
 
   // file functions
-  int Load (const char *fname, int add =0, int rpt =0, int level =1);
-  int Save (const char *fname, int level =1, int cats =0) const;
+  int Load (const char *base, int add =0, int rpt =0, int level =1);
+  int Save (const char *base, int level =1) const;
   int Print (int level =1) const {return save_ops(stdout, level);}
+  int Alterations (const char *base) const;
+  int Overrides (const char *base);
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -83,7 +85,6 @@ private:
 
   // file functions
   int save_ops (FILE *out, int level) const;
-  int save_cats (FILE *out, int level) const;
 
 
 };

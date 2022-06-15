@@ -32,6 +32,7 @@
 
 jhcBindings::~jhcBindings ()
 {
+  delete [] term;
   delete [] sub;
   delete [] key;
 }
@@ -42,8 +43,9 @@ jhcBindings::~jhcBindings ()
 jhcBindings::jhcBindings (const jhcBindings *ref)
 {
   // make arrays on heap (keeps jhcAliaDir size manageable)
-  key = new const jhcNetNode * [bmax];
-  sub = new jhcNetNode * [bmax];
+  key  = new const jhcNetNode * [bmax];
+  sub  = new jhcNetNode * [bmax];
+  term = new int [bmax];
 
   // initialize contents
   nb = 0;
@@ -62,8 +64,9 @@ jhcBindings *jhcBindings::Copy (const jhcBindings& ref)
 
   for (nb = 0; nb < nref; nb++)
   {
-    key[nb] = ref.key[nb];
-    sub[nb] = ref.sub[nb];
+    key[nb]  = ref.key[nb];
+    sub[nb]  = ref.sub[nb];
+    term[nb] = ref.term[nb];
   }
   expect = ref.expect;
   return this;
@@ -78,7 +81,7 @@ int jhcBindings::AnyHyp () const
   int i;
 
   for (i = 0; i < nb; i++)
-//    if (sub[i]->Belief() <= 0.0)
+//    if (!key[i]->Hyp() && sub[i]->Hyp())
     if (sub[i]->Hyp())
       return 1;
   return 0;
@@ -89,7 +92,7 @@ int jhcBindings::AnyHyp () const
 //                              List Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Get the current binding value for some key.
+//= Get the current node binding value for some node key.
 // returns NULL if key not found
 
 jhcNetNode *jhcBindings::LookUp (const jhcNetNode *k) const
@@ -115,7 +118,7 @@ int jhcBindings::index (const jhcNetNode *probe) const
 }
 
 
-//= Do inverse lookup of key for this substitution (may not be unique).
+//= Do inverse lookup of node key for this node substitution (may not be unique).
 
 const jhcNetNode *jhcBindings::FindKey (const jhcNetNode *subst) const
 {
@@ -126,6 +129,80 @@ const jhcNetNode *jhcBindings::FindKey (const jhcNetNode *subst) const
       if (subst == sub[i])             // first key found is winner
         return key[i];
   return NULL;
+}
+
+
+//= Get lexical term associated with node, possibly looking up any "***-x" variable.
+
+const char *jhcBindings::LexSub (const jhcNetNode *k) const
+{
+  if (k == NULL)
+    return NULL;
+  if (!k->LexVar())
+    return k->Lex();
+  return lookup_lex(k->Lex());
+}
+
+
+//= Scan through previous bindings to find substitution to make for this lex variable.
+
+const char *jhcBindings::lookup_lex (const char *var) const
+{
+  int i;
+
+  if (var != NULL)
+    for (i = 0; i < nb; i++)
+      if ((term[i] > 0) && (strcmp(key[i]->Lex(), var) == 0))
+        return sub[i]->Lex();
+  return NULL;
+}
+
+
+//= Find the hash bin (if any) associated with node's lexical term (after variable substitution).
+
+int jhcBindings::LexBin (const jhcNetNode& k) const
+{
+  const char *var;
+  int i;
+
+  if (!k.LexVar())
+    return k.Code();
+  var = k.Lex();
+  for (i = 0; i < nb; i++)
+    if ((term[i] > 0) && (strcmp(key[i]->Lex(), var) == 0))
+      return sub[i]->Code();
+  return 0;
+}
+
+
+//= See if lexical term associated with mate is compatible with lexical term of focus.
+// <pre>
+//   focus  (bind)     mate     agree  <reason>
+//  ---------------   -----     ---------------------
+//    NULL             NULL      yes   <don't care>            
+//    big              NULL       no   <not specific>
+//    ***-1 (NULL)     NULL       no   <not specific>
+//    ***-1 (big)      NULL       no   <not specific>
+//    NULL            small      yes   <don't care>
+//    big             small       no   <mismatch>
+//    ***-1 (NULL)    small      yes   <add>
+//    ***-1 (big)     small       no   <mismatch>
+//    ***-1 (small)   small      yes   <match>
+// </pre>
+// primarily used by jhcsituation::consistent
+
+bool jhcBindings::LexAgree (const jhcNetNode *focus, const jhcNetNode *mate) const
+{
+  const char *flex = focus->Lex(), *mlex = mate->Lex();
+
+  if (flex == NULL)
+    return true;                                 // don't care about term
+  if (mlex == NULL)
+    return false;                                // not specific enough
+  if (focus->LexVar()) 
+    if ((flex = lookup_lex(flex)) == NULL)      
+      return true;                               // can add as binding
+  return(strcmp(flex, mlex) == 0);
 }
 
 
@@ -142,11 +219,14 @@ int jhcBindings::Bind (const jhcNetNode *k, jhcNetNode *subst)
   if (InKeys(k))
     return -1;
 
-  // try adding a new key-substitution pair
+  // try adding a new key-substitution pair (and possibly bind variable lex as well)
   if (nb >= bmax)
     return jprintf(">>> More than %d pairs in jhcBindings:Bind !\n", bmax);
-  key[nb] = k;
-  sub[nb] = subst;
+  key[nb]  = k;
+  sub[nb]  = subst;
+  term[nb] = 0;
+  if (k->LexVar() && (lookup_lex(k->Lex()) == NULL))
+    term[nb] = 1;
   nb++;
   return nb;
 }
@@ -242,6 +322,7 @@ int jhcBindings::SubstMiss (const jhcNodeList& f) const
 bool jhcBindings::Same (const jhcBindings& ref) const
 {
   const jhcNetNode *s;
+  const char *var, *wd;
   int i;
 
   // must have exactly the same number of bindings
@@ -254,7 +335,16 @@ bool jhcBindings::Same (const jhcBindings& ref) const
     // punt if key does not exist in reference or value is different
     if ((s = ref.LookUp(key[i])) == NULL)
       return false;
-    if (s != sub[i]) 
+    if (s != sub[i])
+      return false;
+
+    // punt if lex variable does not exist in reference or value is different
+    if (term[i] <= 0)
+      continue;
+    var = key[i]->Lex();    
+    if ((wd = ref.lookup_lex(var)) == NULL)
+      return false;
+    if (strcmp(wd, lookup_lex(var)) != 0)
       return false;
   }
   return true;
@@ -271,7 +361,7 @@ void jhcBindings::ReplaceSubs (const jhcBindings& alt)
 
   for (i = 0; i < nb; i++)
     if ((s = alt.LookUp(sub[i])) != NULL)
-      sub[i] = s;
+      sub[i] = s;                                // term[i] unchanged
 }
 
 
@@ -284,15 +374,11 @@ void jhcBindings::Print (const char *prefix, int lvl, int num) const
 {
   int start = ((num < 0) ? -num : 0);
   int stop  = ((num > 0) ? __min(num, nb) : nb);
-  int i, k = 0, n = 0, k2 = 0, n2 = 0;
+  int i, k = 2, n = 1;
 
   // get print field widths
   for (i = start; i < stop; i++)
-  {
     key[i]->NodeSize(k, n);
-    if (sub[i] != NULL)
-      sub[i]->NodeSize(k2, n2);
-  }
 
   // print header (even if nothing to show)
   if ((prefix != NULL) && (*prefix != '\0'))
@@ -300,14 +386,13 @@ void jhcBindings::Print (const char *prefix, int lvl, int num) const
   else
     jprintf("%*sBindings:\n", lvl, "");
 
-  // print key-sub pairs (might be no pairs)
+  // go through selected key-sub pairs (might be none)
   for (i = start; i < stop; i++)
   {
-    jprintf("%*s  %*s = ", lvl, "", (k + n + 1), key[i]->Nick());
-    if (sub[i] != NULL)
-      jprintf("%*s\n", -(k2 + n2 + 1), sub[i]->Nick());
-    else
-      jprintf("NULL\n");
+    // list key node and substitution node then possibly lexical variable with value
+    jprintf("%*s  %*s = %s\n", lvl, "", (k + n + 1), key[i]->Nick(), ((sub[i] != NULL) ? sub[i]->Nick() : "NULL"));
+    if (term[i] > 0)
+      jprintf("%*s  %*s = %s\n", lvl, "", (k + n + 1), key[i]->Lex(), sub[i]->Lex());
   }
 }
 

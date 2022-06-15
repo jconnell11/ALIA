@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 #include <stdio.h>                     // needed for FILE
 
 #include "Action/jhcAliaChain.h"       // common robot
+#include "Action/jhcAliaMood.h"
 
 #include "Reasoning/jhcAliaNote.h"      
 #include "Reasoning/jhcWorkMem.h"      
@@ -56,6 +57,7 @@ private:
 
   // basic list of focus items and status
   jhcAliaChain *focus[imax];
+  jhcGraphlet err[imax];
   int done[imax], mark[imax];
   int fill, chock;
 
@@ -71,7 +73,7 @@ private:
   int svc;
 
   // part for new NOTE focus
-  class jhcAliaDir *dir0;
+  jhcGraphlet nkey;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -105,6 +107,9 @@ public:
   // list manipulation
   int NextFocus ();
   jhcAliaChain *FocusN (int n) const;
+  jhcAliaChain *Current () const {return FocusN(svc);}
+  jhcGraphlet *Error ();
+  void ClearErr ();
   bool NeverRun (int n) const;
   int BaseBid (int n) const;
   void SetActive (const jhcAliaChain *f, int running =1);
@@ -118,7 +123,7 @@ public:
   int Update (int gc =1);
 
   // halo interaction
-  double CompareHalo (const jhcGraphlet& key);
+  double CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood);
   int ReifyRules (jhcBindings& b, int note =2);
 
   // external interface (jhcAliaNote virtuals)
@@ -133,6 +138,8 @@ public:
     {return AddDeg(dynamic_cast<jhcNetNode *>(head), role, word, amt, neg, blf, chk, args);}
   void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val) const
     {if (head != NULL) (dynamic_cast<jhcNetNode *>(head))->AddArg(slot, dynamic_cast<jhcNetNode *>(val));}
+  void Keep (jhcAliaDesc *obj) const
+    {jhcNetNode *n = dynamic_cast<jhcNetNode*>(obj); if (n != NULL) n->keep = 1;}
   void NewFound (jhcAliaDesc *obj) const 
     {SetGen(dynamic_cast<jhcNetNode *>(obj));}
   void GramTag (jhcAliaDesc *prop, int t) const 
@@ -140,13 +147,15 @@ public:
   jhcAliaDesc *Person (const char *name) const {return FindName(name);}
   jhcAliaDesc *Self () const                   {return Robot();}
   jhcAliaDesc *User () const                   {return Human();}
-  int VisAssoc (int vid, jhcAliaDesc *obj, int agt =0) 
-    {return ExtLink(vid, dynamic_cast<jhcNetNode *>(obj), agt);}
-  jhcAliaDesc *NodeFor (int vid, int agt =0) const     
-    {return ExtRef(vid, agt);}
-  int VisID (const jhcAliaDesc *obj, int agt =0) const 
-    {return ExtRef(dynamic_cast<const jhcNetNode *>(obj), agt);}
-  int FinishNote (int keep =1);
+  int VisAssoc (int vid, jhcAliaDesc *obj, int kind =0) 
+    {return ExtLink(vid, dynamic_cast<jhcNetNode *>(obj), kind);}
+  int VisID (const jhcAliaDesc *obj, int kind =0) const 
+    {return ExtRef(dynamic_cast<const jhcNetNode *>(obj), kind);}
+  jhcAliaDesc *NodeFor (int vid, int kind =0) const     
+    {return ExtRef(vid, kind);}
+  int VisEnum (int last, int kind =0) const     
+    {return ExtEnum(last, kind);}
+  int FinishNote (jhcAliaDesc *fail =NULL);
 
   // file functions
   int LoadFoci (const char *fname, int app =0);

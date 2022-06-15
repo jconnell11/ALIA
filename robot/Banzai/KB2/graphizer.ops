@@ -1,0 +1,66 @@
+// Responses to command failures  
+// ================================================
+
+OP 1 - "Before explaining failing to do something find out why that thing"
+  trig:
+  ANTE[ act-1 -lex-  explain
+              -obj-> act-2 ]
+-----------------
+  FIND[ conj-1 -lex-   because
+               -why--> act-2
+               -sit--> fact-1 ]
+
+
+OP 2 - "To explain something when that something is because something else then tell me that something else"
+  trig:
+    DO[  act-1 -lex-  explain
+               -obj-> fail-1
+        fail-1 -lex-  fail
+               -act-> plan-1
+         cuz-1 -lex-  because
+               -why-> fail-1
+               -sit-> sit-1 ]
+-----------------
+    DO[  act-3 -lex-   tell
+               -dest-> user-1
+               -obj--> sit-1 
+        user-1 -lex-   me ] 
+
+
+OP 3 - "To explain failing to do something apologize"
+  trig:
+    DO[  act-1 -lex-  explain
+               -obj-> fail-1
+        fail-1 -lex-  fail
+               -act-> plan-1 ]
+-----------------
+    DO[ act-4 -lex-  apologize ]
+
+
+// ----------------------------------------
+
+OP 4 - "To apologize say sorry I couldn't do that"
+  trig:
+    DO[ act-1 -lex-  apologize ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  sorry I couldn't do that ]
+
+
+OP 5 - "To apologize say I failed whoever"
+  trig:
+    DO[ act-1 -lex-  apologize ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  I failed ?0 ]
+
+
+OP 6 - "To apologize say oops, something went wrong"
+  trig:
+    DO[ act-1 -lex-  apologize ]
+-----------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  oops, something went wrong ]

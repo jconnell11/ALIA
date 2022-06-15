@@ -1,0 +1,83 @@
+// Inverse exclusion of terms in "SceneVis" kernel
+// ================================================
+
+RULE 1 
+  if: hq-1 -lex-  redder
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  redder
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1
+
+RULE 2 
+  if: hq-1 -lex-  oranger
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  oranger
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1
+
+RULE 3 
+  if: hq-1 -lex-  yellower
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  yellower
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1
+
+RULE 4 
+  if: hq-1 -lex-  greener
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  greener
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1
+
+RULE 5 
+  if: hq-1 -lex-  bluer
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  bluer
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1
+
+RULE 6 
+  if: hq-1 -lex-  purpler
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  purpler
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1
+
+RULE 7 
+  if: hq-1 -lex-  blacker
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  blacker
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1
+
+RULE 8 
+  if: hq-1 -lex-  grayer
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  grayer
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1
+
+RULE 9 
+  if: hq-1 -lex-  whiter
+           -hq--> obj-1
+           -wrt-> obj-2
+then: hq-2 -lex-  whiter
+           -neg-  1
+           -hq--> obj-2
+           -wrt-> obj-1

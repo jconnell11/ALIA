@@ -78,7 +78,6 @@ protected:
 // PUBLIC MEMBER VARIABLES
 public:
   jhcImg map, map2;          /** Fused height map.    */
-  jhcArr hhist;              /** Height histogram.    */
   char name[40];             /** Configuration tag.   */
   double ztab;               /** Table height now.    */
   int rasa;                  /** New ingest flag.     */
@@ -196,8 +195,10 @@ public:
   int PELS (double ins) const {return ROUND(ins / ipp);}
 
   // map height conversion routines
-  double ZPI () const {return(253.0 / (zhi - zlo));}
-  double IPZ () const {return((zhi - zlo) / 253.0);}
+  double HMIN () const {return(ztab + zlo);}
+  double HMAX () const {return(ztab + zhi);}
+  double ZPI () const  {return(253.0 / (zhi - zlo));}
+  double IPZ () const  {return((zhi - zlo) / 253.0);}
   double Z2I (double z) const   {return(ztab + DZ2I(z));}   
   int I2Z (double ht) const     {return DI2Z(ht - ztab);}   
   double DZ2I (double dz) const {return(zlo + (dz - 1.0) * (zhi - zlo) / 253.0);} 
@@ -211,12 +212,12 @@ public:
   int EstDev (jhcImg& devs, double dmax =2.0, double ztol =4.0);
   int PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax =2.0, double search =0.0, const jhcRoi *area =NULL);
   void PlaneVals () const;
-  double PickPlane (double hpref, int amin =200, int bin =4, double flip =0.0);
 
   // surface intersection
   int BeamFill (jhcImg& dest, double z =0.0, int r =255, int g =255, int b =255) const; 
   int BeamEmpty (jhcImg& dest, double z =0.0, int t =1, int r =255, int g =255, int b =255) const; 
   int BeamCorners (double *x, double *y, double z =0.0) const;
+  double MapZ (int mx, int my, int sz =3, double def =0.0) const;
 
   // debugging graphics
   void AdjGeometry (int cam =0);
@@ -243,7 +244,6 @@ protected:
 private:
   // creation and initialization
   void dealloc ();
-  void std_cams ();
 
   // plane fitting
   int z_err (jhcImg& devs, const jhcImg& hts, double dmax, double lo, double hi) const;

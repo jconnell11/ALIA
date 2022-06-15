@@ -75,9 +75,6 @@ void jhcOverhead3D::dealloc ()
 
 jhcOverhead3D::jhcOverhead3D (int ncam)
 {
-  // plane selection
-  hhist.SetSize(256);
-
   // determine how many cameras will be used
   smax = 0;
   AllocCams(ncam);
@@ -942,38 +939,6 @@ int jhcOverhead3D::z_err (jhcImg& devs, const jhcImg& hts, double dmax, double l
 }
 
 
-//= Look for best planar region closest near preferred height (in inches).
-// generally picks closest plane below "hpref" unless beyond "flip"
-// returns plane height if good surface found, else original hpref 
-
-double jhcOverhead3D::PickPlane (double hpref, int amin, int bin, double flip)
-{
-  jhcArr hhist0(256);
-  double h;
-  int pk;
-
-  // get nice histogram of all projection heights
-  HistAll(hhist0, map, 1);
-  hhist.Boxcar(hhist0, bin);
-
-  // try to pick plane closest BELOW preferred height
-  if (flip > 0.0)
-  {
-    pk = hhist.NearMassPeak(I2Z(hpref), amin, 0);
-    h = Z2I(pk);
-    if ((hhist.ARef(pk) >= amin) && ((hpref - h) < flip))
-      return h;
-  }
-
-  // otherwise pick closest plane below or ABOVE given height
-  pk = hhist.NearMassPeak(I2Z(hpref), amin, 1);
-  h = Z2I(pk);
-  if (hhist.ARef(pk) >= amin)
-    return h;
-  return hpref;
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //                           Surface Intersection                        //
 ///////////////////////////////////////////////////////////////////////////
@@ -1008,8 +973,8 @@ int jhcOverhead3D::BeamEmpty (jhcImg& dest, double z, int t, int r, int g, int b
 
 
 //= Find where adjusted depth view impinges on a surface of some height.
-// adapted from original jhcLocalOcc::expect_floor, assumes roll = 0
-// fills clockwise: x[] = {nwx, nex, sex, swx}, y[] = {nwy, ney, sey, swy}
+// adapted from original jhcLocalOcc::expect_floor (obsolete), assumes roll = 0
+// fills counterclockwise: x[] = {swx, sex, nex, nwx}, y[] = {swy, sey, ney, nwy}
 // returns 1 if successful, 0 if no intersection
 
 int jhcOverhead3D::BeamCorners (double *x, double *y, double z) const
@@ -1036,10 +1001,10 @@ int jhcOverhead3D::BeamCorners (double *x, double *y, double z) const
   by0 = cy0 + off0 * s;
   lfw0 = hyp0 * tan(lrads);
   rtw0 = hyp0 * tan(rrads);
-  x[2] = ppi * (bx0 + rtw0 * s);       // sex
-  y[2] = ppi * (by0 - rtw0 * c);       // sey
-  x[3] = ppi * (bx0 - lfw0 * s);       // swx
-  y[3] = ppi * (by0 + lfw0 * c);       // swy
+  x[0] = ppi * (bx0 - lfw0 * s);       // swx
+  y[0] = ppi * (by0 + lfw0 * c);       // swy
+  x[1] = ppi * (bx0 + rtw0 * s);       // sex
+  y[1] = ppi * (by0 - rtw0 * c);       // sey
 
   // find middle of top of beam, else use far end of sensing cone
   hyp1 = -dz / sin(mrads + trads);
@@ -1059,11 +1024,33 @@ int jhcOverhead3D::BeamCorners (double *x, double *y, double z) const
   by1 = cy0 + off1 * s;
   lfw1 = hyp1 * tan(lrads);
   rtw1 = hyp1 * tan(rrads);
-  x[0] = ppi * (bx1 - lfw1 * s);       // nwx
-  y[0] = ppi * (by1 + lfw1 * c);       // nwy
-  x[1] = ppi * (bx1 + rtw1 * s);       // nex
-  y[1] = ppi * (by1 - rtw1 * c);       // ney
+  x[2] = ppi * (bx1 + rtw1 * s);       // nex
+  y[2] = ppi * (by1 - rtw1 * c);       // ney
+  x[3] = ppi * (bx1 - lfw1 * s);       // nwx
+  y[3] = ppi * (by1 + lfw1 * c);       // nwy
   return 1;
+}
+
+
+//= Get estimate of true height (inches) near a clicked overhead map point.
+// takes image coordinates and a centered box size in pixels for finding average
+// returns default value if no samples
+
+double jhcOverhead3D::MapZ (int mx, int my, int sz, double def) const
+{
+  int x, y, hsz = sz >> 1, sk = map.RoiSkip(sz), sum = 0, cnt = 0;
+  const UC8 *m = map.RoiSrc(mx - hsz, my - hsz);
+
+  for (y = sz; y > 0; y--, m += sk)
+    for (x = sz; x > 0; x--, m++)
+      if (*m > 0)
+      {
+        sum += *m;
+        cnt++;
+      }
+  if (cnt <= 0)
+    return def;
+  return Z2I(sum / (double) cnt);
 }
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,6 @@
 // limitations under the License.
 // 
 ///////////////////////////////////////////////////////////////////////////
-
-#include <math.h>
 
 #include "Semantic/jhcSituation.h"
 
@@ -135,7 +133,7 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   // get a bound node from query graphlet (np static)
   for (i = 0; ((i < n) && (focus == NULL)); i++)
   {
-    // look through its properties for an unbound node
+    // look through its properties for an unbound node 
     anchor = b->GetKey(i);
     np = anchor->NumProps();
     for (pnum = 0; pnum < np; pnum++)
@@ -155,12 +153,13 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   val = b->LookUp(anchor);
   jprintf(2, dbg, "%*s  try_props: %s (from %s)\n", 2 * n, "", focus->Nick(), anchor->Nick());
 
-  // consider properties of anchor's binding as candidates (np might change during loop)
-  for (i = 0; i < val->NumProps(); i++)
+  // consider properties of anchor's binding as candidates (most recent first)
+  np = val->NumProps();
+  for (i = np - 1; i >= 0; i--)
     if (val->RoleMatch(i, role))
     {
       // continue matching with selected mate for focus
-      n = TryBinding(focus, val->Prop(i), m, mc, pat, f, f2);
+      n = try_binding(focus, val->Prop(i), m, mc, pat, f, f2);
       if (n < 0)
         return 1;
       cnt += n;
@@ -208,7 +207,7 @@ int jhcSituation::try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat,
     if (strcmp(fact->Slot(i), slot) == 0)
     {
       // continue matching with selected mate for focus
-      n = TryBinding(focus, fact->Arg(i), m, mc, pat, f, f2);
+      n = try_binding(focus, fact->Arg(i), m, mc, pat, f, f2);
       if (n < 0)
         return 1;
       cnt += n;
@@ -235,8 +234,8 @@ int jhcSituation::try_bare (jhcBindings *m, int& mc, const jhcGraphlet& pat,
       // scan: 0 = has literal argument, 1 = has literal property, 2 = has lexical term, 3 = any
       focus = pat.Item(i);
       if (!b->InKeys(focus))
-        if (((scan <= 0) && pat.ArgOut(focus))      || ((scan == 1) && pat.PropOut(focus)) ||
-            ((scan == 2) && (focus->Lex() != NULL)) ||  (scan >= 3))
+        if (((scan <= 0) && pat.ArgOut(focus))          || ((scan == 1) && pat.PropOut(focus)) ||
+            ((scan == 2) && (b->LexSub(focus) != NULL)) ||  (scan >= 3))
           break;
       focus = NULL;
     }
@@ -250,7 +249,7 @@ int jhcSituation::try_bare (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   while ((mate = f.NextNode(mate)) != NULL)
   {
     // continue matching with selected mate for focus
-    n = TryBinding(focus, mate, m, mc, pat, f, f2);
+    n = try_binding(focus, mate, m, mc, pat, f, f2);
     if (n < 0)
       return 1;
     cnt += n;
@@ -276,7 +275,7 @@ int jhcSituation::try_hash (jhcBindings *m, int& mc, const jhcGraphlet& pat,
     item = pat.Item(i);
     if (!b->InKeys(item))
     {
-      if ((occ = f.SameBin(*item)) <= 0)         
+      if ((occ = f.SameBin(*item, b)) <= 0)         
         break;                                   // pattern unmatchable!
       if ((focus == NULL) || (occ < best))
       {
@@ -292,11 +291,11 @@ int jhcSituation::try_hash (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   jprintf(2, dbg, "%*s  try_hash: %s initial focus (%d)\n", b->NumPairs() * 2, "", focus->Nick(), best);
 
   // only consider nodes with matching hashes as candidate matches
-  bin = ((focus->Lex() == NULL) ? -1 : focus->Code());
+  bin = ((b->LexSub(focus) == NULL) ? -1 : focus->Code());
   while ((mate = f.NextNode(mate, bin)) != NULL)
   {
     // continue matching with selected mate for focus
-    n = TryBinding(focus, mate, m, mc, pat, f, f2);
+    n = try_binding(focus, mate, m, mc, pat, f, f2);
     if (n < 0)
       return 1;
     cnt += n;
@@ -309,8 +308,8 @@ int jhcSituation::try_hash (jhcBindings *m, int& mc, const jhcGraphlet& pat,
 // useful matcher entry point for jhcFindGuess to check basic instantiation
 // returns number of matches found, -1 if "unless" clause is matched 
 
-int jhcSituation::TryBinding (const jhcNetNode *focus, jhcNetNode *mate, jhcBindings *m, int& mc, 
-                              const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2)
+int jhcSituation::try_binding (const jhcNetNode *focus, jhcNetNode *mate, jhcBindings *m, int& mc, 
+                               const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2)
 {
   int rc, i, nb = 0, n = __max(0, mc - 1), lvl = 2 * m[n].NumPairs(), cnt = 0;
 
@@ -371,14 +370,14 @@ int jhcSituation::consistent (const jhcNetNode *mate, const jhcNetNode *focus, c
       return -8;
     if (!mate->Sure(th))
       return -7;
-    if (focus->Arity() != mate->Arity())
+    if (focus->Arity() != mate->Arity(0))                            // "father" matches "father of"
       return -6;
+    if (mate->Done() != focus->Done())
+      return -5;
   }
 
   // any action must be in the same state and actual predicate terms must be the same 
-  if (mate->Done() != focus->Done())
-    return -5;
-  if ((focus->Lex() != NULL) && !focus->LexMatch(mate))
+  if (!b->LexAgree(focus, mate))
     return -4;
   
   // see if finding referents inside a rule or operator
@@ -410,4 +409,23 @@ int jhcSituation::consistent (const jhcNetNode *mate, const jhcNetNode *focus, c
         return 0;
   return 1;
 }
+
+
+//= Simple way to find equivalent node in working memory based on some description.
+// create local pattern of nodes (can point externally) then match this to wmem
+// need to call BuildCond() before any NewNode() or NewProp() calls
+// simplified version of jhcNetRef useful for composing NOTEs in grounding functions
+// returns wmem node for focus (if found)
+
+jhcNetNode *jhcSituation::FindRef (const jhcNetNode *focus, const jhcNodeList& wmem)
+{
+  jhcBindings b;
+  int mc = 1;
+
+  b.expect = cond.NumItems();
+  if (MatchGraph(&b, mc, cond, wmem) > 0)
+    return b.LookUp(focus);
+  return NULL;
+}   
+
 

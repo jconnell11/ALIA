@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ jhcAliaSpeech::~jhcAliaSpeech ()
 jhcAliaSpeech::jhcAliaSpeech ()
 {
   strcpy_s(gram,  "language/alia_top.sgm");    // main grammar file
-  strcpy_s(kdir,  "KB/");                      // for kernels
+  strcpy_s(kdir,  "KB0/");                     // for kernels
   strcpy_s(kdir2, "KB2/");                     // extra abilities
   spin  = 0;                                   // no speech reco
   amode = 2;                                   // attn word at front
@@ -81,7 +81,7 @@ int jhcAliaSpeech::time_params (const char *fname)
   ps->SetTag("asp_time", 0);
   ps->NextSpecF( &stretch,  3.5, "Attention window (sec)");    // was 2.5 (local)
   ps->NextSpecF( &splag,    0.5, "Post speech delay (sec)");   // was 0.1 (local)
-  ps->NextSpec4( &wait,    12,   "Text out delay (cyc)");
+  ps->NextSpecF( &wait,     0.3, "Text out delay (sec)");      // was 0.15
   ps->Skip(3);
 
   ps->NextSpecF( &thz,     80.0, "Thought cycle rate (Hz)");  
@@ -102,12 +102,15 @@ int jhcAliaSpeech::time_params (const char *fname)
 
 int jhcAliaSpeech::Reset (const char *rname, const char *vname)
 {
-  char extras[200];
+  char extra[200], extra2[200];
 
   // remember interface choice and set attentional state
-  sprintf_s(extras, "%sbaseline.lst", kdir2);
+  sprintf_s(extra,  "%sbaseline.lst", kdir2);
+  sprintf_s(extra2, "%svolition.lst", kdir2);
   awake = 0;
-  if (spin == 2)
+  if (spin == 3)
+    jprintf(">>> Windows 11 Live Caption interface not written yet!\n");
+  else if (spin == 2)
   {
     // configure online speech recognition (requires internet connection)
     jprintf(1, noisy, "SPEECH online %s ...\n\n", web.Version());
@@ -138,8 +141,10 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
     // add words associated with kernels (slow second time?)
     jprintf(1, noisy, "Augmenting speech grammar with:\n");
     (net.mf).AddVocab(&sp, "language/vocabulary.sgm", 1);
-    base_gram(extras);                 // includes graphizer.sgm
     kern_gram();
+    base_gram(extra);                  // includes graphizer.sgm
+    if (vol > 0)
+      base_gram(extra2);
 
     // add robot name as attention word (speech only)
     self_name(rname);
@@ -163,9 +168,11 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
 
   // load rules, operators, and words for kernels (speech already set)
   (net.mf).AddVocab(&gr, "language/vocabulary.sgm");
-  Baseline(extras, 1, 2);              // includes graphizer.sgm
   KernExtras(kdir);
-  if (acc > 0)
+  Baseline(extra, 1, 2);               // includes graphizer.sgm
+  if (vol > 0)
+    Baseline(extra2, 1, 2);
+  if (acc >= 1)
     LoadLearned();
 
   // clear text input and output buffers
@@ -269,12 +276,52 @@ void jhcAliaSpeech::self_name (const char *name)
 
   if ((name == NULL) || (*name == '\0'))
     return;
+  jprintf("\nAdding robot name: %s\n", name);
   sp.ExtendRule("ATTN", name, 0); 
   strcpy_s(first, name);
   if ((sep = strchr(first, ' ')) != NULL)
   {
     *sep = '\0';
     sp.ExtendRule("ATTN", first, 0); 
+  }
+  AddName(name);                       // adds full and first to <NAME>
+}
+
+
+//= Add the name of a particular person to parsing and speech grammars.
+// make sure to call Listen(1) afterward to re-engage speech recognition
+
+void jhcAliaSpeech::AddName (const char* name)
+{
+  char first[80];
+  char* sep;
+
+  // get first name from full name
+  if ((name == NULL) || (*name == '\0'))
+    return;
+  strcpy_s(first, name);
+  if ((sep = strchr(first, ' ')) != NULL)
+    *sep = '\0';
+
+  // parsing grammar
+  gr.ExtendRule("NAME", name);
+  gr.ExtendRule("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP));
+  if (sep != NULL)
+  {
+    gr.ExtendRule("NAME", first);
+    gr.ExtendRule("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP));
+  }
+
+  // possibly update speech front-end also 
+  if ((SpeechIn() <= 0) || (spin != 1))
+    return;
+  sp.Listen(0);
+  sp.ExtendRule("NAME", name, 0);
+  sp.ExtendRule("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP), 0);
+  if (sep != NULL)
+  {
+    sp.ExtendRule("NAME", first, 0);
+    sp.ExtendRule("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP), 0);
   }
 }
 
@@ -362,7 +409,7 @@ int jhcAliaSpeech::Respond (int alert)
 void jhcAliaSpeech::xfer_input ()
 {
   const char *sent;
-  int hear, attn = ((amode <= 0) ? 1 : awake), perk = 0;
+  int hear, attn = ((amode <= 0) ? 1 : Attending()), perk = 0;
 
   // get language status and input string 
   if (spin == 2)
@@ -402,7 +449,7 @@ void jhcAliaSpeech::xfer_input ()
       awake = now;
     else if ((attn > 0) && (sp.Silence() > splag) && (jms_secs(now, awake) > stretch))
     {
-      jprintf(1, noisy, "\n  ... timeout ... attention off\n\n");
+      jprintf(1, noisy, "\n  ... timeout ... verbal attention off\n\n");
       awake = 0;
     }
   }
@@ -491,7 +538,7 @@ void jhcAliaSpeech::Done ()
   CloseCvt();
 
   // possibly save state
-  if (acc > 0)
+  if (acc >= 2)
     DumpLearned();
 }
 
@@ -527,9 +574,9 @@ bool jhcAliaSpeech::Accept (const char *in, int quit)
 
 
 //= Show input received on last cycle.
-// if parsable, returns cleaned up version
+// if parsable, can return cleaned up version
 
-const char *jhcAliaSpeech::NewInput ()
+const char *jhcAliaSpeech::NewInput (int clean)
 {
   const char *last, *fix;
 
@@ -547,7 +594,7 @@ const char *jhcAliaSpeech::NewInput ()
     return NULL;
   if ((spin > 0) && (awake == 0))
     return NULL;
-  if ((fix != NULL) && (*fix != '\0'))          
+  if ((clean > 0) && (fix != NULL) && (*fix != '\0'))
     return fix;
   return last;
 }
@@ -564,7 +611,7 @@ const char *jhcAliaSpeech::NewOutput ()
   now = jms_now();
   if (*pend != '\0')
   {
-    if (jms_secs(now, yack) > (wait / thz))
+    if (jms_secs(now, yack) > wait)
       msg = blip_txt(0);
     else if (*output != '\0')
       msg = blip_txt(1);

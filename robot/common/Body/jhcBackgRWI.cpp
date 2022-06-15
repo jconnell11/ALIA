@@ -286,8 +286,9 @@ int jhcBackgRWI::aux2_loop ()
 
 //= See if background loops are accepting command settings.
 // generally not allowed except between Update and Issue
-// sensor data accessible in this interval (no need for Readable/ReadDone)
-// NOTE: use this to sync grounding functions to perception loop
+// means fresh sensor data is available and actuator commands can be given
+// NOTE: new sensor data accessible in this interval (no need for Readable/ReadDone)
+// NOTE: used in grounding fcns for volunteered events and physical position updates
 
 bool jhcBackgRWI::Accepting ()
 {
@@ -297,8 +298,8 @@ bool jhcBackgRWI::Accepting ()
 
 //= See if background loops will allow access to images and sensor data.
 // always okay between Update and Issue and for a while afterward
-// make sure to call ReadDone at end to allow new data to be acquired
-// NOTE: most grounding functions sync'd to Accepting so this is not needed
+// NOTE: used in grounding fcns for analyzing existing data (use Accepting for new data)
+// NOTE: make sure to call ReadDone at end to allow data acquisition to continue
 
 bool jhcBackgRWI::Readable ()
 {

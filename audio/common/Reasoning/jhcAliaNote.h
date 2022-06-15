@@ -60,6 +60,9 @@ public:
   //= Make some other node be an named argument of the head.
   virtual void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val) const =0;
 
+  //= Keep the node from being erased by garbage collector.
+  virtual void Keep (jhcAliaDesc *obj) const =0;
+
   //= Pretend the node was just added on this cycle (needed for FIND).
   virtual void NewFound (jhcAliaDesc *obj) const =0;
 
@@ -75,18 +78,21 @@ public:
   //= Reference to the current user.
   virtual jhcAliaDesc *User () const =0;
 
-  //= Associate a visual object ID (not track) with some semantic network node.
-  virtual int VisAssoc (int tid, jhcAliaDesc *obj, int agt =0) =0;
+  //= Associate a visual entity ID (not track) with some semantic network node.
+  virtual int VisAssoc (int tid, jhcAliaDesc *obj, int kind =0) =0;
 
-  //= Conversion from semantic network node to associated visual object ID (not track).
-  virtual int VisID (const jhcAliaDesc *obj, int agt =0) const =0;
+  //= Conversion from semantic network node to associated visual entity ID (not track).
+  virtual int VisID (const jhcAliaDesc *obj, int kind =0) const =0;
 
-  //= Conversion from visual object ID (not track) to associated semantic network node.
-  virtual jhcAliaDesc *NodeFor (int tid, int agt =0) const =0;
+  //= Conversion from visual entity ID (not track) to associated semantic network node.
+  virtual jhcAliaDesc *NodeFor (int tid, int kind =0) const =0;
 
-  //= Add current note as a focus or delete it.
-  // return number of focus if added, -2 if deleted
-  virtual int FinishNote (int keep =1) =0;
+  //= Enumerate ID's for all items of a certain kind having an external link.
+  virtual int VisEnum (int last, int kind =0) const =0; 
+
+  //= Add current note as a focus, possibly marking some part as the main error.
+  // return number of focus if added, -2 if empty
+  virtual int FinishNote (jhcAliaDesc *fail =NULL) =0;
 
 };
 

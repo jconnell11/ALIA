@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,7 @@
 #include "Action/jhcAliaCore.h"        // common robot - only spec'd as class in header
 #include "Action/jhcAliaPlay.h"
 
-#include "Language/jhcMorphTags.h"     // common audio
-#include "Language/jhcNetRef.h"        
+#include "Language/jhcNetRef.h"        // common audio
 
 #include "Language/jhcGraphizer.h"
 
@@ -142,10 +141,12 @@ int jhcGraphizer::cvt_attn (const char *alist)
       return 0;
     if (strcmp(head, "!chk-t") == 0)
       return append_ynq(bulk, *wmem);
-    if (strcmp(head, "!find-t") == 0)
+    if (strcmp(head, "!find-t") == 0) 
       return append_whq(bulk, *wmem);
     if (strcmp(head, "!find-c") == 0)
       return append_exist(bulk, *wmem);
+    if (strcmp(head, "!find") == 0)
+      return append_find(bulk, *wmem);
     return 2;
   }
 
@@ -236,6 +237,23 @@ int jhcGraphizer::append_exist (jhcAliaChain *seq, jhcNodePool& pool) const
 }
 
 
+//= Adds action for confirming shift of attention to specified object.
+// assumes last directive in sequence is the main FIND
+// always returns 3 for convenience
+
+int jhcGraphizer::append_find (jhcAliaChain *seq, jhcNodePool& pool) const
+{
+  jhcAliaChain *find;
+
+  // no continue branch needed if no FIND in chain
+  if (seq != NULL) 
+    if ((find = seq->Last()) != NULL)
+      if (find->StepDir(JDIR_FIND))
+        find->cont = tell_step("confirm", pool);
+  return 3;
+}
+
+
 //= Make a step consisting of a DO directive having a verb with no arguments.
 
 jhcAliaChain *jhcGraphizer::tell_step (const char *verb, jhcNodePool& pool) const
@@ -282,7 +300,9 @@ int jhcGraphizer::cvt_rule (const char *alist)
       build_macro(*rule, alist))
   {
     (rule->result).RemAll(rule->cond);
-    (rule->result).ActualizeAll(0);    // needed for jhcAliaRule::match_found
+    rule->conf = (rule->result).MinBelief();
+    (rule->result).ForceBelief(rule->conf);
+    (rule->result).ActualizeAll(0);              // needed for jhcAliaRule::match_found
     return 4;
   }
 
@@ -359,23 +379,6 @@ bool jhcGraphizer::build_ifwd (jhcAliaRule& r, const char *alist)
     // ascribe property to unknown subject ("orange ... is a color")
     if ((t2 = FragNextPair(body, next)) == NULL)
       return false;
-/*
-    char first[200];
-    const char *deg;
-
-    strcpy_s(first, next);                       
-    if ((deg = SlotGet(first, "DEG")) != NULL)   // deg points into first
-      if (FragNextPair(t2, next) == NULL)
-        return false;
-    if ((val = SlotGet(next, "HQ")) == NULL)     // val points into next
-      return false;
-    focus = r.AddDeg(r.MakeNode("obj"), "hq", val, deg);
-    if (SlotStart(next, "HQ-ER") > 0)
-    {
-      focus->AddArg("wrt", r.MakeNode("obj"));   // "taller" 
-      focus->tags = JTAG_ACOMP;
-    }
-*/
     if ((val = SlotGet(next, "HQ")) == NULL)     
       return false;
     focus = r.MakeNode("hq", val);
@@ -593,22 +596,22 @@ const char *jhcGraphizer::kind_op (int& k, const char *alist, int veto) const
     if ((tail = SplitFrag(head, body, tail)) == NULL)
       return NULL;
 
-  // check specially for ANTE and POST operators first
-  if (FragHasSlot(body, "BEFORE"))
+  // generally directive type depends first command found 
+  while ((t2 = FragNextFrag(t2, head)) != NULL)
+    if (*head == '!')
+    {
+      if ((k = dcvt.CvtKind(head + 1)) >= JDIR_MAX)
+        return NULL;
+      if ((k == JDIR_DO) && (veto > 0))            // prohibitions are ANTE
+        k = JDIR_ANTE;                     
+      break;
+    }
+
+  // check specially for ANTE and NONE advice operators
+  if ((k == JDIR_DO) && FragHasSlot(body, "BEFORE"))
     k = JDIR_ANTE;
-  else if (FragHasSlot(body, "AFTER"))
-    k = JDIR_POST;
-  else
-    while ((t2 = FragNextFrag(t2, head)) != NULL)
-      if (*head == '!')
-      {
-        // otherwise directive type depends first command found 
-        if ((k = dcvt.CvtKind(head + 1)) >= JDIR_MAX)
-          return NULL;
-        if ((k == JDIR_DO) && (veto > 0))            // prohibitions are ANTE
-          k = JDIR_ANTE;                     
-        break;
-      }
+  if ((k == JDIR_FIND) && (FragHasSlot(body, "FAIL") || FragHasSlot(body, "BEFORE")))
+    k = JDIR_NONE;
   return tail;
 }
 
@@ -859,15 +862,14 @@ jhcNetNode *jhcGraphizer::build_cmd (const char *head, const char *alist, jhcNod
 
 
 //= Build structures for various types of wh-questions and return focal node.
-//  query -> np or $q-ako or $q-hq or $q-ref or $q-name or $q-loc or $q-cnt
+//  query -> np or $q-ako or $q-hq or $q-name or $q-loc or $q-cnt or $q-has
 
 jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool) 
 {
   jhcNetRef nr(univ, (core->atree).MinBlf());
-  char head[80], ness[80], pron[80], entry[200], body[amax];
-  jhcNetNode *obj, *main;
-  const jhcAliaChain *ch;
-  jhcAliaDir *d;
+  char head[80], ness[80], entry[200], body[amax];
+  jhcNetNode *obj, *obj2, *main, *own;
+  jhcGraphlet *acc;
   const char *t2, *tail, *kind = NULL;
   int qcnt = 0;
 
@@ -883,7 +885,15 @@ jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool)
   // get constraint on desired answer kind 
   if (strcmp(head, "$q-hq") == 0)                          // required for props
   {
-    if ((tail = NextEntry(tail, entry)) == NULL)
+    // find first slot-value pair
+    t2 = tail;
+    while ((t2 = NextEntry(t2, entry)) != NULL)
+    {
+      if (!IsFrag(entry))
+        break;
+      t2 = FragClose(t2, 0);
+    }
+    if (t2 == NULL)
       return NULL;
     if ((kind = SlotGet(entry, "AKO")) == NULL)
     {
@@ -893,7 +903,7 @@ jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool)
       kind = mf.PropKind(ness, kind);
     }   
   }
-  else if (strcmp(head, "$q-ako") == 0)          // optional for kinds
+  else if (strcmp(head, "$q-ako") == 0)                    // optional for kinds
     if ((t2 = nsuper_kind(entry, 200, tail)) != NULL)
     {
       kind = entry;
@@ -903,18 +913,7 @@ jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool)
   // get referent (generally resolving or creating a BIND in skolem)
   if (strcmp(head, "$q-cnt") == 0)
     qcnt = 1;
-  if ((obj = build_obj(&t2, tail, pool, NULL, 1.0, qcnt)) == NULL)
-  {
-    // special handling of "my name" and "your name"
-    if (FindSlot(tail, "WRT", pron, 1) == NULL)
-      return NULL;
-    else if (strcmp(pron, "my") == 0)
-      obj = (core->atree).Human();
-    else if (strcmp(pron, "your") == 0)
-      obj = (core->atree).Robot();
-    else
-      return NULL;
-  }
+  obj = build_obj(&t2, FragStart(tail), pool, NULL, 1.0, qcnt);
   if (strcmp(head, "$q-desc") == 0)
     return obj;                        // return directly if seeking a description
 
@@ -922,19 +921,42 @@ jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool)
   if (qcnt > 0)
   {
     main = pool.AddProp(obj, "cnt", NULL, 0, 1.0); 
-    ch = skolem->Last();
-    d = ch->GetDir();
-    (d->key).SetMain(main);
+    if (skolem == NULL)                                    // needs some description
+      return NULL;
+    if ((acc = skolem->LastKey()) != NULL)
+      acc->SetMain(main);
     return main;
   }
 
+  // make up top level entity to find (with constraints)
+  if (strcmp(head, "$q-has") == 0)
+  {
+    // if two objects present, require the second to be possessed by the first 
+    if ((obj2 = build_obj(&t2, FragStart(t2), pool)) != NULL)
+    {
+      acc = pool.BuildIn(skolem->LastKey());
+      own = pool.MakeNode("has", "have");
+      own->AddArg("agt", obj);
+      own->AddArg("obj", obj2);
+      pool.BuildIn(acc);
+      return obj;                                          // return owner
+    }
+
+    // else make up new owner and require him to possess the original object
+    main = nr.MakeNode("agt");
+    own = nr.MakeNode("has", "have");
+    own->AddArg("agt", main);
+    own->AddArg("obj", obj);
+    return nr.FindMake(pool, 0, NULL, (core->atree).MinBlf(), &skolem);
+  }
+
   // add unknown property and possibly constrain its type
-  main = nr.AddProp(obj, head + 3, NULL);
+  main = nr.AddProp(obj, head + 3, NULL);                  // extract slot name
   if (strcmp(head, "$q-loc") == 0)
-    main->AddArg("wrt", nr.MakeNode("obj"));
+    main->AddArg("ref", nr.MakeNode("obj"));
   if (kind != NULL)
-    nr.AddProp(main, "ako", kind, 0, 1.0);                               // was -1.0
-  return nr.FindMake(pool, 0, NULL, (core->atree).MinBlf(), &skolem);    // find was 1  
+    nr.AddProp(main, "ako", kind);
+  return nr.FindMake(pool, 0, NULL, (core->atree).MinBlf(), &skolem);    
 }
 
 
@@ -957,7 +979,7 @@ void jhcGraphizer::demote_bind () const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Create network structure for imperative verb phrase.
-//   !do -> ACT or [ACT ACT-G] or SAY
+//   !do -> ACT or [ACT-D ACT-G] or ACT-2 or SAY
 // expects "do!" is stripped off front already
 // returns pointer to newly created action node
 
@@ -1159,8 +1181,9 @@ jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePoo
     return v;
   CallList(1, "add_args", alist, 0, v->Nick());
 
-  // look for first object
-  if ((dobj = build_obj(&tail, alist, pool)) != NULL)
+  // look for first object (remove any adverbs directly after main verb)
+  tail = StripPairs(alist);                               
+  if ((dobj = build_obj(&tail, tail, pool)) != NULL)
     if (*tail != '\0')
     {
       // look for second object (if any)
@@ -1190,7 +1213,7 @@ jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePoo
   if (dobj != NULL)
     v->AddArg("obj", dobj);
   if (act != NULL)
-    v->AddArg("cmd", act);
+    v->AddArg("act", act);
   return((act != NULL) ? act : v);
 }
 
@@ -1200,7 +1223,7 @@ jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePoo
 void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& pool) 
 {
   char entry[200], entry2[200];
-  jhcNetNode *obj, *obj2;
+  jhcNetNode *obj;
   const char *t2, *tail = alist;
 
   // sanity check 
@@ -1210,42 +1233,40 @@ void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& po
 
   // look for PP attached to main verb
   while ((tail = NextFrag(tail, entry)) != NULL)
+  {
     if (strcmp(entry, "$rel") == 0)
     {
-      // determine if location phrase or "with" adjunct
       if ((t2 = FragNextPair(tail, entry)) != NULL)
       {
+        // determine if location phrase 
         if (SlotStart(entry, "LOC") > 0)                       
           add_place(&tail, act, entry, t2, pool);
       }
       else if ((obj = build_obj(&t2, tail, pool)) != NULL)
       {
+        // add "with" adjunct instead
         act->AddArg("with", obj);
         tail = t2;
       }
     }
     else if (match_any(entry, "$dest", "$src"))
     {
-      // start or end location (also indirect object) as a noun
       if ((obj = build_obj(&t2, tail, pool)) != NULL)
       {
+        // start or end location (also indirect object) as a noun
         act->AddArg(entry + 1, obj);
         tail = t2;
-        continue;
       }
-
-      // start or end location as a prepositional phrase 
-      if ((t2 = FragNextPair(tail, entry2)) == NULL)
-        continue;
-      if (SlotStart(entry2, "LOC") > 0)                       
-      {
-        if ((obj2 = act->Val("obj")) == NULL)    // what has location
-          if ((obj2 = act->Val("agt")) == NULL)
-            obj2 = (core->atree).Robot();
-        obj = add_place(&tail, obj2, entry2, t2, pool);
-        act->AddArg(entry + 1, obj);
-      }
+      else if ((t2 = FragNextPair(tail, entry2)) != NULL)
+        if (SlotStart(entry2, "LOC") > 0)                       
+        {
+          // start or end location as a prepositional phrase 
+          obj = add_place(&tail, obj, entry2, t2, pool);
+          act->AddArg(entry + 1, obj);
+        }
     }
+    tail = FragClose(tail, 0);         // ignore rest of current fragment 
+  }
 }
 
 
@@ -1257,9 +1278,9 @@ void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& po
 // initially creates description in a NodeRef to check if a referent already exists
 // can optionally force new description onto an old object in pool by setting "f0"
 // spreads negation widely: not a big red dog -> not big & not red & not a dog
-// "find": -1 = always create new item (create > 0)
+// "find": -1 = always create new item (not used)
 //          0 = always make FIND
-//          1 = resolve locally else make FIND
+//          1 = always make BIND (create > 0)
 //          2 = resolve locally else create item (resolve > 0)
 // if qcnt > 0 then just builds hypothetical description in wmem (never a skolem)
 // returns pointer to newly created object node (and advances alist to after object)
@@ -1268,13 +1289,21 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
                                      jhcNetNode *f0, double blf, int qcnt) 
 {
   jhcNetRef nr(univ, (core->atree).MinBlf());
-  char next[200] = "";
+  char next[200];
   const char *val, *tail;
   jhcNetNode *obj, *ref, *spec, *kind = NULL, *fact = NULL;
   UL32 t;
-  int neg = 0, find = ((qcnt > 0) ? 0 : ((resolve > 0) ? 2 : 1)); 
+  int neg = 0, find = 0;
 
   CallList(1, "build_obj", alist, 0, ((f0 != NULL) ? f0->Nick() : NULL));
+
+  // determine jhcNetRef::FindMake fmode
+  if (qcnt > 0)
+    find = 0;
+  else if (resolve > 0) 
+    find = 2;
+  else if (create > 0)
+    find = 1;
 
   // check if next thing is some sort of question object
   if ((tail = NextEntry(alist, next)) == NULL)
@@ -1289,17 +1318,25 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
     return nr.FindMake(pool, find, NULL, blf, &skolem);
   } 
 
-  // more standard types of object descriptions
+  // more standard types of object descriptions 
   if (SlotStart(next, "ACT-G") > 0)
     return build_fact(after, alist, pool);
-  if (strncmp(next, "%obj", 4) != 0)                           // naked HQ handled in build_ifwd
+  if (strncmp(next, "%obj", 4) != 0)             // naked HQ handled in build_ifwd
     return NULL;
   if (strncmp(next, "%obj-i", 6) == 0)
     find = ((create > 0) ? -1 : 0);                 
 
-  // add features to object node in temporary network 
+  // attach any possessive phrases to object node in temporary network
   obj = nr.MakeNode("obj");
+  if ((ref = obj_owner(tail, pool)) != NULL)
+  {
+    spec = nr.MakeNode("has", "have");
+    spec->AddArg("agt", ref);
+    spec->AddArg("obj", obj);
+  }
   fact = obj;
+
+  // add adjectival features to object node 
   while ((tail = FragNextPair(tail, next)) != NULL)
   {
     // record negation for next property
@@ -1310,10 +1347,12 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
     }
 
     // add a property of some type
-    if ((val = SlotGet(next, "REF", 0)) != NULL)               // reference ("you", "she")
+    if ((val = SlotGet(next, "REF", 0)) != NULL)               // pronoun ("you", "she")
       fact = ref_props(obj, nr, val);
-    else if ((val = SlotGet(next, "NAME", 0)) != NULL)         // proper noun ("Jim")
-      fact = nr.AddProp(obj, "ref", val, neg, blf);
+    else if ((val = SlotGet(next, "WRT", 0)) != NULL)          // possessive pronoun ("my")
+      fact = ref_props(obj, nr, val);
+    else if (SlotStart(next, "NAME") > 0)                      // proper noun ("Jim", "Jim's")
+      fact = nr.AddProp(obj, "name", mf.NounLex(t, next), neg, blf);
     else if ((val = mf.NounLex(obj->tags, next)) != NULL)      // noun mod or type ("baseball bat") 
     {
       spec = nr.MakeNode("kind", val, neg, blf);
@@ -1321,13 +1360,13 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
         kind->AddArg("of", spec);                              
       kind = spec;                                             // save as potential base type
     }
-    else if ((val = SlotGet(next, "HQ-EST")) != NULL)          // superlative ("biggest")
+    else if (SlotGet(next, "HQ-EST") != NULL)                  // superlative ("biggest")
     {
       fact = nr.AddProp(obj, "hq", mf.AdjLex(t, next), neg, blf);
-      fact->AddArg("wrt", nr.MakeNode("obj", "all"));
+      fact->AddArg("alt", nr.MakeNode("obj", "all"));
       fact->tags = t;
     } 
-    else if ((val = SlotGet(next, "HQ-ER")) != NULL)           // comparison ("taller")
+    else if (SlotGet(next, "HQ-ER") != NULL)                   // comparison ("taller")
     {
       fact = obj_comp(&tail, obj, mf.AdjLex(t, next), tail, nr, neg, blf);
       fact->tags = t;
@@ -1342,10 +1381,10 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
       fact->SetKind("act");
       fact->tags = t;
     }
-    else if (SlotStart(next, "LOC") > 0)                       // location phrase ("at home")
-      fact = add_place(&tail, obj, next, tail, nr, neg, blf);           
     else if ((val = SlotGet(next, "HAS")) != NULL)             // part description ("with a red top")
       fact = obj_has(&tail, obj, val, tail, nr, neg, blf);            
+    else if (SlotStart(next, "LOC") > 0)                       // location phrase ("at home")
+      fact = add_place(&tail, obj, next, tail, nr, neg, blf);           
 
     // property always eats any pending negation
     neg = 0;
@@ -1367,6 +1406,36 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
 }
 
 
+//= Generate skolem FIND directives for a chain of %obj-p possessive fragments.
+// returns the ultimate owner for the object which is being modified with <desc-p>
+
+jhcNetNode *jhcGraphizer::obj_owner (const char *alist, jhcNodePool& pool)
+{
+  char next[200], poss[200];
+  const char *tail = alist;
+  jhcNetNode *item, *spec, *owner = NULL;
+  jhcGraphlet *old;
+
+  // make up skolem FIND for each object description
+  while ((tail = ExtractFrag(next, poss, tail)) != NULL)
+    if (strncmp(next, "%obj-p", 6) == 0)
+      if ((item = build_obj(NULL, poss, pool)) != NULL)
+      {
+        if (owner != NULL)
+        {
+          // add to description owner from previous possessive
+          old = pool.BuildIn(skolem->LastKey());
+          spec = pool.MakeNode("has", "have");
+          spec->AddArg("agt", owner);
+          spec->AddArg("obj", item);
+          pool.BuildIn(old);
+        }
+        owner = item;                  // becomes owner of next item
+      }
+  return owner;
+}
+
+
 //= Add properties to object node based on pronoun used for reference.
 // returns object node for convenience
 
@@ -1375,31 +1444,30 @@ jhcNetNode *jhcGraphizer::ref_props (jhcNetNode *n, jhcNodePool& pool, const cha
   CallList(1, "ref_props", NULL, 0, pron);
 
   // specify conversational role (direct match of unique lex)
-  if (strcmp(pron, "you") == 0)
-    pool.SetLex(n, "you");
-  else if (match_any(pron, "me", "I"))
-    pool.SetLex(n, "me");                        // canonicalized 
+  if (match_any(pron, "you", "your", "yours"))
+    pool.SetLex(n, "me");                                  // robot (swapped perspective)
+  else if (match_any(pron, "me", "I", "my", "mine"))
+    pool.SetLex(n, "you");                                 // human (swapped perspective)
 
   // add extra features based on word used
-  if (match_any(pron, "he", "him"))
+  if (match_any(pron, "he", "him", "his"))
   {
     pool.AddProp(n, "hq",  "male");
     pool.AddProp(n, "ako", "person");
   }
-  else if (match_any(pron, "she", "her"))
+  else if (match_any(pron, "she", "her", "hers"))
   {
     pool.AddProp(n, "hq",  "female");
     pool.AddProp(n, "ako", "person");
   }
-  else if (match_any(pron, "they", "them"))
+  else if (match_any(pron, "they", "them", "their", "theirs"))
     pool.AddProp(n, "ako", "person");
   else if (match_any(pron, "this", "that", "these", "those"))
     pool.AddProp(n, "ako", "object");
-  else if (match_any(pron, "here", "there"))
+  else if (match_any(pron, "here", "there", "somewhere"))
   {
     n->SetKind("loc");                           // look for predication
-    n->AddArg("loc", pool.MakeNode("obj"));      
-    n->AddArg("wrt", pool.MakeNode("obj"));    
+    n->AddArg("ref", pool.MakeNode("obj"));    
   }
   return n;
 }
@@ -1445,6 +1513,7 @@ jhcNetNode *jhcGraphizer::obj_deg (const char **after, jhcNetNode *obj, const ch
   // modify a location descriptor (gets most recent "loc" property)
   if ((val = SlotGet(pair, "LOC")) != NULL)
   {
+//    prop = add_place(&tail, obj, pair, tail, pool, neg, 0.0);
     prop = add_place(&tail, obj, pair, tail, pool, neg, blf);
     mod = pool.AddProp(prop, "deg", amt, neg, blf);
     if (after != NULL)
@@ -1473,7 +1542,7 @@ jhcNetNode *jhcGraphizer::obj_comp (const char **after, jhcNetNode *obj, const c
   if ((ref = build_obj(&tail, alist, pool)) == NULL)
     ref = pool.MakeNode("obj");                            // always required
   prop = pool.AddProp(obj, "hq", comp, neg, blf);
-  prop->AddArg("wrt", ref);                      
+  prop->AddArg("alt", ref);                      
   if (after != NULL)
     *after = tail;
   return prop;
@@ -1492,17 +1561,19 @@ jhcNetNode *jhcGraphizer::add_place (const char **after, jhcNetNode *obj, char *
 
   CallList(1, "add_place", alist, 0, pair);
 
-  // add basic relation
+  // add basic relation (naked if destination of verb)
   if (after != NULL)
     *after = alist;
-  prop = pool.AddProp(obj, "loc", rel, neg, blf);
+  prop = pool.MakeNode("loc", rel, neg, blf);
+  if (obj != NULL)
+    prop->AddArg("loc", obj);
 
-  // check if anchor object required (not needed for "here" or "in front")
+  // check if anchor object required (not needed for "here" or "in front" or "down")
   if ((SlotStart(pair, "LOC-0") > 0) || (SlotStart(pair, "LOC-V") > 0))
     return prop;
   if ((ref = build_obj(&tail, alist, pool)) == NULL)
     return prop;
-  prop->AddArg("wrt", ref);                        // add reference object 
+  prop->AddArg("ref", ref);                        // add reference object 
   if (after != NULL)
     *after = tail;
 
@@ -1511,7 +1582,7 @@ jhcNetNode *jhcGraphizer::add_place (const char **after, jhcNetNode *obj, char *
     return prop;
   if ((ref = build_obj(&t2, tail, pool)) == NULL)
     return prop;
-  prop->AddArg("wrt", ref);                        // add second reference  
+  prop->AddArg("ref", ref);                        // add second reference  
   if (after != NULL)
     *after = t2;
   return prop;
@@ -1536,7 +1607,7 @@ jhcNetNode *jhcGraphizer::obj_has (const char **after, jhcNetNode *obj, const ch
     return NULL;
 
   // build required relation
-  prop = pool.AddProp(obj, "has", prep, neg, blf);
+  prop = pool.AddProp(obj, "agt", "have", neg, blf);
   prop->AddArg("obj", part); 
   if (after != NULL)
    *after = tail;
@@ -1551,7 +1622,7 @@ jhcNetNode *jhcGraphizer::obj_has (const char **after, jhcNetNode *obj, const ch
 
 jhcNetNode *jhcGraphizer::add_cop (const char **after, jhcNetNode *obj, const char *alist, jhcNodePool& pool, int pos) 
 {
-  char next[200], body[amax];
+  char next[200], body[amax], poss[200];
   jhcNetNode *f2, *fact = NULL;
   const char *val, *post, *tail;
   double blf = 1.0;                     // was 0.0
@@ -1565,22 +1636,42 @@ jhcNetNode *jhcGraphizer::add_cop (const char **after, jhcNetNode *obj, const ch
     return NULL;
   if (after != NULL)
     *after = tail;
-  tail = body;
-  post = body;
 
-  // go through all the pairs in this fragment
+  // get overall negation and belief
+  tail = body;
   while ((tail = FragNextPair(tail, next)) != NULL)
   {
     if ((val = SlotGet(next, "BLF")) != NULL)                    // overall belief ("usually")
       blf = belief_val(val);                             
     else if ((SlotStart(next, "NEG") > 0) && (pos <= 0))         // overall negation ("not")
       neg = 1;                                           
-    else if ((val = SlotGet(next, "NAME", 0)) != NULL)           // proper name ("Groot")
-      fact = pool.AddProp(obj, "ref", val, neg, blf);   
+  }
+
+// ****
+  // check for possessive phrase ("Jon's")
+  if ((tail = ExtractFrag(next, poss, body)) != NULL)
+    if (strcmp(next, "%obj-p") == 0)
+      if ((f2 = build_obj(NULL, poss, pool)) != NULL)
+      {
+        fact = pool.MakeNode("has", "have", neg, blf);
+        fact->AddArg("agt", f2);
+        fact->AddArg("obj", obj);
+        if (after != NULL)
+          *after = FragClose(tail, 0);
+        return fact;
+      }
+
+  // go through all the pairs in this fragment
+  post = body;
+  tail = body;
+  while ((tail = FragNextPair(tail, next)) != NULL)
+  {
+    if ((val = SlotGet(next, "NAME", 0)) != NULL)                // proper name ("Groot")
+      fact = pool.AddProp(obj, "name", val, neg, blf);   
     else if ((val = SlotGet(next, "HQ-EST")) != NULL)            // superlative ("biggest")
     {
       fact = pool.AddProp(obj, "hq", mf.AdjLex(t, next), neg, blf);
-      fact->AddArg("wrt", pool.MakeNode("obj", "all"));
+      fact->AddArg("alt", pool.MakeNode("obj", "all"));
       fact->tags = t;
     } 
     else if ((val = SlotGet(next, "HQ-ER")) != NULL)             // comparative ("bigger than")
@@ -1623,7 +1714,7 @@ jhcNetNode *jhcGraphizer::add_cop (const char **after, jhcNetNode *obj, const ch
 }
 
 
-//= Extract the nound kind associated with a super-kind element.
+//= Extract the noun kind associated with a super-kind element.
 // returns NULL if fails, else binds kind and returns remainder of list
 
 const char *jhcGraphizer::nsuper_kind (char *kind, int ssz, const char *alist) const

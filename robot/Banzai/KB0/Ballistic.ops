@@ -1,0 +1,223 @@
+// basic commands understood by ELI robot base
+// ================================================
+
+OP 1 - "To freeze ..."
+  trig:   
+    DO[ act-1 -lex-  freeze ] 
+---------------
+   FCN[ fcn-1 -lex-  ball_stop 
+              -arg-> act-1 ]
+
+
+// --------------------------------------
+
+OP 2 - "To step ..."
+  trig:   
+    DO[ act-1 -lex-  step ]
+---------------
+   FCN[ fcn-1 -lex-  ball_drive 
+              -arg-> act-1 ]
+
+
+OP 3 - "To move ..."
+  trig:   
+    DO[ act-1 -lex-  move ]
+---------------
+   FCN[ fcn-1 -lex-  ball_drive 
+              -arg-> act-1 ]
+
+
+OP 4 - "To drive ..."
+  trig:   
+    DO[ act-1 -lex-  drive ]
+---------------
+   FCN[ fcn-1 -lex-  ball_drive 
+              -arg-> act-1 ]
+
+
+// --------------------------------------
+
+OP 5 - "To turn ..."
+  trig:   
+    DO[ act-1 -lex-  turn ]
+---------------
+   FCN[ fcn-1 -lex-  ball_turn 
+              -arg-> act-1 ]
+
+
+OP 6 - "To rotate ..."
+  trig:   
+    DO[ act-1 -lex-  rotate ]
+---------------
+   FCN[ fcn-1 -lex-  ball_turn 
+              -arg-> act-1 ]
+
+
+OP 7 - "To turn around rotate"
+  trig:   
+    DO[ act-1 -lex-  turn 
+        dir-1 -lex-  around
+              -dir-> act-1 ]
+---------------
+    DO[ act-2 -lex-  rotate ]
+
+
+OP 8 - "To spin ..."
+  trig:   
+    DO[ act-1 -lex-  spin ]
+---------------
+   FCN[ fcn-1 -lex-  ball_turn 
+              -arg-> act-1 ]
+
+
+// --------------------------------------
+
+OP 9 - "To raise the arm ..."
+  trig:
+    DO[ act-1 -lex-  raise
+              -obj-> obj-1
+        ako-1 -lex-  arm
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_lift 
+              -arg-> act-1 ]
+
+
+OP 10 - "To lower the arm ..."
+  trig:
+    DO[ act-1 -lex-  lower
+              -obj-> obj-1
+        ako-1 -lex-  arm
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_lift 
+              -arg-> act-1 ]
+
+
+// --------------------------------------
+
+OP 11 - "To open the hand ..."
+  trig:
+    DO[ act-1 -lex-  open
+              -obj-> obj-1 
+        ako-1 -lex-  hand
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_grip 
+              -arg-> act-1 ]
+
+
+OP 12 - "To release something ..."
+  trig:
+    DO[ act-1 -lex-  release
+              -obj-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_grip 
+              -arg-> act-1 ]
+
+
+OP 13 - "To close the hand ..."
+  trig:
+    DO[ act-1 -lex-  close
+              -obj-> obj-1 
+        ako-1 -lex-  hand
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_grip 
+              -arg-> act-1 ]
+
+
+OP 14 - "To hold something ..."
+  trig:
+    DO[ act-1 -lex-  hold
+              -obj-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_grip 
+              -arg-> act-1 ]
+
+
+// --------------------------------------
+
+OP 15 - "To extend the arm ..."
+  trig:
+    DO[ act-1 -lex-  extend
+              -obj-> obj-1 
+        ako-1 -lex-  arm
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_arm
+              -arg-> act-1 ]
+
+
+OP 176 - "To tuck in the arm ..."
+  trig:
+    DO[ act-1 -lex-  tuck in
+              -obj-> obj-1 
+        ako-1 -lex-  arm
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_arm
+              -arg-> act-1 ]
+
+
+OP 17 - "To shift some direction ..."
+  trig:
+    DO[ act-1 -lex-  shift
+        dir-1 -dir-> act-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_arm
+              -arg-> act-1 ]
+
+
+// --------------------------------------
+
+OP 18 - "To reset the hand ..."
+  trig:
+    DO[ act-1 -lex-  reset
+              -obj-> obj-1 
+        ako-1 -lex-  hand
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_wrist
+              -arg-> act-1 ]
+
+
+OP 19 - "To point some direction ..."
+  trig:
+    DO[ act-1 -lex-  point
+        dir-1 -dir-> act-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_wrist
+              -arg-> act-1 ]
+
+
+OP 20 - "To twist some direction ..."
+  trig:
+    DO[ act-1 -lex-  twist
+        dir-1 -dir-> act-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_wrist
+              -arg-> act-1 ]
+
+
+// --------------------------------------
+
+OP 21 - "To reset the head ..."
+  trig:
+    DO[ act-1 -lex-  reset
+              -obj-> obj-1 
+        ako-1 -lex-  head
+              -ako-> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  ball_neck
+              -arg-> act-1 ]
+
+
+OP 22 - "To look some direction ..."
+  trig:
+    DO[ act-1 -lex-  look
+        dir-1 -dir-> act-1 ] 
+---------------
+   FCN[ fcn-1 -lex-  ball_neck
+              -arg-> act-1 ]
+

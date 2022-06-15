@@ -33,8 +33,10 @@
 #include "Body/jhcEliBody.h"           // common robot
 #include "Eli/jhcEliGrok.h"
 #include "Grounding/jhcBallistic.h"
+#include "Grounding/jhcManipulate.h"
 #include "Grounding/jhcSceneVis.h"
 #include "Grounding/jhcSocial.h"
+#include "Grounding/jhcSupport.h"
 
 #include "Parse/jhcNameList.h"         // common audio
 #include "Acoustic/jhcAliaSpeech.h"    
@@ -64,6 +66,12 @@
 //     +SceneVis             net to object perception
 //       TimedFcns
 //         AliaKernel
+//     +Manipulate           net to object interaction
+//       TimedFcns
+//         AliaKernel
+//     +Support              net to surface perception
+//       TimedFcns
+//         AliaKernel
 // 
 // </pre>
 
@@ -88,6 +96,8 @@ public:
   jhcBallistic ball; 
   jhcSocial soc;
   jhcSceneVis svis;
+  jhcManipulate man;
+  jhcSupport sup;
 
 
 // PUBLIC MEMBER FUNCTIONS
