@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -219,3 +219,21 @@ bool jms_expired (int mon, int yr, int smon, int syr)
          ((syr > 0) && (cyr == syr) && (smon > 0) && (cmon < smon)));
 }
 
+
+//= Returns number of 100 ns intervals since 12:00 AM on January 1, 1601 (UTC).
+// useful as an absolute time stamp independent of system start or time zone
+
+UL64 jms_chrono ()
+{
+  FILETIME ftime;
+  ULARGE_INTEGER time;
+ 
+#if WINVER >= 0x0602
+  GetSystemTimePreciseAsFileTime(&ftime);        // 100ns
+#else
+  GetSystemTimeAsFileTime(&ftime);               // about 1ms
+#endif
+  time.LowPart  = ftime.dwLowDateTime;
+  time.HighPart = ftime.dwHighDateTime;
+  return((UL64) time.QuadPart);
+}

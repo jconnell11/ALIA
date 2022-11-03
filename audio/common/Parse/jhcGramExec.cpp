@@ -25,6 +25,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "Language/jhcMorphFcns.h"     // since only spec'd as class in header
+
 #include "Parse/jhcGramExec.h"
 
 
@@ -37,7 +39,7 @@
 jhcGramExec::jhcGramExec ()
 {
   // current version
-  ver = 1.70;
+  ver = 1.80;
 
   // max number of words that "+" can match
   dict_n = 5; 
@@ -82,7 +84,7 @@ int jhcGramExec::PrintCfg ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Remembers grammar to load but does NOT load it yet.
-// used as default when calling LoadGrammar(NULL)
+// used as default when calling LoadGram(NULL)
 // generally "gfile" is only the first grammar loaded
 // NOTE: most common pattern is SetGrammar then Init 
 
@@ -116,14 +118,16 @@ void jhcGramExec::ClearGrammar (int keep)
 // appends new rules if some other grammar(s) already loaded
 // to get rid of old rules first call ClearGrammar()
 // all rules initially unmarked (i.e. not active top level)
+// tags each grammar rule added with level = lvl (for SaveCats)
+// lvl: -1 = vocab, 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
 // returns 0 if some error, else 1
 // NOTE: most common pattern is SetGrammar then Init 
+// NOTE: in ALIA system use jhcMorphFcns::AddVocab instead
 
-int jhcGramExec::LoadGrammar (const char *fname, ...)
+int jhcGramExec::LoadGram (const char *fname, int lvl)
 {
   char append[200];
   char *gf = (char *)((*gfile == '\0') ? &gfile : &append);
-  va_list args;
   int rc;
 
   // assemble file name
@@ -133,14 +137,13 @@ int jhcGramExec::LoadGrammar (const char *fname, ...)
     return 0;
   else
   {
-    va_start(args, fname); 
-    vsprintf_s(gf, 200, fname, args);
+    strcpy_s(gf, 200, fname);
     if (strchr(gf, '.') == NULL)
       strcat_s(gf, 200, ".sgm");
   }
 
   // try loading
-  if ((rc = parse_load(gf)) > 0)
+  if ((rc = parse_load(gf, lvl)) > 0)
     return 1;
   return rc;
 }
@@ -254,17 +257,47 @@ int jhcGramExec::MarkRule (const char *name, int val)
 
 
 //= Add another valid expansion for some non-terminal.
+// lvl: -1 = vocab, 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
 // returns 2 if full update, 1 if not in file, 0 or negative for failure
 
-int jhcGramExec::ExtendRule (const char *name, const char *phrase)
+int jhcGramExec::ExtendRule (const char *name, const char *phrase, int lvl)
 {
-  return parse_extend(name, phrase);
+  return parse_extend(name, phrase, lvl);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Expand some standard contractions (e.g. "I'm" -> "I am").
+// fix: 0 = change nothing, 1 = only pronouns, 2 = negative forms also
+// similar to jhcTalkFcn::fix_abbrev but in reverse
+// returns pointer to expanded string (also in variable "full" cf. NoContract())
+
+const char *jhcGramExec::Expand (const char *sent, int fix)
+{
+  // check for simplest case of no changes
+  if ((fix <= 0) || (sent == NULL) || (*sent == '\0'))
+    return sent;
+  strcpy_s(full, sent);
+
+  // pronoun-be separation
+  subst_all("I'm",   "I am");
+  subst_all("'re",   " are");          // you're, we're, they're
+  subst_all("he's",  "he is");
+  subst_all("she's", "she is");
+  subst_all("it's",  "it is");
+  subst_all("who's", "who is");  
+  subst_all("'d",    " would");        // might be "had"
+
+  // expand negations
+  if (fix < 2)
+    return full;
+  subst_all("n't", " not");
+  return full;
+}
+
 
 //= Parse input according to grammar to give one or more trees.
 // automatically picks most specific interpretation as default tree
@@ -273,69 +306,38 @@ int jhcGramExec::ExtendRule (const char *name, const char *phrase)
 
 int jhcGramExec::Parse (const char *sent, int fix)
 {
-  int i, w, k, n, w0, k0, n0;
+  int i, scan;
+
+  // set up defaults
+  *norm = '\0';
+  txt2.SetSource(norm);
+  for (i = 0; i < 10; i++)
+    nnode[i] = 0;
 
   // do basic work (assume correct top level rules already activated)
-  *norm = '\0';
-  if (parse_analyze(expand(sent, fix)) > 1)
-    for (i = 0; i < nt; i++)
+  if (parse_analyze(Expand(sent, fix)) <= 0)
+    return nt;
+
+  // set "tree" to best interpretation
+  if (nt > 1)
+  {
+    scan = __min(nt, 10);
+    for (i = 0; i < scan; i++)
     {
-      // pick interpretation with most words (least wildcards),
-      // least dictation, and most compact derivation (fewest nodes)
-      w = WildCards(i);
-      k = DictItems(i);
-      n = Nodes(i);
-      if ((i == 0) || (w < w0) || 
-         ((w == w0) && (k < k0)) ||
-         ((w == w0) && (k == k0) && (n < n0)))
-      {
-        w0 = w; 
-        k0 = k;
-        n0 = n;
-        tree = i;
-      }
+      // cache statistics for later
+      nnode[i] = Nodes(i);
+      nwild[i] = WildCards(i);
+      ndict[i] = DictItems(i);
     }
+    tree = -1;
+    NextBest();              
+  }
 
   // get input string with canonical capitalization
-  if (nt > 0)
-    if (normalize(0, nth_full(tree)) > 0)
-      norm[strlen(norm) - 1] = '\0';    
+  if (normalize(0, nth_full(tree)) > 0)
+    norm[strlen(norm) - 1] = '\0';  
   txt2.SetSource(norm);
   return nt;
-}
-
-
-//= Expand some standard contractions (e.g. "I'm" -> "I am").
-// fix: 0 = change nothing, 1 = only pronouns, 2 = negative forms also
-// similar to jhcTalkFcn::fix_abbrev but in reverse
-// returns pointer to expanded string
-
-const char *jhcGramExec::expand (const char *sent, int fix)
-{
-  // check for simplest case of no changes
-  if ((fix <= 0) || (sent == NULL) || (*sent == '\0'))
-    return sent;
-  strcpy_s(full, sent);
-
-  // pronoun-be separation
-  subst_all("i'm",   "I am");          // odd lowercase
-  subst_all("I'm",   "I am");
-  subst_all("'re",   " are");          // you're, we're, they're
-  subst_all("he's",  "he is");
-  subst_all("He's",  "He is");         // capitalized
-  subst_all("she's", "she is");
-  subst_all("She's", "She is");        // capitalized
-  subst_all("it's",  "it is");
-  subst_all("It's",  "It is");         // capitalized
-  subst_all("who's", "who is");  
-  subst_all("Who's", "Who is");        // capitalized
-  subst_all("'d",    " would");        // might be "had"
-
-  // expand negations
-  if (fix < 2)
-    return full;
-  subst_all("n't", " not");
-  return full;
 }
 
 
@@ -355,31 +357,36 @@ const char *jhcGramExec::expand (const char *sent, int fix)
 // tail:               *                     
 //
 // </pre>
+// similar to jhcTalkFcn::convert_all but no delineation required
+// NOTE: case insensitive
 
 void jhcGramExec::subst_all (const char *pat, const char *rep)
 {
   char *fix;
-  const char *hit, *tail = full;
+  const char *tail = full;
   int i, r = (int) strlen(rep), p = (int) strlen(pat), sh = r - p;
 
   // look for every occurrence of pattern
   if (sh < 0)
     return;
-  while ((hit = strstr(tail, pat)) != NULL)
-  {
-    // get equivalent modifiable pointer into string
-    fix = full + (int)(hit - full);
+  while (*tail != '\0')
+    if (_strnicmp(tail, pat, p) != 0) 
+      tail++;
+    else
+    {
+      // get equivalent modifiable pointer into string
+      fix = full + (int)(tail - full);
 
-    // move remainder of string to right
-    if (sh > 0)
-      for (i = (int) strlen(hit); i >= p; i--)
-        fix[i + sh] = fix[i];
+      // move remainder of string to right
+      if (sh > 0)
+        for (i = (int) strlen(tail); i >= p; i--)
+          fix[i + sh] = fix[i];
 
-    // copy in replacement (no null termination)
-    for (i = 0; i < r; i++)     
-      fix[i] = rep[i];
-    tail = hit + r;
-  }
+      // copy in replacement (no null termination)
+      for (i = 0; i < r; i++)     
+        fix[i] = rep[i];
+      tail += r;
+    }
 }
 
 
@@ -418,6 +425,39 @@ int jhcGramExec::normalize (int n0, const jhcGramRule *r)
     s = s->tail;
   }
   return n;
+}
+
+
+//= Choose the next best untried parse tree if current one is problematic.
+// return index and sets "tree", negative if none
+
+int jhcGramExec::NextBest ()
+{
+  int i, n, w, k, n0, w0, k0, scan = __min(nt, 10);
+
+  // invalidate current selection
+  if ((tree >= 0) && (tree < 10))
+    nnode[tree] = 0;
+  tree = -1;
+
+  // pick interpretation with most words (least wildcards),
+  // least dictation, and most compact derivation (fewest nodes)
+  for (i = 0; i < scan; i++)
+    if ((n = nnode[i]) > 0)
+    {
+      w = nwild[i];
+      k = ndict[i];
+      if ((tree < 0) || (w < w0) || 
+         ((w == w0) && (k < k0)) ||
+         ((w == w0) && (k == k0) && (n <= n0)))
+      {
+        w0 = w; 
+        k0 = k;
+        n0 = n;
+        tree = i;
+      }
+    }
+  return tree;
 }
 
 
@@ -707,7 +747,7 @@ void jhcGramExec::append (char *dest, const char *extra, int ssz) const
 
 
 //= See if attention (to speech) should be renewed based on input sentence.
-// mode: 0 = always, 1 = ATTN anywhere, 2 = ATTN at start, 3 = ATTN only (hail)
+// mode: 0 = always, 1 = ATTN at start/end, 2 = ATTN at start, 3 = ATTN only (hail)
 
 int jhcGramExec::NameSaid (const char *sent, int mode) const
 {
@@ -820,6 +860,198 @@ void jhcGramExec::print_focus (int indent, int start, int end)
 }
 
 
+//= Save all open-class words to some file in valid grammar format.
+// dumps NAME, AKO, HQ, ACT, MOD, and XXX-morph exception (if argument mf is bound)
+// lvl: -1 = vocab, 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
+// returns number of basic entries listed
+// NOTE: needs access to configured jhcMorphFcns instance
+
+int jhcGramExec::SaveCats (const char *fname, int lvl, const jhcMorphFcns *mf) const
+{
+  char fn[200];
+  FILE *out;
+  char *ext;
+  int n = 0;
+
+  // open main file (always .sgm extension) and write header
+  strcpy_s(fn, fname);
+  if ((ext = strrchr(fn, '.')) != NULL)
+    *ext = '\0';
+  strcat_s(fn, ".sgm");
+  if (fopen_s(&out, fn, "w") != 0)
+    return 0;
+  fprintf_s(out, "// OPEN CLASS WORDS\n");
+  fprintf_s(out, "// ================================================\n");
+
+  // list items of interest (while caching exceptions)
+  fprintf_s(out, "\n// proper nouns\n\n=[NAME]\n");
+  n += list_cat(out, "NAME", lvl);
+  fprintf_s(out, "\n\n// singular nouns\n\n=[AKO]\n");
+  n += list_cat(out, "AKO", lvl);
+  fprintf_s(out, "\n\n// adjectives\n\n=[HQ]\n");
+  n += list_cat(out, "HQ", lvl);
+  fprintf_s(out, "\n\n// -----------------------------------------\n");
+  fprintf_s(out, "\n// imperative verbs\n\n=[ACT]\n");
+  n += list_cat(out, "ACT", lvl);
+  fprintf_s(out, "\n\n// adverbial modifiers\n\n=[MOD]\n");
+  n += list_cat(out, "MOD", lvl);
+
+  // copy all exceptions to end of main file
+  if (mf != NULL)
+  {
+    fprintf_s(out, "\n\n// ================================================\n");
+    fprintf_s(out, "\n// irregular morphologies (np, acomp, asup, vpres, vprog, vpast)\n");
+    fprintf_s(out, "\n=[XXX-morph]\n");
+    noun_vars(out, lvl, mf);
+    adj_vars(out,  lvl, mf);
+    verb_vars(out, lvl, mf);
+  }
+
+  // clean up
+  fclose(out);
+  return n;
+}
+
+
+//= Find all expansions of given open class and write them to main file.
+// returns number of words written to main file for this category
+
+int jhcGramExec::list_cat (FILE *out, const char *non, int lvl) const
+{
+  const jhcGramRule *r = gram;
+  const jhcGramStep *t;
+  int n = 0;
+
+  // look through all rules for matching non-terminal
+  while (r != NULL)
+  {
+    if ((r->level >= lvl) && (strcmp(r->head, non) == 0))
+    {
+      // write out all words of expansion on single line
+      fprintf_s(out, " ");
+      t = r->tail;
+      while (t != NULL)
+      {
+        fprintf(out, " %s", t->symbol);
+        t = t->tail;
+      }
+      fprintf_s(out, "\n");
+      n++;
+    }
+    r = r->next;             // next grammar rule
+  }
+  return n;
+}
+
+
+//= Add irregular noun plural forms to file list.
+
+void jhcGramExec::noun_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
+{
+  char base[80];
+  const jhcGramRule *r = gram;
+  const jhcGramStep *t;
+  const char *var;
+
+  // look through all rules for matching non-terminal
+  while (r != NULL)
+  {
+    if ((r->level >= lvl) && (strcmp(r->head, "AKO") == 0))
+    {
+      // assemble all words of expansion into one string
+      *base = '\0';
+      t = r->tail;
+      while (t != NULL)
+      {
+        if (*base != '\0')
+          strcat_s(base, " ");
+        strcat_s(base, t->symbol);
+        t = t->tail;
+      }
+
+     // record any irregular plurals
+     if ((var = mf->Irregular(base, JTAG_NPL)) != NULL)
+       fprintf_s(out, "  %s * npl = %s\n", base, var);
+    }
+    r = r->next;             // next grammar rule
+  }
+}
+
+
+//= Add irregular adjective comparative and superlative forms to file list.
+
+void jhcGramExec::adj_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
+{
+  char base[80];
+  const jhcGramRule *r = gram;
+  const jhcGramStep *t;
+  const char *var;
+
+  // look through all rules for matching non-terminal
+  while (r != NULL)
+  {
+    if ((r->level >= lvl) && (strcmp(r->head, "HQ") == 0))
+    {
+      // assemble all words of expansion into one string
+      *base = '\0';
+      t = r->tail;
+      while (t != NULL)
+      {
+        if (*base != '\0')
+          strcat_s(base, " ");
+        strcat_s(base, t->symbol);
+        t = t->tail;
+      }
+
+     // record any irregular comparatives or superlatives
+     if ((var = mf->Irregular(base, JTAG_ACOMP)) != NULL)
+       fprintf(out, "  %s * acomp = %s\n", base, var);
+     if ((var = mf->Irregular(base, JTAG_ASUP)) != NULL)
+       fprintf(out, "  %s * asup  = %s\n", base, var);
+    }
+    r = r->next;             // next grammar rule
+  }
+}
+
+
+//= Add irregular verb present, past, and progressive forms to file list.
+
+void jhcGramExec::verb_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
+{
+  char base[80];
+  const jhcGramRule *r = gram;
+  const jhcGramStep *t;
+  const char *var;
+
+  // look through all rules for matching non-terminal
+  while (r != NULL)
+  {
+    if ((r->level >= lvl) && (strcmp(r->head, "ACT") == 0))
+    {
+      // assemble all words of expansion into one string
+      *base = '\0';
+      t = r->tail;
+      while (t != NULL)
+      {
+        if (*base != '\0')
+          strcat_s(base, " ");
+        strcat_s(base, t->symbol);
+        t = t->tail;
+      }
+
+     // record any irregular present tenses, past tenses, or progressives
+     if ((var = mf->Irregular(base, JTAG_VPRES)) != NULL)
+       fprintf(out, "  %s * vpres = %s\n", base, var);
+     if ((var = mf->Irregular(base, JTAG_VPAST)) != NULL)
+       fprintf(out, "  %s * vpast = %s\n", base, var);
+     if ((var = mf->Irregular(base, JTAG_VPROG)) != NULL)
+       fprintf(out, "  %s * vprog = %s\n", base, var);
+    }
+    r = r->next;             // next grammar rule
+  }
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                        Parsing Configuration                          //
 ///////////////////////////////////////////////////////////////////////////
@@ -882,7 +1114,7 @@ void jhcGramExec::parse_cleanup ()
 // initially all rules are disabled (call jhcGramExec::parse_enable)
 // returns 2 if appended, 1 if exclusive, 0 or negative for some error
 
-int jhcGramExec::parse_load (const char *grammar)
+int jhcGramExec::parse_load (const char *grammar, int lvl)
 {
   FILE *in;
   char dir[200], extra[200], text[500];
@@ -912,7 +1144,7 @@ int jhcGramExec::parse_load (const char *grammar)
         {
           *end = '\0';
           sprintf_s(extra, "%s%s", dir, start + 1);
-          parse_load(extra);
+          parse_load(extra, lvl);
           *rname = '\0';
         }
     }
@@ -935,7 +1167,7 @@ int jhcGramExec::parse_load (const char *grammar)
         }
     }
     else if ((*rname != '\0') && (*start != '\0'))
-      split_optional(rname, start);
+      split_optional(rname, start, lvl);
 
   // close file
   fclose(in);
@@ -983,38 +1215,38 @@ char *jhcGramExec::clean_line (char *ans, int len, FILE *in, int ssz)
 
 //= Split an expansion with optional parts into many base expansions.
 
-int jhcGramExec::split_optional (const char *rname, const char *line)
+int jhcGramExec::split_optional (const char *rname, const char *line, int lvl)
 {
   char base[500];
   char *start;
 
   // no fancy components
   if (strpbrk(line, "(+*?") == NULL)
-    return build_phrase(rname, line);
+    return build_phrase(rname, line, lvl);
   strcpy_s(base, line);
 
   // constructs with a lot of editing
   if ((start = strchr(base, '(')) != NULL)
-    return split_paren(rname, base, start);
+    return split_paren(rname, base, start, lvl);
   if ((start = strchr(base, '+')) != NULL)
-    return split_dict(rname, base, start);
+    return split_dict(rname, base, start, lvl);
 
   // optional multi-word dictation (generally fewer is better)
   if ((start = strchr(base, '*')) != NULL)
   {
     *start = ' ';
-    split_optional(rname, base);              // dropped
+    split_optional(rname, base, lvl);            // dropped
     *start = '+';
-    return split_dict(rname, base, start);    // required multi
+    return split_dict(rname, base, start, lvl);  // required multi
   }
 
   // optional single dictation (generally fewer is better)
   if ((start = strchr(base, '?')) != NULL)
   {
     *start = ' ';
-    split_optional(rname, base);              // dropped
+    split_optional(rname, base, lvl);            // dropped
     *start = '#';
-    return split_optional(rname, base);       // required single
+    return split_optional(rname, base, lvl);     // required single
   }
   return 1;
 }
@@ -1022,20 +1254,20 @@ int jhcGramExec::split_optional (const char *rname, const char *line)
 
 //= Handle optional parenthesized group by making two copies.
 
-int jhcGramExec::split_paren (const char *rname, char *base, char *start)
+int jhcGramExec::split_paren (const char *rname, char *base, char *start, int lvl)
 {
   char alt[500];
   char *end;
-  int lvl = 1;
+  int paren = 1;
 
   // find balancing closed parenthesis
   end = start + 1;
   while (*end != '\0')
   {
     if (*end == '(')
-      lvl++;
+      paren++;
     else if (*end == ')')
-      if (--lvl <= 0)
+      if (--paren <= 0)
         break;
     end++;
   }
@@ -1051,14 +1283,14 @@ int jhcGramExec::split_paren (const char *rname, char *base, char *start)
     *end = ' ';
 
   // generally prefer more specific version
-  split_optional(rname, base);  
-  return split_optional(rname, alt);
+  split_optional(rname, base, lvl);  
+  return split_optional(rname, alt, lvl);
 }
 
 
 //= Handle multi-word dictation by requiring various numbers of words.
 
-int jhcGramExec::split_dict (const char *rname, char *base, char *start)
+int jhcGramExec::split_dict (const char *rname, char *base, char *start, int lvl)
 {
   char alt[500];
   int i, j;
@@ -1075,7 +1307,7 @@ int jhcGramExec::split_dict (const char *rname, char *base, char *start)
     strcat_s(alt, start + 1);                  // skip wildcard character
 
     // process this new version
-    split_optional(rname, alt);
+    split_optional(rname, alt, lvl);
   }
   return 1;
 }
@@ -1083,7 +1315,7 @@ int jhcGramExec::split_dict (const char *rname, char *base, char *start)
 
 //= Assemble one path of a rule or an optional conjunct.
 
-int jhcGramExec::build_phrase (const char *rname, const char *line)
+int jhcGramExec::build_phrase (const char *rname, const char *line, int lvl)
 {
   const char *start = line;
   jhcGramRule *t, *r = gram;
@@ -1100,6 +1332,7 @@ int jhcGramExec::build_phrase (const char *rname, const char *line)
   if ((t = new jhcGramRule) == NULL)
     return -1;
   strcpy_s(t->head, rname);
+  t->level = lvl;
 
   // break expansion into words
   while (1)
@@ -1284,11 +1517,14 @@ int jhcGramExec::parse_disable (const char *rule)
 
 //= Add a new expansion to some existing rule in the grammar.
 // alters internal graph and attempts to change original grammar file also
+// lvl: -1 = vocab, 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
 // returns 2 if ok, 1 if only run-time changed, 0 or negative for error
 
-int jhcGramExec::parse_extend (const char *rule, const char *option)
+int jhcGramExec::parse_extend (const char *rule, const char *option, int lvl)
 {
-  split_optional(rule, option);
+  if ((rule == NULL) || (option == NULL) || (*rule == '\0') || (*option == '\0'))
+    return 0;
+  split_optional(rule, option, lvl);
   return 1;                            // never changes file
 }
 

@@ -67,7 +67,7 @@ jhcProcMem::jhcProcMem ()
   np = 0;
   noisy = 2;
   detail = 0;
-//detail = 155;               // show detailed matching for some operator 
+//detail = 144;               // show detailed matching for some operator 
 }
 
 
@@ -167,7 +167,7 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
   // set up to get up to bmax bindings using halo as needed
   mmax = dir->MaxOps();
   dir->mc = mmax;
-  wmem.SetMode(2);
+  wmem.SetMode(3);
 
   // try matching all operators above the preference threshold
   while (p != NULL)
@@ -250,7 +250,7 @@ int jhcProcMem::Load (const char *base, int add, int rpt, int level)
     {
       // delete and purge input if parse error 
       if (!in.End())
-        jprintf(">> Bad syntax at line %d in: %s\n", in.Last(), fname);
+        jprintf(">>> Bad syntax at line %d in: %s\n", in.Last(), fname);
       delete p;
       if (in.NextBlank() == NULL)
         break;
@@ -270,7 +270,7 @@ int jhcProcMem::Load (const char *base, int add, int rpt, int level)
   if (n > 0)
     jprintf(2, rpt, "  %3d action operators from: %s\n", n, fname);
   else
-    jprintf(2, rpt, "  -- no action operators from: %s\n", fname);
+    jprintf(2, rpt, "   -- action operators from: %s\n", fname);
   return n;
 }
 

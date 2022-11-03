@@ -1,0 +1,49 @@
+// basic commands for forming long term memories
+// ==================================================
+
+OP 1 - "To remember something ... then acknowledge"
+  trig:
+    DO[ act-1 -lex-  remember
+              -obj-> fact-1 ]
+---------------
+   FCN[ fcn-1 -lex-  mem_form 
+              -arg-> fact-1 ]
+    DO[ act-2 -lex-  acknowledge ]
+
+
+OP 2 - "To acknowledge say okay"
+  trig:
+    DO[ act-1 -lex-  acknowledge ]
+---------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  okay ]
+
+
+OP 3 - "To acknowledge say done"
+  trig:
+    DO[ act-1 -lex-  acknowledge ]
+---------------
+    DO[ act-2 -lex-  say
+              -obj-> txt-1
+        txt-1 -str-  done ]
+
+
+// --------------------------------------
+
+OP 5 - "To recall something ..."
+  trig:
+    DO[ act-1 -lex-  recall
+              -obj-> fact-1 ]
+---------------
+   FCN[ fcn-1 -lex-  mem_match
+              -arg-> fact-1 ]
+
+
+OP 6 - "To find something with some name recall it..."
+  trig:
+  FIND[ obj-1 
+        tag-1 -name-> obj-1 ]
+---------------
+    DO[ act-1 -lex-  recall
+              -obj-> obj-1 ]

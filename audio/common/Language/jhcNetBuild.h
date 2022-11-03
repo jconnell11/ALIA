@@ -73,12 +73,12 @@ private:
   int hail_tag () const;
   int greet_tag () const;
   int farewell_tag () const;
+  int unk_tag (const char *unk) const;
   int add_tag (int rule, const char *alist, const char *sent);
   int attn_tag (int spact, const char *alist) const;
   jhcAliaChain *build_tag (jhcNetNode **node, const char *alist) const;
   jhcAliaChain *guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const;
   jhcAliaChain *exp_fail (jhcNetNode *plan) const;
-  jhcAliaChain *ack_given (jhcNetNode *input) const;
 
   // value range rules
   int range_rules (FILE *out, const char *cat, const char *lo, const char *hi, int nr) const;

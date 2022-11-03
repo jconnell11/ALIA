@@ -53,7 +53,7 @@ jhcSurfObjs::jhcSurfObjs (int n)
   // processing parameters for base and components
   SetFit(0.75, 2000, 0.5, 4.0, 4.0, 3.0, 100);
   pp.SetFind(3, 180, 35, 25, 245, 100, 50);
-  pp.SetHue(250, 30, 49, 130, 170, 220);
+  pp.SetHue(250, 30, 49, 130, 175, 220);
 
   // own parameters
   Defaults();

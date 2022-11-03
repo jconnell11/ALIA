@@ -35,7 +35,7 @@
 jhcEliCoord::jhcEliCoord ()
 {
   // current software version (sync with MensEt)
-  ver = 4.80;
+  ver = 4.90;
   
   // connect processing to basic robot I/O
   rwi.BindBody(&body);
@@ -127,9 +127,10 @@ int jhcEliCoord::SaveVals (const char *fname)
 //= Add the names of important people for face recognition and grammar.
 // can append to any that have previously been specified
 // should be called after Reset (else speech grammar might be cleared)
+// better to build word list at this point (wds > 0) rather than in Reset
 // returns number just added
 
-int jhcEliCoord::SetPeople (const char *fname, int append)
+int jhcEliCoord::SetPeople (const char *fname, int append, int wds)
 {
   int i, n, n0 = ((append > 0) ? vip.Names() : 0);
 
@@ -138,15 +139,18 @@ int jhcEliCoord::SetPeople (const char *fname, int append)
   for (i = 0; i < n; i++)
     AddName(vip.Full(i + n0));
   jprintf("Added %d known users from %s\n\n", n, fname);
+  if (wds > 0)
+    vc.GetWords(gr.Expansions());
   return n;
 }
 
 
 //= Reset state for the beginning of a sequence.
 // bmode: 0 for no body, 1 or more for init body (2 used for autorun in CBanzaiDoc)
+// if wds > 0 then assumes vocanulary is complete and build word list
 // returns 2 if robot ready, 1 if ready but no robot, 0 or negative for error
 
-int jhcEliCoord::Reset (int bmode)
+int jhcEliCoord::Reset (int bmode, int wds)
 {
   int rc = 0;
 
@@ -163,6 +167,8 @@ int jhcEliCoord::Reset (int bmode)
   // initialize timing and speech components
   if (jhcAliaSpeech::Reset(body.rname, body.vname) <= 0)
     return 0;
+  if (wds > 0)
+    vc.GetWords(gr.Expansions());
   if (mech > 0)
     body.Charge(1);                    // possibly reset battery gauge
   return((rc <= 0) ? 1 : 2);
@@ -202,8 +208,8 @@ int jhcEliCoord::Respond ()
   // pass dynamic status of body to mood monitor and statistics collector
   if (!rwi.Ghost())
   {
-    mood.Walk(b->MoveIPS());
-    mood.Wave((body.arm).FingerIPS());
+    mood.Walk(body.BodyIPS());                   // not neck or turn
+    mood.Wave((body.arm).FingerIPS());             
     mood.Energy(body.Charge(body.Voltage(), 0));
     stat.Drive(b->MoveCmdV(), b->MoveIPS(), b->TurnCmdV(), b->TurnDPS());
     stat.Gaze(n->PanCtrlGoal(), n->Pan(), n->TiltCtrlGoal(), n->Tilt());

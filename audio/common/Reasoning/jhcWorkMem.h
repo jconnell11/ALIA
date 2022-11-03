@@ -47,7 +47,7 @@ class jhcWorkMem : public jhcNodePool
 // PRIVATE MEMBER VARIABLES
 private:
   // main vs halo separation
-  int nimbus, mode;
+  int rim, nimbus, mode;
   jhcNetNode *self;          // fixed node representing the robot
   jhcNetNode *user;          // node for current person communicating
 
@@ -69,8 +69,10 @@ public:
   // creation and initialization
   ~jhcWorkMem ();
   jhcWorkMem ();
+  void Border ()  {rim = halo.LastLabel();}
   void Horizon () {nimbus = halo.LastLabel();}
-  void SetMode (int exp =2) {mode = exp;}
+  int LastGhost () const {return rim;}
+  void SetMode (int lvl =3) {mode = lvl;}
   int WmemSize () const {return NodeCnt();}
   int HaloSize () const {return halo.NodeCnt();}
 
@@ -93,7 +95,10 @@ public:
   // halo functions
   void ClearHalo () {halo.PurgeAll();}
   void AssertHalo (const jhcGraphlet& pat, jhcBindings& b) 
-    {halo.Assert(pat, b, 0.0, 0, NULL);}    
+    {halo.Assert(pat, b, 0.0, 0, NULL);} 
+  jhcNetNode *CloneHalo (const jhcNetNode& n)
+    {return halo.CloneNode(n);}
+  bool VisMem (const jhcNetNode* n, int h) const;
 
   // truth maintenance
   void RevealAll (const jhcGraphlet& desc);
@@ -105,9 +110,15 @@ public:
   int ExtRef (const jhcNetNode *obj, int kind =0) const;
   int ExtEnum (int rnum, int kind =0) const;
 
+  // writing functions
+  int Save (const char *fname, int lvl =0)
+    {SetMode(0); return jhcNodePool::Save(fname, lvl);}
+  int Print (int lvl =0) 
+    {SetMode(0); return jhcNodePool::Print(lvl);}
+
   // debugging
   void PrintMain ()  
-    {jprintf("\nWMEM (%d nodes) =", Length()); SetMode(0); Print(2); jprintf("\n");}
+    {jprintf("\nWMEM (%d nodes) =", Length()); Print(2); jprintf("\n");}
   void PrintHalo () const 
     {jprintf("\nHALO (%d nodes) =", HaloSize()); halo.Print(2); jprintf("\n");}
 
@@ -119,9 +130,6 @@ protected:
 
   // conversation participants
   void InitPeople (const char *rname);
-
-  // halo functions
-  void PromoteHalo (jhcBindings& h2m, const jhcBindings& b);
 
   // garbage collection
   int CleanMem (int dbg =0);

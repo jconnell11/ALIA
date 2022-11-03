@@ -171,7 +171,6 @@ int jhcEliGrok::Defaults (const char *fname)
 {
   int ok = 1;
 
-  ok &= watch.Defaults(fname);
   ok &= vis_params(fname);
   ok &= sacc_params(fname);
   ok &= fn.Defaults(fname);      // does s3 also
@@ -200,7 +199,6 @@ int jhcEliGrok::SaveVals (const char *fname)
 {
   int ok = 1;
 
-  ok &= watch.SaveVals(fname);
   ok &= vps.SaveVals(fname);
   ok &= sps.SaveVals(fname);
   ok &= fn.SaveVals(fname);      // does s3 also
@@ -297,7 +295,6 @@ void jhcEliGrok::Reset (int rob, int behaviors)
 
   // restart background loop, which first generates a body Issue call
   reflex = behaviors;
-  watch.Reset();
   jhcBackgRWI::Reset();
 }
 
@@ -468,10 +465,6 @@ jtimer(8, "body_issue");
   if (body == NULL)
     return;
 
-  // run some reactive behaviors (tk is up-to-date) 
-  if (reflex > 0)
-    watch.React(this);
-
   // interpret high-level commands (in order of priority)
   act = base_mode();
   assert_scan();
@@ -548,29 +541,31 @@ int jhcEliGrok::ClosestFace (double front, int cnt) const
 }
 
 
-//= Find person with a face closest to the center of the current view.
-// can optionally take a forward offset from robot origin and min face detections
-// returns tracker index not person ID
+//= Find the head closest to view direction with the given deviation.
+// assumes view = 0 means forward wrt microphone position (approx. robot center)
+// if successful binds position vector to center (else unchanged)
+// returns index of winner, negative if nothing suitable
 
-int jhcEliGrok::CentralFace (double aim, int cnt) const
+int jhcEliGrok::HeadAlong (jhcMatrix& head, double aim, double dev) const
 {
   jhcMatrix pos(4);
-  double pan, tilt, off, best;
+  double off, best;
   int i, n = s3.PersonLim(), win = -1;
 
   for (i = 0; i < n; i++)
     if (s3.PersonOK(i) && s3.Visible(i))
-      if (fn.FaceCnt(i) >= cnt)
+    {
+      s3.Head(pos, i);
+      off = fabs(mic->OffsetAng(pos, aim));
+      if ((win < 0) || (off < best))
       {
-        s3.Head(pos, i);
-        neck->AimFor(pan, tilt, pos, lift->Height());
-        off = fabs(pan - aim);
-        if ((win < 0) || (off < best))
-        {
-          win = i;
-          best = off;
-        }
+        win = i;
+        best = off;
       }
+    }
+  if ((win < 0) || (best > dev))
+    return -1;
+  head.Copy(pos);
   return win;
 }
 

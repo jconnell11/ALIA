@@ -36,6 +36,7 @@
 
 =[%obj-pp]
   of <art> (<desc>) <n> (<comp>)
+  of (<desc>) <NAME> (<comp>)
 
 
 // vague indefinite noun phrase ("something red on the table")
@@ -49,7 +50,6 @@
 =[%obj-i]
   <ind> (<desc>) <AKO> (<comp>)
   <ind> (<desc>) thing (<comp>)
-  <AKO-M>
 
 
 // indefinite plural noun phrase
@@ -122,12 +122,15 @@
   <place>
   <HQ-ER> than <%obj>
   <%obj-pp>
+  <%fact-m>
+  <$src>
  
 
 // types of location phrases
 
 =[place]
   (<DEG>) <LOC> <np>
+  (<DEG>) <LOC> <np-s>
   <LOC-2> <np> and <np>
   <LOC-V>
 
@@ -142,7 +145,8 @@
   (<cop>) <comp>
   (<cop>) <%obj-i>
   (<cop>) <%obj-s>
-  (<cop>) <%obj-p>
+  (<cop>) <desc-p>
+  <cop> <%obj>
   (<cop>) a <%n-super>
 
 

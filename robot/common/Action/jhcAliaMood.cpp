@@ -64,20 +64,21 @@ void jhcAliaMood::Levels (double now[]) const
 
 //= Parameters for assessing boredom and overwork.
 
-int jhcAliaMood::busy_params (const char *fname)
+int jhcAliaMood::bored_params (const char *fname)
 {
   jhcParam *ps = &bps;
   int ok;
 
-  ps->SetTag("mood_busy", 0);
+  ps->SetTag("mood_bored", 0);
   ps->NextSpecF( &frantic,  25.0, "Overwhelmed threshold");
-  ps->NextSpecF( &engaged,  15.0, "Optimum threshold");
-  ps->NextSpecF( &idle,     10.0, "Low activity threshold");
-  ps->NextSpecF( &bored,     1.0, "Bored threshold");
+  ps->NextSpecF( &engaged,  15.0, "Optimum thought level");
+  ps->NextSpecF( &idle,     10.0, "Minimal thought level");
+  ps->NextSpecF( &active,    2.0, "Good motion level");
+  ps->NextSpecF( &bored,     0.5, "Bored motion threshold");
+  ps->NextSpecF( &tc,        3.5, "Motion decay (sec)");  
+
   ps->NextSpecF( &nag,      30.0, "Whine interval (sec)");
   ps->NextSpec4( &very,      3,   "Very bored on repeat");
-
-  ps->NextSpecF( &tc,        3.5, "Activity decay (sec)");  
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -138,7 +139,7 @@ int jhcAliaMood::Defaults (const char *fname)
 {
   int ok = 1;
 
-  ok &= busy_params(fname);
+  ok &= bored_params(fname);
   ok &= lonely_params(fname);
   ok &= tired_params(fname);
   return ok;
@@ -174,12 +175,15 @@ fill = 0;
   now = 0;
   clr_data();
 
-  // activity level
+  // mental level
   busy = 0.0;
   yikes = 0;
+
+  // physical level
+  fidget = 0.0;
   blah = 0;
 
-  // interaction level
+  // speech level
   input = 0.0;
   lament = 0;
 
@@ -231,29 +235,24 @@ fill++;
   else if (nag > 0)                              // see if nags enabled
     if (chk_busy(rpt) <= 0)                      // might be overwhelmed
       if (busy <= idle)                          // only complain if idle
-        if (chk_lonely(rpt) <= 0)
-          chk_tired(rpt);
+        if (chk_antsy(rpt) <= 0)
+          if (chk_lonely(rpt) <= 0)
+            chk_tired(rpt);
   rpt.FinishNote();
 }
 
 
-//= See if busyness is below the boredom threshold.
+//= See if mental activity is above the overwhelmed threshold.
 // returns 1 if some NOTE composed (assumes NOTE already started)
 
 int jhcAliaMood::chk_busy (jhcAliaNote& rpt)
 {
-  // clear hysteretic states (explicitly retract assertions)
+  // clear hysteretic state (explicitly retract assertions)
   if (busy < engaged)
   {
     if (yikes > 0)
       rpt.NewProp(rpt.Self(), "hq", "overwhelmed", 1);
     yikes = 0;
-  }
-  if (busy >= engaged)
-  {
-    if (blah > 1)
-      rpt.NewDeg(rpt.Self(), "hq", "bored", ((blah >= very) ? "very" : NULL), 1);
-    blah = 0;
   }
 
   // check for overstimulation (complains just once at beginning)
@@ -264,16 +263,32 @@ int jhcAliaMood::chk_busy (jhcAliaNote& rpt)
     yikes = 1;
     return 1;
   }
+  return 0;                  // no NOTEs generated
+}
+
+
+//= See if physical activity is below the boredom threshold.
+// returns 1 if some NOTE composed (assumes NOTE already started)
+
+int jhcAliaMood::chk_antsy (jhcAliaNote& rpt)
+{
+  // clear hysteretic state (explicitly retract assertions)
+  if (fidget >= active)
+  {
+    if (blah > 1)
+      rpt.NewDeg(rpt.Self(), "hq", "bored", ((blah >= very) ? "very" : NULL), 1);
+    blah = 0;
+  }
 
   // check for boredom (waits a while then complains regularly)
-  if ((busy < bored) && (blah <= 0))
+  if ((fidget < bored) && (blah <= 0))
   {
     kvetch = now;
     blah = 1;
   }
   else if ((blah > 0) && (jms_secs(now, kvetch) >= nag))
   {
-    jprintf("{ chk_busy: bored at %3.1f [x%d] }\n", busy, blah);
+    jprintf("{ chk_busy: bored at %3.1f [x%d] }\n", fidget, blah);
     rpt.NewDeg(rpt.Self(), "hq", "bored", ((blah >= very) ? "very" : NULL));
     kvetch = now;
     blah++;
@@ -493,25 +508,25 @@ void jhcAliaMood::Energy (int pct)
 }
 
 
-//= Note that the robot is moving either forward or backward at some speed.
+//= Note that the robot is moving its body or the lift stage at some speed.
 // typically called from a class derived from jhcBackgRWI
 
-void jhcAliaMood::Walk (double sp)
+void jhcAliaMood::Walk (double ips)
 {
-  if (sp <= 0.0)
+  if (ips <= 0.0)
     return;
-  // not connected yet
+  active = __max(active, ips);
 }
 
 
 //= Note that the finger tips are separating or moving at some speed.
 // typically called from a class derived from jhcBackgRWI
 
-void jhcAliaMood::Wave (double sp)
+void jhcAliaMood::Wave (double ips)
 {
-  if (sp <= 0.0)
+  if (ips <= 0.0)
     return;
-  // not connected yet
+  active = __max(active, ips);
 }
 
 

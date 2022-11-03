@@ -38,7 +38,7 @@
 
 
 //= Interface to ELI people tracking kernel for ALIA system.
-//   DO: allows user to briefely "look" at someone, or continuously "watch" someone
+//   DO: allows user to briefly "look" at someone, or continuously "watch" someone
 //       also accepts the commands "come here", "approach X", and "follow X"
 //  CHK: can determine if a particular someone is visible 
 // FIND: can tell who is currently visible and who is closest
@@ -51,6 +51,7 @@ class jhcSocial : public jhcStdKern
 private:
   // link to hardware
   jhcEliGrok *rwi;
+  jhcEliNeck *neck;
 
   // reported events
   jhcAliaNote *rpt;
@@ -68,6 +69,11 @@ public:
   // attention parameters
   jhcParam aps;
   double pnear, alone, scare, ltol, lquit;
+
+  // sound localization parameters
+  jhcParam sps;
+  double pdist, rtime, sdev, aimed, gtime, side, btime;
+  int recent;
 
   // motion parameters 
   jhcParam mps;
@@ -90,6 +96,7 @@ public:
 private:
   // processing parameters
   int attn_params (const char *fname);
+  int snd_params (const char *fname);
   int move_params (const char *fname);
 
   // overridden virtuals
@@ -105,7 +112,11 @@ private:
   void user_gone ();
   jhcAliaDesc *agt_node (int t);
 
-  // looking at/for people
+  // looking for speaker
+  JCMD_DEF(soc_talk);
+  int chk_stuck (int i, double err);
+
+  // looking at people
   JCMD_DEF(soc_look);
 
   // moving toward people

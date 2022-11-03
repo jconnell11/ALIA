@@ -133,7 +133,9 @@ public:
   ~jhcEliBody ();
   jhcEliBody ();
   double Voltage () const {return volts;}
-  void ReportCharge ();
+  void ReportCharge (); 
+  double BodyIPS () const 
+    {return __max(base.MoveIPS(), lift.LiftIPS());}
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);

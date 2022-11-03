@@ -310,8 +310,9 @@ int jhcManipulate::local_start (const jhcAliaDesc *desc, int i)
   JCMD_SET(man_grab);
   JCMD_SET(man_lift);
   JCMD_SET(man_take);
-  JCMD_SET(man_put);
+  JCMD_SET(man_move);
   JCMD_SET(man_tuck);
+  JCMD_SET(man_point);
   return -2;
 }
 
@@ -325,8 +326,9 @@ int jhcManipulate::local_status (const jhcAliaDesc *desc, int i)
   JCMD_CHK(man_grab);
   JCMD_CHK(man_lift);
   JCMD_CHK(man_take);
-  JCMD_CHK(man_put);
+  JCMD_CHK(man_move);
   JCMD_CHK(man_tuck);
+  JCMD_CHK(man_point);
   return -2;
 }
 
@@ -354,8 +356,7 @@ void jhcManipulate::set_size (const jhcImg& ref)
 
 int jhcManipulate::update_held ()
 {
-double sqz0 = 5.0;
-  double ang, rads, c, s, wx, wy, wz, ht = lift->Height();
+  double ang, rads, c, s, wx, wy, wz, ht = lift->Height(), sqz0 = 5.0;
 
   // wait for next sensor cycle 
   if ((rwi == NULL) || rwi->Ghost() || !rwi->Accepting())
@@ -363,7 +364,7 @@ double sqz0 = 5.0;
   if (held == NULL)
     return 0;
 
-  // check that object is still being held (give owner first option to complain)
+  // check that object is still being held (allow short bobble)
   if ((arm->Width() < wmin) || (arm->Squeeze() < sqz0))
     if (drop++ > 0)
     {
@@ -647,7 +648,7 @@ int jhcManipulate::man_take (const jhcAliaDesc *desc, int i)
 // sets cmode[i] to be relation number (fails if no "arg2")
 // returns 1 if okay, -1 for interpretation error
 
-int jhcManipulate::man_put0 (const jhcAliaDesc *desc, int i)
+int jhcManipulate::man_move0 (const jhcAliaDesc *desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -687,7 +688,7 @@ int jhcManipulate::man_put0 (const jhcAliaDesc *desc, int i)
 //           9 = avoid protruding joints
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcManipulate::man_put (const jhcAliaDesc *desc, int i)
+int jhcManipulate::man_move (const jhcAliaDesc *desc, int i)
 {
   int rc = 0;
 
@@ -699,8 +700,6 @@ int jhcManipulate::man_put (const jhcAliaDesc *desc, int i)
   init_vals(i);
 
   // make sure target and reference object(s) are still known 
-  if ((cmode[i] == DOWN) && (held != cobj[i]))
-     return err_lack(cobj[i]);
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
     return err_gone(cobj[i]);
   if (ref_tracks(cref[i], cref2[i], cmode[i], cspot[i]) < 0)   
@@ -756,7 +755,6 @@ int jhcManipulate::man_put (const jhcAliaDesc *desc, int i)
 
 
 //= Start trying to retract the arm to travel position.
-// only functions on semnet allowed, cannot interrogate vision system
 // returns 1 if okay, -1 for interpretation error
 
 int jhcManipulate::man_tuck0 (const jhcAliaDesc *desc, int i)
@@ -798,6 +796,79 @@ int jhcManipulate::man_tuck (const jhcAliaDesc *desc, int i)
 }
 
 
+//= Start trying to indicate an object with the hand.
+// only functions on semnet allowed, cannot interrogate vision system
+// returns 1 if okay, -1 for interpretation error
+
+int jhcManipulate::man_point0 (const jhcAliaDesc *desc, int i)
+{
+  if ((rwi == NULL) || (rpt == NULL))
+    return -1;
+
+  // argument parsing
+  if ((cobj[i] = desc->Val("arg")) == NULL)
+    return -1;
+
+  // intialize state
+  citem[i] = -1;             // await access to vision
+  cflag[i] = 0;              // no workspace violations
+  return 1;
+}
+
+
+//= Continue trying to indicate an object with the hand.
+// sets up continuing request to body if not finished
+// only has one step so no finite state machine (or failure cleanup)
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcManipulate::man_point (const jhcAliaDesc *desc, int i)
+{
+  double ht, dp;
+
+  // lock to sensor cycle and check update standard cached info
+  if (!rwi->Accepting())
+    return 0;
+  if (rwi->Ghost() || (arm->CommOK() <= 0))
+    return err_arm();
+  init_vals(i);
+
+  // make sure target object still is known then check for interference
+  if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
+    return err_gone(cobj[i]);
+  if (chk_hand(NULL) <= 0)
+    return -1;
+
+  // possibly print entry message and choose zero gaze offset
+  if (cst2[inst] == 0)
+  {
+    jprintf(1, dbg, "|- Manipulate %d: point %s\n", cbid[inst], cobj[inst]->Nick());
+    cpos[inst].Zero();
+    cst2[inst] = 1;
+  }
+  
+  // track object to get desired arm pose (just over centroid)
+  sobj->World(end, citem[inst]);
+  end.SetZ(sobj->MaxZ(citem[inst]) + graze + over);
+  aim.SetVec3(corner_ang(end.X(), end.Y()), -tip, 0.0);
+  wid = 0.0;
+  target = 1;
+
+  // see if close enough to desired pose
+  ht = lift->Height();
+  dp = arm->PosErr3D(perr, end, ht, 0);
+  if (dp > ptol)
+  {
+    // fail if not making progress unless in right ballpark (hope for best)
+    if (chk_stuck(dp) <= 0)
+      return command_bot(0);
+    jprintf(2, dbg, "    stuck: dp = %s\n", dp);
+    if (arm->PosOffset3D(end, ht) > cont)
+      return err_reach(cobj[inst]);
+  }
+  return final_pose(1);                // success
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                              Take Phases                              //
 ///////////////////////////////////////////////////////////////////////////
@@ -807,7 +878,7 @@ int jhcManipulate::man_tuck (const jhcAliaDesc *desc, int i)
 // sets cpos[i] to object-relative grasp point, cdir[i] to absolute angles
 // sets camt[i] to width (negative if top is roundish)
 // returns 1 if done, 0 if still working, -1 for timeout
-// NOTE: always first phase of man_grab, man_lift, man_take (second of man_put)
+// NOTE: always first phase of man_grab, man_lift, man_take (second of man_move)
 
 int jhcManipulate::assess_obj ()
 {
@@ -985,7 +1056,7 @@ int jhcManipulate::close_fingers ()
 
   // remember engagement details and generate "holding" event
   record_grip(cobj[inst], citem[inst]);
-  msg_hold(1);                           
+  msg_hold();                           
   wt = -1.0;                           // not measured yet
   return final_pose(0);
 }
@@ -1045,7 +1116,7 @@ int jhcManipulate::lift_off ()
 // temporarily sets cend[i] to approximate location of destination description
 // sets anchor-relative hand destination cend[i] and absolute orientation caux[i] 
 // returns 1 if done, 0 if still working, -1 for timeout
-// NOTE: always first phase of man_put
+// NOTE: always first phase of man_move
 
 int jhcManipulate::assess_spot ()
 {
@@ -1215,11 +1286,8 @@ int jhcManipulate::release_obj ()
     jprintf(2, dbg, "    stuck: timeout\n");
   }
 
-  // generate normal "not holding" event 
-  final_pose(0);
-  msg_hold(0);
-  clear_grip();                        // mark hand as empty now
-  return 1;
+  // update_helds generates "not holding" event and marks hand as empty
+  return final_pose(0);
 }
 
  
@@ -1376,7 +1444,7 @@ void jhcManipulate::init_vals (int i)
 
 int jhcManipulate::chk_hand (jhcAliaDesc *expect)
 {
-double sqz0 = 5.0;
+  double sqz0 = 5.0;
 
   // holding nothing
   if (held == NULL) 
@@ -2423,7 +2491,7 @@ int jhcManipulate::ref_tracks (int& a, int& a2, int rn, const jhcAliaDesc *place
   // dual references ("between")
   if (rn == TWIXT)
   {
-    if ((ref = place->Val("ref", 1)) == NULL)
+    if ((ref = place->Val("ref2")) == NULL)
       return -2;
     if ((a2 = sobj->ObjTrack(rpt->VisID(ref))) < 0)
       return err_gone(ref);
@@ -2455,12 +2523,11 @@ int jhcManipulate::err_arm ()
   jhcNetNode *part, *has;
   jhcAliaDesc *arm, *own, *fail;
 
-  // see if node for robot's arm already exists
+  // see if node for robot's arm already exists (add to LTM facts?)
   sit.BuildCond();
   part = sit.MakeNode("obj");
-  sit.AddProp(part, "ako", "arm");
-  has = sit.AddProp(atree->Robot(), "agt", "have");
-  has->AddArg("obj", part);
+  has = sit.AddProp(part, "ako", "arm");
+  has->AddArg("wrt", atree->Robot());
   atree->SetMode(0);
   arm = sit.FindRef(part, *atree);
 
@@ -2469,9 +2536,8 @@ int jhcManipulate::err_arm ()
   if (arm == NULL)
   {
     arm = rpt->NewNode("obj");
-    rpt->NewProp(arm, "ako", "arm");
-    own = rpt->NewProp(rpt->Self(), "agt", "have");
-    rpt->AddArg(own, "obj", arm);
+    own = rpt->NewProp(arm, "ako", "arm");
+    rpt->AddArg(own, "wrt", rpt->Self());
   }
   fail = rpt->NewProp(arm, "hq", "broken");   
   rpt->FinishNote(fail);
@@ -2540,7 +2606,7 @@ int jhcManipulate::err_spot ()
     loc = rpt->NewProp(fail, "loc", rnum2txt(rn));
     rpt->AddArg(loc, "ref", place->Val("ref"));
     if (rn == TWIXT)
-      rpt->AddArg(loc, "ref", place->Val("ref", 1));
+      rpt->AddArg(loc, "ref", place->Val("ref2"));
   }
   rpt->FinishNote(fail);
   return -1;
@@ -2658,7 +2724,7 @@ int jhcManipulate::err_lack (jhcAliaDesc *obj)
   if (obj == NULL)
     return -1;
 
-  // event generation
+  // event generation (adds as failure reason even if whole motion succeeds)
   rpt->StartNote();
   fail = rpt->NewNode("act", "hold", 1);
   rpt->AddArg(fail, "obj", obj);
@@ -2668,15 +2734,14 @@ int jhcManipulate::err_lack (jhcAliaDesc *obj)
 }
 
 
-//= Say that the robot is or is not holding the remembered object.
-// mode: 1 = am holding, 0 = not holding
+//= Say that the robot is holding the remembered object.
 // <pre>
 //   NOTE[ act-1 -lex-  hold
 //               -obj-> obj-1
 //               -agt-> self-1 ]
 // </pre>
 
-void jhcManipulate::msg_hold (int mode)
+void jhcManipulate::msg_hold ()
 {
   jhcAliaDesc *act;
 
@@ -2686,7 +2751,7 @@ void jhcManipulate::msg_hold (int mode)
 
   // event generation
   rpt->StartNote();
-  act = rpt->NewNode("act", "hold", ((mode <= 0) ? 1 : 0));
+  act = rpt->NewNode("act", "hold");
   rpt->AddArg(act, "obj", held);
   rpt->AddArg(act, "agt", rpt->Self());
   rpt->FinishNote(NULL);

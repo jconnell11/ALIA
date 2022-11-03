@@ -40,11 +40,6 @@
   chunkiness
 
 
-// mass nouns (like "a rice")
-
-=[AKO-M]
-
-
 // adjectives
 
 =[HQ]
@@ -86,32 +81,13 @@
   chunky
 
 
-// proper nouns
-
-=[NAME]
-
-
 // -----------------------------------------
-
-// modifiers
-
-=[MOD]
-
-
-// directions
-
-=[DIR]
-
 
 // imperative verbs
 
 =[ACT]
+  see
 
-
-// imperative verbs requiring object and location
-
-=[ACT-2]
- 
 
 // ================================================
 
@@ -128,8 +104,14 @@
   blue * asup  = bluest
   purple * acomp = purpler
   purple * asup  = purplest
+  leftmost * acomp = more leftmost
+  leftmost * asup  = most leftmost
+  rightmost * acomp = more rightmost
+  rightmost * asup  = most rightmost
   visible * acomp = more visible
   visible * asup  = most visible
-
-
+  large * acomp = larger
+  large * asup = largest
+  see * vpast = saw
+  
 

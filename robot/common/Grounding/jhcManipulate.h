@@ -149,7 +149,7 @@ public:
   void Workspace (jhcImg& dest, int r =255, int g =255, int b =255) const;
   void ForceItem (int t);
   void ForceDest (double wx, double wy, double wz);
-  int Move () {local_volunteer(); return man_put(NULL, 0);}
+  int Move () {local_volunteer(); return man_move(NULL, 0);}
   int State () const   {return cst[0];}
   int LastErr () const {return msg;}
 
@@ -178,8 +178,9 @@ private:
   JCMD_DEF(man_grab);
   JCMD_DEF(man_lift);
   JCMD_DEF(man_take);
-  JCMD_DEF(man_put);
+  JCMD_DEF(man_move);
   JCMD_DEF(man_tuck);
+  JCMD_DEF(man_point);
 
   // take phases
   int assess_obj ();
@@ -253,7 +254,7 @@ private:
   int err_reach (jhcAliaDesc *obj);
   int err_grasp ();
   int err_lack (jhcAliaDesc *obj);
-  void msg_hold (int mode);
+  void msg_hold ();
 
 
 };

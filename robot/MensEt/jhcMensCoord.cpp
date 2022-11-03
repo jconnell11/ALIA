@@ -40,7 +40,7 @@ jhcMensCoord::~jhcMensCoord ()
 jhcMensCoord::jhcMensCoord ()
 {
   // current software version
-  ver = 4.80;
+  ver = 4.85;
 
   // connect processing to basic robot I/O
   rwi.BindBody(&body);

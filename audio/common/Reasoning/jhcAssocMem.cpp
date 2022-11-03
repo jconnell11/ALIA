@@ -71,7 +71,7 @@ jhcAssocMem::jhcAssocMem ()
   nr = 0;
   noisy = 2;
   detail = 0;
-//detail = 169;              // show detailed matching for some rule 
+//detail = 161;              // show detailed matching for some rule 
 }
 
 
@@ -171,6 +171,7 @@ void jhcAssocMem::Remove (const jhcAliaRule *rem)
 //= Apply all rules to main portion of working memory, results go to halo.
 // will not match conditions with blf < mth, or even try weak rules
 // returns number of invocations
+// NOTE:assumes all halo inferences have been erased already (e.g. ClearHalo called)
 
 int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, int dbg) const
 {
@@ -178,13 +179,15 @@ int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, int dbg) const
   double mth = wmem.MinBlf();
   int cnt = 0, cnt2 = 0;
 
-//dbg = 2;                         // quick way to show halo inferences
+//dbg = 2;                   // quick way to show halo inferences
 
 jtimer(14, "RefreshHalo");
-  // PASS 1 - erase all previous halo deductions
+  // possibly announce entry
   jprintf(1, dbg, "HALO refresh ...\n");
-  wmem.ClearHalo();
-  wmem.SetMode(0);                 // only match to nodes in main pool
+
+  // PASS 1 - run 1-step inference on working memory and long term props  
+  wmem.Horizon();            
+  wmem.SetMode(1);           // only match to nodes in main pool and LTM props
   jprintf(2, dbg, "1-step:\n");
   while ((r = NextRule(r)) != NULL)
   {
@@ -192,9 +195,9 @@ jtimer(14, "RefreshHalo");
     cnt += r->AssertMatches(wmem, mth, 0, dbg - 1);
   }
 
-  // PASS 2 - mark start of 2-step inferences
-  wmem.Horizon();
-  wmem.SetMode(1);                 // match to main pool and 1-step   
+  // PASS 2 - run 2-step inference using first set of halo assertions
+  wmem.Horizon(); 
+  wmem.SetMode(2);           // match to main pool, LTM props, and 1-step    
   r = NULL;
   jprintf(2, dbg, "2-step:\n");
   while ((r = NextRule(r)) != NULL)
@@ -273,7 +276,7 @@ int jhcAssocMem::next_halo (jhcAliaRule **r, jhcBindings **b, jhcBindings& list,
     // ignore non-halo items or already removed nodes
     if ((item = list.GetSub(i)) == NULL)
         continue;
-    if (!item->Halo())
+    if (!item->Halo() || (item->hrule == NULL))
       continue;
     *r = item->hrule;
     *b = item->hbind;
@@ -340,7 +343,7 @@ int jhcAssocMem::Load (const char *base, int add, int rpt, int level)
     {
       // delete and purge input if parse error 
       if (!in.End())
-        jprintf(">> Bad syntax at line %d in: %s\n", in.Last(), fname);
+        jprintf(">>> Bad syntax at line %d in: %s\n", in.Last(), fname);
       delete r;
       if (in.NextBlank() == NULL)
         break;
@@ -360,7 +363,7 @@ int jhcAssocMem::Load (const char *base, int add, int rpt, int level)
   if (n > 0)
     jprintf(2, rpt, "  %3d inference rules  from: %s\n", n, fname);
   else
-    jprintf(2, rpt, "  -- no inference rules  from: %s\n", fname);
+    jprintf(2, rpt, "   -- inference rules  from: %s\n", fname);
   return n;
 }
 

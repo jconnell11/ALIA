@@ -68,12 +68,13 @@ int jhcNetBuild::NameSaid (const char *alist, int mode) const
 
 //= Build an appropriate structure based on given association list.
 // also save input utterance for new rules or operators
-// return: 8 = farewell, 7 = greet, 6 = hail, 
+// return: 9 = vocabulary, 8 = farewell, 7 = greet, 6 = hail, 
 //         5 = op, 4 = rule, 3 = question, 2 = command, 1 = fact, 
 //         0 = nothing, negative for error
 
 int jhcNetBuild::Convert (const char *alist, const char *sent)
 {
+  const char *unk;
   int spact;
 
   // sanity check then cleanup any rejected suggestions
@@ -81,8 +82,13 @@ int jhcNetBuild::Convert (const char *alist, const char *sent)
     return -1;
   add = NULL;                                // deleted elsewhere
   ClearLast();
+  unk = (core->vc).Confused();
   if ((alist == NULL) || (*alist == '\0'))               
+  {
+    if (*unk != '\0')
+      return unk_tag(unk);                   // unknown word
     return huh_tag();                        // misheard utterance
+  }
 
   // generate core interpretation then add speech act
   spact = Assemble(alist);
@@ -232,6 +238,42 @@ int jhcNetBuild::farewell_tag () const
 }
 
 
+//= Generate speech act NOTE for word not in vocabulary.
+// <pre>
+//   NOTE[ input-1 -lex-  know
+//                 -asp-  neg
+//                 -agt-> self-1
+//                 -obj-> txt-1 
+//           txt-1 -str-  xxx 
+//           ako-1 -lex-  word
+//                 -ako-> txt-1]
+// </pre>
+// always returns 9 for convenience
+
+int jhcNetBuild::unk_tag (const char *word) const
+{
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *ch = new jhcAliaChain;
+  jhcAliaDir *dir = new jhcAliaDir();
+  jhcNetNode *n, *w;
+ 
+  // fill in details of the speech act
+  atree->BuildIn(&(dir->key));
+  n = atree->MakeNode("meta", "know", 1);
+  n->AddArg("agt", atree->Robot());               // in WMEM since NOTE
+  w = atree->MakeNode("txt");
+  w->SetString(word);
+  n->AddArg("obj", w);
+  atree->AddProp(w, "ako", "word");
+
+  // add completed structure to attention buffer
+  ch->BindDir(dir);
+  atree->AddFocus(ch);
+  atree->BuildIn(NULL);
+  return 9;
+}
+
+
 //= Generate speech act followed by a request to add rule or operator.
 // save core of ADD directive in "add" for convenience
 // returns 4 for rule, 5 for operator (echoes input "kind")
@@ -254,7 +296,6 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
   add = new jhcAliaDir(JDIR_ADD);
   (add->key).AddItem(item);            // dummy node
   steps->BindDir(add);
-  steps->cont = ack_given(input);      // thank user for input
   steps->fail = exp_fail(item);        // failed for some reasone
 
   // move newly create rule or operator into directive (in case slow)
@@ -286,7 +327,7 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
 int jhcNetBuild::attn_tag (int spact, const char *alist) const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch, *seq = bulk;
+  jhcAliaChain *ch;
   jhcNetNode *input, *item;
 
   // make a new NOTE directive for speech act
@@ -295,17 +336,10 @@ int jhcNetBuild::attn_tag (int spact, const char *alist) const
   atree->SetLex(input, ((spact >= 3) ? "ask" : "tell"));
   item = atree->MakeNode("plan");
   input->AddArg(((spact >= 2) ? "act" : "obj"), item);
- 
-  // possibly acknowledge a new fact (prepend)
-  if (spact == 1)
-  {
-    seq = ack_given(input);
-    seq->cont = bulk;
-  }
 
-  // tack on a TRY directive encapsulating the bulk sequence
+  // tack on a TRAP directive encapsulating the bulk sequence
   // then add completed structure to attention buffer
-  ch->cont = guard_plan(seq, item);
+  ch->cont = guard_plan(bulk, item);
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
   return spact;
@@ -339,7 +373,7 @@ jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *alist) cons
 }
 
 
-//= Generate a TRY directive encapsulating payload (symbolic node "ref").
+//= Generate a TRAP directive encapsulating payload (symbolic node "ref").
 // returns chain step with its overall fail branch being an explanation
 
 jhcAliaChain *jhcNetBuild::guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const
@@ -371,25 +405,6 @@ jhcAliaChain *jhcNetBuild::exp_fail (jhcNetNode *plan) const
   exp->AddArg("obj", prob);
   atree->BuildIn(NULL);
   ch->BindDir(cry);
-  return ch;
-}
-
-
-//= Add a request to acknowledge the speech act.
-
-jhcAliaChain *jhcNetBuild::ack_given (jhcNetNode *input) const
-{
-  jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch;
-  jhcAliaDir *thank;
-  jhcNetNode *act;
-
-  ch = new jhcAliaChain;
-  thank = new jhcAliaDir(JDIR_DO);
-  atree->BuildIn(&(thank->key));
-  act = atree->MakeNode("act", "acknowledge");
-  act->AddArg("obj", input);
-  ch->BindDir(thank);
   return ch;
 }
 
@@ -623,6 +638,7 @@ int jhcNetBuild::opposite_rule (FILE *out, const char *v1, const char *v2, int n
 
 int jhcNetBuild::alias_rules (FILE *out, const char *cat, const char *val, const char *alt, int n) const
 {
+  char vc[80], ac[80];;
   int nr = n;
 
   // add separator then basic membership rules for alternate
@@ -630,21 +646,51 @@ int jhcNetBuild::alias_rules (FILE *out, const char *cat, const char *val, const
   nr = value_rules(out, cat, alt, nr);
 
   // affirm alternate term
-  fprintf(out, "RULE %d - \"If something is %s then it is %s\"\n", nr + 1, val, alt);
+  fprintf(out, "RULE %d - \"If something is %s then it is %s\"\n", ++nr, val, alt);
   fprintf(out, "    if: hq-1 -lex-  %s\n", val);
   fprintf(out, "             -hq--> obj-1\n");
   fprintf(out, "  then: hq-2 -lex-  %s\n", alt);
+  fprintf(out, "             -hq--> obj-1\n\n");
+  fprintf(out, "RULE %d - \"If something is %s then it is %s\"\n", ++nr, alt, val);
+  fprintf(out, "    if: hq-1 -lex-  %s\n", alt);
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "  then: hq-2 -lex-  %s\n", val);
   fprintf(out, "             -hq--> obj-1\n\n");
 
   // refute alternate term
-  fprintf(out, "RULE %d - \"If something is not %s then it is not %s\"\n", nr + 2, val, alt);
+  fprintf(out, "RULE %d - \"If something is not %s then it is not %s\"\n", ++nr, val, alt);
   fprintf(out, "    if: hq-1 -lex-  %s\n", val);
   fprintf(out, "             -neg-  1\n");
   fprintf(out, "             -hq--> obj-1\n");
   fprintf(out, "  then: hq-2 -lex-  %s\n", alt);
   fprintf(out, "             -neg-  1\n");
   fprintf(out, "             -hq--> obj-1\n\n");
-  return(nr + 2);
+  fprintf(out, "RULE %d - \"If something is not %s then it is not %s\"\n", ++nr, alt, val);
+  fprintf(out, "    if: hq-1 -lex-  %s\n", alt);
+  fprintf(out, "             -neg-  1\n");
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "  then: hq-2 -lex-  %s\n", val);
+  fprintf(out, "             -neg-  1\n");
+  fprintf(out, "             -hq--> obj-1\n\n");
+
+  // equivalence of comparatives
+  mf.SurfWord(vc, val, JTAG_ACOMP); 
+  mf.SurfWord(ac, alt, JTAG_ACOMP);
+  fprintf(out, "RULE %d - \"If something is %s than something else then it is %s than it\"\n", ++nr, vc, ac);
+  fprintf(out, "    if: hq-1 -lex-  %s\n", val);
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "             -alt-> obj-2\n");
+  fprintf(out, "  then: hq-2 -lex-  %s\n", alt);
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "             -alt-> obj-2\n\n");
+  fprintf(out, "RULE %d - \"If something is %s than something else then it is %s than it\"\n", ++nr, ac, vc);
+  fprintf(out, "    if: hq-1 -lex-  %s\n", alt);
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "             -alt-> obj-2\n");
+  fprintf(out, "  then: hq-2 -lex-  %s\n", val);
+  fprintf(out, "             -hq--> obj-1\n");
+  fprintf(out, "             -alt-> obj-2\n\n");
+  return nr;
 }
 
 

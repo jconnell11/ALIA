@@ -1078,8 +1078,9 @@ void jhcEliBase::AdjustTarget (jhcMatrix& pos) const
 
 
 //= Change planar angle (e.g. object orientation) if base rotates.
+// adjusts in place and returns new value for convenience
 
-double jhcEliBase::AdjustAng (double ang) const
+double jhcEliBase::AdjustAng (double& ang) const
 {
   double adj = ang - dr;
 
@@ -1087,7 +1088,8 @@ double jhcEliBase::AdjustAng (double ang) const
     adj -= 360.0;
   else if (adj <= -180.0)
     adj += 360.0;
-  return adj;
+  ang = adj;
+  return ang;
 }
 
 

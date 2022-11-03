@@ -62,32 +62,31 @@ public:
     {SetMem(dynamic_cast<jhcWorkMem *>(m));}
  
   // formatted output
-  const char *NameRef (const jhcNetNode *n) const
-    {return(((n == NULL) || (wmem == NULL)) ? NULL : n->Name(0, wmem->MinBlf()));}
-  const char *NodeRef (const jhcNetNode *n, int nom =1)
+  const char *NameRef (jhcNetNode *n) const;
+  const char *NodeRef (jhcNetNode *n, int nom =1)
     {return node_ref(phrase, 500, n, nom, NULL);}
   const char *UserRef () const
     {return((wmem == NULL) ? NULL : NameRef(wmem->Human()));}
 
   // alternative input type
-  const char *NameRef (const jhcAliaDesc *n) const
-    {return NameRef(dynamic_cast<const jhcNetNode *>(n));}
-  const char *NodeRef (const jhcAliaDesc *n, int nom =1)
-    {return NodeRef(dynamic_cast<const jhcNetNode *>(n), nom);}
+  const char *NameRef (jhcAliaDesc *n) const
+    {return NameRef(dynamic_cast<jhcNetNode *>(n));}
+  const char *NodeRef (jhcAliaDesc *n, int nom =1)
+    {return NodeRef(dynamic_cast<jhcNetNode *>(n), nom);}
 
-  // main functions
+  // main functions (incomplete and not used!)
   const char *Generate (const jhcGraphlet& graph, jhcWorkMem& mem);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // formatted output
-  const char *node_ref (char *txt, int ssz, const jhcNetNode *n, int nom, const char *avoid) const;
-  const char *pred_ref (char *txt, int ssz, const jhcNetNode *n, int inf) const;
+  const char *node_ref (char *txt, int ssz, jhcNetNode *n, int nom, const char *avoid) const;
+  const char *pred_ref (char *txt, int ssz, jhcNetNode *n, int inf) const;
   const char *full_pred (char *txt, int ssz, const jhcNetNode *n, int inf) const;
 
   // object reference
-  const char *obj_ref (char *txt, int ssz, const jhcNetNode *n, int nom, const char *avoid) const;
+  const char *obj_ref (char *txt, int ssz, jhcNetNode *n, int nom, const char *avoid) const;
   const char *pron_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
   bool chk_prop (const jhcNetNode *n, const char *role, const char *label, 
                  const jhcGraphlet *desc) const;

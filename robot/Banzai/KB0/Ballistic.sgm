@@ -17,35 +17,6 @@
 
 // -----------------------------------------
 
-// modifier
-
-=[MOD]
-  quickly
-  slowly
-
-
-// direction
-
-=[DIR]
-  forward
-  forwards
-  backward
-  backwards
-  clockwise
-  counterclockwise
-  right 
-  left
-  up 
-  down
-  level
-  straight
-  vertical
-  horizontal
-  sideways
-  around
-  in
-
-
 // imperative verbs
 
 =[ACT]
@@ -75,6 +46,13 @@
 
 =[ACT-2]
   tuck
+
+
+// modifier
+
+=[MOD]
+  quickly
+  slowly
 
 
 // ================================================

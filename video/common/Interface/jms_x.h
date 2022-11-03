@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ char *jms_offset (char *dest, UL32 tref, int ssz);
 char *jms_date (char *dest, int res, int ssz);
 char *jms_time (char *dest, int res, int ssz);
 bool jms_expired (int mon, int yr, int smon =0, int syr =0);
+UL64 jms_chrono ();
 
 // convenience
 template <size_t ssz> 

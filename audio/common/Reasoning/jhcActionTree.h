@@ -118,11 +118,12 @@ public:
   // list modification
   int ClrFoci (int init =0, const char *rname =NULL);
   int AddFocus (jhcAliaChain *f, double pref =1.0);
+  void NoteSolo (jhcNetNode *n);
 
   // maintenance
   int Update (int gc =1);
 
-  // halo interaction
+  // halo interaction (incl. override)
   double CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood);
   int ReifyRules (jhcBindings& b, int note =2);
 
@@ -139,7 +140,7 @@ public:
   void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val) const
     {if (head != NULL) (dynamic_cast<jhcNetNode *>(head))->AddArg(slot, dynamic_cast<jhcNetNode *>(val));}
   void Keep (jhcAliaDesc *obj) const
-    {jhcNetNode *n = dynamic_cast<jhcNetNode*>(obj); if (n != NULL) n->keep = 1;}
+    {jhcNetNode *n = dynamic_cast<jhcNetNode*>(obj); if (n != NULL) n->SetKeep(1);}
   void NewFound (jhcAliaDesc *obj) const 
     {SetGen(dynamic_cast<jhcNetNode *>(obj));}
   void GramTag (jhcAliaDesc *prop, int t) const 
@@ -171,7 +172,9 @@ private:
 
   // halo interaction
   const jhcNetNode *halo_equiv (const jhcNetNode *n, const jhcNetNode *h0) const;
-  jhcNetNode *pick_halo (int& step, const jhcBindings& b, const jhcBindings& h2m, int stop) const;
+  jhcNetNode *pick_non_wmem (int& step, const jhcBindings& b, const jhcBindings& h2m, int stop) const;
+  void promote_all (jhcBindings& h2m, const jhcBindings& b);
+  int promote (jhcBindings& h2m, jhcNetNode *n);
 
   // maintenance
   int prune_foci ();

@@ -47,6 +47,11 @@ private:
   int recent;
 
 
+// PUBLIC MEMBER VARIABLES
+public:
+  int halo;                            /** Allow halo nodes as matches. */
+
+
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and initialization

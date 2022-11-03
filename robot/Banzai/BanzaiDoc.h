@@ -171,8 +171,6 @@ public:
   afx_msg void OnDepthPersonmap();
   afx_msg void OnDepthTrackhead();
   afx_msg void OnPeopleSpeaking();
-  afx_msg void OnParametersWatching();
-  afx_msg void OnParametersOrienting();
   afx_msg void OnAttentionEnrollphoto();
   afx_msg void OnAttentionEnrolllive();
   afx_msg void OnPeopleSocialevents();
@@ -242,6 +240,7 @@ public:
   afx_msg void OnObjectsEmptyspot();
   afx_msg void OnGrabBodyshift();
   afx_msg void OnRoomForkcalib();
+  afx_msg void OnUtilitiesWeedgrammar();
 };
 
 /////////////////////////////////////////////////////////////////////////////

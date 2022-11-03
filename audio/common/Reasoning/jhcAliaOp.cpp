@@ -221,7 +221,7 @@ int jhcAliaOp::match_found (jhcBindings *m, int& mc)
         break;
     }
     if (i >= nb)
-      return jprintf(3, dbg, "%*s reject - no trigger related to new NOTE\n", 2 * nb + 1, "");
+      return jprintf(3, dbg, "%*s reject - no trigger from new NOTE (%d)\n", 2 * nb + 1, "", tval);
   }
 
   // make sure proposed action not already in list ("first" set in try_match)

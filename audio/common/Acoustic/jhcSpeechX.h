@@ -216,7 +216,7 @@ public:
   // parsing 
   void SetGrammar (const char *fname, ...);
   void ClearGrammar (int keep =1);
-  int LoadGrammar (const char *fname, ...);
+  int LoadSpGram (const char *fname, ...);
   int MarkRule (const char *name =NULL, int val =1);
   int ExtendRule (const char *name, const char *phrase, int file =0);
 

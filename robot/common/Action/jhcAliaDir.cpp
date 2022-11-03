@@ -368,7 +368,7 @@ void jhcAliaDir::MarkSeeds ()
   {
     n = key.Item(i);
     jprintf(5, noisy, "      %s\n", n->Nick());
-    n->keep = 1;
+    n->SetKeep(1);
   }
 
   // mark all undo choices for variable substitution in key
@@ -378,7 +378,7 @@ void jhcAliaDir::MarkSeeds ()
   {
     n = ((val0[i] != NULL) ? val0[i] : fact[i]);
     jprintf(5, noisy, "      %s\n", n->Nick());
-    n->keep = 1;
+    n->SetKeep(1);
   }
 
   // mark all current and previous guesses
@@ -386,8 +386,9 @@ void jhcAliaDir::MarkSeeds ()
     jprintf(5, noisy, "    variable guesses\n");
   for (i = 0; i < cand; i++)
   {
-    jprintf(5, noisy, "      %s\n", guess[i]->Nick());
-    guess[i]->keep = 1;
+    n = guess[i];
+    jprintf(5, noisy, "      %s\n", n->Nick());
+    n->SetKeep(1);
   }    
 
   // mark all structure assumed by FIND
@@ -397,7 +398,7 @@ void jhcAliaDir::MarkSeeds ()
   {
     n = hyp.Item(i);
     jprintf(5, noisy, "      %s\n", n->Nick());
-    n->keep = 1;
+    n->SetKeep(1);
   }
 
   // keep all NRI bindings so no dangling pointers (or reused elements)
@@ -410,7 +411,7 @@ void jhcAliaDir::MarkSeeds ()
     {
       n = m0[i].GetSub(j);
       jprintf(5, noisy, "      %s\n", n->Nick());
-      n->keep = 1;
+      n->SetKeep(1);
     }
   }
 
@@ -456,7 +457,7 @@ int jhcAliaDir::Start (jhcAliaChain *st)
     {
       jprintf("    Expanding TRY[ %s ] ...\n", KeyTag());
       jprintf("_______________________________________\n");
-      jprintf(">>> Bulk sequence\n\n");
+      jprintf(">>> Core command sequence:\n\n");
       meth->Print(4, 0);
       jprintf("_______________________________________\n\n");
     }
@@ -480,7 +481,7 @@ int jhcAliaDir::Start (jhcAliaChain *st)
       s = wmem->CompareHalo(key, core->mood);     // update rule result beliefs
       (core->mood).Believe(s);
     }
-    own = core->Percolate(*this);
+    own = core->Percolate(*this);                 // mark nodes for reactive ops
     t0 = jms_now();
   }
   else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_CHK))
@@ -549,7 +550,7 @@ int jhcAliaDir::Status ()
     }
   if ((t1 != 0) && (jms_elapsed(t1) > core->Retry()))
   {
-    jprintf(1, noisy, "@@@ Retry intention for: NOTE[ %s ]\n", KeyTag());
+    jprintf(1, noisy, "@@@ retry intention for: NOTE[ %s ]\n", KeyTag());
     meth->Start(core, -(lvl + 1));
     t1 = 0;
     return report(0);
@@ -583,7 +584,7 @@ int jhcAliaDir::Status ()
   if (kind == JDIR_DO)
     return do_status(res, 1);
   if (kind == JDIR_TRY)                          // TRY method was pre-bound
-    return report(res);                          
+    return report(res);
   if ((kind == JDIR_NOTE) && (step->cont == NULL) && (res == -2))
   {
     if (t1 != 0)                                 // already waiting for retry
@@ -753,8 +754,7 @@ int jhcAliaDir::report (int val)
       (core->mood).Lose();
 
     // possibly block halo percolation then remove working memory anchor
-    if (kind == JDIR_NOTE)
-      own = core->ZeroTop(*this);     
+    own = 0;
     inst = delete_meth();                        // reset() would bash nri for FIND                     
   }
 
@@ -887,7 +887,7 @@ int jhcAliaDir::FindActive (const jhcGraphlet& desc, int halt)
   d2.Copy(*this);
 
   // see if any matches found, possibly using halo facts to fill in
-  (core->atree).SetMode(2);
+  (core->atree).SetMode(3);
   d2.mc = omax;
   if (op->FindMatches(d2, core->atree, (core->atree).MinBlf()) > 0)
   {
@@ -1335,9 +1335,12 @@ int jhcAliaDir::pat_confirm (const jhcGraphlet& desc)
   const jhcNetNode *focus, *mate;
   int i, mc = 1, ni = desc.NumItems();
 
+  // possibly announce entry
+  jprintf(2, dbg, "pat_confirm %s~~~~~~~~~~~~~~~~~~~~~~~~~~\n", ((subset > 0) ? "- subset " : ""));
+
   // set up matcher parameters
   bth = (core->atree).MinBlf();                  // must be non-hypothetical
-  wmem->SetMode(2);                              // use halo inferences also
+  wmem->SetMode(3);                              // use halo inferences also
   chkmode = 1;                                   // ignore "neg" conflicts
   match.expect = ni;
 
@@ -1406,14 +1409,20 @@ int jhcAliaDir::seek_instance ()
       mate->XferRef((cand > 0) ? guess[cand - 1] : focus);     // conversation target
       guess[cand++] = mate;                                    // overwrite any partial match
     }
-    jprintf(1, noisy, "  << GUESS %d: %s = %s\n", cand, focus->Nick(), mate->Nick());
+    if (noisy >= 1)
+    {
+      jprintf("  << GUESS %d: %s = %s", cand, focus->Nick(), mate->Nick());
+      if (mate->Moored())
+        jprintf(" (%s)", (mate->Deep())->Nick());
+      jprintf("\n");
+    }
     scope->Bind(focus, mate);
     subset = 0;
     return 1;
   }
   if (subset <= 0)
   {
-    jprintf(1, dbg, "  << No obvious full match candidates: %s\n", focus->Nick());
+    jprintf(1, dbg, "  << No obvious full match candidates for: %s\n", focus->Nick());
     return 0;
   }
 
@@ -1426,7 +1435,7 @@ int jhcAliaDir::seek_instance ()
   mate = sat_criteria(cond, cand, subset);
   if (mate == NULL)
   {
-    jprintf(1, dbg, "  << No obvious partial match candidates: %s\n", focus->Nick());
+    jprintf(1, dbg, "  << No obvious partial match candidates for: %s\n", focus->Nick());
     return 0;
   }
   mate->XferRef((cand > 0) ? guess[cand - 1] : focus);         // conversation target
@@ -1455,6 +1464,7 @@ int jhcAliaDir::seek_instance ()
 //= Check for a full match for whatever criteria are listed in the description.
 // skip = how many old guesses to exclude (e.g. already thoroughly tried)
 // after = 1 if only accept facts after version recorded in subset variable
+// takes first match governed by node ordering in list (cf. jhcNodePool::Refresh)
 // returns matching node for search variable if found
 
 jhcNetNode *jhcAliaDir::sat_criteria (const jhcGraphlet& desc, int skip, int after) 
@@ -1463,9 +1473,11 @@ jhcNetNode *jhcAliaDir::sat_criteria (const jhcGraphlet& desc, int skip, int aft
   jhcBindings match;
   jhcAliaCore *core = step->Core();
   jhcWorkMem *wmem = &(core->atree);
-  const jhcNetNode *item;
-  jhcNetNode *arg;
+  jhcNetNode *item, *arg;
   int i, j, na, ni = desc.NumItems(), mc = 1;
+
+  // possibly announce entry
+  jprintf(2, dbg, "sat_criteria %s~~~~~~~~~~~~~~~~~~~~~~~~~~\n", ((subset > 0) ? "- subset " : ""));
 
   // add each external argument to new graphlet and establish a self-binding
   desc2.Copy(desc);
@@ -1492,14 +1504,19 @@ jhcNetNode *jhcAliaDir::sat_criteria (const jhcGraphlet& desc, int skip, int aft
 
   // set up matcher parameters
   bth = wmem->MinBlf();                          // must be non-hypothetical
-  wmem->SetMode(2);                              // use halo inferences also
+  wmem->SetMode(3);                              // use halo inferences also
   chkmode = 0;                                   // "neg" is definitely important!
 
   // extract new guess from full match (complete_find rejects some)
+  item = NULL;
   recent = -1;                                   // no pronoun match yet
   if (MatchGraph(&match, mc, desc2, *wmem) <= 0)
     return NULL;
-  core->MainMemOnly(match, 0);                   // bring in halo facts
+
+  // bring any halo facts into working memory
+  if (recent >= 0)
+    return pron;                                 // should already be in main 
+  core->MainMemOnly(match, 0);                   
   return match.LookUp(focus);
 }
 
@@ -1520,22 +1537,23 @@ int jhcAliaDir::complete_find (jhcBindings *m, int& mc)
     return 0;
   for (i = 0; i < exc; i++)
     if (mate == guess[i])
-      return 0;
+      return jprintf(2, dbg, "MATCH - but reject %s as already tried\n", mate->Nick());
 
   // handle special case of naked FIND/BIND with just a target variable
+  // FIND for objects will have "ako object" in cond unlike "that" (naked)
   // Note: largely borrowed from jhcNetRef::match_found
-  if ((cond.NumItems() == 1) && (focus->Lex() == NULL) && (focus->NumArgs() <= 0))
+  if ((cond.NumItems() == 1) && (focus->Lex() == NULL) && focus->ObjNode())    // FIND[ x ]
   {
-    if (mate->String() || !mate->ObjNode())
-      return 0;
+    if (mate->String() || mate->ObjNode())         
+      return jprintf(2, dbg, "MATCH - but reject %s as object node\n", mate->Nick());
     when = mate->LastRef();
-    jprintf(2, dbg, "MATCH - %s %s\n", mate->Nick(), ((when > recent) ? "keep!" : "ignore")); 
+    jprintf(2, dbg, "MATCH - %s %s\n", mate->Nick(), ((when > recent) ? "<== BEST" : "ignore")); 
     if (when > recent)
     {
       recent = when;
-      pron = mate;
+      pron = mate;           // actual best match of all tried
     }
-    return 1;
+    return 1;                // keeps altering match bindings (does not stop) 
   }
 
   // possibly reject match for partial FIND/BIND if not new enough
@@ -1545,15 +1563,15 @@ int jhcAliaDir::complete_find (jhcBindings *m, int& mc)
       if ((n = b->GetSub(i)) != NULL)
         gval = __max(gval, n->Generation());   
     if (gval < gtst)
-      return 0;
+      return jprintf(2, dbg, "MATCH - but reject %s as not new enough\n", mate->Nick());
   }
 
   // accept and record match
   if (dbg >= 2)
     b->Print("MATCH");
   if (mc > 0)
-    mc--;                    // mc = 0 always stops matcher
-  return 1;
+    mc--;                    // takes first match: mc = 0 stops matcher
+  return 1;                
 }
 
 
@@ -1623,13 +1641,11 @@ jhcAliaChain *jhcAliaDir::chk_method ()
 
 int jhcAliaDir::assume_found ()
 {
-  jhcBindings mt;
   jhcAliaCore *core = step->Core();
   jhcActionTree *wmem = &(core->atree);
   jhcBindings *scope = step->Scope();
   jhcNetNode *mate, *focus = full.Main();
-  jhcGraphlet *old;
-  int i, n = scope->NumPairs();
+  int sub0 = subset;
 
   // restore full criteria (if needed)
   if (subset > 0)
@@ -1649,8 +1665,8 @@ int jhcAliaDir::assume_found ()
     return -2;                               // will backtrack if fallback exists
   }
 
-  // when BIND runs out of guesses but had several, resubmit original (best) guess
-  if (cand > 0)
+  // when BIND runs out of guesses but had several, resubmit original (best) full guess
+  if ((cand > 0) && (sub0 <= 0))
   {
     mate = guess[0];                         // revert to initial most probable guess
     mate->XferRef(guess[cand - 1]);          // revoke current guess as conversation target
@@ -1660,6 +1676,26 @@ int jhcAliaDir::assume_found ()
     jprintf(1, noisy, "  << REPEAT: %s = %s (initial choice)\n", focus->Nick(), mate->Nick());
     return 1;
   }
+
+  // just imagine whole network specified by key
+  mate = lift_key();
+  jprintf(1, noisy, "  << ASSUME: %s = %s (new)\n", focus->Nick(), mate->Nick());
+  return 1;
+}
+
+
+//= Make up a new piece of network in working memory that exactly matches key. 
+// returns the newly made node that matches the main node of the key
+
+jhcNetNode *jhcAliaDir::lift_key ()
+{
+  jhcBindings mt;
+  jhcAliaCore *core = step->Core();
+  jhcActionTree *wmem = &(core->atree);
+  jhcBindings *scope = step->Scope();
+  jhcNetNode *mate, *focus = full.Main();
+  jhcGraphlet *old;
+  int i, n = scope->NumPairs();
 
   // imagine a suitable object in WMEM (similar to NOTE) but only once (!hyp.Empty())
   // only does this for a BIND (not FIND) that has been unable to make any guesses (cand = 0)
@@ -1677,8 +1713,7 @@ int jhcAliaDir::assume_found ()
   mate = mt.LookUp(focus);
   mate->XferRef((cand > 0) ? guess[cand - 1] : focus);     // conversation target
   scope->Bind(focus, mate);
-  jprintf(1, noisy, "  << ASSUME: %s = %s (new)\n", focus->Nick(), mate->Nick());
-  return 1;
+  return mate;
 }
 
 

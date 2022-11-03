@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -176,16 +177,8 @@ void jhcSpeaker::Reset ()
       if (mic[i].mport > 0)
         mic[i].Reset();
 
-  // get speaker localization frame count threshold
-  vth = 1;
-  if (m0 != NULL)
-    vth = m0->spej;
-  else
-    for (i = 0; i < amax; i++)
-      if (mic[i].mport > 0)
-        vth = mic[i].spej;                     // all the same
-
   // no speaker currently found
+  vth = 2;                             // was jhcDirMic::spej
   spk = -1;
   vcnt = 0;
   det = 0;

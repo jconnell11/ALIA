@@ -232,8 +232,20 @@ void jhcAliaRule::init_result (jhcBindings *b, int tval, int ver, int zero)
 {
   const jhcNetNode *pn;
   jhcNetNode *n;
-  int i, nr = result.NumItems();
+  int i, nc = cond.NumItems(), nr = result.NumItems(), dep = 0;
 
+  // check for any dependence on LTM
+  for (i = 0; i < nc; i++)
+  {
+    pn = cond.Item(i);
+    if (pn->ltm > 0)
+    {
+      dep = 1;
+      break;
+    }
+  }
+
+  // set fields of all result nodes
   for (i = 0; i < nr; i++)
   {
     pn = result.Item(i);
@@ -246,6 +258,7 @@ void jhcAliaRule::init_result (jhcBindings *b, int tval, int ver, int zero)
         n->TmpBelief((zero > 0) ? 0.0 : n->Default());
         n->hrule = this;
         n->hbind = b;
+        n->ltm = dep;                            // mark if dependent on LTM
       }
   }
 }

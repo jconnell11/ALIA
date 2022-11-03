@@ -84,11 +84,79 @@ OP 5 - "To announce that you don't understand me say to them I'm confused whoeve
 
 // ----------------------------------------
 
-OP 6 - "To acknowledge when someone tells you something say to them that's interesting"
+OP 6 - "If you don't know some word then announce that"
   trig:
-    DO[ act-1 -lex-   acknowledge
-              -obj--> act-2 
-        act-2 -lex-   tell
+  NOTE[ act-1 -lex-  know
+              -neg-  1
+              -agt-> agt-1
+              -obj-> txt-1
+        agt-1 -lex-  me
+        ako-1 -lex-  word
+              -ako-> txt-1 ]
+-----------------
+    DO[ act-2 -lex-   announce
+              -obj--> act-1 ]
+
+
+OP 7 - "To announce that you don't know a word say I'm not familiar with the word whatever"
+  trig:
+    DO[ act-1 -lex-  announce
+              -obj-> act-2 
+        act-2 -lex-  know
+              -neg-  1
+              -agt-> agt-1
+              -obj-> txt-1
+        agt-1 -lex-  me 
+        ako-1 -lex-  word
+              -ako-> txt-1 ]
+-----------------
+    DO[ act-3 -lex-    say
+              -obj---> txt-2
+        txt-2 -str-    I'm not familiar with the word ?1
+              -arg1->  txt-1 ]
+
+
+OP 8 - "To announce that you don't know a word say what does the word whatever mean"
+  trig:
+    DO[ act-1 -lex-  announce
+              -obj-> act-2 
+        act-2 -lex-  know
+              -neg-  1
+              -agt-> agt-1
+              -obj-> txt-1
+        agt-1 -lex-  me 
+        ako-1 -lex-  word
+              -ako-> txt-1 ]
+-----------------
+    DO[ act-3 -lex-    say
+              -obj---> txt-2
+        txt-2 -str-    What does the word ?1 mean
+              -arg1->  txt-1 ]
+
+
+OP 9 - "To announce that you don't know a word say can you explain the word whatever"
+  trig:
+    DO[ act-1 -lex-  announce
+              -obj-> act-2 
+        act-2 -lex-  know
+              -neg-  1
+              -agt-> agt-1
+              -obj-> txt-1
+        agt-1 -lex-  me 
+        ako-1 -lex-  word
+              -ako-> txt-1 ]
+-----------------
+    DO[ act-3 -lex-    say
+              -obj---> txt-2
+        txt-2 -str-    Can you explain the word ?1
+              -arg1->  txt-1 ]
+
+
+// ----------------------------------------
+
+OP 10 - "If someone tells you something say to them that's interesting"
+  trig:
+  NOTE[ act-2 -lex-   tell
               -agt--> obj-1
               -dest-> obj-2
               -obj--> obj-3
@@ -100,11 +168,9 @@ OP 6 - "To acknowledge when someone tells you something say to them that's inter
         txt-1 -str-   that's interesting ]
 
 
-OP 7 - "To acknowledge when someone tells you something say to them got it whoever"
+OP 11 - "If someone tells you something say to them got it whoever"
   trig:
-    DO[ act-1 -lex-   acknowledge
-              -obj--> act-2 
-        act-2 -lex-   tell
+  NOTE[ act-2 -lex-   tell
               -agt--> obj-1
               -dest-> obj-2
               -obj--> obj-3
@@ -118,11 +184,9 @@ OP 7 - "To acknowledge when someone tells you something say to them got it whoev
 
 // ----------------------------------------
 
-OP 8 - "To acknowledge when someone gives you a rule say to them thanks for the tip"
+OP 12 - "If someone gives you a rule say to them thanks for the tip"
   trig:
-    DO[   act-1 -lex-   acknowledge
-                -obj--> input-1
-        input-1 -lex-   give
+  NOTE[ input-1 -lex-   give
                 -agt--> obj-1  
                 -dest-> obj-2  
                 -obj--> obj-3  
@@ -136,11 +200,9 @@ OP 8 - "To acknowledge when someone gives you a rule say to them thanks for the 
         txt-1 -str-   thanks for the tip ]
 
 
-OP 9 - "To acknowledge when someone gives you a rule say to them okay I'll remember whoever"
+OP 13 - "If someone gives you a rule say to them okay I'll remember whoever"
   trig:
-    DO[   act-1 -lex-   acknowledge
-                -obj--> input-1
-        input-1 -lex-   give
+  NOTE[ input-1 -lex-   give
                 -agt--> obj-1  
                 -dest-> obj-2  
                 -obj--> obj-3  
@@ -156,11 +218,9 @@ OP 9 - "To acknowledge when someone gives you a rule say to them okay I'll remem
 
 // ----------------------------------------
 
-OP 10 - "To acknowledge when someone gives you an operator say to them I'm glad to learn that"
+OP 14 - "If someone gives you an operator say to them I'm glad to learn that"
   trig:
-    DO[   act-1 -lex-   acknowledge
-                -obj--> input-1
-        input-1 -lex-   give
+  NOTE[ input-1 -lex-   give
                 -agt--> obj-1  
                 -dest-> obj-2  
                 -obj--> obj-3  
@@ -174,11 +234,9 @@ OP 10 - "To acknowledge when someone gives you an operator say to them I'm glad 
         txt-1 -str-   I'm glad to learn that ]
 
 
-OP 11 - "To acknowledge when someone gives you an operator say to them good advice whoever"
+OP 15 - "If someone gives you an operator say to them good advice whoever"
   trig:
-    DO[   act-1 -lex-   acknowledge
-                -obj--> input-1
-        input-1 -lex-   give
+  NOTE[ input-1 -lex-   give
                 -agt--> obj-1  
                 -dest-> obj-2  
                 -obj--> obj-3  

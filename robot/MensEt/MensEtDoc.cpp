@@ -182,7 +182,7 @@ BOOL CMensEtDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = mc.Version(); 
-  LockAfter(11, 2022, 6, 2022);
+  LockAfter(4, 2023, 11, 2022);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -708,8 +708,8 @@ int CMensEtDoc::interact_params (const char *fname)
   int ok;
 
   ps->SetTag("mens_opt", 0);
-  ps->NextSpec4( &tid,        0, "Target robot");
   ps->NextSpec4( &cam,        0, "Camera available");
+  ps->NextSpec4( &tid,        0, "Target robot");
   ps->NextSpec4( &(mc.spin),  0, "Speech (no, w7, web, w11)");  
   ps->NextSpec4( &(mc.amode), 2, "Attn (none, any, front, only)");
   ps->NextSpec4( &(mc.tts),   0, "Vocalize output");

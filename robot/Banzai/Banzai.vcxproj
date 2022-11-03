@@ -306,13 +306,15 @@
     <ClCompile Include="BanzaiDoc.cpp" />
     <ClCompile Include="BanzaiFrm.cpp" />
     <ClCompile Include="BanzaiView.cpp" />
+    <ClCompile Include="..\common\Grounding\jhcMemStore.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp" />
     <ClCompile Include="..\common\Grounding\jhcIntrospect.cpp" />
     <ClCompile Include="..\common\Action\jhcStdKern.cpp" />
     <ClCompile Include="..\common\Grounding\jhcSupport.cpp" />
     <ClCompile Include="..\common\Environ\jhcTable.cpp" />
     <ClCompile Include="..\common\Grounding\jhcManipulate.cpp" />
     <ClCompile Include="..\common\Action\jhcAliaMood.cpp" />
-    <ClCompile Include="..\common\Eli\jhcEliWatch.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp" />
     <ClCompile Include="..\common\Action\jhcAliaStats.cpp" />
     <ClCompile Include="..\common\Grounding\jhcSceneVis.cpp" />
@@ -450,6 +452,8 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\audio\common\Parse\jhcVocab.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h" />
     <ClInclude Include="..\..\video\common\stdafx.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcChatBox.h" />
@@ -513,7 +517,6 @@
     <ClInclude Include="..\common\Depth\jhcOverhead3D.h" />
     <ClInclude Include="..\common\Depth\jhcSurface3D.h" />
     <ClInclude Include="..\common\Eli\jhcEliGrok.h" />
-    <ClInclude Include="..\common\Eli\jhcEliWatch.h" />
     <ClInclude Include="..\common\Environ\jhcLocalOcc.h" />
     <ClInclude Include="..\common\Environ\jhcTable.h" />
     <ClInclude Include="..\common\Geometry\jhcKalVec.h" />
@@ -522,6 +525,7 @@
     <ClInclude Include="..\common\Grounding\jhcBallistic.h" />
     <ClInclude Include="..\common\Grounding\jhcIntrospect.h" />
     <ClInclude Include="..\common\Grounding\jhcManipulate.h" />
+    <ClInclude Include="..\common\Grounding\jhcMemStore.h" />
     <ClInclude Include="..\common\Grounding\jhcSceneVis.h" />
     <ClInclude Include="..\common\Grounding\jhcSocial.h" />
     <ClInclude Include="..\common\Grounding\jhcSupport.h" />

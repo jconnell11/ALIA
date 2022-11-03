@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2019 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,13 +39,13 @@ public:
   // creation and configuration
   virtual int PrintCfg () =0;
 
-  // parsing 
+  // parsing g
   virtual void SetGrammar (const char *fname, ...) =0;
   virtual void ClearGrammar (int keep =1) =0;
-  virtual int LoadGrammar (const char *fname, ...) =0;
+  virtual int LoadGram (const char *fname, int lvl =0) =0;
   virtual const char *GrammarFile () const  =0;
   virtual int MarkRule (const char *name =NULL, int val =1) =0;
-  virtual int ExtendRule (const char *name, const char *phrase) =0;
+  virtual int ExtendRule (const char *name, const char *phrase, int lvl =0) =0;
 
   // parsing status functions
   virtual int NumStates () const {return 0;}
@@ -70,6 +71,7 @@ public:
   void PrintResult (int lvl =2, int close =0);
   void PrintInput (const char *utag =NULL, int sep =1);
   void PrintSlots (int sc =0, int close =0);
+  char *NoTabs (char *alist) const;
   void PrintParse (int sc =0);
 
 

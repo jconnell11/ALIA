@@ -129,11 +129,16 @@ private:
   int snum;                  /** Next chart state to assign.     */
   int word;                  /** How many words in input string. */
 
+  // tree selection
+  int nt;                    /** How many interpretations found.  */
+  int tree;                  /** Which interpretation to examine. */
+  int nnode[10];             /** Parse nodes in each tree.        */
+  int ndict[10];             /** Dictation items in each tree.    */
+  int nwild[10];             /** Wildcards in each tree.          */
+
   // result inspection
-  int nt;                    /** How many interpretations found.   */
-  int tree;                  /** Which interpretation to examine.  */
-  int focus;                 /** Current parse element to examine. */
   jhcGramRule *stack[50];    /** List of previous parse elements.  */
+  int focus;                 /** Current parse element to examine. */
   char frag[80];             /** Temporary string results.         */
 
   // cleaned up source
@@ -159,20 +164,24 @@ public:
   ~jhcGramExec ();
   virtual int PrintCfg ();                 // allow to be overriden
   int NumStates () const {return snum;}
+  const jhcGramRule *Expansions () const {return gram;}
+  const char *NoContract () const {return full;}
 
   // grammar set up (let some fcns be overridden later)
   void ClearGrammar (int keep =1);
   virtual void SetGrammar (const char *fname, ...);
-  virtual int LoadGrammar (const char *fname, ...);
+  virtual int LoadGram (const char *fname, int lvl =0);
   const char *GrammarFile () const {return gfile;}
   int DumpRules (const char *fname, ...);
   void ListRules () const;
   int NumRules () const;
   virtual int MarkRule (const char *name =NULL, int val =1);
-  virtual int ExtendRule (const char *name, const char *phrase);
+  virtual int ExtendRule (const char *name, const char *phrase, int lvl =0);
 
   // main functions
+  const char *Expand (const char *sent, int fix =2);
   int Parse (const char *sent, int fix);
+  int NextBest ();
   int NumTrees () const {return nt;}
   int Selected () const {return tree;}
   int WildCards (int n) const;
@@ -196,8 +205,12 @@ public:
 
   // debugging
   void PrintTree (int top =1);
+  int SaveCats (const char *fname, int lvl =1, const class jhcMorphFcns *mf =NULL) const;
 
-  // parsing configuration (low level sp_parse)
+
+// PUBLIC MEMBER FUNCTIONS (low level sp_parse)
+public:
+  // parsing configuration 
   const char *parse_version (char *spec, int ssz) const;
   int parse_setup (const char *cfg_file =NULL);
   int parse_start (int level =0, const char *log_file =NULL);
@@ -208,14 +221,14 @@ public:
     const char *parse_version (char (&spec)[ssz]) const
       {return parse_version(spec, ssz);}
 
-  // run time parsing modifications (low level sp_parse)
-  int parse_load (const char *grammar);
+  // run time parsing modifications
+  int parse_load (const char *grammar, int lvl);
   void parse_clear ();
   int parse_enable (const char *rule);
   int parse_disable (const char *rule =NULL);
-  int parse_extend (const char *rule, const char *option);
+  int parse_extend (const char *rule, const char *option, int lvl);
 
-  // parsing results (low level sp_parse)
+  // parsing results 
   int parse_analyze (const char *text, const char *conf =NULL);
   int parse_focus (char *token, int ssz);
   int parse_focus () {return parse_focus(NULL, 0);}
@@ -234,7 +247,6 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // main functions
-  const char *expand (const char *sent, int fix);
   void subst_all (const char *pat, const char *rep);
   int normalize (int n0, const jhcGramRule *r);
   int wild_cnt (const jhcGramRule *s) const;
@@ -247,16 +259,22 @@ private:
   int all_caps (const char *name) const;
   void append (char *dest, const char *extra, int ssz) const;
 
-
   // debugging
   void print_focus (int indent, int start, int end);
+  int list_cat (FILE *out, const char *non, int lvl) const;
+  void noun_vars (FILE *out, int lvl, const class jhcMorphFcns *mf) const;
+  void adj_vars (FILE *out, int lvl, const class jhcMorphFcns *mf) const;
+  void verb_vars (FILE *out, int lvl, const class jhcMorphFcns *mf) const;
 
+
+// PRIVATE MEMBER FUNCTIONS (low level sp_parse)
+private:
   // grammar construction
   char *clean_line (char *ans, int len, FILE *in, int ssz);
-  int split_optional (const char *rname, const char *line);
-  int split_paren (const char *rname, char *base, char *start);
-  int split_dict (const char *rname, char *base, char *start);
-  int build_phrase (const char *rname, const char *line);
+  int split_optional (const char *rname, const char *line, int lvl);
+  int split_paren (const char *rname, char *base, char *start, int lvl);
+  int split_dict (const char *rname, char *base, char *start, int lvl);
+  int build_phrase (const char *rname, const char *line, int lvl);
   jhcGramStep *build_step (int &inc, const char *line);
   void nonterm_chk (const char *rname, const char *gram) const;
 

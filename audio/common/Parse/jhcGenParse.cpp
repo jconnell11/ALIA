@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2019 IBM Corporation
+// Copyright 2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -95,24 +96,33 @@ void jhcGenParse::PrintInput (const char *utag, int sep)
 
 void jhcGenParse::PrintSlots (int sc, int close) 
 {
-  char alist[500] = "";
-  char *c = alist;
+  char alist[1000] = "";
 
-  // get easy to read version of string
-  AssocList(alist, close, 500);  
-  while (*c != '\0')
-  {
-    if (*c == ' ')
-      *c = '_';
-    else if (*c == '\t')
-      *c = ' ';
-    c++;
-  }
-
-  // show result
+  AssocList(alist, close);  
+  NoTabs(alist);
   if (sc > 0)
     jprintf(" [%d]", Confidence());
   jprintf("  -->%s\n", alist);
+}
+
+
+//= Replace all tabs in association list with spaces.
+// NOTE: alters input string in place
+
+char *jhcGenParse::NoTabs (char *alist) const
+{
+  char *c = alist;
+
+  if (strchr(alist, '\t') != NULL)     // not already converted
+    while (*c != '\0')
+    {
+      if (*c == ' ')
+        *c = '_';
+      else if (*c == '\t')
+        *c = ' ';
+      c++;
+    }
+  return alist;
 }
 
 

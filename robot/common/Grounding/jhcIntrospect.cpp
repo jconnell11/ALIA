@@ -231,6 +231,10 @@ int jhcIntrospect::cuz_find (jhcAliaDesc *fail, const jhcAliaDir *dir)
 {
   jhcNetNode *fact, *obj = dir->KeyMain();                 // description hypothetical
 
+  // barf if trying to find the name of a property
+  if (!obj->ObjNode() && (obj->Lex() == NULL))
+    return -1;
+
   // copy find criteria and reference item sought
   atree->StartNote();
   if (dir->NumGuess() > 0)

@@ -1,27 +1,17 @@
 // terms associated with "somatic" ops and rules
 // ================================================
 
-// modifier
-
-=[MOD]
-  slowly
-
-
-// direction
-
-=[DIR]
-  right 
-  left
-  up
-  down
-  around
-
-
 // imperative verbs
 
 =[ACT]
   announce
   look
+
+
+// modifier
+
+=[MOD]
+  slowly
 
 
 // ================================================

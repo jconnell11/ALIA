@@ -22,10 +22,12 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include <string.h>
+#include <ctype.h>
 
 #include "Language/jhcMorphTags.h"
 #include "Semantic/jhcBindings.h"      // since only spec'd as class in header
 #include "Semantic/jhcGraphlet.h"      // since only spec'd as class in header
+#include "Semantic/jhcNodePool.h"      // since only spec'd as class in header
 
 #include "Semantic/jhcNetNode.h"
 
@@ -36,12 +38,19 @@
 
 //= Default destructor does necessary cleanup.
 // attempts to make remaining network consistent by deleting references
-// can only be deleted through jhcNodePool manager
+// NOTE: should only be deleted through jhcNodePool manager!
 
 jhcNetNode::~jhcNetNode ()
 {
   int i;
 
+  // remove any linkage between surface and deep cognates
+  if (moor != NULL)
+    moor->buoy = NULL;
+  if (buoy != NULL)
+    buoy->moor = NULL;
+
+  // remove text payload (if any) and all incoming and outgoing links
   delete quote;
   for (i = 0; i < na; i++)
     args[i]->rem_prop(this);
@@ -75,6 +84,7 @@ void jhcNetNode::rem_prop (const jhcNetNode *item)
 
 void jhcNetNode::rem_arg (const jhcNetNode *item)
 {
+  char bare[20], strip[20];
   int i, j;
 
   // find all occurrences of items in list of arhs
@@ -86,8 +96,10 @@ void jhcNetNode::rem_arg (const jhcNetNode *item)
         wrt--;
       else
       {
+        // arguments "ref" and "ref2" count as only one kind for arity
+        rem_num(bare, links[i], 20);
         for (j = 0; j < na; j++)
-          if ((j != i) && (strcmp(links[j], links[i]) == 0))
+          if ((j != i) && (strcmp(bare, rem_num(strip, links[j], 20)) == 0))
             break;
         if ((na > 0) && (j >= na))
           na0--;
@@ -109,9 +121,9 @@ void jhcNetNode::rem_arg (const jhcNetNode *item)
 
 
 //= Default constructor initializes certain values.
-// can only be created through jhcNodePool manager
+// NOTE: should only be created through jhcNodePool manager!
 
-jhcNetNode::jhcNetNode ()
+jhcNetNode::jhcNetNode (int num, class jhcNodePool *pool)
 {
   // basic configuration data
   *base = '\0';
@@ -120,16 +132,21 @@ jhcNetNode::jhcNetNode ()
   quote = NULL;
   inv = 0;
   evt = 0;
-  blf0 = 1.0;                  // value to use when actualized
-  blf  = 0.0;                  // used to default to one
+  blf0 = 1.0;                // value to use when actualized
+  blf  = 0.0;                // used to default to one
 
   // no arguments or properties, nothing else in list
   na = 0;
   na0 = 0;
   wrt = 0;
   np = 0;
-  id = 0;
+  id = num;                  // assigned by jhcNodePool
   next = NULL;
+
+  // LTM linkage
+  moor = NULL;
+  buoy = NULL;
+  home = pool;               // less ambiguous than separator
 
   // default bookkeeping
   hash = 0;
@@ -141,6 +158,7 @@ jhcNetNode::jhcNetNode ()
   top = 0;
   keep = 1;
   mark = 0;
+  ltm = 0;
 
   // no special grammar tags
   tags = 0;
@@ -151,21 +169,9 @@ jhcNetNode::jhcNetNode ()
 }
 
 
-//= Add a long string for regurgitation by echo output function.
-
-void jhcNetNode::SetString (const char *wds)
-{
-  if (wds == NULL)
-  {
-    delete quote;
-    quote = NULL;
-    return;
-  }
-  if (quote == NULL) 
-    quote = new char[200]; 
-  strcpy_s(quote, 200, wds);
-}
-
+///////////////////////////////////////////////////////////////////////////
+//                       Negation and Belief, Etc.                       //
+///////////////////////////////////////////////////////////////////////////
 
 //= Whether the node has any tags indicating it is an object.
 
@@ -180,6 +186,56 @@ bool jhcNetNode::NounTag () const
 bool jhcNetNode::VerbTag () const
 {
   return((tags & JTAG_VERB) != 0);
+}
+
+
+//= Set the language I/O reference recency to the newest for its pool.
+// NOTE: only for language input and output routines (i.e. user knows about node)
+
+void jhcNetNode::MarkRef ()
+{
+  if (home != NULL)
+    ref = home->IncRef();
+}
+
+
+//= Set type part of nickname for node and create full name.
+// retains old separator if none given (defaults to '-')
+
+void jhcNetNode::SetKind (const char *k, char sep)  
+{
+  char delim = sep;
+  int bsz;
+
+  // try to copy previous delimiter if none supplied
+  if (delim == '\0')
+  {
+    bsz = (int) strlen(base);
+    if (bsz < (int) strlen(nick))
+      delim = nick[bsz];
+    else
+      delim = '-';
+  }
+
+  // make up kind and nickname strings
+  strcpy_s(base, k);
+  sprintf_s(nick, "%s%c%d", k, delim, abs(id));
+}
+
+
+//= Add a long string for regurgitation by echo output function.
+
+void jhcNetNode::SetString (const char *txt)
+{
+  if (txt == NULL)
+  {
+    delete quote;
+    quote = NULL;
+    return;
+  }
+  if (quote == NULL) 
+    quote = new char[200]; 
+  strcpy_s(quote, 200, txt);
 }
 
 
@@ -201,32 +257,81 @@ int jhcNetNode::Actualize (int ver)
 //                           Argument Functions                          //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Tell number of uniquely named slots associated with this node.
+// slots that have same prefix but different number only count once ("ref" and "ref2")
+// can optionally omit "wrt" links (uses cached "na0" and "wrt" vars)
+// NOTE: assumes this is a surface node (ignores buoy) 
+
+int jhcNetNode::Arity (int all) const
+{
+  int cnt = na0, xtra = wrt;
+
+  if (moor != NULL)
+  {
+    cnt = moor->na0;
+    xtra = moor->wrt;
+  }
+  if ((all > 0) && (xtra > 0))
+    cnt++;                             // omit for ako2 matching
+  return cnt;
+}
+
+
+//= Return some argument of the current node (link type irrelevant).
+// prefers moor so okay if surface node in tethered pair is not fleshed out
+// NOTE: assumes this is a surface node, does not convert answer to surface
+
+jhcNetNode *jhcNetNode::Arg (int i) const 
+{
+  if ((i < 0) || (i >= NumArgs()))
+    return NULL;
+  if (moor != NULL)
+    return moor->args[i];
+  return args[i];
+}
+
+
+//= Find link name associated with some argument of a surface node.
+// prefers moor so okay if surface node in tethered pair is not fleshed out
+// NOTE: assumes this is a surface node (ignores buoy) 
+
+const char *jhcNetNode::Slot (int i) const
+{
+  if ((i < 0) || (i >= NumArgs()))
+    return NULL;
+  if (moor != NULL)
+    return moor->links[i];
+  return links[i];
+}
+
+
 //= Count the number of distinct fillers for given role.
-// if role is NULL then tells total argument count
+// NOTE: assumes this is a surface node (ignores buoy) 
 
 int jhcNetNode::NumVals (const char *slot) const
 {
-  int i, cnt = 0;
+  int i, n = NumArgs(), cnt = 0;
 
-  for (i = 0; i < na; i++)
-    if (strcmp(links[i], slot) == 0)
+  for (i = 0; i < n; i++)
+    if (strcmp(Slot(i), slot) == 0)
       cnt++;
   return cnt;
 }
 
 
-//= Get the n'th filler for the given role.
+//= Get the i'th filler for the given role.
 // returns NULL if invalid index
+// NOTE: assumes this is a surface node, does not convert answer to surface
 
-jhcNetNode *jhcNetNode::Val (const char *slot, int n) const
+jhcNetNode *jhcNetNode::Val (const char *slot, int i) const
 {
-  int i, cnt = n;
+  int j, n = NumArgs(), cnt = i;
 
-  if ((n >= 0) && (n < na))
-    for (i = 0; i < na; i++)
-      if (strcmp(links[i], slot) == 0)
+  if ((n >= 0) && (i < n))
+    for (j = 0; j < n; j++)
+      if (strcmp(Slot(j), slot) == 0)
         if (cnt-- <= 0)
-          return args[i];
+          return Arg(j);
   return NULL;
 }
 
@@ -234,15 +339,17 @@ jhcNetNode *jhcNetNode::Val (const char *slot, int n) const
 //= Add some other node as an argument with the given link name.
 // generic arguments do not need any explicit name
 // returns 1 for success, 0 if something full, -1 for bad format
+// NOTE: assumes both are untethered surface nodes (ignores moor and buoy)
 
 int jhcNetNode::AddArg (const char *slot, jhcNetNode *val)
 {
+  char bare[20], strip[20];
   int i;
 
   // check argument and make sure space exists
   if (val == NULL)
     return -1;
-  if (HasVal(slot, val))              // ignore duplicates
+  if (HasVal(slot, val))               // ignore duplicates
     return 1;
   if (na >= amax)
     return jprintf(">>> More than %d arguments in jhcNetNode::AddArg !\n", amax);
@@ -254,8 +361,10 @@ int jhcNetNode::AddArg (const char *slot, jhcNetNode *val)
     wrt++;
   else
   {
+    // arguments "ref" and "ref2" count as only one kind for arity
+    rem_num(bare, slot, 20);
     for (i = 0; i < na; i++)
-      if (strcmp(links[i], slot) == 0)
+      if (strcmp(bare, rem_num(strip, links[i], 20)) == 0)
         break;
     if ((na == 0) || (i >= na))
       na0++;
@@ -278,9 +387,29 @@ int jhcNetNode::AddArg (const char *slot, jhcNetNode *val)
 }
 
 
+//= Remove any non-alphabetic suffix from a slot name and save result in "trim".
+
+const char *jhcNetNode::rem_num (char *trim, const char *sname, int ssz) const
+{
+  char *end = trim;
+
+  strcpy_s(trim, ssz, sname);
+  while (*end != '\0')
+    if (!isalpha(*end))
+    {
+      *end = '\0';
+      break;
+    }
+    else
+      end++;
+  return trim;
+} 
+
+
 //= Replace existing argument with alternate node.
 // leaves slot name and order of arguments the same for this node
 // removes associated property from old value node
+// NOTE: assumes both are untethered surface nodes (ignores moor and buoy)
 
 void jhcNetNode::SubstArg (int i, jhcNetNode *val)
 {
@@ -300,6 +429,7 @@ void jhcNetNode::SubstArg (int i, jhcNetNode *val)
 
 //= Make sure this node is at the end of the property list for given argument.
 // guarantees that this node will be the first retrieved
+// NOTE: assumes this is an untethered surface node (ignores moor and buoy)
 
 void jhcNetNode::RefreshArg (int i) 
 {
@@ -334,8 +464,75 @@ void jhcNetNode::RefreshArg (int i)
 //                          Property Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Combined number of properties for both surface and deep cognates.
+// NOTE: assumes this is a surface node (ignores buoy) 
+
+int jhcNetNode::NumProps () const 
+{
+  if (moor != NULL)
+    return(np + moor->np);
+  return np;
+}
+
+
+//= Select one property out of total collection given a surface node.
+// properties are stored in oldest-first order (typically retrieved in reverse)
+// NOTE: assumes this is a surface node, does not convert answer to surface
+
+jhcNetNode *jhcNetNode::Prop (int i) const
+{
+  int i2;
+
+  if ((i < 0) || (i >= NumProps()))
+    return NULL;
+  if (moor == NULL)
+    return props[i];
+  i2 = i - moor->np;
+  if (i2 < 0)
+    return moor->props[i];
+  if (i2 < np)                         // should always be true
+    return props[i2];
+  return NULL;
+}
+
+
+//= Return link name that goes with selected property,
+// properties are stored in oldest-first order (typically retrieved in reverse)
+// NOTE: assumes this is a surface node (ignores buoy) 
+
+const char *jhcNetNode::Role (int i) const
+{
+  const jhcNetNode *fact;
+  int i2;
+
+  if ((i < 0) || (i >= NumProps()))
+    return NULL;
+  if (moor == NULL)
+  {
+    if ((fact = props[i]) == NULL)
+      return NULL;
+    return fact->links[anum[i]];
+  }
+  i2 = i - moor->np;    
+  if (i2 < 0)
+  {
+    if ((fact = moor->props[i]) == NULL)
+      return NULL;
+    return fact->links[moor->anum[i]];    
+  }
+  if (i2 < np)                         // should always be true
+  {
+    if ((fact = props[i2]) == NULL)
+      return NULL;
+    return fact->links[anum[i2]];
+  }
+  return NULL;
+}
+
+
 //= Checks if role in i'th property is one of several items.
 // largely for convenience in grounding commands
+// NOTE: assumes this is a surface node (ignores buoy) 
 
 bool jhcNetNode::RoleIn (int i, const char *v1, const char *v2, const char *v3, 
                          const char *v4, const char *v5, const char *v6) const
@@ -347,13 +544,14 @@ bool jhcNetNode::RoleIn (int i, const char *v1, const char *v2, const char *v3,
 
 //= See if this node's i'th property has the node as its "role" argument.
 // property node must also have matching "neg" and belief above "bth" 
-// returns property node if true, else NULL
+// returns property node (surface version) if true, else NULL
+// NOTE: assumes this is a surface node (ignores buoy) 
 
 jhcNetNode *jhcNetNode::PropMatch (int i, const char *role, double bth, int neg) const
 {
-  jhcNetNode *p = Prop(i);
+  jhcNetNode *p = PropSurf(i);
 
-  if ((p != NULL) && (strcmp(Role(i), role) == 0) && (p->blf >= bth) && (p->inv == neg))
+  if ((p != NULL) && (strcmp(Role(i), role) == 0) && (p->Belief() >= bth) && (p->Neg() == neg))
     return p;
   return NULL;
 }
@@ -361,20 +559,21 @@ jhcNetNode *jhcNetNode::PropMatch (int i, const char *role, double bth, int neg)
 
 //= Count the number of nodes that have this node as a filler for given role.
 // useful for determining if this node has a "tag" or a "cuz"
-// if role is NULL then tells total property count
+// NOTE: assumes this is a surface node (ignores buoy) 
 
 int jhcNetNode::NumFacts (const char *role) const
 {
-  jhcNetNode *p;
-  int i, j, cnt = 0;
+  const jhcNetNode *p;
+  int i, j, a, n = NumProps(), cnt = 0;
 
-  for (i = 0; i < np; i++)
-  {
-    p = props[i];
-    for (j = 0; j < p->na; j++)
-      if ((p->args[j] == this) && (strcmp(p->links[j], role) == 0))
-        cnt++;
-  }
+  for (i = 0; i < n; i++)
+    if ((p = Prop(i)) != NULL)
+    {
+      a = p->NumArgs();
+      for (j = 0; j < a; j++)
+        if ((p->Arg(j) == this) && p->SlotMatch(j, role))
+          cnt++;
+    }
   return cnt;
 }
 
@@ -383,22 +582,79 @@ int jhcNetNode::NumFacts (const char *role) const
 // useful for asking about this node relative to "ako" or "hq" 
 // most recently added properties returned first
 // returns NULL if invalid index
+// NOTE: assumes this is a surface node (ignores buoy) 
 
 jhcNetNode *jhcNetNode::Fact (const char *role, int n) const
 {
   jhcNetNode *p;
-  int i, j, cnt = n;
+  int i, j, a, total = NumProps(), cnt = n;
 
-  if ((n >= 0) && (n < np))
-    for (i = np - 1; i >= 0; i--)
-    {
-      p = props[i];
-      for (j = 0; j < p->na; j++)
-        if ((p->args[j] == this) && (strcmp(p->links[j], role) == 0))
-          if (cnt-- <= 0)
-            return p;
+  if ((n >= 0) && (n < total))
+    for (i = total - 1; i >= 0; i--)
+      if ((p = Prop(i)) != NULL)
+      {
+        a = p->NumArgs();
+        for (j = 0; j < a; j++)
+          if ((p->Arg(j) == this) && p->SlotMatch(j, role))
+            if (cnt-- <= 0)
+              return p;
     }
   return NULL;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                      Long Term Memory Linkage                         //
+///////////////////////////////////////////////////////////////////////////
+
+//= Connect this surface node to some deep node.
+// Note: a node can only be tethered to one other node, any previous linkage overwritten
+
+void jhcNetNode::MoorTo (jhcNetNode *deep)
+{
+  jhcNetNode *s0;
+
+  if (deep == moor)                    // already tethered
+    return;
+  if (deep == this)                    // should not happen
+  {
+    jprintf(">>> Cannot moor %s to itself!\n", nick);
+    return;
+  }
+  if (deep != NULL)
+  {
+    if ((s0 = deep->buoy) != NULL) 
+    {
+      if (!s0->Halo())
+        jprintf(">>> Unmooring previous %s (was %s) !\n", s0->nick, (s0->moor)->nick);
+      s0->moor = NULL;
+    }
+    deep->buoy = this;
+  }
+  else if (moor != NULL)
+    jprintf(">>> Unmooring self %s (was %s) !\n", nick, moor->nick);
+  moor = deep;
+}
+
+
+//= Mark garbage collection state of associated surface node (if any).
+
+void jhcNetNode::SetKeep (int val) 
+{
+  if (buoy != NULL)
+    buoy->keep = val;
+  else
+    keep = val;
+}
+
+
+//= Check the garbage collection state of associated surface node (if any).
+
+int jhcNetNode::Keep () const
+{
+  if (buoy != NULL)
+    return buoy->keep;
+  return keep;
 }
 
 
@@ -407,21 +663,28 @@ jhcNetNode *jhcNetNode::Fact (const char *role, int n) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= See if the node participates in the triple: <self> -slot-> val. 
+// NOTE: assumes this is a surface node, auto-converts val up or down
 
 bool jhcNetNode::HasVal (const char *slot, const jhcNetNode *val) const
 {
-  int i;
+  const jhcNetNode *a;
+  int i, n = NumArgs();
 
   if ((val == NULL) || (slot == NULL) || (*slot == '\0'))
     return false;
-  for (i = 0; i < na; i++)
-    if ((args[i] == val) && (strcmp(links[i], slot) == 0))
-      return true;
+  for (i = 0; i < n; i++)
+    if (SlotMatch(i, slot))
+    {
+      a = Arg(i);
+      if ((a == val) || (a == val->buoy) || (a == val->moor))
+        return true;
+    }
   return false;
 }
 
 
-//= See if the node participates in the triple: prop -role-> <self>. 
+//= See if the node participates in the triple: fact -role-> <self>. 
+// NOTE: assumes fact is a surface node, auto-converts this up or down
 
 bool jhcNetNode::HasFact (const jhcNetNode *fact, const char *role) const
 {
@@ -432,35 +695,37 @@ bool jhcNetNode::HasFact (const jhcNetNode *fact, const char *role) const
 
 
 //= See if two nodes shared exactly the same set of arguments.
+// NOTE: assumes this is a surface node, but auto-converts argument nodes
 
 bool jhcNetNode::SameArgs (const jhcNetNode *ref) const
 {
-  int i;
+  int i, n = NumArgs();
 
-  if ((ref == NULL) || (ref->na != na))
+  if ((ref == NULL) || (ref->NumArgs() != n))
     return false;
-  for (i = 0; i < na; i++)
-    if (!ref->HasVal(links[i], args[i]))
+  for (i = 0; i < n; i++)
+    if (!ref->HasVal(Slot(i), Arg(i)))
       return false;
   return true;
 }
 
 
 //= See if given node has same arguments as the remapped arguments of this node.
+// NOTE: assumes this is a surface node, but auto-converts argument nodes
 
 bool jhcNetNode::SameArgs (const jhcNetNode *ref, const jhcBindings *b) const
 {
   const jhcNetNode *a, *a2;
-  int i;
+  int i, n = NumArgs();
 
-  if ((ref == NULL) || (ref->na != na))
+  if ((ref == NULL) || (ref->NumArgs() != n))
     return false;
-  for (i = 0; i < na; i++)
+  for (i = 0; i < n; i++)
   {
-    a = args[i];    
+    a = Arg(i);    
     if ((b != NULL) && ((a2 = b->LookUp(a)) != NULL))
       a = a2;
-    if (!ref->HasVal(links[i], a))
+    if (!ref->HasVal(Slot(i), a))
       return false;
   }      
   return true;
@@ -469,23 +734,81 @@ bool jhcNetNode::SameArgs (const jhcNetNode *ref, const jhcBindings *b) const
 
 //= Find property node with lex "word" and argument "role" pointing to this node.
 // property node must have matching "neg" and belief above "bth"
-// however if asking for a hypothetical node (bth = 0) then match must have blf = 0
 // returns NULL if no such property found (does not check properties of property)
+// NOTE: assumes this is a surface node, does not auto-convert return value
 
 jhcNetNode *jhcNetNode::FindProp (const char *role, const char *word, int neg, double bth) const
 {
   jhcNetNode *p;
-  int i;
+  int i, n = NumProps();
 
-  for (i = 0; i < np; i++)
+  for (i = 0; i < n; i++)
   {
-    p = props[i];
-//    if (((p->blf >= bth) || ((bth == 0.0) && (p->blf == 0.0))) &&
-//        (p->inv == neg) && RoleMatch(i, role) && p->LexMatch(word)) 
-    if ((p->inv == neg) && (p->blf >= bth) && RoleMatch(i, role) && p->LexMatch(word)) 
+    p = Prop(i);
+//    if (((p->Belief() >= bth) || ((bth == 0.0) && (p->Belief() == 0.0))) &&
+//        (p->Neg() == neg) && RoleMatch(i, role) && p->LexMatch(word)) 
+    if ((p->Neg() == neg) && (p->Belief() >= bth) && RoleMatch(i, role) && p->LexMatch(word)) 
       return p;
   }
   return NULL;
+}
+
+
+//= Find argument node with lex "word" and argument "slot" pointing from this node.
+// argument node must have matching "neg" and belief above "bth"
+// returns NULL if no such property found (does not check properties of property)
+// NOTE: assumes this is a surface node, does not auto-convert return value
+
+jhcNetNode *jhcNetNode::FindArg (const char *slot, const char *word, int neg, double bth) const
+{
+  jhcNetNode *a;
+  int i, n = NumArgs();
+
+  for (i = 0; i < n; i++)
+  {
+    a = Arg(i);
+    if ((a->Neg() == neg) && (a->Belief() >= bth) && SlotMatch(i, slot) && a->LexMatch(word)) 
+      return a;
+  }
+  return NULL;
+}
+
+
+//= Check whether given text label refers to any of the slots associated with this node.
+// useful as a type checking tool (e.g. with "loc" or "name")
+
+bool jhcNetNode::HasSlot (const char *slot) const
+{
+  int i, n = NumArgs();
+
+  if (slot != NULL)
+    for (i = 0; i < n; i++)
+      if (strcmp(slot, Slot(i)) == 0)
+        return true;
+  return false;
+}
+
+
+//= See if node has a slot with any of the labels given. 
+
+bool jhcNetNode::AnySlot (const char *v1, const char *v2, const char *v3, 
+                          const char *v4, const char *v5, const char *v6) const
+{
+  return(HasSlot(v1) || HasSlot(v2) || HasSlot(v3) || 
+         HasSlot(v4) || HasSlot(v5) || HasSlot(v6));
+}
+
+
+//= Check for each slot of this predicate that the reference node has a matching slot name.
+
+bool jhcNetNode::SameSlots (const jhcNetNode *ref) const
+{
+  int i, n = NumArgs();
+
+  for (i = 0; i < n; i++)
+    if (!ref->HasSlot(Slot(i)))
+      return false;
+  return true;
 }
 
 
@@ -495,6 +818,7 @@ jhcNetNode *jhcNetNode::FindProp (const char *role, const char *word, int neg, d
 
 //= Checks if predicate lexical term is one of several items.
 // largely for convenience in grounding commands
+// NOTE: moor and buoy will always have same lex 
 
 bool jhcNetNode::LexIn (const char *v1, const char *v2, const char *v3, 
                         const char *v4, const char *v5, const char *v6) const
@@ -506,19 +830,21 @@ bool jhcNetNode::LexIn (const char *v1, const char *v2, const char *v3,
 //= Get a specific name out of all the names associated with this item.
 // if "bth" > 0.0 then only returns non-negated words with belief over threshold
 // most recently added terms returned first
+// NOTE: assumes this is a surface node (ignores buoy) 
 
 const char *jhcNetNode::Name (int i, double bth) const
 {
   const jhcNetNode *p;
-  int j, cnt = 0;
+  int j, n = NumProps(), cnt = 0;
 
   if (i >= 0)
-    for (j = np - 1; j >= 0; j--)
-    {
-      p = Prop(j);
-      if (RoleMatch(j, "name") && ((bth <= 0.0) || ((p->inv <= 0) && (p->blf >= bth))))
-        if (cnt++ >= i)
-          return p->Lex();
+    for (j = n - 1; j >= 0; j--)
+      if (RoleMatch(i, "name"))
+      {
+        p = Prop(j);
+        if ((bth <= 0.0) || ((p->Neg() <= 0) && (p->Belief() >= bth)))
+          if (cnt++ >= i)
+            return p->Lex();
     }
   return NULL;
 }
@@ -526,16 +852,21 @@ const char *jhcNetNode::Name (int i, double bth) const
 
 //= Checks if particular name is one of the references associated with this item.
 // can alternatively check if the node is definitely NOT associated with some name
+// NOTE: assumes this is a surface node (ignores buoy) 
 
 bool jhcNetNode::HasName (const char *word, int tru_only) const
 {
-  int i;
+  const jhcNetNode *p;
+  int i, n = NumProps();
 
   if (word != NULL)
-    for (i = 0; i < np; i++)
-      if (strcmp(Role(i), "name") == 0)
-        if (_stricmp(props[i]->lex, word) == 0)     
-          return((tru_only <= 0) || (props[i]->inv <= 0));     // ignores belief
+    for (i = 0; i < n; i++)
+      if (RoleMatch(i, "name"))
+      {
+        p = Prop(i);
+        if (_stricmp(p->lex, word) == 0)     
+          return((tru_only <= 0) || (p->Neg() <= 0));      // ignores belief
+      }
   return false;
 }
 
@@ -546,10 +877,11 @@ bool jhcNetNode::HasName (const char *word, int tru_only) const
 
 //= Get text field sizes needed to represent this node.
 // can optionally get sizes for lex nodes (e.g. for bindings)
+// NOTE: assumes this is an untethered surface node (ignores moor and buoy)
 
 void jhcNetNode::NodeSize (int& k, int& n) const
 {
-  char num[20];
+  char num[20] = "";
   int len;
 
   len = (int) strlen(base);
@@ -563,6 +895,7 @@ void jhcNetNode::NodeSize (int& k, int& n) const
 //= Estimate field widths for node kinds, instance numbers, and role names.
 // this is specific to style = 0, style = 1 (properties) may be different
 // variables k, n, and r need to be initialized externally (e.g. to zero)
+// NOTE: assumes this is an untethered surface node (ignores moor and buoy)
 
 void jhcNetNode::TxtSizes (int& k, int& n, int& r) const
 {
@@ -582,11 +915,14 @@ void jhcNetNode::TxtSizes (int& k, int& n, int& r) const
 // adds blank line and indents first line unless lvl < 0
 // detail: -2 belief + tags, -1 belief, 0 no extras, 1 default belief, 2 default belief + tags
 // always returns abs(lvl) for convenience (no check for file errors)
+// NOTE: assumes this is an untethered surface node (ignores moor and buoy)
 
 int jhcNetNode::Save (FILE *out, int lvl, int k, int n, int r, int detail, const jhcGraphlet *acc) const
 {
   char arrow[80];
-  int i, j, len, lvl2, kmax = k, nmax = n, rmax = r, ln = 0;
+  const jhcNetNode *a;
+  const char *slot;
+  int i, j, na2, len, lvl2, kmax = k, nmax = n, rmax = r, ln = 0;
 
   // write out main node identifier
   if ((k < 1) || (n < 1) || (r < 1))
@@ -601,7 +937,8 @@ int jhcNetNode::Save (FILE *out, int lvl, int k, int n, int r, int detail, const
 
   // go through all arguments (keep rewriting arrow string)
   sprintf_s(arrow, " -%*s-> ", rmax, "");
-  for (i = 0; i < na; i++)
+  na2 = NumArgs();
+  for (i = 0; i < na2; i++)
   {
     // possibly indent (if no head node)
     if (ln++ > 0)  
@@ -609,11 +946,13 @@ int jhcNetNode::Save (FILE *out, int lvl, int k, int n, int r, int detail, const
 
     // create labeled arrow to other node (strncpy_s would add an extra '\0')
     _strnset_s(arrow + 2, sizeof(arrow) - 2, '-', rmax);
-    len = (int) strlen(links[i]);
+    slot = Slot(i);
+    len = (int) strlen(slot);
     for (j = 0; j < len; j++)
-      arrow[j + 2] = (links[i])[j];
-    jfputs(arrow, out); 
-    jfprintf(out, "%s", args[i]->Nick());
+      arrow[j + 2] = slot[j];
+    jfputs(arrow, out);
+    a = Arg(i);                                  // not ArgSurf
+    jfprintf(out, "%s", a->Nick());
   }
   return abs(lvl);
 }

@@ -29,10 +29,12 @@
 #include "jhcGlobal.h"
 
 #include "Acoustic/jhcGenIO.h"         // common audio
-#include "Language/jhcNetBuild.h"  
+#include "Language/jhcNetBuild.h" 
 #include "Parse/jhcGramExec.h"
+#include "Parse/jhcVocab.h"
 #include "Reasoning/jhcActionTree.h"     
 #include "Reasoning/jhcAssocMem.h"
+#include "Reasoning/jhcDeclMem.h"
 #include "Reasoning/jhcProcMem.h"
 
 #include "Action/jhcAliaDLL.h"         // common robot
@@ -40,6 +42,7 @@
 #include "Action/jhcAliaStats.h"
 #include "Action/jhcEchoFcn.h"     
 #include "Grounding/jhcTalkFcn.h"          
+#include "Grounding/jhcMemStore.h"          
 #include "Grounding/jhcIntrospect.h"          
 
 
@@ -68,6 +71,9 @@
 //           >AliaPlay
 //             >AliaDir
 //               +Bindings
+//     +DeclMem              fact collection
+//       NodePool
+//         >NetNode
 //     +ActionTree           directive control
 //       WorkMem             main + halo facts
 //         NodePool
@@ -81,11 +87,13 @@
 //         SlotVal
 //         +MorphFcns
 //     +TalkFcn              text output
-//       AliaKernel
+//       StdKernel
+//     +MemStore             long term memory formation
+//       StdKernel
 //     +Introspect           call stack examiner
-//       AliaKernel
+//       StdKernel
 //     +EchoFcn              missing function catcher
-//       AliaKernel
+//       StdKernel
 //     +AliaMood             operator preference
 //     +AliaStats
 // 
@@ -98,10 +106,12 @@ private:
   static const int dmax = 30;  /** Maximum extra grounding DLLs. */
 
   jhcTalkFcn talk;             // literal text output
+  jhcMemStore ltm;             // long term memory formation
   jhcIntrospect why;           // call stack examiner
 
   jhcAssocMem amem;            // working memory expansions
   jhcProcMem pmem;             // reactions and expansions
+  jhcDeclMem dmem;             // long term facts
   char rob[40];                // name of active robot
 
   jhcAliaDLL gnd[dmax];        // extra grounding DLLs
@@ -120,18 +130,20 @@ private:
 
   UL32 t0;                     // starting time of this run
   FILE *log;                   // user input conversion results
+  int spact;                   // last speech act received
 
 
 // PROTECTED MEMBER VARIABLES
 protected:
   jhcEchoFcn kern;             // external procedure calls  
-  jhcGramExec gr;              // text parser
 
 
 // PUBLIC MEMBER VARIABLES
 public:
   jhcActionTree atree;         // working memory and call roots
   jhcNetBuild net;             // language to network conversion
+  jhcGramExec gr;              // text parser
+  jhcVocab vc;                 // known words and corrections
   jhcAliaStats stat;           // monitor for various activities
   jhcAliaMood mood;            // time varying goal preferences
   char cfile[80];              // preferred log file for conversions  
@@ -170,7 +182,8 @@ public:
   // main functions
   int MainGrammar (const char *gfile, const char *top, const char *rname =NULL);
   void Reset (int forget =0, const char *rname =NULL, int cvt =1);
-  int Interpret (const char *input =NULL, int awake =1, int amode =2);
+  int Interpret (const char *input =NULL, int awake =1, int amode =2, int spin =0);
+  jhcAliaChain *Reinterpret ();
   int RunAll (int gc =1);
   int Response (char *out, int ssz) {return talk.Output(out, ssz);}
   void StopAll ();
@@ -194,7 +207,6 @@ public:
 
   // halo control
   int Percolate (const jhcAliaDir& dir);
-  int ZeroTop (const jhcAliaDir& dir);
 
   // external grounding
   int FcnStart (const jhcNetNode *fcn);
@@ -210,10 +222,9 @@ public:
   void ShowMem () {atree.PrintMain();}
   void LoadLearned ();
   void DumpLearned () const;
-  void DumpSession () const;
+  void DumpSession ();
   void DumpAll () const;
-int Conf2 () const {return amem.Alterations("foo.conf");}
-int ConfAdj (const char *fname) {return amem.Overrides(fname);}
+
 
 // PRIVATE MEMBER FUNCTIONS
 private:
@@ -222,7 +233,14 @@ private:
   bool readable (char *fname, int ssz, const char *msg, ...) const;
 
   // main functions
+  int guess_cats (const char *txt);
+  void gram_add_hq (const char *wd);
   void gather_stats ();
+
+  // speech overrides for new words
+  virtual void sp_listen (int doit) {};
+  virtual void gram_add (const char *cat, const char *wd, int lvl) 
+    {if (wd != NULL) gr.ExtendRule(cat, wd, lvl);}
 
   // debugging
   void copy_file (const char *dest, const char *src) const;

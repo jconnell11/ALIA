@@ -181,7 +181,7 @@ public:
   int Static () const {return parked;}
   void AdjustXY (double& tx, double& ty, double tx0 =0.0, double ty0 =0.0) const;
   void AdjustTarget (jhcMatrix& pos) const;
-  double AdjustAng (double ang) const;
+  double AdjustAng (double& ang) const;
 
   // base goal specification
   void DriveClear () {mctrl.RampReset(); tctrl.RampReset();} 

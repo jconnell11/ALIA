@@ -802,7 +802,7 @@ int jhcSceneVis::vis_pos_ok0 (const jhcAliaDesc *desc, int i)
     return -1;
   if ((cst[i] = txt2pos(pos->Lex())) < 0)
     return -1;
-  if ((cst[i] == 0) && (pos->Val("ref", 1) == NULL))       // between
+  if ((cst[i] == 0) && (pos->Val("ref2") == NULL))         // between
     return -1;
   return 1;
 }
@@ -830,7 +830,7 @@ int jhcSceneVis::txt2pos (const char *txt) const
 int jhcSceneVis::vis_pos_ok (const jhcAliaDesc *desc, int i)
 {
   jhcAliaDesc *pos = desc->Val("arg"), *obj = pos->Val("loc");
-  jhcAliaDesc *ref = pos->Val("ref"), *ref2 = pos->Val("ref", 1);
+  jhcAliaDesc *ref = pos->Val("ref"), *ref2 = pos->Val("ref2");
   int t, r, r2, rel = cst[i], neg = 1;
 
   // find the referenced objects and possibly analyze their color
@@ -856,7 +856,7 @@ int jhcSceneVis::vis_pos_ok (const jhcAliaDesc *desc, int i)
   pos = rpt->NewProp(obj, "loc", loc[rel], neg, 1.0, 1, 2);
   rpt->AddArg(pos, "ref", ref);
   if (ref2 != NULL)
-    rpt->AddArg(pos, "ref", ref2);
+    rpt->AddArg(pos, "ref2", ref2);
   rpt->FinishNote();
   return rwi->ReadDone(1);
 }
@@ -1855,7 +1855,7 @@ int jhcSceneVis::net2pos (jhcAliaDesc **ref, jhcAliaDesc **ref2, const jhcAliaDe
         if (cat == 15)                 
         {
           // "between"
-          if ((wrt2 = p->Val("ref", 1)) != NULL)
+          if ((wrt2 = p->Val("ref2")) != NULL)
             if (((*ref2 == NULL) || (wrt2 == *ref2)) && p->LexMatch(loc[0]))
             {
               *ref = wrt;
@@ -2061,7 +2061,7 @@ void jhcSceneVis::prop2net (jhcAliaDesc *obj, int props[], jhcAliaDesc *ref, jhc
       p = rpt->NewProp(obj, ((cat <= 17) ? "loc" : "hq"), lex, 0, 1.0, 1, 2);
       rpt->AddArg(p, ((cat <= 17) ? "ref" : "alt"), ref);
       if (cat == 15)
-        rpt->AddArg(p, "ref", ref2);
+        rpt->AddArg(p, "ref2", ref2);
     }
 } 
 

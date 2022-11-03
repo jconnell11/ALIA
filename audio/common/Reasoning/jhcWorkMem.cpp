@@ -54,6 +54,7 @@ jhcWorkMem::jhcWorkMem ()
 
   // halo control
   halo.NegID();
+  rim = 0;
   nimbus = 0;
   mode = 0;
 
@@ -181,7 +182,7 @@ jhcNetNode *jhcWorkMem::SetUser (jhcNetNode *n)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Returns next node in list, transitioning from main to halo-1 to halo-2 if needed.
-// call with prev = NULL to get first node, use SetMode(2) to include halo
+// call with prev = NULL to get first node, use SetMode(3) to include halo
 // assumes all items in halo node pool have "id" < 0, tries non-halo first
 // can restrict selection to just one hash bin, or use all if bin < 0
 
@@ -194,20 +195,20 @@ jhcNetNode *jhcWorkMem::NextNode (const jhcNetNode *prev, int bin) const
   {
     if ((n = Next(prev, bin)) != NULL)
       return n;
-    if (mode <= 0)               // see if transition to halo allowed
+    if (mode <= 0)                     // see if transition to halo allowed
       return NULL;
-    n = halo.Pool(bin);          // get candidate node from halo   
+    n = halo.Pool(bin);                // get candidate node from halo   
   }
   else
-    n = halo.Next(prev, bin);    // halo -> get another halo node 
+    n = halo.Next(prev, bin);          // halo -> get another halo node 
 
-  // skip high-numbered halo nodes if only 1-step inference allowed
-  if (mode == 1)
+  // skip high-numbered halo nodes if only LTM props or 1-step inference allowed
+  if ((mode == 1) || (mode == 2))
     while (n != NULL) 
     {
-      if (abs(n->Inst()) <= nimbus)
+      if (abs(n->Inst()) <= nimbus)    
         break;
-      n = halo.Next(n, bin);     // will try other buckets if bin < 0
+      n = halo.Next(n, bin);           // will try other buckets if bin < 0
     }
   return n;
 }
@@ -221,7 +222,7 @@ bool jhcWorkMem::Prohibited (const jhcNetNode *n) const
 {
   return((n == NULL) || 
          ((mode <= 0) && (n->Inst() < 0)) || 
-         ((mode == 1) && (n->Inst() < -nimbus)));
+         (((mode == 1) || (mode == 2)) && (n->Inst() < -nimbus)));
 }
 
 
@@ -252,53 +253,17 @@ int jhcWorkMem::SameBin (const jhcNetNode& focus, const jhcBindings *b) const
 //                            Halo Functions                             //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Make suitably connected main memory node for each halo node in bindings.
-// saves mapping of correspondences between halo nodes and replacements in "h2m"
-// does not change original rule bindings "b" (still contains halo references)
-// used with jhcActionTree::ReifyRules
+//= Tell if a node is visible and in either main memory or an LTM ghost fact.
+// LTM ghost facts have halo instance numbers less than "rim"  
+// generally ghost facts are dis-preferred for language generation and tried second
 
-void jhcWorkMem::PromoteHalo (jhcBindings& h2m, const jhcBindings& b)
+bool jhcWorkMem::VisMem (const jhcNetNode* n, int ghost) const
 {
-  jhcBindings b2;
-  jhcNetNode *n2, *n;
-  const jhcNetNode *n0;
-  int i, j, hcnt, narg, nb = b.NumPairs(), h0 = h2m.NumPairs();
-
-  // make a main node for each halo node using same lex and neg
-  BuildIn(NULL);
-  b2.CopyReplace(b, h2m);              // subs from earlier promotions
-  for (i = 0; i < nb; i++)
-  {
-    // see if this substitution is a halo node
-    n = b2.GetSub(i);
-    if (!n->Halo())
-      continue;
-
-    // make equivalent wmem node with proper generation
-    // then actualize result as visible and save translation
-    n2 = MakeNode(n->Kind(), n->Lex(), n->Neg(), 1.0, n->Done());     
-    n2->SetBelief(n->Default());  
-    n2->Reveal();
-    h2m.Bind(n, n2);
-  }
-
-  // replicate structure of each halo node for replacement main node
-  hcnt = h2m.NumPairs();
-  for (i = h0; i < hcnt; i++)
-  {
-    // copy each argument from halo node to main node
-    n0 = h2m.GetKey(i);
-    narg = n0->NumArgs();
-    n = h2m.GetSub(i);
-    for (j = 0; j < narg; j++)
-    {
-      // if points to halo node, replace with new main node
-      n2 = n0->Arg(j);
-      if (n2->Halo())
-        n2 = h2m.LookUp(n2);         // should never fail
-      n->AddArg(n0->Slot(j), n2);
-    } 
-  }
+  if ((n == NULL) || !n->Visible())
+    return false;
+  if (ghost <= 0)
+    return InList(n);
+  return(halo.InList(n) && (abs(n->Inst()) <= rim));
 }
 
 
@@ -318,13 +283,13 @@ int jhcWorkMem::CleanMem (int dbg)
   // all things are potential garbage
   jprintf(1, dbg, "\nCleaning memory ...\n");
   while ((n = NextNode(n)) != NULL)
-    n->keep = ((n->keep > 0) ? 1 : 0);           // normalize values
+    n->SetKeep((n->Keep() > 0) ? 1 : 0);         // normalize values
 
   // scan all and expand marks to related nodes
   jprintf(2, dbg, "\n  retaining nodes:\n");
   n = NULL;
   while ((n = Next(n)) != NULL)
-    if (n->keep == 1)
+    if (n->Keep() == 1)
       keep_from(n, dbg);
 
   // mark definite keepers (conversation participants)
@@ -336,6 +301,7 @@ int jhcWorkMem::CleanMem (int dbg)
 
 //= Special mark spreader for conversational participants.
 // keeps only non-hypothetical HQ, AKO, and REF facts (others may get marked from foci)
+// NOTE: assumes given anchor node is WMEM (not DMEM)
 
 void jhcWorkMem::keep_party (jhcNetNode *anchor) const
 {
@@ -345,31 +311,31 @@ void jhcWorkMem::keep_party (jhcNetNode *anchor) const
   // definitely keep this node
   if (anchor == NULL)
     return;
-  anchor->keep = 2;
+  anchor->SetKeep(2);
 
   // scan through all its properties
   n = anchor->NumProps();  
   for (i = 0; i < n; i++)
   {
-    prop = anchor->Prop(i);
-    if (!prop->Hyp() && anchor->RoleIn(i, "name", "ako", "hq"))      
+    prop = anchor->PropSurf(i);
+    if (!prop->Hyp() && InPool(prop) && anchor->RoleIn(i, "name", "ako", "hq"))      
     {
       // keep this property and all arguments
-      prop->keep = 2;
+      prop->SetKeep(2);
       n2 = prop->NumArgs();
       for (j = 0; j < n2; j++)
       {
-        arg = prop->Arg(j);
-        arg->keep = 1;                 // allow spreading from arg
+        arg = prop->ArgSurf(j);
+        arg->SetKeep(1);               // allow spreading from arg
       }
 
       // retain degree for properties like "very smart"
       n2 = prop->NumProps();
       for (j = 0; j < n2; j++)
       {
-        deg = prop->Prop(j);
-        if (!deg->Hyp() && prop->RoleMatch(j, "deg"))
-          deg->keep = 2;
+        deg = prop->PropSurf(j);
+        if (!deg->Hyp() && InPool(deg) && prop->RoleMatch(j, "deg"))
+          deg->SetKeep(2);
       }
     }
   }
@@ -384,22 +350,22 @@ void jhcWorkMem::keep_from (jhcNetNode *anchor, int dbg) const
   int i, n;
 
   // make sure node is not already marked or part of some other pool
-  if ((anchor == NULL) || (anchor->keep > 1) || !InPool(anchor))
+  if ((anchor == NULL) || (anchor->Keep() > 1) || !InPool(anchor))
     return;
   if ((anchor == self) || (anchor == user))                // handled separately
     return;
-  jprintf(2, dbg, "    %s%s\n", ((anchor->keep <= 0) ? "  " : ""), anchor->Nick());  
+  jprintf(2, dbg, "    %s%s\n", ((anchor->Keep() <= 0) ? "  " : ""), anchor->Nick());  
 
   // mark node and all its arguments as being keepers 
-  anchor->keep = 2;
+  anchor->SetKeep(2);
   n = anchor->NumArgs();  
   for (i = 0; i < n; i++)
-    keep_from(anchor->Arg(i), dbg);
+    keep_from(anchor->ArgSurf(i), dbg);
 
   // mark all properties for retention
   n = anchor->NumProps();  
   for (i = 0; i < n; i++)
-    keep_from(anchor->Prop(i), dbg);
+    keep_from(anchor->PropSurf(i), dbg);
 }
 
 
@@ -417,9 +383,9 @@ int jhcWorkMem::rem_unmarked (int dbg)
 
   // get rid of anything not marked (0)
   while (n != NULL)
-    if (n->keep > 0)
+    if (n->Keep() > 0)
     {
-      n->keep = 0;           // eligible on next round
+      n->SetKeep(0);         // eligible for deletion on next round
       n = Next(n);
     }
     else

@@ -140,6 +140,7 @@ public:
   int GazeAt (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10);
   int GazeAt (const jhcMatrix *targ, double lift, double rate =1.0, int bid =10)
     {return((targ == NULL) ? 0 : GazeAt(*targ, lift, rate, bid));}
+  int GazeFix (const jhcMatrix& targ, double lift, double secs =0.5, int bid =10);
   int GazeStop (double rate =1.5, int bid =1)
     {return GazeTarget(jt[0].SoftStop(Pan(), ndone, rate), jt[1].SoftStop(Tilt(), ndone, rate), rate, bid);}
 

@@ -135,7 +135,7 @@ int jhcSpeechX::Init (int dbg, int noisy)
     if (noisy > 0)
       jprintf("\n>>> parse FAILED!\n");
   }
-  else if (LoadGrammar(gram) <= 0)
+  else if (LoadSpGram(gram) <= 0)
   {
     if (noisy > 0)
       jprintf("\n>>> grammar FAILED!\n");
@@ -855,7 +855,7 @@ const char *jhcSpeechX::SpeakerId ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Remembers grammar to load but does NOT load it yet.
-// used as default when calling LoadGrammar(NULL) or Init()
+// used as default when calling LoadSpGram(NULL) or Init()
 // generally "gfile" is only the first grammar added
 // NOTE: most common pattern is SetGrammar then Init 
 
@@ -891,7 +891,7 @@ void jhcSpeechX::ClearGrammar (int keep)
 // returns 0 if some error, else 1
 // NOTE: most common pattern is SetGrammar then Init 
 
-int jhcSpeechX::LoadGrammar (const char *fname, ...)
+int jhcSpeechX::LoadSpGram (const char *fname, ...)
 {
   char append[200];
   char *gf = (char *)((*gram == '\0') ? &gram : &append);
@@ -942,6 +942,8 @@ int jhcSpeechX::MarkRule (const char *name, int val)
 
 int jhcSpeechX::ExtendRule (const char *name, const char *phrase, int file)
 {
+  if ((name == NULL) || (phrase == NULL) || (*name == '\0') || (*phrase == '\0'))
+    return 0;
   return parse_extend(name, phrase, file);
 }
 

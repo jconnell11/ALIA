@@ -140,7 +140,7 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
 
     // add words associated with kernels (slow second time?)
     jprintf(1, noisy, "Augmenting speech grammar with:\n");
-    (net.mf).AddVocab(&sp, "language/vocabulary.sgm", 1);
+    (net.mf).AddSpVocab(&sp, "language/vocabulary.sgm", 1);
     kern_gram();
     base_gram(extra);                  // includes graphizer.sgm
     if (vol > 0)
@@ -167,7 +167,7 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
   jhcAliaCore::Reset(1, rname, 1);
 
   // load rules, operators, and words for kernels (speech already set)
-  (net.mf).AddVocab(&gr, "language/vocabulary.sgm");
+  (net.mf).AddVocab(&gr, "language/vocabulary.sgm", 0, -1);
   KernExtras(kdir);
   Baseline(extra, 1, 2);               // includes graphizer.sgm
   if (vol > 0)
@@ -210,7 +210,7 @@ void jhcAliaSpeech::kern_gram ()
     if (*tag != '\0')
     {
       sprintf_s(fname, "%s%s.sgm", kdir, tag);
-      (net.mf).AddVocab(&sp, fname, 1);
+      (net.mf).AddSpVocab(&sp, fname, 1);
     }
     k = k->NextPool();
   }
@@ -259,7 +259,7 @@ void jhcAliaSpeech::base_gram (const char *list)
 
     // read various types of input 
     sprintf_s(fname, "%s%s.sgm", dir, line);  
-    (net.mf).AddVocab(&sp, fname, 1);
+    (net.mf).AddSpVocab(&sp, fname, 1);
   } 
 
   // clean up
@@ -303,26 +303,38 @@ void jhcAliaSpeech::AddName (const char* name)
   if ((sep = strchr(first, ' ')) != NULL)
     *sep = '\0';
 
-  // parsing grammar
-  gr.ExtendRule("NAME", name);
-  gr.ExtendRule("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP));
+  // update parsing grammar and possibly speech front-end also 
+  sp_listen(0);
+  gram_add("NAME", name, 0);
+  gram_add("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP), 0);
   if (sep != NULL)
   {
-    gr.ExtendRule("NAME", first);
-    gr.ExtendRule("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP));
+    gram_add("NAME", first, 0);
+    gram_add("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP), 0);
   }
+}
 
-  // possibly update speech front-end also 
-  if ((SpeechIn() <= 0) || (spin != 1))
+
+//= Disable local speech recognition to add a new word.
+
+void jhcAliaSpeech::sp_listen (int doit)
+{
+  if (spin == 1)
+    sp.Listen(doit);
+}
+
+
+//= Extend a local speech recognition grammar rule for a new word.
+// lvl: -1 = vocab, 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
+// Note: should call sp_listen(0) before this
+
+void jhcAliaSpeech::gram_add (const char *cat, const char *wd, int lvl)
+{
+  if (wd == NULL)
     return;
-  sp.Listen(0);
-  sp.ExtendRule("NAME", name, 0);
-  sp.ExtendRule("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP), 0);
-  if (sep != NULL)
-  {
-    sp.ExtendRule("NAME", first, 0);
-    sp.ExtendRule("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP), 0);
-  }
+  gr.ExtendRule(cat, wd, lvl);         // jhcAliaCore::gram_add
+  if (spin == 1)
+    sp.ExtendRule(cat, wd, 0);
 }
 
 
@@ -434,9 +446,9 @@ void jhcAliaSpeech::xfer_input ()
 
   // pass input (if any) to semantic network generator
   if (hear < 0)
-    perk = Interpret(NULL, attn, amode);                   // for "huh?" response
+    perk = Interpret(NULL, attn, amode, -1);               // for "huh?" response
   else if (hear >= 2)
-    perk = Interpret(sent, attn, amode);
+    perk = Interpret(sent, attn, amode, spin);
   if (perk >= 2)                                           // attention word heard
     attn = 1;
   if ((attn > 0) && (hear != 0))
@@ -578,25 +590,28 @@ bool jhcAliaSpeech::Accept (const char *in, int quit)
 
 const char *jhcAliaSpeech::NewInput (int clean)
 {
-  const char *last, *fix;
+  const char *last;
 
-  // get last input string and proper parse (if any)
+  // get last raw input string (if any)
   if (spin == 2)
     last = web.LastIn();
   else if (spin == 1)
     last = sp.LastIn();
   else
     last = lastin;
-  fix = gr.Clean();
 
-  // show input even if not parsed correctly
+  // possibly nothing valid on this cycle
   if ((last == NULL) || (*last == '\0'))
     return NULL;
   if ((spin > 0) && (awake == 0))
     return NULL;
-  if ((clean > 0) && (fix != NULL) && (*fix != '\0'))
-    return fix;
-  return last;
+
+  // return raw, cleanly parsed, or unknown marked version 
+  if (clean <= 0)
+    return last;
+  if (gr.NumTrees() > 0)
+    return gr.Clean();            
+  return vc.Marked();    
 }
 
 

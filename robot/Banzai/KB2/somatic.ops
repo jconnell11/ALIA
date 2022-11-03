@@ -1,56 +1,69 @@
 // Homeostasis actions for somatic states
 // ================================================
 
-OP 1 - "If you are awake then announce that and also look around"
+OP 1 - "Before announcing that you are awake look around"
   trig:
-  NOTE[  hq-1 -lex-  awake
+  ANTE[ act-1 -lex-  announce
+              -obj-> hq-1 
+         hq-1 -lex-  awake
               -hq--> obj-1
         obj-1 -lex-  me ]
 -----------------
-   >>>
-      DO[ act-1 -lex-  announce
-                -obj-> hq-1 ]
-   +++
-      DO[ act-2 -lex-  look
-          dir-1 -lex-  around
-                -dir-> act-2 ]
-   <<<
+    DO[ act-2 -lex-  look
+        dir-1 -lex-  around
+              -dir-> act-2 ]
 
 
-OP 2 - "If you are tired announce that"
+OP 2 - "Before announcing that you are lonely then announce look around"
   trig:
-  NOTE[  hq-1 -lex-  tired
+  ANTE[ act-1 -lex-  announce
+              -obj-> hq-1 
+         hq-1 -lex-  lonely
               -hq--> obj-1
         obj-1 -lex-  me ]
 -----------------
-    DO[ act-1 -lex-  announce
-              -obj-> hq-1 ]
+    DO[ act-2 -lex-  look 
+        dir-1 -lex-  around 
+              -dir-> act-2 ]
 
 
-OP 3 - "If you are overwhelmed announce that"
+// ----------------------------------------
+
+OP 3 - "To look around look right slowly then ..."
   trig:
-  NOTE[  hq-1 -lex-  overwhelmed
-              -hq--> obj-1
-        obj-1 -lex-  me ]
+    DO[ act-1 -lex-  look 
+        dir-1 -lex-  around
+              -dir-> act-1 ]
 -----------------
-    DO[ act-2 -lex-  announce
-              -obj-> hq-1 ]
+    DO[ act-3 -lex-  look
+        dir-3 -lex-  right
+              -dir-> act-3 
+        mod-3 -lex-  slowly 
+              -mod-> act-3 ]
+    DO[ act-4 -lex-  look
+        dir-4 -lex-  down
+              -dir-> act-4 ]
+    DO[ act-5 -lex-  look
+        dir-5 -lex-  left
+              -dir-> act-5 
+        mod-5 -lex-  slowly 
+              -mod-> act-5 ]
 
 
-OP 4 - "If you are lonely then announce that and also look around"
+OP 4 - "Before looking around look left then look up slightly"
   trig:
-  NOTE[  hq-1 -lex-  lonely
-              -hq--> obj-1
-        obj-1 -lex-  me ]
+  ANTE[ act-1 -lex-  look 
+        dir-1 -lex-  around
+              -dir-> act-1 ]
 -----------------
-   >>>
-      DO[ act-1 -lex-  announce
-                -obj-> hq-1 ]
-   +++
-      DO[ act-2 -lex-  look 
-          dir-1 -lex-  around 
-                -dir-> act-2 ]
-   <<<
+    DO[ act-2 -lex-  look
+        dir-2 -lex-  left
+              -dir-> act-2 ]
+    DO[ act-3 -lex-  look
+        dir-3 -lex-  up
+              -dir-> act-3 
+        amt-1 -lex-  slightly
+              -amt-> act-3 ]
 
 
 // ----------------------------------------
@@ -102,3 +115,7 @@ OP 8 - "To hail someone say good to see you whoever"
               -dest-> agt-1
               -obj--> txt-1
         txt-1 -str-   good to see you ?0 ]
+
+
+
+

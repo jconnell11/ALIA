@@ -127,7 +127,7 @@ int jhcTalkFcn::local_status (const jhcAliaDesc *desc, int i)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Assembles utterance for output to user.
-// returns new instance number (>= 0) if success, -1 for problem, -2 for unknown
+// returns 1 if okay, -1 for interpretation error
 
 int jhcTalkFcn::echo_wds0 (const jhcAliaDesc *desc, int i)
 {
@@ -136,13 +136,14 @@ int jhcTalkFcn::echo_wds0 (const jhcAliaDesc *desc, int i)
   if (build_string(desc, i) <= 0)
     return -1;
   ct0[i] = jms_now();
-  return i;  
+  return 1;  
 }
 
 
 //= Assert already assembled utterance as a good thing to say.
 // saves utterance in member variable in case daydreaming
 // returns 1 if done, 0 if still working, -1 for failure
+// NOTE: waits for text to be queued as highest, not for utterance to complete
 
 int jhcTalkFcn::echo_wds (const jhcAliaDesc *desc, int i)
 {
@@ -179,7 +180,7 @@ int jhcTalkFcn::build_string (const jhcAliaDesc *desc, int inst)
   char slot[40] = "arg0";
   char *txt = full[inst];
   const char *form, *ref;
-  const jhcAliaDesc *pat, *n;
+  jhcAliaDesc *pat, *n;
   char num;
 
   // if utterance is a single node try to generate a string for it 
@@ -277,40 +278,9 @@ void jhcTalkFcn::fix_itis (char *txt)
 
 void jhcTalkFcn::fix_verb (char *txt)
 {
-  char *fix;
-  int i, n;
-
-  // "I is" -> "I am"
-  if ((fix = strstr(txt, "I is")) != NULL) 
-  {
-    fix[2] = 'a';
-    fix[3] = 'm';
-    return;
-  }
-
-  // "you is" -> "you are" (tail of string shifted)
-  if ((fix = strstr(txt, "you is")) != NULL)
-  {
-    n = (int) strlen(fix);
-    for (i = n; i >= 6; i--)
-      fix[i + 1] = fix[i];
-    fix[4] = 'a';
-    fix[5] = 'r';
-    fix[6] = 'e';
-    return;
-  }
-
-  // "are one" -> "is one" (for counting)
-  if ((fix = strstr(txt, "are one")) != NULL)
-  {
-    n = (int) strlen(fix);
-    for (i = 3; i < n; i++)
-      fix[i - 1] = fix[i];    
-    fix[0] = 'i';
-    fix[1] = 's';
-    fix[n - 1] = '\0';
-    return;
-  }
+  convert_all("I is",    "I am",    txt, 0);  
+  convert_all("you is",  "you are", txt, 0);  
+  convert_all("are one", "is one",  txt, 0);  
 }
 
 
@@ -342,57 +312,56 @@ void jhcTalkFcn::fix_det (char *txt)
 
 void jhcTalkFcn::fix_abbrev (char *txt)
 {
-  char *tail, *fix;
-  int i, n;
-
-  // "it is" -> "it's" (tail of string shifted)
-  tail = txt;
-  while ((fix = strstr(tail, "it is")) != NULL)
-  {
-    tail = fix + 5;                    // skip over match
-    if (word_after(tail))
-    {
-      n = (int) strlen(fix);
-      for (i = 5; i < n; i++)
-        fix[i - 1] = fix[i];
-      fix[n - 1] = '\0';
-      fix[2] = '\'';
-      fix[3] = 's';
-      tail--;                          // one letter shorter now
-    }
-  }
-
-  // "do not" -> "don't"
-  tail = txt;
-  while ((fix = strstr(tail, "do not")) != NULL)
-  {
-    tail = fix + 6;                    // skip over match
-    if (word_after(tail))
-    {
-      n = (int) strlen(fix);
-      for (i = 6; i < n; i++)
-        fix[i - 1] = fix[i];
-      fix[n - 1] = '\0';
-      fix[2] = 'n';
-      fix[3] = '\'';
-      fix[4] = 't';
-      tail--;                          // one letter shorter now
-    }
-  }
+  convert_all("I am",    "I'm",    txt, 1);
+  convert_all("you are", "you're", txt, 1);
+  convert_all("it is",   "it's",   txt, 1);
+  convert_all("do not",  "don't",  txt, 0);
 }
 
 
-//= Make sure string starts with whitespace and has something non-whitepace later.
-// prevents contraction of "it is not" -> "it isn't" -> "it'sn't"
+//= Convert every occurrence of pattern string into replacement string.
+// if wd > 0 then must have following word (prevent "That's who I'm") 
+// NOTE: case insensitive
 
-bool jhcTalkFcn::word_after (const char *txt) const
+void jhcTalkFcn::convert_all (const char *pat, const char *rep, char *txt, int wd)
 {
-  const char *tail = txt;
+  char *hit = txt;
+  const char *tail;
+  int i, n, r = (int) strlen(rep), p = (int) strlen(pat), sh = r - p;
 
-  if ((txt == NULL) || (*txt == '\0') || isalnum(*txt))
-    return false;
-  while (!isalnum(*tail++))
-    if (*tail == '\0')
-      return false;
-  return true;
+  // look for every properly delineated occurrence of pattern
+  while (*hit != '\0')
+     if ((_strnicmp(hit, pat, p) != 0) ||
+         ((hit != txt) && (isalnum(*(hit - 1)) > 0)) ||     // space before
+         ((hit[p] != '\0') && (isalnum(hit[p]) > 0)))       // space after
+       hit++;
+     else
+     {
+       // possibly check for whole word following match
+       if (wd > 0)
+       {
+         tail = hit + p;
+         while ((*tail != '\0') && (isalnum(*tail) <= 0))  // whitespace
+           tail++;
+         if (*tail == '\0')                                // no word
+         {
+           hit++;
+           continue;
+         }
+       }
+
+      // move remainder of string to left
+      n = (int) strlen(hit);
+      if (sh < 0)
+        for (i = r; i < n; i++)
+          hit[i] = hit[i - sh];
+      else if (sh > 0)
+        for (i = n; i >= p; i--)
+          hit[i + sh] = hit[i];
+       
+      // copy in replacement (no null termination)
+      for (i = 0; i < r; i++)     
+        hit[i] = rep[i];
+      hit += r;
+    }
 }

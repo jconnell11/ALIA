@@ -46,6 +46,9 @@ private:
   static const int vmax = 100; 
   static const int amax = 100; 
 
+  // grammar category associated with tag
+  static const char * const gcat[JTV_MAX];
+
   // lookup tables for irregular forms
   char nsing[nmax][40], npl[nmax][40]; 
   char vimp[vmax][40], vpres[vmax][40], vprog[vmax][40], vpast[vmax][40];
@@ -72,8 +75,8 @@ public:
   int SaveExcept (const char *fname) const;
   
   // main functions
-  int AddVocab (class jhcGenParse *p, const char *fname, int rpt =0);
-  int AddVocab (class jhcSpeechX *p, const char *fname, int rpt =0);
+  int AddVocab (class jhcGenParse *p, const char *fname, int rpt =0, int lvl =0);
+  int AddSpVocab (class jhcSpeechX *p, const char *fname, int rpt =0);
  
   // derived forms
   const char *SurfWord (char *surf, const char *base, UL32 tags, int ssz) const;
@@ -82,6 +85,8 @@ public:
       {return SurfWord(surf, base, tags, ssz);}
   const char *SurfWord (const char *base, UL32 tags) 
     {return SurfWord(stemp, base, tags);}
+  const char *Irregular (const char *base, UL32 tags) const 
+    {return lookup_surf(base, tags);}
 
   // normalization
   const char *BaseWord (char *base, const char *surf, UL32 tags, int ssz) const;
@@ -93,14 +98,20 @@ public:
   
   // graphizer functions
   const char *NounLex (UL32& tags, char *pair) const;
-  const char *VerbLex (UL32& tags, char *pair) const;
   const char *AdjLex (UL32& tags, char *pair) const;
+  const char *VerbLex (UL32& tags, char *pair) const;
 
-  // adjective nominalization
+  // utilities
   const char *PropKind (char *form, const char *adj, int ssz) const;
+  int GramBase (char *word, const char *w0, const char *c0, int ssz) const;
   template <size_t ssz> 
     const char *PropKind (char (&form)[ssz], const char *adj) const
       {return PropKind(form, adj, ssz);}
+  template <size_t ssz> 
+    int GramBase (char (&word)[ssz], const char *w0, const char *c0) const
+      {return GramBase(word, w0, c0, ssz);}
+  int GramTag (const char *cat) const;
+  const char *GramCat (int tag) const;
 
   // debugging tools
   int LexDeriv (const char *gram, int chk =1, const char *deriv =NULL);
@@ -118,8 +129,9 @@ private:
   // derived forms
   const char *lookup_surf (const char *surf, UL32 tags) const;
   char *noun_morph (char *val, UL32 tags) const;
-  char *verb_morph (char *val, UL32 tags) const;
   char *adj_morph (char *val, UL32 tags) const;
+  char *verb_morph (char *val, UL32 tags) const;
+  char *adv_morph (char *val, UL32 tags) const;
   char *add_s (char *val, int ssz) const;
   char *add_vowel (char *val, const char *suffix, int ssz) const;
   char *add_ss (char *val, int ssz, int chk) const;
@@ -127,8 +139,9 @@ private:
   // normalization
   const char *lookup_base (const char *surf, UL32 tags) const;
   char *noun_stem (char *val, UL32 tags) const;
-  char *verb_stem (char *val, UL32 tags) const;
   char *adj_stem (char *val, UL32 tags) const;
+  char *verb_stem (char *val, UL32 tags) const;
+  char *adv_stem (char *val, UL32 tags) const;
   char *rem_s (char *val) const;
   char *rem_vowel (char *val, int strip) const;
   char *rem_ss (char *val) const;

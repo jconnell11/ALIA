@@ -300,6 +300,9 @@
     <ClCompile Include="MensEtFrm.cpp" />
     <ClCompile Include="MensEtView.cpp" />
     <ClCompile Include="jhcMensCoord.cpp" />
+    <ClCompile Include="..\common\Grounding\jhcMemStore.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp" />
     <ClCompile Include="..\common\Grounding\jhcIntrospect.cpp" />
     <ClCompile Include="..\common\Action\jhcStdKern.cpp" />
     <ClCompile Include="..\common\Action\jhcAliaMood.cpp" />
@@ -420,8 +423,10 @@
     <ClInclude Include="..\..\audio\common\Comm\zmq.h" />
     <ClInclude Include="..\..\audio\common\Language\jhcMorphFcns.h" />
     <ClInclude Include="..\..\audio\common\Language\jhcNetBuild.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcVocab.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcActionTree.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaNote.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h" />
     <ClInclude Include="..\..\audio\common\Semantic\jhcAliaDesc.h" />
     <ClInclude Include="..\..\audio\common\Semantic\jhcTxtAssoc.h" />
     <ClInclude Include="..\..\audio\common\Semantic\jhcTxtList.h" />
@@ -451,6 +456,7 @@
     <ClInclude Include="..\common\Grounding\jhcBasicAct.h" />
     <ClInclude Include="..\common\Grounding\jhcIntrospect.h" />
     <ClInclude Include="..\common\Grounding\jhcLocalSeq.h" />
+    <ClInclude Include="..\common\Grounding\jhcMemStore.h" />
     <ClInclude Include="..\common\Grounding\jhcSoundFcn.h" />
     <ClInclude Include="..\common\Grounding\jhcTalkFcn.h" />
     <ClInclude Include="..\common\Grounding\jhcTargetVis.h" />

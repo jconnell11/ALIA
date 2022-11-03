@@ -468,6 +468,15 @@
     <ClCompile Include="..\common\Grounding\jhcIntrospect.cpp">
       <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp">
+      <Filter>Source Files\common audio\Reasoning</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Grounding\jhcMemStore.cpp">
+      <Filter>Source Files\common robot\Grounding</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MensEtDoc.h">
@@ -840,6 +849,15 @@
       <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
     <ClInclude Include="..\common\Grounding\jhcIntrospect.h">
+      <Filter>Header Files\common robot\Grounding</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcVocab.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h">
+      <Filter>Header Files\common audio\Reasoning</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Grounding\jhcMemStore.h">
       <Filter>Header Files\common robot\Grounding</Filter>
     </ClInclude>
   </ItemGroup>

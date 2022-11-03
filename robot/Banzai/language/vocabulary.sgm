@@ -1,6 +1,27 @@
 // OPEN CLASS WORDS
 // ================================================
 
+// robot name
+
+=[ATTN]
+  robot
+
+
+// proper nouns
+
+=[NAME]
+  Rick
+  Mary
+  Ken
+  Vassar
+  Gwen
+  IBM
+  Scar
+  Simba
+  Joe
+  Jill
+
+
 // singular nouns
 
 =[AKO]
@@ -21,11 +42,16 @@
   animal
   top
   surface
+  car
+  wife
+  bowl
+  lion
+  man
 
 
-// mass nouns (do not take "the" or "a")
+// mass noun plurals (cannot take "a" like "sand")
 
-=[AKO-M]
+=[AKO-S]
 
 
 // adjectives
@@ -50,33 +76,12 @@
   dumb
   interesting
   good
-
-
-// proper nouns
-
-=[NAME]
-  Rick
-  Mary
-
-
-// robot name
-
-=[ATTN]
-  robot
+  brown
+  furry
+  little
 
 
 // -----------------------------------------
-
-// modifiers
-
-=[MOD]
-
-
-// directions
-
-=[DIR]
-  away
-
 
 // imperative verbs
 
@@ -86,7 +91,6 @@
   do anything
   sleep
   stop
-  tell
   see
   catch
   grab
@@ -99,11 +103,18 @@
   search 
   look
   claim
+  eat
 
 
 // imperative verbs requiring object and location or direction
 
 =[ACT-2]
+
+
+// adverbial modifiers
+
+=[MOD]
+
 
 
 // ================================================
@@ -135,3 +146,11 @@
   catch * vpast = caught
   hit * vpast = hit
   flee * vpast = fled
+  interesting * acomp = more interesting
+  interesting * asup  = most interesting
+  streaked * acomp = more streaked
+  streaked * asup  = most streaked
+  wife * npl = wives
+  eat * vpast = ate
+  man * npl = men
+

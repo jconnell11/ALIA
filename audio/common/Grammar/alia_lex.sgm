@@ -4,14 +4,18 @@
 // requesting graciously
 
 =[POLITE]
-  please
+  (pretty) please
 
 
 // initial greeting
 
 =[HELLO]
-  hello
-  hi
+  hello (there)
+  hi (there)
+  good morning
+  good afternoon
+  good evening
+  over here
 
 
 // farewell
@@ -20,6 +24,7 @@
   goodbye
   bye
   bye-bye
+  see you (later)
 
 
 // -----------------------------------------
@@ -38,6 +43,7 @@
   in front of
   in back of
   behind
+  by
   near (to)
   close to
   next to
@@ -76,6 +82,30 @@
   in to
 
 
+// direction
+
+=[DIR]
+  forward
+  forwards
+  backward
+  backwards
+  clockwise
+  counterclockwise
+  right 
+  left
+  up 
+  down
+  level
+  straight
+  vertical
+  horizontal
+  sideways
+  around
+  in
+
+
+// -----------------------------------------
+
 // any article (definite or indefinite)
 
 =[art]
@@ -88,9 +118,10 @@
 =[ind]
   a
   an
+  some
 
 
-// alternate indefinite article
+// alternate indefinite article (not used?)
 
 =[ind-alt]
   another
@@ -103,13 +134,13 @@
   <REF-D>
 
 
-// alternate definite article
+// alternate definite article (not used?)
 
 =[alt]
   other
 
 
-// ordinal
+// ordinal (not used?)
 
 =[ord]
   first
@@ -132,7 +163,7 @@
   this
 
 
-// something to be determined
+// something to be determined (not used?)
 
 =[n-find]
   what
@@ -175,6 +206,13 @@
   hers
 
 
+// moved trace object for inverted fact
+
+=[ref-t]
+  that
+  which
+
+
 // degree for an adjective (generally an adverb)
 
 =[DEG]
@@ -198,6 +236,7 @@
   slightly
   way
   all the way
+  no
 
 
 // -----------------------------------------
@@ -208,6 +247,8 @@
   is
   am
   are
+  was
+  were
 
 
 // past tense auxiliary verbs
@@ -237,12 +278,14 @@
 =[be-sing]
   is
   am
+  was
 
 
 // plural copula
 
 =[be-pl]
   are
+  were
 
 
 // negation
@@ -285,7 +328,7 @@
   should maybe
 
 
-// particle
+// particle (not used?)
 
 =[part]
   out
@@ -300,7 +343,7 @@
   but
 
 
-// argument introduction
+// argument introduction (not used?)
 
 =[arg]
   that

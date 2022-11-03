@@ -344,12 +344,12 @@ void jhcGraphlet::ForceBelief (double blf)
 //= Keep items in description from being garbage collected.
 // for a predicate to be valid its arguments need to exist also
 
-void jhcGraphlet::MarkSeeds () const
+void jhcGraphlet::MarkSeeds () 
 {
   int i;
 
   for (i = 0; i < ni; i++)
-    desc[i]->keep = 1;
+    desc[i]->SetKeep(1);
 }
 
 

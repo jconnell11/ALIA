@@ -117,6 +117,7 @@ jhcAliaChain::jhcAliaChain ()
   level = 0;
   backstop = NULL;
   spew = 0;
+  parse = 0;
 
   // set up payload to run
   avoid = NULL;
@@ -557,6 +558,7 @@ int jhcAliaChain::Start (jhcAliaCore *all, int lvl)
   core = all;
   level = abs(lvl);
   mt0 = jms_now();                     // start of method
+  parse = 0;
   scoping.Clear();
   backstop = NULL;
   return start_payload(lvl);
@@ -613,6 +615,7 @@ int jhcAliaChain::start_payload (int lvl)
 
 int jhcAliaChain::Status ()
 {
+//  jhcAliaChain *bulk2;
   const jhcAliaDir *d0;
   int first = ((prev == 0) ? 1 : 0);
 
@@ -641,21 +644,12 @@ int jhcAliaChain::Status ()
       done = p->Status();
 
     // if payload fails, unwind to most recent FIND (if not too far committed yet)
-//    if ((done == -2) && (backstop != NULL) && (jms_elapsed(mt0) <= core->Dither()))
-if ((done == -2) && (backstop != NULL))
-{
-  double secs = jms_elapsed(mt0);
-  jprintf("@@@ possible retry - %4.2f secs [%4.2f]\n", secs, core->Dither());
-  if (secs <= core->Dither())
-
-
+    if ((done == -2) && (backstop != NULL) && (jms_elapsed(mt0) <= core->Dither()))
     {
       if ((core != NULL) && ((d0 = backstop->d) != NULL))
         jprintf(1, core->noisy, "\n%*s@@@ unwind and retry %s[ %s ]\n", level, "", d0->KindTag(), d0->KeyTag());
       return backstop->Start(NULL);
     }
-
-}
 
     // if method for FIND/BIND can be restarted, use as a generator/enumerator
     if ((d != NULL) && ((d->kind == JDIR_FIND) || (d->kind == JDIR_BIND)))     
@@ -665,7 +659,18 @@ if ((done == -2) && (backstop != NULL))
           jprintf(1, core->noisy, "\n%*s@@@ generate variants FIND[ %s ]\n", level, "", d->KeyTag());
         return Start(NULL);
       }
-
+/*
+    // if method for top level TRY fails then reinterpret input sentence (e.g. ACT-2 vs ACT)
+    if ((done == -2) && (d != NULL) && (d->kind == JDIR_TRY) && (level == 0))
+      if ((jms_elapsed(mt0) <= core->Dither()) && (++parse < 3))
+        if ((bulk2 = core->Reinterpret()) != NULL)    
+        {
+          delete d->meth;
+          d->meth = bulk2;
+          mt0 = jms_now();
+          return Start(NULL);
+        }
+*/
     // see if control will be transferred next cycle
     if (((done ==  1) && (cont != NULL)) ||
         ((done ==  2) && (alt  != NULL)) ||

@@ -47,12 +47,16 @@ private:
   // rule changes
   double surp;
 
-  // activity level
+  // mental level
   double busy;
-  UL32 kvetch;
-  int yikes, blah;
+  int yikes;
 
-  // interaction level
+  // action level
+  double fidget;
+  UL32 kvetch;
+  int blah;
+
+  // speech level
   double input;
   UL32 call;
   int lament;
@@ -68,7 +72,7 @@ public:
   // activity parameters
   jhcParam bps;
   int very;
-  double frantic, engaged, idle, bored, nag, tc;
+  double frantic, engaged, idle, active, bored, nag, tc;
 
   // social parameters
   jhcParam sps;
@@ -91,6 +95,7 @@ public:
   ~jhcAliaMood ();
   jhcAliaMood ();
   double Busy () const     {return busy;}
+  double Motion () const   {return fidget;}
   double Interact () const {return input;}
   double Energy () const   {return power;}
   double Surprise () const {return surp;}
@@ -120,20 +125,21 @@ public:
 //  void Praise (double deg =0.5);
 //  void Rebuke (double deg =0.5);
   void Energy (int pct =100);
-  void Walk (double sp =1.0);
-  void Wave (double sp =0.5);
+  void Walk (double ips =1.0);
+  void Wave (double ips =0.5);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // processing parameters
-  int busy_params (const char *fname);
+  int bored_params (const char *fname);
   int lonely_params (const char *fname);
   int tired_params (const char *fname);
 
   // main functions
   void clr_data ();
   int chk_busy (jhcAliaNote& rpt);
+  int chk_antsy (jhcAliaNote& rpt);
   int chk_lonely (jhcAliaNote& rpt);
   int chk_tired (jhcAliaNote& rpt);
 

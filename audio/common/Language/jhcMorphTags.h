@@ -57,6 +57,8 @@ enum JTAG_VAL
   JTV_VFUT,   // future tense verb ("will X")
   JTV_VINF,   // infinitive verb ("to X")
 
+  JTV_ADV,    // adverb
+
   JTV_MAX
 
 };
@@ -88,7 +90,9 @@ const char JTAG_STR[JTV_MAX][10] =
   "vpast",
   "vprog",
   "vfut", 
-  "vinf"
+  "vinf",
+
+  "adv"
 
 };
 
@@ -119,7 +123,9 @@ enum JTAG_MASK
   JTAG_VPAST = (0x01 << JTV_VPAST),
   JTAG_VPROG = (0x01 << JTV_VPROG),    // digit 3
   JTAG_VFUT  = (0x01 << JTV_VFUT),
-  JTAG_VINF  = (0x01 << JTV_VINF)
+  JTAG_VINF  = (0x01 << JTV_VINF), 
+
+  JTAG_ADV   = (0x01 << JTV_ADV)
 
 };
 
@@ -134,14 +140,14 @@ const UL32 JTAG_PROPER = (JTAG_NAME | JTAG_NAMEP);
 const UL32 JTAG_NOUN = (JTAG_DEF | JTAG_ALT | JTAG_NZERO | JTAG_NSING | JTAG_NPL | JTAG_NMASS | JTAG_NPOSS);
 
 
-//= All mask bits associated with verbs.
-
-const UL32 JTAG_VERB = (JTAG_VIMP | JTAG_VPRES | JTAG_VPAST | JTAG_VPROG | JTAG_VFUT | JTAG_VINF);
-
-
 //= All mask bits associated with adjectives.
 
 const UL32 JTAG_ADJ = (JTAG_APROP | JTAG_ACOMP | JTAG_ASUP);
+
+
+//= All mask bits associated with verbs.
+
+const UL32 JTAG_VERB = (JTAG_VIMP | JTAG_VPRES | JTAG_VPAST | JTAG_VPROG | JTAG_VFUT | JTAG_VINF);
 
 
 #endif  // once

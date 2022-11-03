@@ -34,6 +34,13 @@
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Shared array of directive names.
+// strings must remain consistent with JTAG_VAL enumeration
+
+const char * const jhcMorphFcns::gcat[JTV_MAX] = {"", "", "NAME", "NAME-P", "", "AKO", "AKO-S", "AKO-S", "AKO-P", 
+                                                  "HQ", "HQ-ER", "HQ-EST", "ACT", "ACT-S", "ACT-D", "ACT-G", "", "", "MOD"};
+
+
 //= Default destructor does necessary cleanup.
 
 jhcMorphFcns::~jhcMorphFcns ()
@@ -131,7 +138,7 @@ int jhcMorphFcns::LoadExcept (const char *fname, int append)
                 break;
               if ((tag = parse_line(base, surf, line)) == 0)
               {
-                jprintf(">> Bad format in: %s\n", line);
+                jprintf(">>> Bad format in: %s\n", line);
                 continue;
               }
 
@@ -149,7 +156,7 @@ int jhcMorphFcns::LoadExcept (const char *fname, int append)
               else if ((tag & JTAG_VPAST) != 0)
                 cnt += add_morph(nv, vimp, vpast, vmax, base, surf);
               else
-                jprintf(">> Unknown tag in: %s\n", line);
+                jprintf(">>> Unknown tag in: %s\n", line);
             }
 
   // cleanup
@@ -174,7 +181,7 @@ int jhcMorphFcns::add_morph (int &n, char key[][40], char val[][40], int wmax, c
   if (i >= n)
   {
     if (n >= wmax)
-      return jprintf(">> Already %d morphology entries: %s !\n", wmax, base);
+      return jprintf(">>> Already %d morphology entries: %s !\n", wmax, base);
     strcpy_s(key[n], base);
     n++;
   } 
@@ -353,9 +360,11 @@ int jhcMorphFcns::SaveExcept (const char *fname) const
 
 //= Loads a grammar file to parser as well as all morphological variants.
 // assumes original grammar file has some section labelled "=[XXX-morph]"
+// lvl: -1 = vocab, 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
 // returns positive if successful, 0 or negative for problem
+// NOTE: use instead of base LoadGram function since adds proper variants
 
-int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname, int rpt)
+int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname, int rpt, int lvl)
 {
   const char deriv[80] = "jhc_temp.txt";
   char strip[80];
@@ -364,7 +373,7 @@ int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname, int rpt)
   // load basic grammar file like usual
   if ((p == NULL) || (fname == NULL) || (*fname == '\0'))
     return -3;
-  if (p->LoadGrammar(fname) <= 0)
+  if (p->LoadGram(fname, lvl) <= 0)
     return -2;
   if (rpt > 0)
   {
@@ -380,7 +389,7 @@ int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname, int rpt)
     return 1;
   if (LexDeriv(fname, 0, deriv) < 0)
     return -1;
-  if (p->LoadGrammar(deriv) <= 0)
+  if (p->LoadGram(deriv, lvl) <= 0)
     return 0;
   return 2;
 }
@@ -389,8 +398,9 @@ int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname, int rpt)
 //= Loads a grammar file to speech recognition as well as all morphological variants.
 // assumes original grammar file has some section labelled "=[XXX-morph]"
 // returns positive if successful, 0 or negative for problem
+// NOTE: use instead of base LoadGrammar function since adds proper variants
 
-int jhcMorphFcns::AddVocab (jhcSpeechX *p, const char *fname, int rpt)
+int jhcMorphFcns::AddSpVocab (jhcSpeechX *p, const char *fname, int rpt)
 {
   const char deriv[80] = "jhc_temp.txt";
   char strip[80];
@@ -399,7 +409,7 @@ int jhcMorphFcns::AddVocab (jhcSpeechX *p, const char *fname, int rpt)
   // load basic grammar file like usual
   if ((p == NULL) || (fname == NULL) || (*fname == '\0'))
     return -3;
-  if (p->LoadGrammar(fname) <= 0)
+  if (p->LoadSpGram(fname) <= 0)
     return -2;
   if (rpt > 0)
   {
@@ -415,7 +425,7 @@ int jhcMorphFcns::AddVocab (jhcSpeechX *p, const char *fname, int rpt)
     return 1;
   if (LexDeriv(fname, 0, deriv) <= 0)
     return -1;
-  if (p->LoadGrammar(deriv) <= 0)
+  if (p->LoadSpGram(deriv) <= 0)
     return 0;
   return 2;
 }
@@ -438,10 +448,12 @@ const char *jhcMorphFcns::SurfWord (char *surf, const char *base, UL32 tags, int
   strcpy_s(surf, ssz, base);
   if (((tags & JTAG_NOUN) != 0) || ((tags & JTAG_PROPER) != 0))
     return noun_morph(surf, tags);
-  if ((tags & JTAG_VERB) != 0)
-    return verb_morph(surf, tags);
   if ((tags & JTAG_ADJ) != 0)
     return adj_morph(surf, tags);
+  if ((tags & JTAG_VERB) != 0)
+    return verb_morph(surf, tags);
+  if ((tags & JTAG_ADV) != 0)          // convert base adjective to adverb
+    return adv_morph(surf, tags);
   return NULL;
 }
 
@@ -456,6 +468,12 @@ const char *jhcMorphFcns::lookup_surf (const char *base, UL32 tags) const
   if ((tags & JTAG_NPL) != 0)
     return scan_for(base, nsing, npl, nn);
 
+  // adjectives 
+  if ((tags & JTAG_ACOMP) != 0)
+    return scan_for(base, adj, comp, na);
+  if ((tags & JTAG_ASUP) != 0)
+    return scan_for(base, adj, sup, na);
+
   // verbs
   if ((tags & JTAG_VPRES) != 0)
     return scan_for(base, vimp, vpres, nv);
@@ -464,13 +482,7 @@ const char *jhcMorphFcns::lookup_surf (const char *base, UL32 tags) const
   if ((tags & JTAG_VPAST) != 0)
     return scan_for(base, vimp, vpast, nv);
 
-  // adjectives 
-  if ((tags & JTAG_ACOMP) != 0)
-    return scan_for(base, adj, comp, na);
-  if ((tags & JTAG_ASUP) != 0)
-    return scan_for(base, adj, sup, na);
-
-  // invalid conversion
+  // invalid conversion (adverbs always regular)
   return NULL;
 }
 
@@ -492,6 +504,20 @@ char *jhcMorphFcns::noun_morph (char *val, UL32 tags) const
     return add_s(val, 80);
   if ((tags & JTAG_NPOSS) != 0)
     return add_ss(val, 80, 1);
+  return NULL;
+}
+
+
+//= Add correct suffix to some adjective based on tags.
+
+char *jhcMorphFcns::adj_morph (char *val, UL32 tags) const
+{
+  if ((tags & JTAG_APROP) != 0)
+    return val;
+  if ((tags & JTAG_ACOMP) != 0)
+    return add_vowel(val, "er", 80);
+  if ((tags & JTAG_ASUP) != 0)
+    return add_vowel(val, "est", 80);
   return NULL;
 }
 
@@ -531,17 +557,23 @@ char *jhcMorphFcns::verb_morph (char *val, UL32 tags) const
 }
 
 
-//= Add correct suffix to some adjective based on tags.
+//= Add -ly suffix to some adjective to generate related adverb.
+// checks for "-ll", "-e", and "-y" endings 
 
-char *jhcMorphFcns::adj_morph (char *val, UL32 tags) const
+char *jhcMorphFcns::adv_morph (char *val, UL32 tags) const
 {
-  if ((tags & JTAG_APROP) != 0)
-    return val;
-  if ((tags & JTAG_ACOMP) != 0)
-    return add_vowel(val, "er", 80);
-  if ((tags & JTAG_ASUP) != 0)
-    return add_vowel(val, "est", 80);
-  return NULL;
+  int n = (int) strlen(val);
+  char *end = val + n;
+
+  if ((n >= 2) && (strcmp(end - 2, "ll") == 0))  // full -> ful+ly
+    end[-1] = '\0';
+  else if ((n >= 2) && vowel(end[-2]) &&         // true -> tru+ly
+           (end[-1] == 'e'))     
+    end[-1] = '\0';
+  else if ((n >= 1) && (end[-1] == 'y'))         // easy -> easi+ly
+    end[-1] = 'i';
+  strcat_s(val, 80, "ly");                       // slow -> slow+ly
+  return val;
 }
 
 
@@ -559,9 +591,8 @@ char *jhcMorphFcns::add_s (char *val, int ssz) const
     end[-1] = 'i';                                         // transmute y to i
     strcat_s(val, ssz, "es");
   }
-  else if ((n >= 2) && 
-           ((strcmp(end - 2, "ch") == 0) || 
-            (strcmp(end - 2, "sh") == 0)))
+  else if ((n >= 2) && ((strcmp(end - 2, "ch") == 0) || 
+                        (strcmp(end - 2, "sh") == 0)))
     strcat_s(val, ssz, "es");                              // ends in ch or sh
   else if ((n >= 1) && (strchr("sxz", end[-1]) != NULL))
     strcat_s(val, ssz, "es");                              // ends in s, x, or z
@@ -640,10 +671,12 @@ const char *jhcMorphFcns::BaseWord (char *base, const char *surf, UL32 tags, int
   strcpy_s(base, ssz, surf);
   if (((tags & JTAG_NOUN) != 0) || ((tags & JTAG_PROPER) != 0))
     return noun_stem(base, tags);
-  if ((tags & JTAG_VERB) != 0)
-    return verb_stem(base, tags);
   if ((tags & JTAG_ADJ) != 0)
     return adj_stem(base, tags);
+  if ((tags & JTAG_VERB) != 0)
+    return verb_stem(base, tags);
+  if ((tags & JTAG_ADV) != 0)          // convert adverb to base adjective
+    return adv_stem(base, tags);
   return NULL;
 }
 
@@ -658,6 +691,12 @@ const char *jhcMorphFcns::lookup_base (const char *surf, UL32 tags) const
   if ((tags & JTAG_NPL) != 0)
     return scan_for(surf, npl, nsing, nn);
 
+  // adjectives 
+  if ((tags & JTAG_ACOMP) != 0)
+    return scan_for(surf, comp, adj, na);
+  if ((tags & JTAG_ASUP) != 0)
+    return scan_for(surf, sup, adj, na);
+
   // verbs
   if ((tags & JTAG_VPRES) != 0)
     return scan_for(surf, vpres, vimp, nv);
@@ -665,12 +704,6 @@ const char *jhcMorphFcns::lookup_base (const char *surf, UL32 tags) const
     return scan_for(surf, vprog, vimp, nv);
   if ((tags & JTAG_VPAST) != 0)
     return scan_for(surf, vpast, vimp, nv);
-
-  // adjectives 
-  if ((tags & JTAG_ACOMP) != 0)
-    return scan_for(surf, comp, adj, na);
-  if ((tags & JTAG_ASUP) != 0)
-    return scan_for(surf, sup, adj, na);
 
   // invalid conversion
   return NULL;
@@ -695,6 +728,34 @@ char *jhcMorphFcns::noun_stem (char *val, UL32 tags) const
     return rem_s(val);
   if ((tags & JTAG_NPOSS) != 0)
     return rem_ss(val);
+  return NULL;
+}
+
+
+//= Strip comparative and superlative suffixes from surface word to get base adjective.
+// handles "bigger", "fuller", and "noisier" (but "nicer" not reversible)
+// returns pointer to modified "val" string
+
+char *jhcMorphFcns::adj_stem (char *val, UL32 tags) const
+{
+  int n = (int) strlen(val);
+  char *end = val + n;
+
+  // check for known forms
+  if ((tags & JTAG_APROP) != 0)
+    return val; 
+  if ((tags & JTAG_ACOMP) != 0)
+  {
+    // comparative adjective ending in -er
+    if ((n > 2) && (strcmp(end - 2 , "er") == 0))
+      return rem_vowel(val, 2);
+  }
+  else if ((tags & JTAG_ASUP) != 0)
+  {
+    // superlative adjective ending in -est
+    if ((n > 3) && (strcmp(end - 3, "est") == 0))
+      return rem_vowel(val, 3);
+  }
   return NULL;
 }
 
@@ -728,31 +789,30 @@ char *jhcMorphFcns::verb_stem (char *val, UL32 tags) const
 }
 
 
-//= Strip tense suffixes from surface word to get base adjective.
-// handles "bigger", "fuller", and "noisier" (but "nicer" not reversible)
-// returns pointer to modified "val" string
+//= Strip -ly suffix from adverb to get realted base adjective.
+// returns pointer to modified "val" string (NULL if no suffix)
 
-char *jhcMorphFcns::adj_stem (char *val, UL32 tags) const
+char *jhcMorphFcns::adv_stem (char *val, UL32 tags) const
 {
   int n = (int) strlen(val);
   char *end = val + n;
 
-  // check for known forms
-  if ((tags & JTAG_APROP) != 0)
-    return val;
-  if ((tags & JTAG_ACOMP) != 0)
+  // check for known forms (only -ly is convertible)
+  if ((n <= 3) || (strcmp(end - 2, "ly") != 0))
+    return NULL;
+  if (end[-3] == 'i')                  // easily -> easy
   {
-    // comparative adjective ending in -er
-    if ((n > 2) && (strcmp(end - 2 , "er") == 0))
-      return rem_vowel(val, 2);
+    end[-3] = 'y';
+    end[-2] = '\0';
   }
-  else if ((tags & JTAG_ASUP) != 0)
+  else if (vowel(end[-3]))             // truly -> true
   {
-    // superlative adjective ending in -est
-    if ((n > 3) && (strcmp(end - 3, "est") == 0))
-      return rem_vowel(val, 3);
+    end[-2] = 'e';
+    end[-1] = '\0';
   }
-  return NULL;
+  else                                 // slowly -> slow
+    end[-2] = '\0';
+  return val;
 }
 
 
@@ -909,6 +969,29 @@ const char *jhcMorphFcns::NounLex (UL32& tags, char *pair) const
 }
 
 
+//= Get normalized adjective or adverb based on surface category extracted from pair.
+// pair input is part of an association list with a part of speech like "HQ-ER=bigger"
+// also sets "tags" to proper morphology bits as a mask (not value)
+// returns canonical version of value (present) or NULL if not an adjective
+// NOTE: tail end of pair might get re-written!
+
+const char *jhcMorphFcns::AdjLex (UL32& tags, char *pair) const
+{
+  char *val = SlotRef(pair);
+  const char *irr;
+  UL32 t;
+
+  // determine tags then generate base form
+  t = gram_tag(pair) & JTAG_ADJ;
+  if (t == 0)
+    return NULL;
+  tags = t;
+  if ((irr = lookup_base(val, tags)) != NULL)
+    return irr;
+  return adj_stem(val, tags);
+}
+
+
 //= Get normalized verb based on surface category extracted from pair.
 // pair input is part of an association list with a part of speech like "V-ED=washed"
 // also sets "tags" to proper morphology bits as a mask (not value)
@@ -938,29 +1021,6 @@ const char *jhcMorphFcns::VerbLex (UL32& tags, char *pair) const
   if ((irr = lookup_base(val, tags)) != NULL)
     return irr;
   return verb_stem(val, tags);
-}
-
-
-//= Get normalized adjective based on surface category extracted from pair.
-// pair input is part of an association list with a part of speech like "HQ-ER=bigger"
-// also sets "tags" to proper morphology bits as a mask (not value)
-// returns canonical version of value (present) or NULL if not an adjective
-// NOTE: tail end of pair might get re-written!
-
-const char *jhcMorphFcns::AdjLex (UL32& tags, char *pair) const
-{
-  char *val = SlotRef(pair);
-  const char *irr;
-  UL32 t;
-
-  // determine tags then generate base form
-  t = gram_tag(pair) & JTAG_ADJ;
-  if (t == 0)
-    return NULL;
-  tags = t;
-  if ((irr = lookup_base(val, tags)) != NULL)
-    return irr;
-  return adj_stem(val, tags);
 }
 
 
@@ -1006,7 +1066,7 @@ UL32 jhcMorphFcns::gram_tag (const char *pair) const
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                       Adjective Nominalization                        //
+//                              Utilities                                //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Convert an example adjective into a kind specifier for the property.
@@ -1027,6 +1087,59 @@ const char *jhcMorphFcns::PropKind (char *form, const char *adj, int ssz) const
     if (!vowel(form[end - 1]))
       form[end] = 'i';
   return form;
+}
+
+
+//= Convert surface word and grammar category to likely base word and canonical category. 
+// returns element of JTAG_VAL (not JTAG_MASK !!!) such as JTV_NSING (JTV_MAX if unknown)
+
+int jhcMorphFcns::GramBase (char *wd, const char *w0, const char *c0, int ssz) const
+{
+  int cat = GramTag(c0);
+
+  // get normalized form (no change for adverbs)
+  if (cat == JTV_ADV)
+    strcpy_s(wd, ssz, w0);
+  else
+    BaseWord(wd, w0, 0x01 << cat, ssz);          // needs JTAG_MASK
+
+  // mark what category that is
+  if (cat == JTV_NAMEP)
+    return JTV_NAME;
+  if ((cat == JTV_NPL) || (cat == JTV_NPOSS))
+    return JTV_NSING;
+  if ((cat == JTV_ACOMP) || (cat == JTV_ASUP))
+    return JTV_APROP;
+  if ((cat == JTV_VPAST) || (cat == JTV_VPROG))
+    return JTV_VIMP;
+  return cat;                                    // adverbs
+}
+
+
+//= Gives a morphological tag corresponding to some open-class grammatical category.
+// example: "HQ-ER" -> JTV_ACOMP (unknown -> JTV_MAX)
+// NOTE: returns element of JTAG_VAL not JTAG_MASK !!!
+
+int jhcMorphFcns::GramTag (const char *cat) const
+{
+  int i;
+
+  for (i = 0; i < JTV_MAX; i++)
+    if (strcmp(cat, gcat[i]) == 0)
+      return i;
+  return JTV_MAX;
+}
+
+
+//= Convert a morphological tage to some standard open-class grammatical category.
+// example: JTV_ASUP -> "HQ-ER" (unknown -> "")
+// NOTE: takes element of JTAG_VAL not JTAG_MASK !!!
+
+const char *jhcMorphFcns::GramCat (int tag) const
+{
+  if ((tag < 0) || (tag >= JTV_MAX))
+    return gcat[0];                              // definite article -> ""     
+  return gcat[tag];
 }
 
 
@@ -1148,10 +1261,12 @@ bool jhcMorphFcns::base_sec (const char *line, UL32 tags) const
     return(strncmp(line, "=[NAME]", 7) == 0);
   if ((tags & JTAG_NOUN) != 0)
     return(strncmp(line, "=[AKO]", 6) == 0);
+  if ((tags & JTAG_ADJ) != 0) 
+    return(strncmp(line, "=[HQ]", 5) == 0);
   if ((tags & JTAG_VERB) != 0)
     return(strncmp(line, "=[ACT]", 6) == 0);
-  if ((tags & JTAG_ADJ) != 0)
-    return(strncmp(line, "=[HQ]", 5) == 0);
+  if ((tags & JTAG_ADV) != 0)
+    return(strncmp(line, "=[MOD]", 6) == 0);
   return false;
 }
 

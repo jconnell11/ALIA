@@ -100,7 +100,7 @@ public:
 
   // main functions
   int Reset (const char *rname =NULL, const char *vname =NULL);
-  void AddName (const char* name);
+  void AddName (const char *name);
   int VoiceInit ();
   int UpdateSpeech ();
   int Respond (int alert =0);
@@ -110,7 +110,7 @@ public:
 
   // intercepted I/O
   bool Accept (const char *in, int quit =0);
-  const char *NewInput (int clean =0);
+  const char *NewInput (int clean =1);
   const char *NewOutput ();
 
   // debugging
@@ -133,6 +133,10 @@ private:
   void xfer_input ();
   int syllables (const char *txt) const;
   const char *blip_txt (int cutoff);
+
+  // speech overrides for new words 
+  void sp_listen (int doit);
+  void gram_add (const char *cat, const char *wd, int lvl);
 
 
 };

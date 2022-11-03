@@ -60,7 +60,7 @@ jhcPatchProps::jhcPatchProps ()
 
   // processing parameters
   SetFind(3, 180, 35, 25, 245, 100, 50);
-  SetHue(250, 30, 49, 130, 170, 220);
+  SetHue(250, 30, 49, 130, 175, 220);
   SetPrimary(0.2, 2.0, 0.3, 0.05);
 
   // processing parameters

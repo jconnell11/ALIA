@@ -3,7 +3,7 @@
 
 OP 1 - "To find out why some action is failing ..."
   trig:
-  FIND[ conj-1 -lex-  because
+  FIND[  cuz-1 -lex-  because
                -why-> fail-1
                -sit-> sit-1 
         fail-1 -lex-  fail

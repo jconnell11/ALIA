@@ -693,6 +693,17 @@ int jhcEliNeck::GazeAt (const jhcMatrix& targ, double lift, double rate, int bid
 }
 
 
+//= Move gaze toward target position reducing residual over given number of seconds.
+
+int jhcEliNeck::GazeFix (const jhcMatrix& targ, double lift, double secs, int bid)
+{
+  double pan, tilt;
+
+  AimFor(pan, tilt, targ, lift);
+  return GazeFix(pan, tilt, secs, bid);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                           Motion Progress                             //
 ///////////////////////////////////////////////////////////////////////////

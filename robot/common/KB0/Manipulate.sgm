@@ -1,11 +1,6 @@
 // terms associated with "Manipulate" ops and rules
 // ================================================
 
-// singular nouns - mass nouns like "a rice" belong in =[AKO-M] instead
-
-=[AKO]
-
-
 // adjective
 
 =[HQ]
@@ -13,17 +8,6 @@
 
 
 // -----------------------------------------
-
-// modifier
-
-=[MOD]
-
-
-// direction
-
-=[DIR]
-  down
-
 
 // imperative verbs
 
@@ -33,6 +17,7 @@
   take
   hold
   retract
+  point
 
 
 // imperative verbs requiring object and location or direction

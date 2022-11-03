@@ -68,8 +68,10 @@ public:
   jhcTalkFcn ();
   void Bind (const class jhcMorphFcns *mf) {dg.SetWords(mf);}
   int Output (char *out, int ssz);
+
+  // covenience
   template <size_t ssz>
-    int *Output (char (&out)[ssz])               // for convenience
+    int *Output (char (&out)[ssz])      
       {return Output(out, ssz);}
 
 
@@ -90,7 +92,7 @@ private:
   void fix_verb (char *txt);
   void fix_det (char *txt);
   void fix_abbrev (char *txt);
-  bool word_after (const char *txt) const;
+  void convert_all (const char *pat, const char *rep, char *txt, int wd);
 
 
 };

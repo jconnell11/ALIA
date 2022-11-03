@@ -5,11 +5,10 @@
 
 =[%fact]
   <np> (<adv3>) <vp> ((<np>) <np>) (<vmod3>)
-  you <ACT> ((<np>) <np>)
   <np> <vp> (<np>) to <cmd>
   <np> <vp> (<np>) <%fact-g>
   <%obj-i0> <$add>
-  <%obj-i> <$add>
+//  <%obj-i> <$add>
   <%obj> <$add>
   there is <%obj-i>
 
@@ -26,12 +25,26 @@
   (<BLF>) <ACT-G> (<np> (<np>))
 
 
+// inverted fact used as a noun modifier
+
+=[%fact-m]
+  (<ref-t>) <np> <vp>
+
+
+// assigning names ("is" optional for yn question)
+
+=[%fact-n]
+  <NAME> (is) a name
+  <NAME> (is) (<art>) <desc-p> name
+  (<art>) <desc-p> name (is) <NAME>
+
+
 // verb phrase
 
 =[vp]
   (<BLF>) <ACT-S>
   (<BLF>) <ACT-D>
-  (<BLF>) <AUX-D> (<BLF>) (<NEG>) <ACT>
+  (<BLF>) (<AUX-D>) (<BLF>) (<NEG>) <ACT>
   (<BLF>) <aux> (<BLF>) (<NEG>) <ACT-G>
 
 
@@ -75,6 +88,7 @@
   (you <PREF>) (<adv3>) <SAY> (to <np>) <QUOTE>
   <STOP> <ACT-G> (<np> (<np>)) (<vmod3>)
   <NEG-V> <ACT> (<np> (<np>)) (<vmod3>)
+  <ACT> (that) <%fact>
   
 
 // hypothetical DO directive for prohibition
@@ -147,11 +161,12 @@
   <$q-desc>
   <$q-name>
   <$q-loc>
+  <$q-src>
   <$q-cnt>
   <$q-has>
 
 
-// hypothetical FIND for prohibitions
+// hypothetical FIND for prohibitions (not used?)
 
 =[!find-s]
   <find-v> <$q-ako-s>
@@ -184,8 +199,9 @@
 =[$q-hq]
   what <AKO> (<be>) <np> (<be>)
   what (is) the <AKO> <%obj-pp> (is)
-  what (is) <%obj-p> <AKO> (is)
+//  what (is) <%obj-p> <AKO> (is)
   how <HQ> (<be>) <np> (<be>)
+  how (<be>) <np> (<be>)
 
 
 // hypothetical embedded question about property
@@ -200,19 +216,26 @@
   who (<be>) <np> (<be>)
   who <$add>
   what <$add>
+  what (<be>) <np> (<be>) <ACT-G>
 
 
 // question about the reference word for an item
 
 =[$q-name]
-  what (<be>) <%obj-p> name (<be>)
+  what (<be>) <desc-p> name (<be>)
   what (<be>) the name of <np> (<be>)
 
 
-// question about location of an item
+// question about current location of an item
 
 =[$q-loc]
   where (<be>) <np> (<be>)
+
+
+// question about starting location of an item
+ 
+=[$q-src]
+  where (<be>) <np> (<be>) from
 
 
 // question about number of items
@@ -237,6 +260,7 @@
 
 =[!chk]
   <check-v> <%fact>
+  <check-v> <%fact-n>
 
 
 // check verb phrase
@@ -251,6 +275,7 @@
 
 =[!chk-t]
   <be> <%fact>
+  is <%fact-n>
   <AUX-D> <%fact>
 
 

@@ -37,6 +37,7 @@ jhcGramRule::jhcGramRule ()
   *head = '\0';
   tail = NULL; 
   status = 1;
+  level = 0;
   id = 0;
 
   // parse state
@@ -119,7 +120,7 @@ int jhcGramRule::CopyState (const jhcGramRule *r)
 
 
 //= See if exactly the same expansion as some other rule.
-// this only looks as the expansion, not parsing state
+// this only looks at the expansion, not parsing state
 // ignores status, id, and mark as well
 // returns 1 if same, 0 if different
 

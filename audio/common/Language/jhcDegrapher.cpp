@@ -55,15 +55,35 @@ jhcDegrapher::jhcDegrapher ()
 //                            Formatted Output                           //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Get string for name associated with object.
+// does not mark user as an antecedent for a pronoun (would always be "you")
+
+const char *jhcDegrapher::NameRef (jhcNetNode *n) const
+{
+  if ((n == NULL) || (wmem == NULL))
+    return NULL;
+  if ((n != wmem->Human()) && (n != wmem->Robot()))
+    n->MarkRef();                                          // robot speech
+  return n->Name(0, wmem->MinBlf());
+}
+
+
 //= Get descriptive string to refer to some node.
 // assumes listener's knowledge of situtation identical to robot's
 
-const char *jhcDegrapher::node_ref (char *txt, int ssz, const jhcNetNode *n, int nom, const char *avoid) const
+const char *jhcDegrapher::node_ref (char *txt, int ssz, jhcNetNode *n, int nom, const char *avoid) const
 {
   // sanity check
   if ((txt == NULL) || (ssz <= 0) || (n == NULL) || (wmem == NULL))
     return NULL;
   jprintf(1, dbg, "node_ref: %s (nom %d, avoid %s)\n", n->Nick(), nom, avoid);
+
+  // simplest case where node is a string (e.g. unknown word)
+  if (n->String())
+  {
+    sprintf_s(txt, ssz, "'%s'", n->Literal());
+    return txt;
+  }
 
   // dispatch based on type
   *txt = '\0';  
@@ -80,11 +100,11 @@ const char *jhcDegrapher::node_ref (char *txt, int ssz, const jhcNetNode *n, int
 //= Describe a predication like a property or verb frame.
 // returns phrase with head word and any required arguments (disambiguated)
 
-const char *jhcDegrapher::pred_ref (char *txt, int ssz, const jhcNetNode *n, int inf) const
+const char *jhcDegrapher::pred_ref (char *txt, int ssz, jhcNetNode *n, int inf) const
 {
   char first[500] = "", second[500] = "";
   const char *slot;
-  const jhcNetNode *val;
+  jhcNetNode *val;
   int i, na = n->NumArgs(), direct = 0, rcnt = 0;
 
   // sanity check
@@ -96,7 +116,10 @@ const char *jhcDegrapher::pred_ref (char *txt, int ssz, const jhcNetNode *n, int
   // automatically adds subject or target of predication if needed
   full_pred(txt, ssz, n, inf);
   if (na <= 0)
+  {
+    n->MarkRef();                                          // robot speech
     return txt;
+  }
 
   // special embedded infinitive ("know how to")
   for (i = 0; i < na; i++)
@@ -129,7 +152,7 @@ const char *jhcDegrapher::pred_ref (char *txt, int ssz, const jhcNetNode *n, int
     if (((direct <= 0) && (strcmp(slot, "obj") == 0)) ||   // direct object (after indirect)
         (!val->ObjNode() && (strcmp(slot, "dest") == 0)))  // destination phrase
       node_ref(second, 500, val, 0, NULL);
-    else if (strcmp(slot, "ref") == 0) 
+    else if ((strcmp(slot, "ref") == 0) || (strcmp(slot, "ref2") == 0))
       if (++rcnt == 2)                                     // "between" has 2 refs                   
         node_ref(second, 500, val, 0, NULL);    
   }
@@ -142,6 +165,7 @@ const char *jhcDegrapher::pred_ref (char *txt, int ssz, const jhcNetNode *n, int
     strcat_s(txt, ssz, ((rcnt >= 2) ? " and " : " "));     // "between 1 and 2"
     strcat_s(txt, ssz, second);
   }
+  n->MarkRef();                                            // robot speech
   return txt;
 }
 
@@ -153,7 +177,8 @@ const char *jhcDegrapher::pred_ref (char *txt, int ssz, const jhcNetNode *n, int
 const char *jhcDegrapher::full_pred (char *txt, int ssz, const jhcNetNode *n, int inf) const
 {
   char ing[40];
-  const jhcNetNode *mod, *part, *agt, *targ;
+  const jhcNetNode *mod, *part;
+  jhcNetNode *agt, *targ;
   int i, nc;
 
   // sanity check
@@ -233,7 +258,8 @@ const char *jhcDegrapher::full_pred (char *txt, int ssz, const jhcNetNode *n, in
     // add primary term
     if (n->Val("ako") != NULL)
       strcat_s(txt, ssz, "a ");
-    strcat_s(txt, ssz, n->Lex());
+    if (n->Lex() != NULL)
+      strcat_s(txt, ssz, n->Lex());
   }
   else if (n->Lex() != NULL)
     strcpy_s(txt, ssz, n->Lex());                // e.g. "three" for cnt
@@ -251,8 +277,10 @@ const char *jhcDegrapher::full_pred (char *txt, int ssz, const jhcNetNode *n, in
 // can optionally request nominative case for pronouns ("he" vs "him")
 // a negative value for "nom" inhibits the use of any pronouns (except "me/I" and "you")
 // can avoid a particular term to prevent saying "the red object is red"
+// returns best description text (which may not be unique)
+// Note: maybe extend name_ref to allow further adjectives (e.g. "fat Dan")
 
-const char *jhcDegrapher::obj_ref (char *txt, int ssz, const jhcNetNode *n, int nom, const char *avoid) const
+const char *jhcDegrapher::obj_ref (char *txt, int ssz, jhcNetNode *n, int nom, const char *avoid) const
 {
   jhcNetRef nr;
   const char *ref;
@@ -273,17 +301,24 @@ const char *jhcDegrapher::obj_ref (char *txt, int ssz, const jhcNetNode *n, int 
 
   // search memory using single names and types
   nr.MakeNode("obj");
-  wmem->SetMode(2);
+  wmem->SetMode(3);
   if ((ref = name_ref(nr, n)) != NULL)
+  {
+    n->MarkRef();                                          // robot speech
     return ref;
+  }
   if ((ref = add_kind(txt, ssz, nr, n, avoid)) != NULL)
+  {
+    n->MarkRef();                                          // robot speech
     return ref;
+  }
 
   // keep trying to add adjectives to basic noun phrase
   for (i = 0; i < 3; i++)
     if ((ref = add_adj(txt, ssz, nr, n, avoid)) != NULL)
       break;  
-  return txt;                // best description (may not be unique)
+  n->MarkRef();                                            // robot speech
+  return txt;                                              
 }
 
 
@@ -322,7 +357,6 @@ const char *jhcDegrapher::pron_ref (char *txt, int ssz, const jhcNetNode *n, int
       }
   if ((win != n) || (best <= 0))
     return NULL;                                           // not unique yet
-  wmem->MarkRef(win);                                      // robot speech
 
   // alter pronoun based on gender (if any)
   if (chk_prop(n, "hq", "female", NULL))
@@ -365,16 +399,19 @@ const char *jhcDegrapher::name_ref (jhcNetRef& nr, const jhcNetNode *n) const
 {
   jhcNetNode *p, *obj = nr.Main();
   double th = wmem->MinBlf();
-  int hok, i;
+  int g, i;
 
   jprintf(1, dbg, "  name_ref: %s\n", n->Nick());
 
+  // search through all NAME properties
+  nr.halo = 0;
   nr.RefMode(0);
-  for (hok = 0; hok <= 1; hok++)                                          
+  for (g = 0; g <= 1; g++)                                 // allow ghost fact names
     for (i = n->NumProps() - 1; i >= 0; i--)      
       if ((p = n->PropMatch(i, "name", th)) != NULL)
-        if (p->Visible() && ((hok > 0) || !p->Halo()))
+        if (wmem->VisMem(p, g))
         {
+          // see if node with name is unique 
           nr.AddProp(obj, "name", p->Lex());               // removed by NumMatch search
           if (nr.NumMatch(wmem, th, 1) <= 1)               
           {
@@ -396,33 +433,34 @@ const char *jhcDegrapher::add_kind (char *txt, int ssz, jhcNetRef& nr, const jhc
   const jhcNetNode *p;
   const char *kind = NULL;
   double th = wmem->MinBlf();
-  int hok, i, hits, low;
+  int i, hits, low;
 
   jprintf(1, dbg, "  add_kind: %s (avoid %s)\n", n->Nick(), avoid);
 
   // search through all AKO properties 
-  for (hok = 0; hok <= 1; hok++)                                          
-    for (i = n->NumProps() - 1; i >= 0; i--)
-      if ((p = n->PropMatch(i, "ako", th)) != NULL)
-        if (p->Visible() && !p->LexMatch(avoid) && ((hok > 0) || !p->Halo()))
+  nr.halo = 0;
+  nr.RefMode(0);
+  for (i = n->NumProps() - 1; i >= 0; i--)
+    if ((p = n->PropMatch(i, "ako", th)) != NULL)
+      if (wmem->VisMem(p, 0) && !p->LexMatch(avoid))
+      {
+        // see if node with kind is unique 
+        nr.AddProp(obj, "ako", p->Lex());                  // removed by NumMatch search      
+        hits = nr.NumMatch(wmem, th, 1);
+        if (hits <= 1)
         {
-          // see if node with kind is unique or most recent match
-          nr.AddProp(obj, "ako", p->Lex());                // removed by NumMatch search      
-          hits = nr.NumMatch(wmem, th, 1);
-          if (hits <= 1)
-          {
-            sprintf_s(txt, ssz, "the %s", p->Lex()); 
-            jprintf(1, dbg, "    --> %s\n", txt);
-            return txt;                                    // unique or most obvious
-          }
-       
-          // otherwise remember most restrictive category
-          if ((kind == NULL) || (hits < low))
-          {
-            kind = p->Lex();
-            low = hits;
-          }
+          sprintf_s(txt, ssz, "the %s", p->Lex()); 
+          jprintf(1, dbg, "    --> %s\n", txt);
+          return txt;                                      // unique or most obvious
         }
+   
+        // otherwise remember most restrictive category
+        if ((kind == NULL) || (hits < low))
+        {
+          kind = p->Lex();
+          low = hits;
+        }
+      }
 
   // keep best category in description and phrase
   if (kind == NULL)
@@ -448,34 +486,36 @@ const char *jhcDegrapher::add_adj (char *txt, int ssz, jhcNetRef& nr, const jhcN
   const jhcNetNode *p;
   const char *qual = NULL;
   double th = wmem->MinBlf();
-  int hok, i, hits, low;
+  int i, hits, low;
 
   jprintf(1, dbg, "  add_adj: %s (avoid %s)\n", n->Nick(), avoid);
 
   // search through all HQ properties 
-  for (hok = 0; hok <= 1; hok++)                                          
-    for (i = n->NumProps() - 1; i >= 0; i--)                                 
-      if ((p = n->PropMatch(i, "hq", th)) != NULL)
-        if (p->Visible() && !p->LexMatch(avoid) && ((hok > 0) || !p->Halo()))
-          if (!chk_prop(obj, "hq", p->Lex(), nr.Pattern()))    // avoid duplicates
+  nr.halo = 0;
+  nr.RefMode(0);
+  for (i = n->NumProps() - 1; i >= 0; i--)                                 
+    if ((p = n->PropMatch(i, "hq", th)) != NULL)
+      if (wmem->VisMem(p, 0) && !p->LexMatch(avoid))
+        if (!chk_prop(obj, "hq", p->Lex(), nr.Pattern()))      // avoid duplicates
+        {
+          // see if node with aggregated description is unique 
+          nr.AddProp(obj, "hq", p->Lex());                     // removed by NumMatch search      
+          hits = nr.NumMatch(wmem, th, 1);                   
+          if (hits <= 1)
           {
-            nr.AddProp(obj, "hq", p->Lex());                   // removed by NumMatch search      
-            hits = nr.NumMatch(wmem, th, 1);                   
-            if (hits <= 1)
-            {
-              strcpy_s(tail, txt + 4);                         // strip "the"
-              sprintf_s(txt, ssz, "the %s %s", p->Lex(), tail);
-              jprintf(1, dbg, "    --> %s\n", txt);
-              return txt;                                      // unique or most obvious
-            }
-
-            // otherwise remember most restrictive property
-            if ((qual == NULL) || (hits < low))
-            {
-              qual = p->Lex();
-              low = hits;
-            }
+            strcpy_s(tail, txt + 4);                           // strip "the"
+            sprintf_s(txt, ssz, "the %s %s", p->Lex(), tail);
+            jprintf(1, dbg, "    --> %s\n", txt);
+            return txt;                                        // unique or most obvious
           }
+
+          // otherwise remember most restrictive property
+          if ((qual == NULL) || (hits < low))
+          {
+            qual = p->Lex();
+            low = hits;
+          }
+        }
 
   // otherwise keep most selective one (if any) in description and phrase 
   if (qual == NULL)
@@ -501,7 +541,7 @@ const char *jhcDegrapher::hyp_ref (char *txt, int ssz, const jhcNetNode *n, cons
   // if object has a name then ignore all other attributes
   for (i = np - 1; i >= 0; i--)      
     if ((p = n->PropMatch(i, "name")) != NULL)
-      if (p->Visible() && p->Hyp() && !p->Halo() && !p->LexMatch(avoid))
+      if (wmem->VisMem(p, 0) && p->Hyp() && !p->LexMatch(avoid))
       {
         strcpy_s(txt, ssz, p->Lex());
         return txt;
@@ -511,13 +551,13 @@ const char *jhcDegrapher::hyp_ref (char *txt, int ssz, const jhcNetNode *n, cons
   strcpy_s(txt, ssz, "a ");
   for (i = np - 1; i >= 0; i--)      
     if ((p = n->PropMatch(i, "hq")) != NULL)
-      if (p->Visible() && p->Hyp() && !p->Halo() && !p->LexMatch(avoid))
+      if (wmem->VisMem(p, 0) && p->Hyp() && !p->LexMatch(avoid))
         strcatf_s(txt, ssz, "%s ", p->Lex());
 
   // add single base noun (if any)
   for (i = np - 1; i >= 0; i--)      
     if ((p = n->PropMatch(i, "ako")) != NULL)
-      if (p->Visible() && p->Hyp() && !p->Halo() && !p->LexMatch(avoid))
+      if (wmem->VisMem(p, 0) && p->Hyp() && !p->LexMatch(avoid))
         break;
   if (i >= 0)
     strcat_s(txt, ssz, p->Lex());
@@ -527,12 +567,12 @@ const char *jhcDegrapher::hyp_ref (char *txt, int ssz, const jhcNetNode *n, cons
   // add any location relations afterward
   for (i = np - 1; i >= 0; i--)
     if ((p = n->PropMatch(i, "loc")) != NULL)
-      if (p->Visible() && p->Hyp() && !p->Halo() && !p->LexMatch(avoid))
+      if (wmem->VisMem(p, 0) && p->Hyp() && !p->LexMatch(avoid))
       {
         // add main preposition and one or two reference objects (e.g. "between")
         strcatf_s(txt, ssz, " %s %s", p->Lex(), node_ref(ref, 40, p->Val("ref"), 0, NULL));
         if (p->NumArgs() > 2)
-          strcatf_s(txt, ssz, " and %s", node_ref(ref, 40, p->Val("ref", 1), 0, NULL));
+          strcatf_s(txt, ssz, " and %s", node_ref(ref, 40, p->Val("ref2"), 0, NULL));
       }
   return txt;
 }
@@ -564,6 +604,7 @@ char *jhcDegrapher::strcatf_s (char *txt, int ssz, const char *fmt, ...) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Generate an output string based on a particular graphlet.
+// NOTE: this is incomplete and not currently used!
 
 const char *jhcDegrapher::Generate (const jhcGraphlet& graph, jhcWorkMem& mem)
 {

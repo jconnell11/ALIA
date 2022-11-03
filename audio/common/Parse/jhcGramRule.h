@@ -43,6 +43,7 @@ public:
   char head[80];         /** Associated non-terminal (no <>).    */
   jhcGramStep *tail;     /** Full expansion sequence for rule.   */
   int status;            /** 1 = enable, 2 = top, neg = disable. */
+  int level;             /** source of rule (base vs. added)     */
   int id;                /** Unique state ID (for debugging).    */
 
   // parse state

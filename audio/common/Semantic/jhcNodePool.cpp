@@ -53,10 +53,12 @@ jhcNodePool::~jhcNodePool ()
 jhcNodePool::jhcNodePool ()
 {
   // direction of numbering
+  sep0 = '-';
   dn = 0;
-
-  // initial visibility of new nodes
+ 
+  // initial visibility of new nodes and LTM dependence
   vis0 = 1;
+  ltm0 = 0;
 
   // no hashing, just main pool (= bucket[0])
   nbins = 1;
@@ -93,10 +95,11 @@ void jhcNodePool::init_pool ()
   rnum = 0;
 
   // changes to members
-  add = 0;
-  arg = 0;
-  del = 0;
-  mod = 0;
+  xadd = 0;
+  xarg = 0;
+  xdel = 0;
+  xmod = 0;
+  xltm = 0;
 }
 
 
@@ -155,9 +158,9 @@ void jhcNodePool::PurgeAll ()
     while (n != NULL)
     {
       n0 = n;
-      n = n->next;
+      n = n->NodeTail();
       delete n0;
-      del++;
+      xdel++;
     }
   }
   init_pool();
@@ -197,13 +200,13 @@ jhcNetNode *jhcNodePool::Next (const jhcNetNode *ref, int bin) const
   // generally follow chain of next pointers
   if (ref == NULL)
     return Pool(bin);
-  if (ref->next != NULL)
-    return ref->next;
+  if (ref->NodeTail() != NULL)
+    return ref->NodeTail();
   if (bin >= 0)
     return NULL;
 
   // possibly progress to other buckets to find something
-  for (i = ref->hash + 1; i < nbins; i++)
+  for (i = ref->Code() + 1; i < nbins; i++)
     if (bucket[i] != NULL)
       return bucket[i];
   return NULL;
@@ -223,9 +226,9 @@ int jhcNodePool::NodeCnt () const
     n = bucket[i];
     while (n != NULL)
     {
-      if (n->vis > 0)
+      if (n->Visible())
         cnt++;
-      n = n->next;
+      n = n->NodeTail();
     }
   }
   return cnt;
@@ -237,12 +240,13 @@ int jhcNodePool::NodeCnt () const
 
 int jhcNodePool::Changes ()
 {
-  int sum = add + del + arg + mod;
+  int sum = xadd + xdel + xarg + xmod + xltm;
 
-  add = 0;
-  arg = 0;
-  del = 0;
-  mod = 0;
+  xadd = 0;
+  xarg = 0;
+  xdel = 0;
+  xmod = 0;
+  xltm = 0;
   return sum;
 }
 
@@ -302,7 +306,7 @@ jhcNetNode *jhcNodePool::lookup_make (jhcNetNode *n, jhcBindings& b, const jhcNo
   if ((focus == NULL) && ((univ == NULL) || !univ->InList(n)))
   {
     // make a new node similar to reference (adds to acc)
-    focus = MakeNode(n->base, b.LexSub(n), n->inv, n->blf0, n->evt);  
+    focus = MakeNode(n->Kind(), b.LexSub(n), n->Neg(), n->Default(), n->Done());  
     focus->tags = n->tags;
     focus->SetString(n->Literal());
     b.Bind(n, focus);                  // might be used later
@@ -330,19 +334,21 @@ jhcNetNode *jhcNodePool::SetGen (jhcNetNode *n, int v) const
   return n;
 }
  
-
-//= If pre-existing item re-used, update its recency and make sure it is in any graphlet.
+/*
+//= If pre-existing item re-used, update its recency and make sure it is in current graphlet.
+// NOTE: should only be used by language input and output routines (i.e. user knows about it)
 
 jhcNetNode *jhcNodePool::MarkRef (jhcNetNode *n)
 {
   if (n == NULL) 
     return NULL; 
-  n->ref = ++rnum;
+  n->SetRef(++rnum);
   if (acc != NULL) 
     acc->AddItem(n); 
+jprintf("MarkRef(%s) = %d (pool %p)\n", n->Nick(), rnum, this);
   return n;
 }
-
+*/
 
 //= Move node to head of list for searching, irrespective of ID.
 // returns 1 if successful, 0 if node not from this pool
@@ -360,22 +366,22 @@ int jhcNodePool::Refresh (jhcNetNode *n)
     n->RefreshArg(i);
 
   // see if already at head of list and find node before this one in list
-  bin = ((nbins <= 1) ? 0 : n->hash);
+  bin = ((nbins <= 1) ? 0 : n->Code());
   prev = bucket[bin];
   if (prev == n)
     return 1;
   while (prev != NULL)
   {
-    if (prev->next == n)
+    if (prev->NodeTail() == n)
       break;
-    prev = prev->next;
+    prev = prev->NodeTail();
   }
 
   // splice out of old position then add in again at head of list
   if (prev == NULL)
     return 0;                          // node not in pool
-  prev->next = n->next;
-  n->next = bucket[bin];
+  prev->SetTail(n->NodeTail());
+  n->SetTail(bucket[bin]);
   bucket[bin] = n;
   return 1;
 }
@@ -408,18 +414,18 @@ jhcNetNode *jhcNodePool::MakeNode (const char *kind, const char *word, int neg, 
   int id0 = label + 1, id = ((dn <= 0) ? id0 : -id0);
 
   // make sure nothing with that number already exists
-  if ((item = create_node(kind, id, 0, 0)) == NULL)
+  if ((item = create_node(kind, id, 0, 0, 0)) == NULL)
     return NULL;
   
   // bind some other fields
   item->GenMax(ver);                // useful for CHK directive and fluents
-  item->inv = neg;
-  item->evt = done;
+  item->SetNeg(neg);
+  item->SetDone(done);
   item->SetDefault(fabs(def));      // usually needs to be actualized
   if (def < 0.0)
     item->SetBelief(fabs(def));     // force belief right now
   if (word != NULL)
-    update_lex(item, word);
+    update_lex(item, word, 0);
   return item;
 }
 
@@ -427,9 +433,10 @@ jhcNetNode *jhcNodePool::MakeNode (const char *kind, const char *word, int neg, 
 //= Create a new node with the given base kind and exact instance number.
 // generally orders list so HIGHEST absolute ids (newest) toward head
 // always creates nodes in bucket[0], moved later when assigned a lex
+// generally new nodes come at beginning of list, rev > 0 puts them at end 
 // returns NULL if a node with the given id already exists
 
-jhcNetNode *jhcNodePool::create_node (const char *kind, int id, int chk, int omit)
+jhcNetNode *jhcNodePool::create_node (const char *kind, int id, int chk, int omit, int rev)
 {
   jhcNetNode *n2, *n = Pool();
 
@@ -441,29 +448,61 @@ jhcNetNode *jhcNodePool::create_node (const char *kind, int id, int chk, int omi
   if (chk > 0)
     while (n != NULL)
     {
-      if (n->id == id)
+      if (n->Inst() == id)
         return NULL;
       n = Next(n);
     }
 
   // make a new one, set basic type, and build nick name
-  n2 = new jhcNetNode;
-  n2->id = id;
+  n2 = new jhcNetNode(id, this);
   label = __max(label, abs(id));
-  strcpy_s(n2->base, ((kind != NULL) ? kind : "unk"));
-  sprintf_s(n2->nick, "%s%+d", n2->Kind(), -(n2->Inst())); 
+  n2->SetKind(((kind != NULL) ? kind : "unk"), sep0);
 
-  // tack onto head of list (hash code unknown so far)
-  n2->next = bucket[0];  
-  bucket[0] = n2;
-  pop[0] += 1;
+  // tack onto node list (hash code unknown so far)
+  add_to_list(0, n2, rev);
   psz++;
 
   // possibly add to current accumulator graphlet
   if ((omit <= 0) && (acc != NULL))
     acc->AddItem(n2);
-  n2->vis = vis0;                      // can default to invisible
-  add++;
+  n2->Reveal(vis0);                    // can default to invisible
+  n2->ltm = ltm0;                      // whether LTM-dependent
+  xadd++;
+  return n2;
+}
+
+
+//= Generally add a node to the front of a bucket list, but add at end if rev > 0.
+// assumes node is not currently in list and has already been extracted from any previous list
+
+void jhcNodePool::add_to_list (int h, jhcNetNode *n, int rev)
+{
+  jhcNetNode *rest, *item = bucket[h];
+
+  pop[h] += 1;                         // always one more item in bucket
+  if ((rev <= 0) || (item == NULL))
+  {
+    n->SetTail(bucket[h]);
+    bucket[h] = n;                     // add at front
+  }
+  else
+  {
+    while ((rest = item->NodeTail()) != NULL)
+      item = rest;
+    item->SetTail(n);                  // add at end
+  }
+}
+
+
+//= Create equivalent node to some reference with same basic lex, neg, and belief.
+// does not copy over any arguments (or properties)
+
+jhcNetNode *jhcNodePool::CloneNode (const jhcNetNode& n)
+{
+  jhcNetNode *n2 = MakeNode(n.Kind(), n.Lex(), n.Neg(), n.Default(), n.Done());
+
+  if (n2 != NULL)
+    n2->SetBelief(n.Belief());
   return n2;
 }
 
@@ -493,7 +532,7 @@ jhcNetNode *jhcNodePool::AddProp (jhcNetNode *head, const char *role, const char
     return NULL;
   item = MakeNode(role, word, neg, def);
   item->AddArg(role, head);
-  arg++;
+  xarg++;
   return item;
 }
 
@@ -534,7 +573,7 @@ jhcNetNode *jhcNodePool::AddDeg (jhcNetNode *head, const char *role, const char 
   prop->AddArg(role, head);
   mod = MakeNode("deg", amt, neg, def);
   mod->AddArg("deg", prop);
-  arg += 2;
+  xarg += 2;
   return prop;
 }
 
@@ -544,22 +583,23 @@ jhcNetNode *jhcNodePool::AddDeg (jhcNetNode *head, const char *role, const char 
 void jhcNodePool::SetLex (jhcNetNode *head, const char *txt)
 {
   if ((head != NULL) && (txt != NULL))
-    update_lex(head, txt);
+    update_lex(head, txt, 0);
 }
 
 
 //= Determine search bin for node based on first few letters of lex.
-// re-files node under the appropriate bin
+// re-files node under the appropriate bin (no lex -> bin = 0)
+// generally new nodes come at beginning of list, rev > 0 puts them at end 
 
-void jhcNodePool::update_lex (jhcNetNode *n, const char *wd)
+void jhcNodePool::update_lex (jhcNetNode *n, const char *wd, int rev)
 {
   jhcNetNode *list, *prev = NULL;
-  int v0, v1, h, h0 = __max(0, __min(n->hash, 675));
+  int v0, v1, h, h0 = __max(0, __min(n->Code(), 675));
 
   // copy word if different than before
-  if (strcmp(wd, n->lex) == 0)
+  if (strcmp(wd, n->LexStr()) == 0)
     return;
-  strcpy_s(n->lex, wd);
+  n->SetWord(wd);
 
   // assign to one of 26 * 25 + 25 + 1 = 676 buckets 
   if (wd[0] == '\0')
@@ -574,7 +614,7 @@ void jhcNodePool::update_lex (jhcNetNode *n, const char *wd)
   }
 
   // record hash (always) and exit if not hashed
-  n->hash = h;
+  n->SetHash(h);
   if ((h == h0) || (nbins <= 1))
     return;
 
@@ -585,23 +625,46 @@ void jhcNodePool::update_lex (jhcNetNode *n, const char *wd)
     if (list == n)
       break;
     prev = list;
-    list = list->next;
+    list = list->NodeTail();
   }
 
   // splice out of old list (if found)
   if (list != NULL)
   {
     if (prev == NULL)
-      bucket[h0] = n->next;
+      bucket[h0] = n->NodeTail();
     else
-      prev->next = n->next;
+      prev->SetTail(n->NodeTail());
     pop[h0] -= 1;
   }
 
-  // add to head of new list
-  n->next = bucket[h];
-  bucket[h] = n;
-  pop[h] += 1;
+  // add to new list (front or end)
+  add_to_list(h, n, rev);
+}
+
+
+//= Create equivalent node in this pool for a node in some other pool.
+// copies various basic properties to new surface for convenience:
+//    base  -> Kind()
+//    lex   -> LexStr()
+//    inv   -> Neg()
+//    blf0  -> Default()
+//    ach   -> Done()
+// Note: a node can only be tethered to one other node, any previous linkage overwritten
+
+jhcNetNode *jhcNodePool::BuoyFor (jhcNetNode *deep)
+{
+  jhcNetNode *surf;
+  
+  if (InList(deep))
+    return deep;
+  surf = CloneNode(*deep);
+  surf->SetBelief(deep->Belief());
+  if (deep->ObjNode())       
+    surf->MoorTo(deep);      // non-object nodes also?
+  surf->Reveal();            // wmem default is invisible
+  xltm++;
+  return surf;
 }
 
 
@@ -620,7 +683,7 @@ int jhcNodePool::RemNode (jhcNetNode *n)
   // sanity check
   if (n == NULL)
     return 0;
-  bin = ((nbins <= 1) ? 0 : n->hash);
+  bin = ((nbins <= 1) ? 0 : n->Code());
 
   // find preceding node in list
   now = bucket[bin];
@@ -629,21 +692,21 @@ int jhcNodePool::RemNode (jhcNetNode *n)
     if (now == n)
       break;
     prev = now;
-    now = now->next;
+    now = now->NodeTail();
   }
 
   // splice out of list
   if (now == NULL)
     return 0;                // not in pool
   if (prev == NULL)
-    bucket[bin] = n->next;
+    bucket[bin] = n->NodeTail();
   else
-    prev->next = n->next;
+    prev->SetTail(n->NodeTail());
   pop[bin] -= 1;
 
   // delete node
   delete n;
-  del++;
+  xdel++;
   return 1;
 }
 
@@ -676,7 +739,7 @@ jhcNetNode *jhcNodePool::FindName (const char *full) const
       if ((n->Neg() <= 0) && n->LexMatch(full))
         if ((p = n->Val("name")) != NULL)
           return p;
-      n = n->next;
+      n = n->NodeTail();
     }
   }
 
@@ -694,7 +757,7 @@ jhcNetNode *jhcNodePool::FindName (const char *full) const
       if ((n->Neg() <= 0) && n->LexMatch(first))
         if ((p = n->Val("name")) != NULL)
           return p;
-      n = n->next;
+      n = n->NodeTail();
     }
   }
   return NULL;
@@ -732,14 +795,14 @@ jhcNetNode *jhcNodePool::FindNode (const char *desc, int make, int omit)
           jprintf(">>> Cannot make %s because %s%+d exists in jhcNodePool::FindNode !\n", desc, n->Kind(), -(n->Inst()));
         return NULL;
       }
-      n = n->next;
+      n = n->NodeTail();
     }
   }
 
   // possibly create a new node
   if (make <= 0)
     return NULL;
-  return create_node(kind, id, 1, omit);
+  return create_node(kind, id, 1, omit, 0);
 }
 
 
@@ -749,7 +812,7 @@ jhcNetNode *jhcNodePool::FindNode (const char *desc, int make, int omit)
 
 int jhcNodePool::parse_name (char *kind, const char *desc, int ssz)
 {
-  char num[20];
+  char num[20] = "";
   const char *mid, *end;
   int n, nid;
 
@@ -785,8 +848,8 @@ const char *jhcNodePool::extract_kind (char *kind, const char *desc, int ssz)
   const char *mid;
   int n;
 
-  if ((mid = strchr(desc, '-')) == NULL)
-    if ((mid = strchr(desc, '+')) == NULL)
+  if ((mid = strchr(desc, sep0)) == NULL)
+    if ((mid = strpbrk(desc, "-+:")) == NULL)
       return NULL;
   n = (int)(mid - desc);
   if ((n <= 0) || (n >= ssz))
@@ -806,7 +869,7 @@ jhcNetNode *jhcNodePool::Wash (const jhcNetNode *ref) const
 
   if (ref == NULL)
     return NULL;
-  bin = ((nbins <= 1) ? 0 : ref->hash);
+  bin = ((nbins <= 1) ? 0 : ref->Code());
   while ((n = Next(n, bin)) != NULL)
     if (n == ref)
       return n;
@@ -823,18 +886,21 @@ jhcNetNode *jhcNodePool::Wash (const jhcNetNode *ref) const
 
 bool jhcNodePool::InList (const jhcNetNode *n) const
 {
+  return((n != NULL) && n->Home(this));
+/*
   const jhcNetNode *p;
 
   if (n == NULL)
     return false;
-  p = Pool(n->hash);
+  p = Pool(n->Code());
   while (p != NULL)
   {
     if (p == n)
       return true;
-    p = p->next;
+    p = p->NodeTail();
   }
   return false;
+*/
 }
 
 
@@ -842,8 +908,8 @@ bool jhcNodePool::InList (const jhcNetNode *n) const
 //                           Writing Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Save all nodes in order by instance number (descending).
-// returns: 1 = success, 0 = format problem, -1 = file problem
+//= Save all nodes such that recency ordering is preserved on reload.
+// returns: positive = number of nodes saved, 0 = format problem, -1 = file problem
 
 int jhcNodePool::Save (const char *fname, int lvl) const
 {
@@ -852,20 +918,22 @@ int jhcNodePool::Save (const char *fname, int lvl) const
 
   if (fopen_s(&out, fname, "w") != 0)
     return -1;
-  ans = save_nodes(out, lvl); 
+  ans = save_bins(out, lvl, 0);        
   fclose(out);
   return((ferror(out) != 0) ? -1 : ans);
 }
 
 
 //= Rummages through all bins to return nodes in sorted order.
+// all returned nodes will have instance numbers >= imin
+// generally only for debugging (i.e. human consumption like Print)
 // returns: 1 = success, 0 = format problem, -1 = file problem
 
-int jhcNodePool::save_nodes (FILE *out, int lvl) const
+int jhcNodePool::sort_nodes (FILE *out, int lvl, int imin) const
 {
   jhcNetNode *win, *n = NULL;
-  int i, best, kmax = 3, nmax = 1, rmax = 3, last = label + 1;
- 
+  int i, best, kmax = 3, nmax = 1, rmax = 3, last = 0;
+
   // get print field sizes and clear marks
   if (psz <= 0)
     return 0;
@@ -876,30 +944,28 @@ int jhcNodePool::save_nodes (FILE *out, int lvl) const
   // save all as: node -link-> arg and list blf not blf0
   while (1)
   {
-    // find the next highest numbered node (lower than last)
+    // find the next lowest numbered node (higher than last)
     win = NULL;
     n = NULL;
     while ((n = NextNode(n)) != NULL)
       if (n->Visible())
-      {
-        i = n->Inst();
-        if ((i < last) && ((win == NULL) || (i > best)))
-        {
-          win = n;
-          best = i;
-        }
-      }
+        if ((i = abs(n->Inst())) >= imin)
+          if ((i > last) && ((win == NULL) || (i < best)))
+          {
+            win = n;
+            best = i;
+          }
  
     // possibly print it then search again
     if (win == NULL)
       break;
-    if ((win->NumArgs() > 0) || (win->Lex() != NULL) || (win->quote != NULL) || 
-        (win->inv != 0) || (win->blf != 1.0) || (win->tags != 0))
-      win->Save(out, lvl, kmax, nmax, rmax, -2);       
+    if ((win->NumArgs() > 0) || (win->Lex() != NULL) || win->String() || 
+        (win->Neg() != 0) || (win->Belief() != 1.0) || (win->tags != 0))
+      win->Save(out, lvl, kmax, nmax, rmax, -2);                
     last = best;
   }
 
-  // terminate last line
+  // terminate last line 
   jfprintf(out, "\n");
   return 1;
 }
@@ -907,47 +973,50 @@ int jhcNodePool::save_nodes (FILE *out, int lvl) const
 
 //= Save all nodes in one or all bins to a file in listed order.
 // this is the order in which they would be matched (e.g. Refresh)
-// returns: 1 = success, 0 = format problem, -1 = file problem
+// returns: positive = number of nodes saved, 0 = format problem, -1 = file problem
 
-int jhcNodePool::SaveBin (const char *fname, int bin, int lvl) const
+int jhcNodePool::SaveBin (const char *fname, int bin, int imin) const
 {
   FILE *out;
-  int ans;
+  int cnt;
 
   if (fopen_s(&out, fname, "w") != 0)
     return -1;
-  ans = save_bins(out, bin, lvl); 
+  cnt = save_bins(out, bin, imin); 
   fclose(out);
-  return((ferror(out) != 0) ? -1 : ans);
+  return((ferror(out) != 0) ? -1 : cnt);
 }
 
 
 //= Save all nodes from a particular bin (or all if bin < 0).
-// returns: 1 = success, 0 = format problem, -1 = file problem
+// returns: positive = nodes daved, 0 = format problem, -1 = file problem
 
-int jhcNodePool::save_bins (FILE *out, int bin, int lvl) const
+int jhcNodePool::save_bins (FILE *out, int bin, int imin) const
 {
   jhcNetNode *n = NULL;
-  int kmax = 3, nmax = 1, rmax = 3;
+  int kmax = 3, nmax = 1, rmax = 3, cnt = 0;
  
   // get print field sizes and clear marks
   if (psz <= 0)
     return 0;
   while ((n = NextNode(n, bin)) != NULL)
-    if (n->Visible())
+    if (n->Visible() && (abs(n->Inst()) >= imin))
       n->TxtSizes(kmax, nmax, rmax);
 
   // save all as: node -link-> arg and list blf not blf0
   n = NULL;
   while ((n = NextNode(n, bin)) != NULL)
-    if (n->Visible())
-      if ((n->NumArgs() > 0) || (n->Lex() != NULL) || (n->quote != NULL) || 
-          (n->inv != 0) || (n->blf != 1.0) || (n->tags != 0))
-        n->Save(out, lvl, kmax, nmax, rmax, -2);       
+    if (n->Visible() && (abs(n->Inst()) >= imin))
+      if ((n->NumArgs() > 0) || (n->Lex() != NULL) || n->String() || 
+          (n->Neg() != 0) || (n->Belief() != 1.0) || (n->tags != 0))
+      {
+        n->Save(out, 0, kmax, nmax, rmax, -2);       
+        cnt++;
+      }
 
   // terminate last line
   jfprintf(out, "\n");
-  return 1;
+  return cnt;
 }
 
 
@@ -989,22 +1058,29 @@ void jhcNodePool::ClrTrans (int n)
 //= Read a number of nodes from a file, possibly appending them to graph.
 // returns number of nodes added, -1 = format problem, -2 = file problem
 
-int jhcNodePool::Load (const char *fname, int add)
+int jhcNodePool::Load (const char *fname, int add, int nt)
 {
   jhcTxtLine in;
-  int ans, psz0 = psz;
+  int ans, psz0;
 
+  // possibly clear all assertions then try opening file
   if (add <= 0)
     PurgeAll();
   if (!in.Open(fname))
     return -2;
-  ClrTrans();
-  ans = Load(in);
-  ClrTrans(0);
-  if (ans <= 0)
+  ClrTrans(nt);
+  psz0 = psz;
+
+  // get assertions then cleanup
+  if (in.NextContent() != NULL)                  // skip blank or node count
   {
-    jprintf("Syntax error at line %d in jhcNodePool::Load\n", in.Last());
-    return -1;
+    ans = Load(in, 1);
+    ClrTrans(0);
+    if (ans <= 0)
+    {
+      jprintf("Syntax error at line %d in jhcNodePool::Load\n", in.Last());
+      return -1;
+    }
   }
   return(psz - psz0);
 }
@@ -1105,7 +1181,7 @@ int jhcNodePool::parse_arg (jhcNetNode *n, const char *slot, jhcTxtLine& in, int
   const char *arg;
   jhcNetNode *n2;
   double val;
-  int ver;
+  int ver, neg, ext = 1;
 
   // possibly handle multi-word lexical item and grammatical tags
   if (strcmp(slot, "str") == 0)
@@ -1120,21 +1196,29 @@ int jhcNodePool::parse_arg (jhcNetNode *n, const char *slot, jhcTxtLine& in, int
     return 0;
   if (strcmp(slot, "ach") == 0)
   {
-    n->evt = 1;
+    n->SetDone(1);
     if (sscanf_s(arg, "%d", &ver) != 1)          // success or failure
       return 0;
-    n->inv = ((ver > 0) ? 0 : 1);
+    n->SetNeg((ver > 0) ? 0 : 1);
   }
   else if (strcmp(slot, "neg") == 0)
   {
-    if (sscanf_s(arg, "%d", &(n->inv)) != 1)
+    if (sscanf_s(arg, "%d", &neg) != 1)
       return 0;
+    n->SetNeg(neg);
+  }
+  else if (strcmp(slot, "ext") == 0)
+  {
+    n->TmpBelief(0.0);                            // blf
+    ext = 0;                                      // only set blf0 later
   }
   else if (strcmp(slot, "blf") == 0)
   {
     if (sscanf_s(arg, "%lf", &val) != 1)  
       return 0;
-    n->SetBelief(val);                           // both blf and blf0
+    n->SetDefault(val);                           // blf0
+    if (ext > 0)
+      n->TmpBelief(val);                          // blf
   }
   else
   {
@@ -1155,12 +1239,11 @@ int jhcNodePool::parse_arg (jhcNetNode *n, const char *slot, jhcTxtLine& in, int
 
 int jhcNodePool::get_str (jhcNetNode *item, jhcTxtLine& in) 
 {
-  char *txt;
+  char txt[200];
   int i, n, ans = 1;
 
-  // copy most of string to destination
-  item->SetString(in.Clean());
-  txt = item->quote;
+  // get rest of line into locally modifiable string
+  strcpy_s(txt, in.Clean());
   n = (int) strlen(txt);
 
   // walk backward from end until non-whitespace
@@ -1171,10 +1254,9 @@ int jhcNodePool::get_str (jhcNetNode *item, jhcTxtLine& in)
       break;
 
   // barf if nothing left, else terminate string early
-  if (i < 0)
-    return 0;
   txt[i + 1] = '\0';
-  return ans;
+  item->SetString(txt);
+  return((i < 0) ? 0 : ans);
 }
 
 
@@ -1202,8 +1284,8 @@ int jhcNodePool::get_lex (jhcNetNode *item, jhcTxtLine& in)
     return 0;
   txt[i + 1] = '\0';
 
-  // associate the word or phrase with this item 
-  update_lex(item, txt);
+  // associate the word or phrase with this item (node at end of list)
+  update_lex(item, txt, 1);
   return ans;
 }
 
@@ -1271,7 +1353,7 @@ jhcNetNode *jhcNodePool::find_trans (const char *name, int tru)
   }
   if (extract_kind(kind, desc, 40) == NULL)
     return NULL;
-  n = create_node(kind, ++label, 1, omit);
+  n = create_node(kind, ++label, 1, omit, 1);    // node at end of list
   if (tru > 0)
     n->SetBelief(1.0);
   

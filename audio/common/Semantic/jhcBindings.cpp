@@ -188,6 +188,7 @@ int jhcBindings::LexBin (const jhcNetNode& k) const
 //    ***-1 (NULL)    small      yes   <add>
 //    ***-1 (big)     small       no   <mismatch>
 //    ***-1 (small)   small      yes   <match>
+//    small           small      yes   <match>
 // </pre>
 // primarily used by jhcsituation::consistent
 

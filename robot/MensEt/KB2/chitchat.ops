@@ -48,10 +48,10 @@ OP 4 - "If someone greets you then greet them"
   trig:
   NOTE[ input-1 -lex-   greet
                 -agt--> agt-1  
-                -dest-> obj-2  
-          obj-2 -lex-   me ]
------------------
-    DO[ act-1 -lex-  greet
+                -dest-> agt-2  
+          agt-2 -lex-   me ]
+-----------------   
+    DO[ act-2 -lex-  greet
               -obj-> agt-1 ]
 
 
@@ -86,6 +86,7 @@ OP 7 - "To greet someone say to them hey whoever, how are you doing."
               -dest-> agt-1
               -obj--> txt-1
         txt-1 -str-   hey ?0, how're you doing? ]
+
 
 // ----------------------------------------
 

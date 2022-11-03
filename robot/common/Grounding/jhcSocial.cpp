@@ -44,11 +44,11 @@ jhcSocial::~jhcSocial ()
 
 jhcSocial::jhcSocial ()
 {
-  ver = 1.55;
+  ver = 1.60;
   strcpy_s(tag, "Social");
   Platform(NULL);
   rpt = NULL;
-  dbg = 0;
+  dbg = 1;
   Defaults();
 }
 
@@ -58,6 +58,10 @@ jhcSocial::jhcSocial ()
 void jhcSocial::Platform (jhcEliGrok *robot) 
 {
   rwi = robot;
+  if (robot == NULL)
+    neck = NULL;
+  else
+    neck = robot->neck;
 }
 
 
@@ -79,6 +83,29 @@ int jhcSocial::attn_params (const char *fname)
   ps->Skip();
   ps->NextSpecF( &ltol,    2.0, "Look achieved (deg)");
   ps->NextSpecF( &lquit,   2.0, "Look timeout (sec)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for orienting on talking heads.
+
+int jhcSocial::snd_params (const char *fname)
+{
+  jhcParam *ps = &sps;
+  int ok;
+
+  ps->SetTag("soc_snd", 0);
+  ps->NextSpec4( &recent, 60,   "Max speech lag (cyc)");
+  ps->NextSpecF( &pdist,  36.0, "Close person offset (in)");
+  ps->NextSpecF( &rtime,   1.5, "Rise time for tall (sec)");
+  ps->NextSpecF( &sdev,   15.0, "Face sound offset (deg)");
+  ps->NextSpecF( &aimed,   2.0, "Gaze final offset (deg)");
+  ps->NextSpecF( &gtime,   0.3, "Gaze response (sec)"); 
+
+  ps->NextSpecF( &side,   30.0, "Body rotate thresh (deg)");    // 0 = don't 
+  ps->NextSpecF( &btime,   1.5, "Rotate response (sec)");      
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -119,6 +146,7 @@ int jhcSocial::Defaults (const char *fname)
   int ok = 1;
 
   ok &= attn_params(fname);
+  ok &= snd_params(fname);
   ok &= move_params(fname);
   return ok;
 }
@@ -131,6 +159,7 @@ int jhcSocial::SaveVals (const char *fname) const
   int ok = 1;
 
   ok &= aps.SaveVals(fname);
+  ok &= sps.SaveVals(fname);
   ok &= mps.SaveVals(fname);
   return ok;
 }
@@ -172,6 +201,7 @@ void jhcSocial::local_volunteer ()
 
 int jhcSocial::local_start (const jhcAliaDesc *desc, int i)
 {
+  JCMD_SET(soc_talk);
   JCMD_SET(soc_look);
   JCMD_SET(soc_approach);
   JCMD_SET(soc_retreat);
@@ -187,6 +217,7 @@ int jhcSocial::local_start (const jhcAliaDesc *desc, int i)
 
 int jhcSocial::local_status (const jhcAliaDesc *desc, int i)
 {
+  JCMD_CHK(soc_talk);
   JCMD_CHK(soc_look);
   JCMD_CHK(soc_approach);
   JCMD_CHK(soc_retreat);
@@ -316,6 +347,8 @@ void jhcSocial::user_gone ()
 
 //= See if node already assigned to person, else create new one.
 // should be called inside rpt->StartNote to include "ako person" fact
+// NOTE: face reco could use "names" like "person-0015" to give "face" property
+//       ALIA system could then have rules/facts to convert to linguistic terms
 
 jhcAliaDesc *jhcSocial::agt_node (int t)
 {
@@ -354,7 +387,139 @@ jhcAliaDesc *jhcSocial::agt_node (int t)
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                       Looking At/For People                           //
+//                        Looking For Speaker                            //
+///////////////////////////////////////////////////////////////////////////
+
+//= Start aiming camera toward most recent sound source.
+// instance number and bid already recorded by base class
+// returns 1 if okay, -1 for interpretation error
+
+int jhcSocial::soc_talk0 (const jhcAliaDesc *desc, int i)
+{
+  return 1;
+}
+
+
+//= Continue aiming camera toward most recent speaker.
+// sets up continuing request to body if not finished
+// sets caux[] to sound direction, cpos[] to gaze target
+// cst[i]: 0 = initialize direction
+//         1 = look at head associated with sound
+//         2 = look toward low head guess spot
+//         3 = raise gaze toward high head guess
+//         4 = return to level forward gaze
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcSocial::soc_talk (const jhcAliaDesc *desc, int i)
+{
+  double ht, rads, pan, tilt, gerr, berr;
+
+  // lock to sensor cycle 
+  if ((rwi == NULL) || rwi->Ghost())
+    return -1;
+  if (!rwi->Accepting())
+    return 0;
+  ht = (rwi->lift)->Height();
+
+  // possibly announce entry and set likely lowest head position
+  if (cst[i] <= 0)
+  {
+    if ((rwi->mic)->VoiceStale() > recent)
+      return -1;
+    caux[i] = (rwi->mic)->VoiceDir();
+    rads = D2R * (caux[i] + 90.0);
+    cpos[i].SetVec3(pdist * cos(rads), pdist * sin(rads), (rwi->s3).h0);
+    cst[i] = 2;
+  }
+  else 
+    (rwi->base)->AdjustAng(caux[i]);   
+    
+  // always check for head aligned with sound direction
+  if (rwi->HeadAlong(cpos[i], caux[i], sdev) >= 0)
+  {
+    if (cst[i] > 1)
+      ct0[i] = 0;
+    cst[i] = 1;
+  }
+  else
+    (rwi->base)->AdjustTarget(cpos[i]);   
+
+  // look directly at chosen spot (head or guess)
+  if (cst[i] <= 2)
+  {
+    if (ct0[i] == 0)
+      jprintf(1, dbg, "|- Social %d: slew to %s\n", cbid[i], ((cst[i] == 1) ? "head" : "sound"));
+    neck->AimFor(pan, tilt, cpos[i], ht);
+    gerr = neck->GazeErr(pan, tilt);
+    berr = ((side <= 0.0) ? 0.0 : fabs(pan) - side);
+    if ((gerr > aimed) || (berr > 0.0))
+    {
+      if (chk_stuck(i, gerr + berr) > 0)
+        return -1;
+      neck->GazeFix(pan, tilt, gtime, cbid[i]);
+      if (berr > 0.0)
+        (rwi->base)->TurnFix(((pan >= 0.0) ? side : -side), btime, 1.5, cbid[i]);  
+      return 0;
+    }
+    if (cst[i] == 1)
+      return 1;
+    cpos[i].SetZ((rwi->s3).h1);
+    ct0[i] = 0;
+    cst[i] = 3;
+    jprintf(1, dbg, "|- Social %d: rise for head\n", cbid[i]);
+  }
+
+  // raise gaze slowly toward highest head position
+  if (cst[i] == 3)
+  {
+    if ((gerr = neck->GazeErr(cpos[i], ht)) > aimed)
+    {
+      if (chk_stuck(i, gerr) > 0)
+        return -1;
+      neck->GazeFix(cpos[i], ht, rtime, cbid[i]);
+      return 0;
+    }
+    ct0[i] = 0;
+    cst[i] = 4;
+    jprintf(1, dbg, "|- Social %d: neutral gaze\n", cbid[i]);
+  }
+
+  // give up on person and set default gaze
+  if ((gerr = neck->GazeErr(0.0, 0.0)) > aimed)
+  {
+    if (chk_stuck(i, gerr) > 0)
+      return -1;
+    neck->GazeFix(0.0, 0.0, rtime, cbid[i]);
+    return 0;
+  }
+  return 1;
+}
+
+
+//= Detect lack of substantial error reduction over given time.
+// detects lack of improvement over "prog" for "tim" (about 15 cycles)
+// hardcoded for 0.1 degree position progress, otherwise scale error first 
+// returns 1 if at asymptote, 0 if still moving toward goal
+
+int jhcSocial::chk_stuck (int i, double err)
+{
+  double tim = 0.5, prog = 0.1;     
+  double chg = cerr[i] - err;
+
+  // reset timer if minimal progress being made
+  if ((ct0[i] == 0) || (chg >= prog))
+  {
+    ct0[i] = jms_now();
+    cerr[i] = err;
+  }
+  else if (jms_elapsed(ct0[i]) > tim)
+    return 1;
+  return 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                          Looking At People                            //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Start aiming camera toward a person.

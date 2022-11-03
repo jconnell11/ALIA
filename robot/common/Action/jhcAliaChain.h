@@ -54,7 +54,7 @@ private:
   jhcBindings scoping;
   jhcAliaChain *backstop;
   UL32 mt0;
-  int spew;
+  int spew, parse;
 
   // payload is one of two types
   class jhcAliaDir *d;
@@ -85,6 +85,7 @@ public:
   jhcAliaChain ();
   int Verdict () const  {return done;}
   int Level () const    {return level;}
+  UL32 Time0 () const   {return mt0;}
   jhcBindings *Scope () {return &scoping;}
   class jhcAliaCore *Core () {return core;}
   class jhcActionTree *ATree ();

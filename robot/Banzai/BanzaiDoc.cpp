@@ -117,8 +117,6 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_DEPTH_PERSONMAP, &CBanzaiDoc::OnDepthPersonmap)
   ON_COMMAND(ID_DEPTH_TRACKHEAD, &CBanzaiDoc::OnDepthTrackhead)
   ON_COMMAND(ID_PEOPLE_SPEAKING, &CBanzaiDoc::OnPeopleSpeaking)
-  ON_COMMAND(ID_PARAMETERS_WATCHING, &CBanzaiDoc::OnParametersWatching)
-  ON_COMMAND(ID_PARAMETERS_ORIENTING, &CBanzaiDoc::OnParametersOrienting)
   ON_COMMAND(ID_ATTENTION_ENROLLPHOTO, &CBanzaiDoc::OnAttentionEnrollphoto)
   ON_COMMAND(ID_ATTENTION_ENROLLLIVE, &CBanzaiDoc::OnAttentionEnrolllive)
   ON_COMMAND(ID_PEOPLE_SOCIALEVENTS, &CBanzaiDoc::OnPeopleSocialevents)
@@ -188,7 +186,8 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_OBJECTS_EMPTYSPOT, &CBanzaiDoc::OnObjectsEmptyspot)
   ON_COMMAND(ID_GRAB_BODYSHIFT, &CBanzaiDoc::OnGrabBodyshift)
   ON_COMMAND(ID_ROOM_FORKCALIB, &CBanzaiDoc::OnRoomForkcalib)
-  END_MESSAGE_MAP()
+  ON_COMMAND(ID_UTILITIES_WEEDGRAMMAR, &CBanzaiDoc::OnUtilitiesWeedgrammar)
+      END_MESSAGE_MAP()
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -268,7 +267,7 @@ BOOL CBanzaiDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = ec.Version();
-  LockAfter(11, 2022, 6, 2022);
+  LockAfter(4, 2023, 11, 2022);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -1733,10 +1732,10 @@ int CBanzaiDoc::interact_params (const char *fname)
   int ok;
 
   ps->SetTag("banzai_opt", 0);
-  ps->NextSpec4( &rob,        0, "Body (none, yes, autorun)");
   ps->NextSpec4( &cam,        0, "Camera available");
+  ps->NextSpec4( &rob,        0, "Body (none, yes, autorun)");
   ps->NextSpec4( &(ec.spin),  0, "Speech (no, w7, web, w11)");  
-  ps->NextSpec4( &(ec.amode), 2, "Attn (none, any, front, only)");
+  ps->NextSpec4( &(ec.amode), 2, "Attn (none, ends, front, only)");
   ps->NextSpec4( &(ec.tts),   0, "Vocalize output");
   ps->NextSpec4( &fsave,      0, "Face model update");
 
@@ -1846,7 +1845,7 @@ jtimer_clr();
       // show interaction
       if ((ec.body).NewFrame())
       {
-        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention (%3.1f\")  %s", ((ec.rwi).tab).ztab, (ec.rwi).Watching());
+        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention (%3.1f\")", ((ec.rwi).tab).ztab);
         d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  %s", (ec.rwi).NavGoal());
       }
       (ec.stat).Memory(&d, 0, 1, ec.Sensing());
@@ -1864,13 +1863,11 @@ jtimer_clr();
   jprintf_close();
   fclose(f);
 jtimer_rpt();
-
-  // window configuration
   d.StatusText("Stopped."); 
   chat.Mute();
   SetForegroundWindow(me);
 
-  // clean up
+  // result caching
   icam = (ec.rwi).HeadView();
   if ((icam != NULL) && icam->Valid())
   {
@@ -1973,16 +1970,10 @@ jtimer_clr();
       // show robot sensing and action and any communication
       if ((ec.body).NewFrame())
       {
-        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention (%3.1f\")  %s", ((ec.rwi).tab).ztab, (ec.rwi).Watching());
-//        d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  %s", (ec.rwi).NavGoal());
-
-Cross((ec.man).space, (ec.man).xdest, (ec.man).ydest, 17, 17, 1, 200);
-d.ShowGrid((ec.man).space,       1, 0, 2, "Free space");
-d.ShowGrid(((ec.rwi).sobj).top , 1, 1, 2, "Table area");
+        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention (%3.1f\")", ((ec.rwi).tab).ztab);
+        d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  %s", (ec.rwi).NavGoal());
       }
       (ec.stat).Memory(&d, 0, 1, ec.Sensing());
-//      (ec.stat).Wheels(&d, 0, 1);
-//      (ec.stat).Neck(&d, 0, 1);
       chat.Post(ec.NewInput(), 1);
       chat.Post(ec.NewOutput());
     }
@@ -1995,13 +1986,11 @@ d.ShowGrid(((ec.rwi).sobj).top , 1, 1, 2, "Table area");
   ec.Done(fsave);
   jprintf_close();
 jtimer_rpt();
-
-  // window configuration
   d.StatusText("Stopped."); 
   chat.Mute();
   SetForegroundWindow(me);
-  
-  // clean up
+
+  // result caching
   inav = (ec.rwi).MapView();
   if ((inav != NULL) && inav->Valid())
   {
@@ -2062,26 +2051,6 @@ void CBanzaiDoc::OnRoomHeadtrack()
 	jhcPickVals dlg;
 
   dlg.EditParams(((ec.rwi).s3).tps); 
-}
-
-
-// What human activities to innately watch
-
-void CBanzaiDoc::OnParametersWatching()
-{
-	jhcPickVals dlg;
-
-  dlg.EditParams(((ec.rwi).watch).wps); 
-}
-
-
-// Parameters controlling details of watching behaviors
-
-void CBanzaiDoc::OnParametersOrienting()
-{
-	jhcPickVals dlg;
-
-  dlg.EditParams(((ec.rwi).watch).ops); 
 }
 
 
@@ -2522,7 +2491,7 @@ void CBanzaiDoc::OnPeopleSpeaking()
         d.ShowGrid(map, 0, 0, 2, "Overhead direction");
       else
         d.ShowGrid(map, 0, 0, 2, "Overhead direction  --  speaker id = %d", spk);
-      d.ShowGrid(col, 1, 0, 0, "Speaker and others  --  watching %s", (ec.rwi).Watching(0));
+      d.ShowGrid(col, 1, 0, 0, "Speaker and others  --  watching");
 
       // send any commands and start collecting next input
       (ec.rwi).Issue();
@@ -2627,6 +2596,20 @@ void CBanzaiDoc::OnUtilitiesChkgrammar()
     Tell("Adjust original =[XXX-morph] section to fix %d problems", err);
   else
     Tell("Looks good but examine \"derived.sgm\" then \"base_words.txt\"\n\nAdjust original =[XXX-morph] section to fix any problems");
+}
+
+
+// Find unused non-terminals in grammar
+
+void CBanzaiDoc::OnUtilitiesWeedgrammar()
+{
+  int n;
+
+  (ec.body).BindVideo(NULL);
+  ec.Reset(0);
+  ec.SetPeople("VIPs.txt");
+  n = (ec.vc).WeedGram((ec.gr).Expansions());
+  Tell("%d unused non-terminals listed in file: orphans.txt", n);
 }
 
 
@@ -2882,7 +2865,6 @@ void CBanzaiDoc::OnEnvironFloormap()
   HWND me = GetForegroundWindow();
   jhcLocalOcc *nav = &((ec.rwi).nav);
   jhcImg map2, fw;
-  int fbid = ((ec.rwi).watch).freeze;
 
   // make sure video is working
   if (ChkStream() <= 0)
@@ -2896,7 +2878,6 @@ void CBanzaiDoc::OnEnvironFloormap()
       d.StatusText("Failed.");
       return;
     }
-  ((ec.rwi).watch).freeze = -abs(fbid);
   (ec.rwi).Reset(rob, 0);
   fw.SetSize(nav->map);
   eb->Limp();
@@ -2932,7 +2913,6 @@ void CBanzaiDoc::OnEnvironFloormap()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  ((ec.rwi).watch).freeze = fbid;
   d.StatusText("Stopped.");  
 
   // clean up
@@ -2948,7 +2928,6 @@ void CBanzaiDoc::OnEnvironIntegrated()
   HWND me = GetForegroundWindow();
   jhcLocalOcc *nav = &((ec.rwi).nav);
   jhcImg obs2, cf2;
-  int fbid = ((ec.rwi).watch).freeze;
 
   // make sure video is working
   if (ChkStream() <= 0)
@@ -2962,7 +2941,6 @@ void CBanzaiDoc::OnEnvironIntegrated()
       d.StatusText("Failed.");
       return;
     }
-  ((ec.rwi).watch).freeze = -abs(fbid);
   (ec.rwi).Reset(rob, 0);
   eb->Limp();
 
@@ -2997,7 +2975,6 @@ void CBanzaiDoc::OnEnvironIntegrated()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  ((ec.rwi).watch).freeze = fbid;
   d.StatusText("Stopped.");  
 
   // clean up
@@ -3013,7 +2990,7 @@ void CBanzaiDoc::OnEnvironLocalpaths()
   HWND me = GetForegroundWindow();
   jhcLocalOcc *nav = &((ec.rwi).nav);
   jhcImg path;
-  int i, dev, nd, hnd, nd2, fbid = ((ec.rwi).watch).freeze;
+  int i, dev, nd, hnd, nd2;
 
   // make sure video is working
   if (ChkStream() <= 0)
@@ -3027,7 +3004,6 @@ void CBanzaiDoc::OnEnvironLocalpaths()
       d.StatusText("Failed.");
       return;
     }
-  ((ec.rwi).watch).freeze = -abs(fbid);
   (ec.rwi).Reset(rob, 0);
   eb->Limp();
   nd  = nav->ndir;
@@ -3068,7 +3044,6 @@ void CBanzaiDoc::OnEnvironLocalpaths()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  ((ec.rwi).watch).freeze = fbid;
   d.StatusText("Stopped.");  
 
   // clean up
@@ -3084,7 +3059,6 @@ void CBanzaiDoc::OnEnvironDistances()
   HWND me = GetForegroundWindow();
   jhcLocalOcc *nav = &((ec.rwi).nav);
   jhcImg fwd, rev;
-  int fbid = ((ec.rwi).watch).freeze;
 
   // make sure video is working
   if (ChkStream() <= 0)
@@ -3098,7 +3072,6 @@ void CBanzaiDoc::OnEnvironDistances()
       d.StatusText("Failed.");
       return;
     }
-  ((ec.rwi).watch).freeze = -abs(fbid);
   (ec.rwi).Reset(rob, 0);
   eb->Limp();
 
@@ -3133,7 +3106,6 @@ void CBanzaiDoc::OnEnvironDistances()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  ((ec.rwi).watch).freeze = fbid;
   d.StatusText("Stopped.");  
 
   // clean up
@@ -3153,7 +3125,7 @@ void CBanzaiDoc::OnEnvironGoto()
   char label[80] = "";
   double p0 = 60.0, t0 = -40.0, tol = 2.0, arrive = 4.0, tsp = 0.7;
   double cx, cy, ipp, circ, ix, iy, err, tx, ty, d0 = -1.0;
-  int mx, my, fbid = ((ec.rwi).watch).freeze, mbut = 0, step = 0;
+  int mx, my, mbut = 0, step = 0;
 
   // make sure video is working
   if (ChkStream() <= 0)
@@ -3166,7 +3138,6 @@ void CBanzaiDoc::OnEnvironGoto()
     d.StatusText("Failed.");
     return;
   }
-  ((ec.rwi).watch).freeze = -abs(fbid);
   (ec.rwi).Reset(1, 0);
   z.Zero();
   (eb->arm).ShiftTarget(z);
@@ -3267,7 +3238,6 @@ void CBanzaiDoc::OnEnvironGoto()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  ((ec.rwi).watch).freeze = fbid;
   d.StatusText("Stopped.");  
 
   // clean up
@@ -5100,33 +5070,38 @@ void CBanzaiDoc::OnUtilitiesTest()
 {
 //  Tell("No current function");
 
-  jprintf("progressive of <tuck in> = <%s>\n", ec.net.mf.SurfWord("tuck in", JTAG_VPROG));
-  return;
+  (ec.body).BindVideo(NULL);
+  ec.Reset(0);
+  ec.SetPeople("VIPs.txt");
 
-  char fname[200], item[80] = "flower";
-  jhcImgIO jio;
-  jhcImg src, r, g, b, dest;
+//  Tell("%d words in file: words.txt", (ec.vc).ListAll());
 
-  sprintf_s(fname, "%s/results/%s_cast.bmp", cwd, item);
-  jio.LoadResize(src, fname);
-  d.ShowGrid(src, 0, 0, 0, "Source");
-  dest.SetSize(src);
-  r.SetSize(src, 1);
-  g.SetSize(src, 1);
-  b.SetSize(src, 1);
+//  char txt[80] = "..tell me, is theRe icecream 'on' the fuzzy SURFace?!";
+//  jprintf("Marked: <%s>\n", (ec.vc).MarkBad(txt));
 
-  SplitRGB(r, g, b, src);
-  Enhance(r, r, 4.0);
-  Enhance(g, g, 4.0);
-  Enhance(b, b, 4.0);
-  MergeRGB(dest, r, g, b);
-  d.ShowGrid(dest, 1, 0, 0, "Enhanced");
-  sprintf_s(fname, "%s/results/%s_enh3.bmp", cwd, item);
+/*
+  char txt2[6][80] = {"grab the fuzzy llama!", 
+                      "the violet block is on the rough plank",
+                      "the aardvark is angry",
+                      "aardvarks are angrier than bandicoots",
+                      "aardvarks are the angriest animals",
+                      "the lion's tongue is scratchy"};
+  for (int i = 0; i < 6; i++)
+    jprintf("--> <%s>\n", (ec.vc).MarkBad(txt2[i]));
+*/
 
-  Enhance3(dest, src, 4.0);
-  sprintf_s(fname, "%s/results/%s_quick.bmp", cwd, item);
-  d.ShowGrid(dest, 1, 1, 0, "Quick version");
-  jio.Save(fname, dest);
+
+  char txt3[5][80] = {"whatcolor is th eobject i nthe front?", 
+                     "he siad shew as ferocius",
+                     "wht colr is the thign?",
+                     "is ee an objcet"};
+  for (int i = 0; i < 4; i++)
+  {
+    jprintf("fix: %s\n", txt3[i]);
+    (ec.vc).FixTypos(txt3[i]);
+    jprintf(" --> %s\n", (ec.vc).Fixed());
+  }
+
 }
 
 

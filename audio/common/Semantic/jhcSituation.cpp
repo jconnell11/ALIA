@@ -139,7 +139,7 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
     for (pnum = 0; pnum < np; pnum++)
     {
       // selected node must be part of pattern
-      focus = anchor->Prop(pnum);
+      focus = anchor->PropSurf(pnum);
       if (!b->InKeys(focus) && pat.InDesc(focus))
         break;
       focus = NULL;
@@ -159,7 +159,7 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
     if (val->RoleMatch(i, role))
     {
       // continue matching with selected mate for focus
-      n = try_binding(focus, val->Prop(i), m, mc, pat, f, f2);
+      n = try_binding(focus, val->PropSurf(i), m, mc, pat, f, f2);
       if (n < 0)
         return 1;
       cnt += n;
@@ -188,7 +188,7 @@ int jhcSituation::try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat,
     for (anum = 0; anum < na; anum++)
     {
       // selected node must be part of pattern
-      focus = anchor->Arg(anum);
+      focus = anchor->ArgSurf(anum);
       if (!b->InKeys(focus) && pat.InDesc(focus))
         break;
       focus = NULL;
@@ -202,12 +202,12 @@ int jhcSituation::try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   fact = b->LookUp(anchor);
   jprintf(2, dbg, "%*s  try_args: %s (from %s)\n", 2 * n, "", focus->Nick(), anchor->Nick());
 
-  // consider arguments of anchor's binding as candidates (na might change during loop)
+  // consider arguments of anchor's binding as candidates (NumArgs might change during loop)
   for (i = 0; i < fact->NumArgs(); i++)
     if (strcmp(fact->Slot(i), slot) == 0)
     {
       // continue matching with selected mate for focus
-      n = try_binding(focus, fact->Arg(i), m, mc, pat, f, f2);
+      n = try_binding(focus, fact->ArgSurf(i), m, mc, pat, f, f2);
       if (n < 0)
         return 1;
       cnt += n;
@@ -315,8 +315,8 @@ int jhcSituation::try_binding (const jhcNetNode *focus, jhcNetNode *mate, jhcBin
 
   // sanity check
   if (!mate->Visible())
-    return 0;
-
+    return jprintf(3, dbg, "%*s   mate = %s not visible\n", lvl, "", mate->Nick());
+  
   // make sure superficial pairing is okay
   if (f2 != NULL)
   {
@@ -334,7 +334,7 @@ int jhcSituation::try_binding (const jhcNetNode *focus, jhcNetNode *mate, jhcBin
   // add pair to all remaining bindings (all nb are the same)
   jprintf(3, dbg, "%*s   mate = %s (%4.2f)\n", lvl, "", mate->Nick(), mate->Blf(bth));
   for (i = 0; i <= n; i++)
-    nb = m[i].Bind(focus, mate);    
+    nb = m[i].Bind(focus, mate->Surf());    
 
   // try to complete pattern (stop after first match for caveat)
   cnt = MatchGraph(m, mc, pat, f, f2);
@@ -343,6 +343,7 @@ int jhcSituation::try_binding (const jhcNetNode *focus, jhcNetNode *mate, jhcBin
 
   // remove pair for backtrack (mc might change if successful match)
   // nb - 1 used since jhcAliaRule adds bindings during AssertHalo
+  jprintf(3, dbg, "%*s     --- matcher backtrack ---\n", lvl, "");
   n = __max(0, mc - 1);  
   for (i = 0; i <= n; i++)
     m[i].TrimTo(nb - 1);
@@ -370,7 +371,7 @@ int jhcSituation::consistent (const jhcNetNode *mate, const jhcNetNode *focus, c
       return -8;
     if (!mate->Sure(th))
       return -7;
-    if (focus->Arity() != mate->Arity(0))                            // "father" matches "father of"
+    if (focus->Arity() != mate->Arity())                             // was mate->Arity(0) for ako2 matching
       return -6;
     if (mate->Done() != focus->Done())
       return -5;

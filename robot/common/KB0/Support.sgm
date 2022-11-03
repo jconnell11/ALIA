@@ -8,11 +8,6 @@
   floor
 
 
-// mass nouns (like "a rice")
-
-=[AKO-M]
-
-
 // adjectives
 
 =[HQ]
@@ -27,22 +22,7 @@
   right
 
 
-// proper nouns
-
-=[NAME]
-
-
 // -----------------------------------------
-
-// modifiers
-
-=[MOD]
-
-
-// directions
-
-=[DIR]
-
 
 // imperative verbs
 

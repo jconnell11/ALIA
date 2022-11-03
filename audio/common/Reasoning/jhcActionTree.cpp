@@ -338,6 +338,19 @@ int jhcActionTree::drop_oldest ()
 }
 
 
+//= Create a new NOTE directive containing a single item.
+
+void jhcActionTree::NoteSolo (jhcNetNode *n)
+{
+  jhcAliaChain *ch = new jhcAliaChain;
+  jhcAliaDir *dir = new jhcAliaDir;
+
+  (dir->key).AddItem(n);
+  ch->BindDir(dir);
+  AddFocus(ch);  
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                               Maintenance                             //
 ///////////////////////////////////////////////////////////////////////////
@@ -562,11 +575,19 @@ int jhcActionTree::ReifyRules (jhcBindings& b, int note)
   jhcNetNode *item;
   int step, fcnt = 0;
 
-  // progressively find all halo nodes that need to move to wmem
-  while ((item = pick_halo(step, b, h2m, 0)) != NULL)
+  // progressively find all non-wmem nodes that need to move to wmem
+  while ((item = pick_non_wmem(step, b, h2m, 0)) != NULL)
   {
-    // move halo nodes in precondition of rule that yielded this item
-    PromoteHalo(h2m, item->hbind);
+    // move non-wmem nodes in precondition of rule that yielded this item
+    if (item->hbind != NULL)
+      promote_all(h2m, *(item->hbind));
+    else                                         
+    {
+      // for halo-ized properties of moored items
+      b2.Clear();
+      b2.Bind(item, item);             
+      promote_all(h2m, b2);
+    }
     b.ReplaceSubs(h2m);
     if ((note <= 0) || (step < note))
       continue;
@@ -587,12 +608,12 @@ int jhcActionTree::ReifyRules (jhcBindings& b, int note)
 }
 
 
-//= Find some halo fact that needs to be moved to working memory.
+//= Find some non-wmem fact that needs to be moved to working memory.
 // assumes original bindings "b" already augmented by halo migrations in "h2m"
 // sets step = 2 if directly relevant, step = 1 if precursor to relevant
 // returns NULL when all substitutions are in wmem 
 
-jhcNetNode *jhcActionTree::pick_halo (int& step, const jhcBindings& b, const jhcBindings& h2m, int stop) const
+jhcNetNode *jhcActionTree::pick_non_wmem (int& step, const jhcBindings& b, const jhcBindings& h2m, int stop) const
 {
   jhcBindings b2;
   jhcNetNode *sub, *mid;
@@ -603,16 +624,16 @@ jhcNetNode *jhcActionTree::pick_halo (int& step, const jhcBindings& b, const jhc
     bcnt = __min(stop, bcnt);
   for (i = 0; i < bcnt; i++)
   {
-    // check that substitution is in halo
+    // check that substitution is not in working memory
     sub = b.GetSub(i);
-    if (!sub->Halo())
+    if (InList(sub))
       continue;
 
-    // check if source rule itself used any halo facts to trigger
-    if (stop <= 0)
+    // check if source rule itself (if any) used any halo facts to trigger 
+    if ((stop <= 0) && (sub->hrule != NULL))
     {
       b2.CopyReplace(sub->hbind, h2m);
-      if ((mid = pick_halo(d2, b2, h2m, (sub->hrule)->NumPat())) != NULL)
+      if ((mid = pick_non_wmem(d2, b2, h2m, (sub->hrule)->NumPat())) != NULL)
       {
         step = 1;
         return mid;
@@ -622,6 +643,78 @@ jhcNetNode *jhcActionTree::pick_halo (int& step, const jhcBindings& b, const jhc
     return sub;
   }
   return NULL;
+}
+
+//= Make suitably connected main memory node for each halo or LTM node in bindings.
+// saves mapping of correspondences between input nodes and replacements in "h2m"
+// does not change original rule bindings "b" (still contains halo/LTM references)
+// used with jhcActionTree::ReifyRules
+
+void jhcActionTree::promote_all (jhcBindings& h2m, const jhcBindings& b)
+{
+  jhcBindings b2;
+  jhcNetNode *n2, *n;
+  const jhcNetNode *n0;
+  int i, j, hcnt, narg, nb = b.NumPairs(), h0 = h2m.NumPairs();
+
+  // make a main node for each non-wmem node using same lex and neg
+  BuildIn(NULL);
+  b2.CopyReplace(b, h2m);              // subs from earlier promotions
+  for (i = 0; i < nb; i++)
+  {
+    // make wmem node for this substitution (if any required arguments)
+    n = b2.GetSub(i);
+    promote(h2m, n);
+    narg = n->NumArgs();
+    for (j = 0; j < narg; j++)
+      promote(h2m, n->ArgSurf(j));
+  }
+
+  // replicate structure of each halo node for replacement main node
+  hcnt = h2m.NumPairs();
+  for (i = h0; i < hcnt; i++)
+  {
+    // copy each argument from halo node to main node
+    n0 = h2m.GetKey(i);
+    narg = n0->NumArgs();
+    n = h2m.GetSub(i);
+    for (j = 0; j < narg; j++)
+    {
+      // if points to halo node, replace with new main node
+      n2 = n0->ArgSurf(j);
+      if (!InList(n2))
+        n2 = h2m.LookUp(n2);         // should never fail
+      n->AddArg(n0->Slot(j), n2);
+    } 
+  }
+}
+
+
+//= Make equivalent wmem node, actualize result as visible, and save translation.
+// returns 1 if new node made, 0 if not needed
+
+int jhcActionTree::promote (jhcBindings& h2m, jhcNetNode *n)
+{
+  jhcNetNode *n2, *deep = n->Deep();
+
+  // make sure not already in working memory (ensures halo or LTM)
+  if (InList(n) || h2m.InKeys(n))
+    return 0;
+
+  // make new main memory node and remember correspondence
+  n2 = MakeNode(n->Kind(), n->Lex(), n->Neg(), 1.0, n->Done());     
+  n2->SetBelief(n->Default());  
+  n2->Reveal();
+  h2m.Bind(n, n2);
+
+  // special handling if LTM node is brought in
+  if (n->ObjNode() && !deep->Halo())
+  {
+    jprintf("\n:- PROMOTE creates %s for memory %s\n", n2->Nick(), deep->Nick());
+    n2->MoorTo(deep);
+    NoteSolo(n2);
+  }
+  return 1;
 }
 
 
@@ -704,7 +797,7 @@ int jhcActionTree::LoadFoci (const char *fname, int app)
     {
       // delete and purge input if parse error 
       if (!in.End())
-        jprintf(">> Bad syntax at line %d in: %s\n", in.Last(), fname);
+        jprintf(">>> Bad syntax at line %d in: %s\n", in.Last(), fname);
       delete f;
       if (in.NextBlank() == NULL)
         break;

@@ -1,12 +1,39 @@
 // standard interpretation of semantic network constructs
 // ================================================
 
-RULE 1 - "If something is more somehow than something else then the something else is not more somehow than it"
-  if: hq-1 -lex-  ***-1
-           -hq--> obj-1
-           -alt-> obj-2
-then: hq-2 -lex-  ***-1
-           -neg-  1
-           -hq--> obj-2
-           -alt-> obj-1
+RULE 1 - "If a thing is between something and something else then it is between the something else and the something."
+    if: loc-1 -lex-   between
+              -loc--> obj-1
+              -ref--> obj-2
+              -ref2-> obj-3
+  then: loc-2 -lex-   between
+              -loc--> obj-1
+              -ref--> obj-3
+              -ref2-> obj-2 
+
+
+RULE 2 - "If something is more somehow than something else then the something else is not more somehow than it"
+    if: hq-1 -lex-  ***-1
+             -hq--> obj-1
+             -alt-> obj-2
+  then: hq-2 -lex-  ***-1
+             -neg-  1
+             -hq--> obj-2
+             -alt-> obj-1
+
+
+RULE 3 - "If a thing is someone's something then it is also a something."
+    if: ako-1 -lex-  ***-1
+              -ako-> obj-1
+              -wrt-> agt-1
+  then: ako-2 -lex-  ***-1
+              -ako-> obj-1
+
+
+RULE 4 - "If a thing is someone's something then the someone has the something."
+    if: ako-1 -ako-> obj-1
+              -wrt-> agt-1
+  then: act-1 -lex-  have
+              -agt-> agt-1
+              -obj-> obj-1
 

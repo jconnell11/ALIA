@@ -1,0 +1,36 @@
+// copy this to main directory as "test.facts"
+// Nodes = 22 max
+  hq:1 -lex-   blue
+       -hq---> obj:2
+ ako:3 -lex-   car
+       -ako--> obj:2
+       -wrt--> agt:4
+ tag:5 -lex-   Deb
+       -name-> agt:6
+ src:7 -lex-   from
+       -src--> agt:8
+       -ref--> obj:9
+src:10 -lex-   from
+       -src--> agt:4
+       -ref--> obj:11
+src:12 -lex-   from
+       -src--> agt:13
+       -ref--> obj:9
+tag:14 -lex-   Gwen
+       -name-> agt:15
+tag:16 -lex-   IBM
+       -name-> obj:9
+tag:17 -lex-   Jon
+       -name-> agt:8
+tag:18 -lex-   Ken
+       -name-> agt:4
+tag:19 -lex-   Ken
+       -name-> agt:13
+tag:20 -lex-   Vassar
+       -name-> obj:11
+ako:21 -lex-   wife
+       -ako--> agt:15
+       -wrt--> agt:4
+ako:22 -lex-   wife
+       -ako--> agt:6
+       -wrt--> agt:13

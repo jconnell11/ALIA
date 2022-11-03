@@ -128,7 +128,7 @@ public:
   // convert relative goal to absolute
   double LiftGoal (double dist) const 
     {return __max(bot, __min(ht + dist, top));}
-  double LiftIPS (double rate =1.0) const 
+  double RateIPS (double rate =1.0) const 
     {return(rate * vstd);}
 
   // lift goal characteristics

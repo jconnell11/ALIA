@@ -41,20 +41,20 @@
 // verb links:
 //   "obj"   object affected
 //   "dest"  location for action 
-//   "src"   starting point for action
 //   "cmd"   embedded action as object
 //   "agt"   agent performing action
 // property links:
+//   "name"  proper name for object (e.g. "Dan")
 //   "ako"   general noun class
 //     "of"  for noun-noun modification ("baseball bat")
 //     "wrt" for vague ownership (e.g. "my hand" = ako hand wrt me)
 //   "hq"    general adjective class
 //     "alt" for comparative adjectives ("than")
-//   "loc"   spatial prepositional phrases 
+//   "loc"   current spatial location
 //     "ref" anchor location for relation ("on the table")
-//   "with"  generally tool used in action
-//   "name"  proper name for object (e.g. "Dan")
+//   "src"   starting point for object or action
 //   "cnt"   how many of an object there are
+//   "with"  generally tool used in action
 //   "has"   descriptive part (e.g. "with a red top")
 // modifier links:
 //   "deg"  for properties (e.g "very")
@@ -82,13 +82,13 @@ protected:
   // suggestions to add
   jhcAliaRule *rule;
   jhcAliaOp *oper;
-  jhcAliaChain *bulk;                 
+  jhcAliaChain *bulk;       
 
 
 // PUBLIC MEMBER VARIABLES
 public:
   // morphology (possibly shared)
-  jhcMorphFcns mf;
+  jhcMorphFcns mf;           
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -101,6 +101,7 @@ public:
   // main functions
   void ClearLast ();
   int Assemble (const char *alist);
+  jhcAliaChain *TrySeq () const {return bulk;}
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -108,7 +109,6 @@ private:
   // attention items
   int cvt_attn (const char *alist);
   int append_ynq (jhcAliaChain *seq, jhcNodePool& pool) const;  
-  int append_whq (jhcAliaChain *seq, jhcNodePool& pool) const;
   int append_exist (jhcAliaChain *seq, jhcNodePool& pool) const;
   int append_find (jhcAliaChain *seq, jhcNodePool& pool) const;
   jhcAliaChain *tell_step (const char *verb, jhcNodePool& pool) const;
@@ -138,6 +138,7 @@ private:
 
   // action phrases
   jhcNetNode *build_do (const char *alist, jhcNodePool& pool);
+  jhcNetNode *build_name (const char *alist, jhcNodePool& pool); 
   jhcNetNode *build_fact (const char **after, const char *alist, jhcNodePool& pool, 
                           jhcNetNode *subj =NULL, int pos =0);
   const char *act_deg (jhcNetNode *act, const char *amt, const char *alist, jhcNodePool& pool) const;
@@ -148,7 +149,7 @@ private:
   // object phrases
   jhcNetNode *build_obj (const char **after, const char *alist, jhcNodePool& pool, 
                          jhcNetNode *f0 =NULL, double blf =1.0, int qcnt =0);
-  jhcNetNode *obj_owner (const char *alist, jhcNodePool& pool);
+  jhcNetNode *obj_owner (const char *alist, jhcNodePool& pool, jhcNetNode *f0 =NULL);
   jhcNetNode *ref_props (jhcNetNode *n, jhcNodePool& pool, const char *pron) const;
   bool match_any (const char *txt, const char *val, const char *val2, const char *val3 =NULL, const char *val4 =NULL) const;
 

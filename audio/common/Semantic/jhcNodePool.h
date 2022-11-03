@@ -49,7 +49,7 @@ private:
   jhcNetNode **bucket;
   int *pop;
   int dn, psz, label, ncnt, nbins;
-  int rnum, arg, add, del, mod;
+  int rnum, xarg, xadd, xdel, xmod, xltm;
 
   // translation while loading
   jhcNetNode **trans;
@@ -59,8 +59,11 @@ private:
 
 // PROTECTED MEMBER VARIABLES
 protected:
+  // for special node nick names
+  char sep0;
+
   // version useful for FIND directive
-  int vis0, ver; 
+  int vis0, ltm0, ver; 
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -69,7 +72,7 @@ public:
   ~jhcNodePool ();
   jhcNodePool (); 
   void MakeBins ();
-  void NegID () {dn = 1;}
+  void NegID () {dn = 1; sep0 = '+';}
   int NodeMax () const   {return psz;}
   int LastLabel () const {return label;}
   int Version () const   {return ver;}
@@ -82,7 +85,7 @@ public:
   jhcNetNode *Next (const jhcNetNode *ref, int bin =-1) const;
   int NodeCnt () const;
   int Changes ();
-  void Dirty (int cnt =1) {mod += cnt;}
+  void Dirty (int cnt =1) {xmod += cnt;}
 
   // main functions
   jhcGraphlet *BuildIn (jhcGraphlet *g) {jhcGraphlet *old = acc; acc = g; return old;}
@@ -90,12 +93,13 @@ public:
   int Assert (const jhcGraphlet& pat, jhcBindings& b, double conf =1.0, 
               int tval =0, const jhcNodeList *univ =NULL);
   jhcNetNode *SetGen (jhcNetNode *n, int v =0) const;
-  jhcNetNode *MarkRef (jhcNetNode *n);
+  int IncRef () {return ++rnum;}
   int Refresh (jhcNetNode *n);
   void Refresh (const jhcGraphlet& gr);
 
   // basic construction
   jhcNetNode *MakeNode (const char *kind, const char *word =NULL, int neg =0, double def =1.0, int done =0);
+  jhcNetNode *CloneNode (const jhcNetNode& n);
   jhcNetNode *AddProp (jhcNetNode *head, const char *role, const char *word,
                        int neg =0, double def =1.0, int chk =0, int args =1);
   jhcNetNode *AddDeg (jhcNetNode *head, const char *role, const char *word, const char *amt, 
@@ -104,6 +108,7 @@ public:
   bool InPool (const jhcNetNode *n) const {return InList(n);}
   void MarkBelief (jhcNetNode *n, double blf) const 
     {if (n == NULL) return; n->SetBelief(blf); n->GenMax(ver);}
+  jhcNetNode *BuoyFor (jhcNetNode *deep);
 
   // searching
   jhcNetNode *FindName (const char *full) const;
@@ -122,15 +127,15 @@ public:
   // writing functions
   int Save (const char *fname, int lvl =0) const;
   int Print (int lvl =0) const
-    {return save_nodes(stdout, lvl);}
-  int SaveBin (const char *fname, int bin =-1, int lvl =0) const;
-  int PrintBin (int bin =-1, int lvl =0) const
-    {return save_bins(stdout, bin, lvl);}
+    {return sort_nodes(stdout, lvl, 0);}
+  int SaveBin (const char *fname, int bin =-1, int imin =0) const;
+  int PrintBin (int bin =-1, int imin =0) const
+    {return save_bins(stdout, bin, imin);}
 
   // reading functions
   void ClrTrans (int n =100);
-  int Load (const char *fname, int add =0);
-  int Load (jhcTxtLine& in, int tru =0);
+  int Load (const char *fname, int add =0, int nt =100);
+  int Load (jhcTxtLine& in, int tru);
   int LoadGraph (jhcGraphlet *g, jhcTxtLine& in, int tru =0);
 
 
@@ -138,6 +143,9 @@ public:
 protected:
   // list editing
   int RemNode (jhcNetNode *n);
+
+  // writing functions
+  int save_bins (FILE *out, int bin, int imin) const;
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -149,14 +157,14 @@ private:
   jhcNetNode *lookup_make (jhcNetNode *n, jhcBindings& b, const jhcNodeList *univ); 
 
   // basic construction
-  jhcNetNode *create_node (const char *kind, int id, int chk, int omit);
+  jhcNetNode *create_node (const char *kind, int id, int chk, int omit, int rev);
+  void add_to_list (int h, jhcNetNode *n, int rev);
   int parse_name (char *kind, const char *desc, int ssz);
   const char *extract_kind (char *kind, const char *desc, int ssz);
-  void update_lex (jhcNetNode *n, const char *wd);
+  void update_lex (jhcNetNode *n, const char *wd, int rev);
 
   // writing functions
-  int save_nodes (FILE *out, int lvl) const;
-  int save_bins (FILE *out, int bin, int lvl) const;
+  int sort_nodes (FILE *out, int lvl, int imin) const;
 
   // reading functions
   jhcNetNode *chk_topic (jhcNetNode *topic, jhcTxtLine& in, int tru);

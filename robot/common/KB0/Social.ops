@@ -1,7 +1,19 @@
 // basic interface to ELI robot's person finder
 // ================================================
 
-OP 1 - "To look at a visible person ..."
+OP 1 - "To orient toward the speaker ..."
+  trig:   
+    DO[ act-1 -lex-   orient
+              -dest-> loc-1
+        loc-1 -lex-   toward
+              -ref--> agt-1 
+        ako-1 -lex-   speaker
+              -ako--> agt-1 ]
+---------------
+   FCN[ fcn-1 -lex-  soc_talk ]
+
+
+OP 2 - "To look at a visible person ..."
   trig:   
     DO[ act-1 -lex-  look
         loc-1 -lex-  at
@@ -16,7 +28,7 @@ OP 1 - "To look at a visible person ..."
               -arg-> dude-1 ]
 
 
-OP 2 - "To turn toward a visible person ..."
+OP 3 - "To turn toward a visible person ..."
   trig:   
     DO[ act-1 -lex-  turn
         loc-1 -lex-  toward
@@ -29,17 +41,6 @@ OP 2 - "To turn toward a visible person ..."
 ---------------
    FCN[ fcn-1 -lex-  soc_turn
               -arg-> dude-1 ]
-
-
-OP 3 - "To orient toward me ..."
-  trig:
-    DO[ act-1 -lex-  orient
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> agt-1 
-        agt-1 -lex-  you ]
----------------
-   FCN[ fcn-1 -lex-  soc_sound ]
 
 
 OP 4 - "To approach a visible person ..."

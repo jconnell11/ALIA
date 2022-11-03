@@ -47,6 +47,7 @@ jhcNetRef::jhcNetRef (jhcNodePool *u, double bmin)
   focus = NULL;
   partial = NULL;
   refmode = 1;
+  halo = 1;
 //dbg = 1;               // local debug statements (2 for matcher)
 }
 
@@ -59,7 +60,7 @@ jhcNetRef::jhcNetRef (jhcNodePool *u, double bmin)
 // attempts to resolve description to some pre-existing node if "fmode" > 0
 // can optionally re-use "f0" node from "add" pool as place to copy structure
 // automatically makes a new node, if needed, with all properties true
-// "fmode": -1 = always create new item (not used)
+// "fmode": -1 = always create new item (not used as input)
 //           0 = always make FIND
 //           1 = always make BIND (create > 0)
 //           2 = resolve locally else create item (resolve > 0)
@@ -69,18 +70,18 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
 {
   jhcBindings b;
   jhcNetNode *var = NULL;
-  const jhcNetNode *main = cond.Main();
   const jhcNodeList *f2 = ((univ != &add) ? univ : NULL);
   int pend = (((skolem != NULL) && (*skolem != NULL)) ? 1 : 0); 
-  int n0, find = fmode, got = 0, mc = 1; 
+  int n0 = 0, find = fmode, got = 0, mc = 1; 
 
 //dbg = 1;                             // quick debugging
 
   // never try to FIND/BIND something with no description (primarily "it")
   // Note: now generates FIND[ x ] which is resolved in jhcAliaDir::complete_find
+//  const jhcNetNode *main = cond.Main();
 //  if ((find >= 0) && (cond.NumItems() == 1) && (main->Lex() == NULL) && (main->NumArgs() <= 0))
 //    find = 2;
-  
+
   // possibly tell what is sought
   if (dbg >= 1)
   {
@@ -99,7 +100,10 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
   // set up head node and clear best binding
   focus = cond.Main();
   if (f0 != NULL)
+  {
     b.Bind(focus, f0);
+    find = -1;                                   // skip skolem addition
+  }
   win.Copy(b);
   recent = -1;
 
@@ -117,14 +121,17 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
       if ((var = append_find(n0, blf, skolem, find)) == NULL)
         return NULL;
       jprintf(1, dbg, "  ==> %s from new %s\n", ((find > 0) ? "BIND" : "FIND"), var->Nick());
-      return add.MarkRef(var);                   // user speech
+      var->MarkRef();                           // user speech
+      return var;
     }
   }
 
   // possibly tell result and source
   jprintf(1, dbg, " ==> %s %s %s\n", ((got > 0) ? "existing" : "created"), 
           win.LookUp(focus)->Nick(), ((pend > 0) ? "(purge FINDs)" : ""));
-  return add.MarkRef(win.LookUp(focus));         // user speech
+  var = win.LookUp(focus);
+  var->MarkRef();                                // user speech
+  return var;
 }
 
 
@@ -179,8 +186,8 @@ jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem, i
 
 int jhcNetRef::match_found (jhcBindings *m, int& mc) 
 {
-  jhcNetNode *mate = m->LookUp(focus);
-  int when = mate->LastRef();
+  jhcNetNode *sub, *mate = m->LookUp(focus);
+  int i, nb = m->NumPairs(), when = mate->LastRef();
 
   // outer graphlet items are usually incomplete so reject them
   if (mate->String())
@@ -189,6 +196,19 @@ int jhcNetRef::match_found (jhcBindings *m, int& mc)
     return 0;
   if (focus->ObjNode() && !mate->ObjNode())      // too restrictive?
     return 0;
+
+  // do not increase count if same binding found through different path
+  if (win.Same(*m))
+    return 0;
+
+  // possibly reject variable matches involving halo nodes
+  if (halo <= 0)
+    for (i = 0; i < nb; i++)
+    {
+      sub = m->GetSub(i);
+      if (sub->Halo())
+        return 0;
+    }
 
   // prefer most recently mentioned mate for focus
   jprintf(2, dbg, "MATCH - %s %s\n", mate->Nick(), ((when > recent) ? "keep!" : "ignore")); 

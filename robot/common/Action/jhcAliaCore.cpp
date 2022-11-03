@@ -48,18 +48,21 @@ jhcAliaCore::~jhcAliaCore ()
 jhcAliaCore::jhcAliaCore ()
 {
   // global variables
-  ver = 2.90;
+  ver = 3.00;
   vol = 1;                   // enable free will reactions
   noisy = 1;
 
   // add literal text output and stack crawler to function repertoire
   talk.Bind(&(net.mf));
+  ltm.Bind(&dmem);
   kern.AddFcns(&talk);
+  kern.AddFcns(&ltm);
   kern.AddFcns(&why);
   ndll = 0;
 
-  // connect language to network converter
+  // connect language to network converter and LTM to WMEM
   net.Bind(this);
+  dmem.Bind(&atree);
                       
   // clear state
   *rob = '\0';
@@ -165,25 +168,25 @@ int jhcAliaCore::Baseline (const char *list, int add, int rpt)
 
 
 //= Read in lexical terms, operators, and rules associated with base string.
-// "rpt" is for messages, "level" is marking for additions: 0 = kernel, 1 = extras
+// "rpt" is for messages, "lvl" is marking for additions: 0 = kernel, 1 = extras
 // returns total number of files read
 
-int jhcAliaCore::add_info (const char *dir, const char *base, int rpt, int level)
+int jhcAliaCore::add_info (const char *dir, const char *base, int rpt, int lvl)
 {
   char fname[200];
   int cnt = 0;
 
   if (readable(fname, 200, "%s%s.sgm", dir, base))
-    if ((net.mf).AddVocab(&gr, fname) > 0)
+    if ((net.mf).AddVocab(&gr, fname, 0, lvl) > 0)
       cnt++;
   if (readable(fname, 200, "%s%s.ops", dir, base))
-    if (pmem.Load(fname, 1, rpt, level) > 0)      
+    if (pmem.Load(fname, 1, rpt, lvl) > 0)      
       cnt++;
   if (readable(fname, 200, "%s%s.rules", dir, base))
-    if (amem.Load(fname, 1, rpt, level) > 0)      
+    if (amem.Load(fname, 1, rpt, lvl) > 0)      
       cnt++;
   if (readable(fname, 200, "%s%s_v.rules", dir, base))
-    if (amem.Load(fname, 1, rpt, level) > 0)      
+    if (amem.Load(fname, 1, rpt, lvl) > 0)      
       cnt++;
   return cnt;
 }
@@ -313,7 +316,7 @@ int jhcAliaCore::MainGrammar (const char *gfile, const char *top, const char *rn
   char *sep;
 
   gr.ClearGrammar();
-  if (gr.LoadGrammar(gfile) <= 0)
+  if (gr.LoadGram(gfile, -1) <= 0)
     return 0;
   if ((rname != NULL) && (*rname != '\0'))   
   {
@@ -338,7 +341,7 @@ int jhcAliaCore::MainGrammar (const char *gfile, const char *top, const char *rn
 //= Clear out all focal items.
 // possibly starts up input conversion log file also
 
-void jhcAliaCore::Reset (int forget, const char *rname, int spact)
+void jhcAliaCore::Reset (int forget, const char *rname, int cvt)
 {
   char date[80], fname[80];
 
@@ -349,6 +352,7 @@ void jhcAliaCore::Reset (int forget, const char *rname, int spact)
   stat.Reset();
   mood.Reset();
   topval = 0;
+  spact = 0;
 
   // possibly forget all rules and operators
   if (forget > 0)
@@ -368,7 +372,7 @@ void jhcAliaCore::Reset (int forget, const char *rname, int spact)
   wild  = 0.5;
   det   = 1.0;
   argh  = 1.0;               // secs
-  waver = 2.0;               // secs
+  waver = 5.0;               // secs
 
   // communicate debugging level
   atree.noisy = noisy;
@@ -376,7 +380,7 @@ void jhcAliaCore::Reset (int forget, const char *rname, int spact)
 
   // record starting time and make conversion log file
   t0 = jms_now();
-  if (spact > 0)
+  if (cvt > 0)
   {
     CloseCvt();
     if (*cfile != '\0')
@@ -386,6 +390,11 @@ void jhcAliaCore::Reset (int forget, const char *rname, int spact)
     if (fopen_s(&log, fname, "w") != 0)
       log = NULL;
   }
+
+  // possibly load some LTM assertions for testing
+  if (dmem.LoadFacts("test.facts", 0, 3, 0) >= 0)
+    jprintf("\n"); 
+//dmem.SaveFacts("test0.facts");
 }
 
 
@@ -393,29 +402,133 @@ void jhcAliaCore::Reset (int forget, const char *rname, int spact)
 // if awake == 0 then needs to hear attention word to process sentence
 // returns 2 if attention found, 1 if understood, 0 if unintelligible
 
-int jhcAliaCore::Interpret (const char *input, int awake, int amode)
+int jhcAliaCore::Interpret (const char *input, int awake, int amode, int spin)
 {
   char alist[1000] = "";
-  const char *sent = ((input != NULL) ? input : alist);
-  int nt, spact, attn = 0;
+  const char *fix, *sent = ((input != NULL) ? input : alist);
+  int nt = 0, attn = 0;
 
-  // check if name mentioned and get parse results
+  // check if name mentioned 
   attn = gr.NameSaid(sent, amode);
-  if ((nt = gr.Parse(sent, 1)) > 0)
-    gr.AssocList(alist, 1);
   if ((awake == 0) && (attn <= 0))
     return 0;
 
-  // show parsing steps then generate semantic nets 
+  // parse input string to get association list
+  if (input != NULL)
+  {
+    sent = gr.Expand(sent, 1);                   // undo contractions   
+    nt = gr.Parse(sent, 0);                      
+    if ((nt <= 0) && (spin == 0))
+      if ((fix = vc.FixTypos(sent)) != NULL)     // correct typing errors
+      {
+        sent = fix;
+        nt = gr.Parse(sent, 0);
+        if (nt > 0)
+          jprintf(1, noisy, "{ Fixed typos in: \"%s\" }\n", gr.NoContract());
+      }
+    if (nt <= 0)
+      if (guess_cats(sent) > 0)                  // handle unknown words
+        nt = gr.Parse(sent, 0);
+    if (nt > 0)
+      gr.AssocList(alist, 1);
+  }
+
+  // show parsing steps and reduce "lonely" (even if not understood)
   gr.PrintInput();
   if (nt > 0)
   {
-    mood.Hear((int) strlen(input));      // reduces "lonely" (even if not understood)
+    mood.Hear((int) strlen(input));      
     gr.PrintResult(3, 1);
   }
-  spact = net.Convert(alist, sent);      // nt = 0 gives huh? response
+
+  // generate semantic nets (nt = 0 gives huh? response)
+  spact = net.Convert(alist, sent);     
   net.Summarize(log, sent, nt, spact);
   return((attn > 0) ? 2 : 1);
+}
+
+
+//= Try to identifying unknonw open-class words from morphology and context.
+// returns number fixed 
+
+int jhcAliaCore::guess_cats (const char *sent)
+{
+  char wd[40];
+  const char *txt = sent;
+  int cat, cnt = 0;
+
+  // go through the input looking for unknown words
+  vc.InitGuess();
+  while ((txt = vc.NextGuess(txt)) != NULL)
+  {
+    // retrieve guess about the category of some word
+    jprintf(1, noisy, "{ Adding \"%s\" to grammar %s category }\n", vc.Unknown(), vc.Category());
+    if (cnt++ <= 0)
+      sp_listen(0);
+    cat = (net.mf).GramBase(wd, vc.Unknown(), vc.Category());
+    
+    // explicitly add morphological variants for some categories
+    if (cat == JTV_NAME)
+    {
+      gram_add("NAME", wd, 3);
+      gram_add("NAME-P", (net.mf).SurfWord(wd, JTAG_NAMEP), 3);      // possessive
+    }
+    else if (cat == JTV_NSING)
+    {
+      gram_add("AKO", wd, 3);
+      gram_add("AKO-S", (net.mf).SurfWord(wd, JTAG_NPL), 3);         // plural
+      gram_add("AKO-P", (net.mf).SurfWord(wd, JTAG_NPOSS), 3);       // possessive
+    }
+    else if (cat == JTV_APROP)
+      gram_add_hq(wd);
+    else if (cat == JTV_VIMP)
+    {
+      gram_add("ACT", wd, 3);
+      gram_add("ACT-S", (net.mf).SurfWord(wd, JTAG_VPRES), 3);       // present tense
+      gram_add("ACT-D", (net.mf).SurfWord(wd, JTAG_VPAST), 3);       // past tense
+      gram_add("ACT-G", (net.mf).SurfWord(wd, JTAG_VPROG), 3);       // progressive
+    }
+    else if (cat == JTV_ADV)
+    {
+      gram_add("MOD", wd, 3);
+      gram_add("HQ", (net.mf).BaseWord(wd, wd, JTAG_ADV), 3);        // quickly -> quick (+ others?)                                        
+    }
+    else
+      gram_add(vc.Category(), vc.Unknown(), 3);                      // should not happen
+  }
+  if (cnt > 0)
+    sp_listen(1);
+  return cnt;
+}
+
+
+//= For an adjective add base form plus assumed comparative and superlative.
+// Note: does NOT add adverbial form ("MOD")
+
+void jhcAliaCore::gram_add_hq (const char *wd)
+{
+  gram_add("HQ", wd, 3);
+  gram_add("HQ-ER",  (net.mf).SurfWord(wd, JTAG_ACOMP), 3);          // comparative
+  gram_add("HQ-EST", (net.mf).SurfWord(wd, JTAG_ASUP), 3);           // superlative
+}
+
+
+//= Consider next best parse tree to generate a new bulk sequence for TRY directive.
+// returns NULL if no other parses with same speech act as original
+
+jhcAliaChain *jhcAliaCore::Reinterpret ()
+{
+  char alist[1000] = "";
+
+  if ((spact >= 1) && (spact <= 3))              // fact, command, or question
+    while (gr.NextBest() >= 0)
+      if (net.Assemble(gr.AssocList(alist, 1)) == spact)
+      {   
+        jprintf("\n@@@ switch to parser Tree %d:\n\n", gr.Selected());
+        jprintf("  --> %s\n\n", gr.NoTabs(alist));
+        return net.TrySeq();
+      }
+  return NULL;
 }
 
 
@@ -434,7 +547,12 @@ int jhcAliaCore::RunAll (int gc)
   jprintf(3, noisy, "\nSTEP %d ----------------------------------------------------\n\n", atree.Version());
   kern.Volunteer();
   if (atree.Update(gc) > 0)                      // also if bth or node blfs change?
-    amem.RefreshHalo(atree, noisy - 1);
+  {
+    dmem.DejaVu();                               // (re-)tether objects to LTM
+    atree.ClearHalo();
+    dmem.GhostFacts();                           // add in proximal LTM facts
+    amem.RefreshHalo(atree, noisy - 1);          // apply all rules
+  }
   if (gc > 0)
   {
     mood.Update(atree);                          // status NOTEs
@@ -572,33 +690,16 @@ int jhcAliaCore::Percolate (const jhcAliaDir& dir)
     return dir.own;
   tval = ++topval;
 
-  // mark all nodes in graphlet with special NOTE id
-  // ignore objects becaue they carry no intrinsic semantic value
+  // mark all nodes in graphlet with special NOTE id (always increases)
+  // ignore objects because they carry no intrinsic semantic value
   for (i = 0; i < ni; i++)
     if ((n = key->Item(i)) != NULL)
-      if (!n->ObjNode() && (n->top < tval))
+      if (n->top < tval)      // need object marking for ghost facts
       {
         n->top = tval;
         atree.Dirty();        // queue recomputation of halo
       }
   return tval;
-}
-
-
-//= Deselect nodes in NOTE and re-derive halo without them.
-// Note: derived nodes take max of ids (current id may have masked older one)
-//       but each time lower priority focus tried, halo refreshed by Percolate
-
-int jhcAliaCore::ZeroTop (const jhcAliaDir& dir) 
-{
-  jhcNetNode *n;
-  const jhcGraphlet *key = &(dir.key);
-  int i, ni = key->NumItems();
-
-  for (i = 0; i < ni; i++)
-    if ((n = key->Item(i)) != NULL)
-      n->top = 0;
-  return 0;
 }
 
 
@@ -697,9 +798,11 @@ void jhcAliaCore::LoadLearned ()
 {
   jprintf(1, noisy, "Reloading learned knowledge:\n");
   pmem.Load("KB/learned.ops",   1, noisy + 1, 2);          // 2 = accumulated level
-  amem.Load("KB/learned.rules", 1, noisy + 1, 2);         
   pmem.Overrides("KB/learned.pref");
+  amem.Load("KB/learned.rules", 1, noisy + 1, 2);         
   amem.Overrides("KB/learned.conf");
+  dmem.LoadFacts("KB/learned.facts", 1, noisy + 1, 2);  
+  (net.mf).AddVocab(&gr, "KB/learned.sgm", 0, 2);
   jprintf(1, noisy, "\n");
 }
 
@@ -710,22 +813,26 @@ void jhcAliaCore::LoadLearned ()
 void jhcAliaCore::DumpLearned () const
 {
   char base[80] = "KB/kb_";
-  int nop, nr;
+  int nop, nr, nf, nw;
 
   // save rules and operators  
   jprintf(1, noisy, "\nSaving learned knowledge:\n");
   jms_date(base + 6, 0, 74);
-  nr = amem.Save(base, 2);                                 // 2 = accumulated level
-  nop = pmem.Save(base, 2);                               
-  amem.Alterations(base);                 
+  nop = pmem.Save(base, 2);                               // 2 = accumulated level
   pmem.Alterations(base);
+  nr = amem.Save(base, 2);                                 
+  amem.Alterations(base);   
+  nf = dmem.SaveFacts(base, 2);
+  nw = gr.SaveCats(base, 2, &(net.mf));
 
   // make copies as generic database
-  copy_file("KB/learned.rules", base);
   copy_file("KB/learned.ops",   base);
-  copy_file("KB/learned.conf",  base);
   copy_file("KB/learned.pref",  base);
-  jprintf(1, noisy, " TOTAL = %d operators, %d rules\n", nop, nr);
+  copy_file("KB/learned.rules", base);
+  copy_file("KB/learned.conf",  base);
+  copy_file("KB/learned.facts", base);
+  copy_file("KB/learned.sgm",   base);
+  jprintf(1, noisy, " TOTAL = %d operators, %d rules, %d facts, %d words\n", nop, nr, nf, nw);
 }
 
 
@@ -763,11 +870,13 @@ void jhcAliaCore::copy_file (const char *dest, const char *base) const
 
 //= Save all rules and operators learned during this session.
 
-void jhcAliaCore::DumpSession () const
+void jhcAliaCore::DumpSession () 
 {
-  amem.Save("session.rules", 3);
   pmem.Save("session.ops", 3);
-//  atree.Save("session.wmem");
+  amem.Save("session.rules", 3);
+  dmem.SaveFacts("session.facts", 3);
+  gr.SaveCats("session.sgm", 3, &(net.mf));
+//atree.Save("session.wmem");
 }
 
 
@@ -775,6 +884,8 @@ void jhcAliaCore::DumpSession () const
 
 void jhcAliaCore::DumpAll () const
 {
-  amem.Save("all.rules", 0);
   pmem.Save("all.ops", 0);
+  amem.Save("all.rules", 0);
+  dmem.SaveFacts("all.facts", 0);
+  gr.SaveCats("all.sgm", -1, &(net.mf));
 }

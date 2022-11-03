@@ -112,8 +112,8 @@ public:
   int SaveVals (const char *fname);
 
   // main functions
-  int SetPeople (const char *fname, int append =0);
-  int Reset (int bmode =0);
+  int SetPeople (const char *fname, int append =0, int wds =1);
+  int Reset (int bmode =0, int wds =0);
   int Respond ();
   void Done (int face =0, int status =1);
 

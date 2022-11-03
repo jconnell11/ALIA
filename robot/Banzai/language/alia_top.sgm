@@ -31,6 +31,7 @@
 =[%Attn]
   (<POLITE>) <chain> (<POLITE>)
   <%fact>
+  <%fact-n>
 
 
 // --------------------------------------------------
@@ -42,7 +43,7 @@
   <$res> <$cond>
   <$macro>
   <$cond-s> <$res-s>
-//  <$cond-i> <$res-i>
+  <$cond-i> <$res-i>
 
 
 // rule precondition
@@ -55,6 +56,7 @@
 
 =[$res]
   <%fact>
+  <%fact-n>
 
 
 // rule precondition (indefinite)
@@ -62,6 +64,7 @@
 =[$cond-i]
   <%obj-i>
   <HQ>
+  <MOD>
 
 
 // rule result (for indefinite)
@@ -112,7 +115,7 @@
 // operator trigger goal
 
 =[$trig]
-  (<inf>) <cmd> (<situation>)
+  <inf> <cmd> (<situation>)
   <inf> <cmd> <BEFORE>
   <if> <FAIL> <!find>
   <BEFORE> <cmd-g> (<situation>) 
@@ -208,6 +211,7 @@
 =[asp]
   <%fact>
   <%fact-i>
+  <%fact-n>
  
 
 // conjunction specification for situation

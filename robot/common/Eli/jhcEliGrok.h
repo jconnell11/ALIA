@@ -31,7 +31,6 @@
 #include "Processing/jhcDraw.h"        // common video
 
 #include "Body/jhcEliBody.h"           // common robot
-#include "Eli/jhcEliWatch.h"
 #include "Environ/jhcLocalOcc.h"
 #include "Environ/jhcTable.h"
 #include "Objects/jhcSurfObjs.h"
@@ -78,7 +77,6 @@
 //         +SmTrack
 //       +PatchProps
 //     +Table                supporting surfaces
-//     +EliWatch             gaze behaviors
 //     +EliGrab              manipulation
 // 
 // </pre>
@@ -118,9 +116,6 @@ public:
   jhcLocalOcc nav;                     // navigation obstacles
   jhcSurfObjs sobj;                    // depth-based object detection
   jhcTable tab;                        // supporting surfaces
-
-  // innate behaviors
-  jhcEliWatch watch;
   
   // head visibility parameters
   jhcParam vps;
@@ -140,8 +135,6 @@ public:
   const jhcImg *HeadView () const {return &mark;}
   const jhcImg *MapView () const  {return &mark2;}
   const char *NavGoal () const    {return(((act < 0) || (act > 3)) ? NULL : nmode[act]);}
-  const char *Watching (int dash =1) const   
-    {return watch.Behavior((phy <= 0) ? -1 : neck->GazeWin(), dash);}
   bool Ghost () const   {return(phy <= 0);}
   UL32 CmdTime () const {return tnow;}
 
@@ -158,7 +151,7 @@ public:
 
   // combination sensing
   int ClosestFace (double front =0.0, int cnt =1) const;
-  int CentralFace (double aim =0.0, int cnt =1) const;
+  int HeadAlong (jhcMatrix& head, double aim =0.0, double dev =5.0) const;
 
   // high-level people commands
   int WatchPerson (int id, int bid =10);

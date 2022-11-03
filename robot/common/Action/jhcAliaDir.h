@@ -40,10 +40,10 @@
 //= Various different kinds of directives.
 // NOTE is a special bridge between declarative and procedural
 // must remain consistent with "ktag" strings
-//                  0          1          2         3          4         5         6
+//                  0          1          2         3          4         5          6
 enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_PUNT, JDIR_FCN, JDIR_CHK, JDIR_ACH, 
                 JDIR_KEEP, JDIR_BIND, JDIR_FIND, JDIR_NONE, JDIR_ADD, JDIR_TRY, JDIR_MAX};
-//                  7          8          9         10         11        12        13    
+//                  7          8          9         10         11        12         13    
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -118,7 +118,7 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_PUNT, JDIR_FCN, JDIR_CHK, 
 // 
 //  TRY: accept new command or question sequence
 //       allows detection of failure at any step
-//  
+// 
 // </pre>
 
 class jhcAliaDir : private jhcSituation
@@ -157,7 +157,6 @@ private:
   int nri;
 
   // execution state
-  jhcAliaChain *meth;
   jhcGraphlet ctx;
   int inst, verdict, wait, chk_state;
 
@@ -180,6 +179,9 @@ public:
   class jhcAliaOp *op[omax];
   jhcBindings match[omax];
   int mc;
+
+  // action currently in progress
+  jhcAliaChain *meth;
 
   // control of procedural diagnostic messages
   int noisy;                    
@@ -273,6 +275,7 @@ private:
   int complete_find (jhcBindings *m, int& mc);
   class jhcAliaChain *chk_method ();
   int assume_found ();
+  jhcNetNode *lift_key ();
 
   // jhcSituation override
   int match_found (jhcBindings *m, int& mc)

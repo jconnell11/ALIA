@@ -111,6 +111,7 @@ public:
   jhcGraphlet ();
   int MaxItems () const {return gmax;}
   void Clear () {ni = 0;}
+  void Init (jhcNetNode *item) {Clear(); AddItem(item);}
   bool Moot () const;
 
   // description access
@@ -139,6 +140,7 @@ public:
   int RemItem (const jhcNetNode *item);
   int RemAll (const jhcGraphlet& ref);
   void Pop (int cnt =1) {ni = __max(0, ni - cnt);}
+  void TrimTo (int cnt) {ni = __max(0, cnt);}
   jhcNetNode *SetMain (jhcNetNode *main);
   int ReplaceMain (jhcNetNode *main);
   jhcNetNode *MainLast ();
@@ -149,7 +151,7 @@ public:
   int ActualizeAll (int ver) const;
   double MinBelief () const;
   void ForceBelief (double blf);
-  void MarkSeeds () const;
+  void MarkSeeds ();
 
   // writing functions
   int Save (FILE *out, int lvl =0, int detail =1) const;
@@ -157,10 +159,6 @@ public:
     {return Save(stdout, lvl, detail);}
   void Print (const char *tag, int lvl =0, int detail =1) const;
   void ListAll (const char *tag =NULL, int lvl =0, int blf =0) const;
-
-
-// PRIVATE MEMBER FUNCTIONS
-private:
 
 
 };
