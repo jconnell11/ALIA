@@ -31,24 +31,6 @@
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= General conditional debugging message removes tabs from alist.
-// skip: -1 = full alist, 0 = trim at next frag, 1 = trim at end of this frag 
-// mostly used by jhcNetBuild
-
-void jhcSlotVal::CallList (int lvl, const char *fcn, const char *alist, int skip, const char *entry) const
-{
-  if (dbg < lvl)
-    return;
-  if (entry == NULL)
-    jprintf("%s\n  ", fcn);
-  else
-    jprintf("%s [%s]\n  ", fcn, entry);
-  PrintList(alist, NULL, skip);
-  if ((alist != NULL) && (*alist != '\0'))
-    jprintf("\n");
-}
-
-
 //= Print a shortened "pretty" version of association list (no tabs).
 // can automatically terminate at the end of the current fragment (skip >= 0)
 

@@ -1,0 +1,5 @@
+RULE 1 - "Red things are interesting"
+    if:  hq-2 -lex-  red
+              -hq--> obj-1
+  then:  hq-3 -lex-  interesting
+              -hq--> obj-1

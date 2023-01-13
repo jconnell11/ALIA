@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ jhcAliaMood::jhcAliaMood ()
 sz = 600;
 bhist.SetSize(sz);
 
+  noisy = 1;                 // defaulted from jhcAliaCore
   Defaults();
   Reset();
 }
@@ -100,7 +101,8 @@ int jhcAliaMood::lonely_params (const char *fname)
   ps->NextSpecF( &needy,  40.0, "Minimum interval (sec)");
   ps->NextSpec4( &bereft,  4,   "Very lonely on repeat");
 
-  ps->NextSpecF( &fade,   10.0, "User input decay (sec)");  
+  ps->NextSpecF( &fade,   10.0, "User input decay (sec)"); 
+  ps->NextSpecF( &ch2ips,  0.2, "Input as motion (ips/ch)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -222,7 +224,7 @@ void jhcAliaMood::Update (jhcAliaNote& rpt, int nag)
     surp  -= surp * calm * dt;         // linear decay
   }
 
-// should move to jhcStats
+// should move to jhcAliaStats
 //bhist.Scroll(fill, ROUND(1000.0 * busy));
 bhist.Scroll(fill, ROUND(1000.0 * input));
 fill++;
@@ -258,7 +260,7 @@ int jhcAliaMood::chk_busy (jhcAliaNote& rpt)
   // check for overstimulation (complains just once at beginning)
   if ((busy >= frantic) && (yikes <= 0))
   {
-    jprintf("{ chk_busy: overwhelmed at %3.1f }\n", busy);
+    jprintf(1, noisy, " { chk_busy: overwhelmed at %3.1f }\n", busy);
     rpt.NewProp(rpt.Self(), "hq", "overwhelmed");
     yikes = 1;
     return 1;
@@ -288,7 +290,7 @@ int jhcAliaMood::chk_antsy (jhcAliaNote& rpt)
   }
   else if ((blah > 0) && (jms_secs(now, kvetch) >= nag))
   {
-    jprintf("{ chk_busy: bored at %3.1f [x%d] }\n", fidget, blah);
+    jprintf(1, noisy, " { chk_busy: bored at %3.1f [x%d] }\n", fidget, blah);
     rpt.NewDeg(rpt.Self(), "hq", "bored", ((blah >= very) ? "very" : NULL));
     kvetch = now;
     blah++;
@@ -327,7 +329,7 @@ int jhcAliaMood::chk_lonely (jhcAliaNote& rpt)
       pause = __max(needy, pause);
       if (jms_secs(now, call) >= pause)
       {
-        jprintf("{ chk_lonely: input at %3.1f [x%d] }\n", input, lament);
+        jprintf(1, noisy, " { chk_lonely: input at %3.1f [x%d] }\n", input, lament);
         rpt.NewDeg(rpt.Self(), "hq", "lonely", ((lament >= bereft) ? "very" : NULL));
         call = now;
         lament++;
@@ -363,7 +365,7 @@ int jhcAliaMood::chk_tired (jhcAliaNote& rpt)
     wait = __max(urgent, wait);
     if ((moan == 0) || (jms_secs(now, moan) >= wait))
     {
-      jprintf("{ power_state: battery at %d percent }\n", power);
+      jprintf(1, noisy, " { power_state: battery at %d percent }\n", power);
       rpt.NewDeg(rpt.Self(), "hq", "tired", ((power <= slug) ? "very" : NULL));
       moan = now;
       return 1;
@@ -436,6 +438,7 @@ void jhcAliaMood::Hear (int len)
     return;
   input += 1.0;
   input = __min(input, sat);
+  Walk(ch2ips * len);        // alter antsy also
 }
 
 
@@ -515,7 +518,7 @@ void jhcAliaMood::Walk (double ips)
 {
   if (ips <= 0.0)
     return;
-  active = __max(active, ips);
+  fidget = __max(fidget, ips);
 }
 
 
@@ -526,7 +529,7 @@ void jhcAliaMood::Wave (double ips)
 {
   if (ips <= 0.0)
     return;
-  active = __max(active, ips);
+  fidget = __max(fidget, ips);
 }
 
 

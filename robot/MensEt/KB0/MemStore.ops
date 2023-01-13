@@ -29,21 +29,6 @@ OP 3 - "To acknowledge say done"
         txt-1 -str-  done ]
 
 
-// --------------------------------------
-
-OP 5 - "To recall something ..."
-  trig:
-    DO[ act-1 -lex-  recall
-              -obj-> fact-1 ]
----------------
-   FCN[ fcn-1 -lex-  mem_match
-              -arg-> fact-1 ]
 
 
-OP 6 - "To find something with some name recall it..."
-  trig:
-  FIND[ obj-1 
-        tag-1 -name-> obj-1 ]
----------------
-    DO[ act-1 -lex-  recall
-              -obj-> obj-1 ]
+

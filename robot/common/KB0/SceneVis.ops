@@ -212,4 +212,16 @@ OP 19 - "To find something with a location relative to something visible and ano
    FCN[ fcn-1 -lex-  vis_enum 
               -arg-> obj-1 ] 
 
+// ================================================
 
+OP 20 - "To look at some object ..."
+  trig:
+    DO[ act-1 -lex-   look
+              -dest-> loc-1
+        loc-1 -lex-   at
+              -ref--> obj-1
+        ako-1 -lex-   object
+              -ako--> obj-1 ]
+----------
+   FCN[ fcn-1 -lex-  vis_gaze
+              -arg-> obj-1 ] 

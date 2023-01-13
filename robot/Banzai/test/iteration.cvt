@@ -1,0 +1,188 @@
+.................................................
+
+"lift each red object on the table"
+
+*** 3 parses ***
+
+  BIND[  obj-19
+        kind-20 -lex-  table
+                -ako-> obj-19 ]
+   ~~~ 2
+  EACH[  obj-21
+          hq-22 -lex-  red
+                -hq--> obj-21
+        kind-23 -lex-  object
+                -ako-> obj-21
+         loc-24 -lex-  on
+                -loc-> obj-21
+                -ref-> obj-19 ]
+    DO[ act-18 -lex-  lift
+               -obj-> obj-21 ]
+     @ 2
+
+.................................................
+
+"remove any screws then lift the object"
+
+   ~~~ 1
+   ANY[  obj-118
+        kind-119 -lex-  screw
+                 -ako-> obj-118 ]
+     % 3
+    DO[ act-117 -lex-  remove
+                -obj-> obj-118 ]
+     @ 1
+   ~~~ 3
+  BIND[  obj-121
+        kind-122 -lex-  object
+                 -ako-> obj-121 ]
+    DO[ act-120 -lex-  lift
+                -obj-> obj-121 ]
+
+.................................................
+
+"take all the objects from the tables then drive forward and turn left"
+
+*** 2 parses ***
+
+   ~~~ 1
+  EACH[  obj-154
+        kind-155 -lex-  table
+                 -ako-> obj-154 ]
+     % 4
+   ~~~ 2
+  EACH[  obj-156
+        kind-157 -lex-  object
+                 -ako-> obj-156
+         src-158 -lex-  from
+                 -src-> obj-156
+                 -ref-> obj-154 ]
+     % 1
+    DO[ act-153 -lex-  take
+                -obj-> obj-156 ]
+     @ 2
+   ~~~ 4
+    DO[ act-159 -lex-  drive
+        dir-160 -lex-  forward
+                -dir-> act-159 ]
+    DO[ act-161 -lex-  turn
+        dir-162 -lex-  left
+                -dir-> act-161 ]
+
+.................................................
+
+"turn left then grab all of the red objects"
+
+    DO[ act-231 -lex-  turn
+        dir-232 -lex-  left
+                -dir-> act-231 ]
+   ~~~ 2
+  EACH[  obj-234
+          hq-235 -lex-  red
+                 -hq--> obj-234
+        kind-236 -lex-  object
+                 -ako-> obj-234 ]
+    DO[ act-233 -lex-  grab
+                -obj-> obj-234 ]
+     @ 2
+
+.................................................
+
+"what color are the objects"
+
+   ~~~ 1
+  EACH[  obj-254
+        kind-255 -lex-  object
+                 -ako-> obj-254 ]
+  FIND[  hq-256 -hq--> obj-254
+        ako-257 -lex-  color
+                -ako-> hq-256 ]
+    DO[  act-258 -lex-   tell
+                 -dest-> dude-3
+                 -obj--> hq-256 ]
+     @ 1
+
+.................................................
+
+"for each object determine its color"
+
+   ~~~ 1
+  EACH[  obj-309
+        kind-310 -lex-  object
+                 -ako-> obj-309 ]
+  FIND[  obj-311
+        kind-312 -lex-  color
+                 -ako-> obj-311
+                 -wrt-> obj-309 ]
+     @ 1
+
+.................................................
+
+"all the dogs are yellow"
+
+   ~~~ 1
+  EACH[  obj-325
+        kind-326 -lex-  dog
+                 -ako-> obj-325 ]
+  NOTE[  hq-327 -lex-  yellow
+                -hq--> obj-325 ]
+     @ 1
+
+.................................................
+
+"for each object on each table lift it and remove all the screws"
+
+   ~~~ 1
+  EACH[  obj-345
+        kind-346 -lex-  table
+                 -ako-> obj-345 ]
+   ~~~ 2
+  EACH[  obj-347
+        kind-348 -lex-  object
+                 -ako-> obj-347
+         loc-349 -lex-  on
+                 -loc-> obj-347
+                 -ref-> obj-345 ]
+     % 1
+    DO[ act-350 -lex-  lift
+                -obj-> obj-347 ]
+   ~~~ 4
+  EACH[  obj-352
+        kind-353 -lex-  screw
+                 -ako-> obj-352 ]
+     % 2
+    DO[ act-351 -lex-  remove
+                -obj-> obj-352 ]
+     @ 4
+
+.................................................
+
+"for each object on each table lift it, remove all the screws, then take the object"
+
+   ~~~ 1
+  EACH[  obj-371
+        kind-372 -lex-  table
+                 -ako-> obj-371 ]
+   ~~~ 2
+  EACH[  obj-373
+        kind-374 -lex-  object
+                 -ako-> obj-373
+         loc-375 -lex-  on
+                 -loc-> obj-373
+                 -ref-> obj-371 ]
+     % 1
+    DO[ act-376 -lex-  lift
+                -obj-> obj-373 ]
+   ~~~ 4
+  EACH[  obj-378
+        kind-379 -lex-  screw
+                 -ako-> obj-378 ]
+     % 6
+    DO[ act-377 -lex-  remove
+                -obj-> obj-378 ]
+     @ 4
+   ~~~ 6
+    DO[ act-380 -lex-  take
+                -obj-> obj-373 ]
+     @ 2
+

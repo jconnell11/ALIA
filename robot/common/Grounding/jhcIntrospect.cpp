@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,14 +94,13 @@ int jhcIntrospect::why_try0 (const jhcAliaDesc *desc, int i)
 //= Continue trying to determine failure reason for directive.
 // <pre>
 //   trig:
-//   FIND[ conj-1 -lex-  because
-//                -why-> fail-1
-//                -sit-> sit-1 
-//         fail-1 -lex-  fail
-//                -act-> plan-1 ]
+//   ANTE[  act-1 -lex-  explain
+//                -obj-> fail-2
+//         fail-2 -lex-  fail
+//                -act-> plan-3 ]
 // ---------------
 //    FCN[ fcn-1 -lex-  why_try 
-//               -arg-> fail-1 ]
+//               -arg-> fail-2 ]
 // </pre>
 // returns 1 if done, 0 if still working, -1 for failure
 
@@ -129,7 +128,7 @@ int jhcIntrospect::why_try (const jhcAliaDesc *desc, int i)
   if ((dir = failed_dir(ward->Method())) == NULL)
     return -1;
   k = (int) dir->Kind();
-  if (k == JDIR_FIND) 
+  if ((k == JDIR_FIND) || (k == JDIR_BIND) || (k == JDIR_EACH))
     if (multi_act(ward->Method(), NULL, 0))
       return cuz_find(fail, dir);
   if (k == JDIR_DO) 
@@ -179,9 +178,8 @@ bool jhcIntrospect::multi_act (const jhcAliaChain *start, const jhcAliaChain *no
     return false;
   if ((dir = step->GetDir()) == NULL)
     return false;
-  if (dir->Kind() != JDIR_BIND) 
-    if (++state > 2)                             // always inc if not BIND
-      return true;
+  if (++state > 2)                              
+    return true;
   return(multi_act(start, step->cont, state) ||     
          multi_act(start, step->alt,  state) ||
          multi_act(start, step->fail, state));
@@ -197,7 +195,7 @@ bool jhcIntrospect::multi_act (const jhcAliaChain *start, const jhcAliaChain *no
 // <pre>
 //   NOTE[  why-1 -lex-  because
 //                -why-> fail-1
-//                -sit-> hq-1          <-- only main fact of error NOTE
+//                -sit-> hq-1         
 //           hq-1 -lex-  broken        
 //                -hq--> obj-1
 //          ako-1 -lex-  arm
@@ -208,6 +206,7 @@ int jhcIntrospect::cuz_err (jhcAliaDesc *fail, const jhcGraphlet *sit)
 {
   atree->StartNote();
   atree->AddArg(atree->NewProp(fail, "why", "because"), "sit", sit->Main());
+  atree->AddNode(fail);
   atree->FinishNote();
   return 1;
 }

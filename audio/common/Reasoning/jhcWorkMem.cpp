@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ jhcWorkMem::jhcWorkMem ()
   halo.MakeBins();
 
   // halo control
-  halo.NegID();
+  halo.NegID();        // negative IDs and newest at list end
   rim = 0;
   nimbus = 0;
   mode = 0;
@@ -65,7 +65,10 @@ jhcWorkMem::jhcWorkMem ()
   clr_ext();
 
   // fact belief threshold
-  skep = 0.5;           
+  skep = 0.5;    
+
+  // debugging
+  noisy = 1;           // defaulted from jhcAliaCore
 }
 
 
@@ -182,34 +185,67 @@ jhcNetNode *jhcWorkMem::SetUser (jhcNetNode *n)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Returns next node in list, transitioning from main to halo-1 to halo-2 if needed.
-// call with prev = NULL to get first node, use SetMode(3) to include halo
-// assumes all items in halo node pool have "id" < 0, tries non-halo first
+// use MaxBand(3) to include halo, member variable "mode" limits last
+// retrieval order by bands: 0->1->2->3, call with prev = NULL to get first node
 // can restrict selection to just one hash bin, or use all if bin < 0
+// 
+// main may have missing IDs and be shuffled by recency
+// halo has no gaps and is strictly ascending by creation
+// actual order of main and halo scrambled by bin splitting
+// <pre>
+//
+// Conceptual diagram of node order in each bin based on IDs
+// 
+//   main:  obj-22
+//          obj-2      BAND 0: current conscious facts
+//          obj-9              (ordered by recency)
+//          obj-17
+// 
+//   halo:  obj+3
+//          obj+4      BAND 1: LTM ghost facts
+//          obj+7
+//                  <--- rim = 7
+//          obj+8
+//          obj+10     BAND 2: one rule inferences
+//          obj+12
+//                  <--- nimbus = 14
+//          obj+16
+//          obj+20     BAND 3: two rule inferences
+//          obj+21
+//
+// </pre>
 
 jhcNetNode *jhcWorkMem::NextNode (const jhcNetNode *prev, int bin) const
 {
   jhcNetNode *n = NULL;
+  int id;
 
-  // try all main memory nodes first
-  if ((prev == NULL) || (prev->Inst() >= 0))
+  // sanity check 
+  if (mode < 0)
+    return NULL;
+
+  // get candidate for next node
+  if ((prev != NULL) && prev->Halo())            // continue in halo
+    n = halo.Next(prev, bin);              
+  else if ((n = Next(prev, bin)) == NULL)        // continue in main
+    if (mode > 0)
+      n = halo.Pool(bin);                        // shift to halo
+
+  // possibly sufficient
+  if ((n == NULL) || !n->Halo())
+    return n;
+
+  // skip halo nodes if not in valid range (band0 - mode)
+  while (n != NULL)
   {
-    if ((n = Next(prev, bin)) != NULL)
-      return n;
-    if (mode <= 0)                     // see if transition to halo allowed
-      return NULL;
-    n = halo.Pool(bin);                // get candidate node from halo   
+    id = abs(n->Inst());
+    if (((mode == 1) && (id <= rim)) || ((mode == 2) && (id <= nimbus)) || (mode == 3))
+      break;                                     // id just right so keep
+    else if (bin < 0)
+      n = halo.NextPool(n);                      // id too high so shift bin
+    else
+      n = NULL;                                  // id too high so punt
   }
-  else
-    n = halo.Next(prev, bin);          // halo -> get another halo node 
-
-  // skip high-numbered halo nodes if only LTM props or 1-step inference allowed
-  if ((mode == 1) || (mode == 2))
-    while (n != NULL) 
-    {
-      if (abs(n->Inst()) <= nimbus)    
-        break;
-      n = halo.Next(n, bin);           // will try other buckets if bin < 0
-    }
   return n;
 }
 
@@ -246,6 +282,33 @@ int jhcWorkMem::SameBin (const jhcNetNode& focus, const jhcBindings *b) const
   if (mode <= 0)
     return BinCnt(bin);
   return(BinCnt(bin) + halo.BinCnt(bin));  
+}
+
+
+//= Tell if some node is in a given partition of memory based on instance number.
+// part: 0 = main memory, 1 = LTM ghost facts, 2 = halo single rule, 3 = halo double rule
+// member variable "rim" = instance of last LTM, "nimbus" = last single rule halo
+// Note: see NextNode() for diagram of memory layout
+
+bool jhcWorkMem::InBand (const jhcNetNode *n, int part) const
+{
+  int id;
+
+  // check for LTM memory then main memory vs halo split
+  if ((n == NULL) || (!n->Home(this) && !n->Home(&halo)))
+    return true;                           
+  if (!n->Halo())
+    return(part == 0);
+  id = -(n->Inst());
+
+  // check against recorded boundaries in halo
+  if (part == 1)
+    return(id <= rim);
+  if (part == 2)
+    return((id > rim) && (id <= nimbus));
+  if (part == 3)
+    return(id > nimbus);
+  return false;
 }
 
 
@@ -318,7 +381,7 @@ void jhcWorkMem::keep_party (jhcNetNode *anchor) const
   for (i = 0; i < n; i++)
   {
     prop = anchor->PropSurf(i);
-    if (!prop->Hyp() && InPool(prop) && anchor->RoleIn(i, "name", "ako", "hq"))      
+    if (!prop->Hyp() && InPool(prop) && anchor->RoleIn(i, "name", "ako", "hq", "wrt"))      
     {
       // keep this property and all arguments
       prop->SetKeep(2);
@@ -485,6 +548,7 @@ int jhcWorkMem::Endorse (const jhcGraphlet& desc, int dbg)
 
 int jhcWorkMem::ExtLink (int rnum, jhcNetNode *obj, int kind)
 {
+  jhcNetNode *former = NULL;
   int i;
 
   // look for pre-existing entry
@@ -495,17 +559,22 @@ int jhcWorkMem::ExtLink (int rnum, jhcNetNode *obj, int kind)
   // alter or erase entry found
   if (i < emax)
   {
+    former = nref[i];
+    if (obj == former)
+      return 0;              // no changes
     if (obj != NULL)
       nref[i] = obj;
     else
     {
-      ext[i] = 0;
+      ext[i] = 0;            // free up entry
       nref[i] = NULL;
     }
-    return 1;
+    return ann_link(obj, former, kind, rnum);
   }
 
   // add entry at first empty slot
+  if (obj == NULL)
+    return 0;
   for (i = 0; i < emax; i++)
     if (nref[i] == NULL)
       break;
@@ -514,6 +583,25 @@ int jhcWorkMem::ExtLink (int rnum, jhcNetNode *obj, int kind)
   cat[i] = kind;
   ext[i] = rnum;
   nref[i] = obj;
+  return ann_link(obj, former, kind, rnum);
+}
+
+
+//= Tell linkage between item and semantic network node.
+// returns 1 always for convenience
+
+int jhcWorkMem::ann_link (const jhcNetNode *obj, const jhcNetNode *former, int kind, int rnum) const
+{
+  char item[3][40] = {"object", "head", "surface"};
+
+  if ((kind < 0) || (kind > 2) || (noisy < 1))
+    return 1;
+  if (obj == NULL)
+    jprintf("  .. unlinking tracked %s from %s %s\n", item[kind], former->Nick(), ((former == user) ? "(user)" : ""));
+  else if (former == NULL)
+    jprintf("  .. linking tracked %s to %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
+  else
+    jprintf("  .. switching tracked %s for %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
   return 1;
 }
 
@@ -581,4 +669,42 @@ int jhcWorkMem::ExtEnum (int last, int kind) const
         ready = 1;
     }
   return 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                          Debugging Functions                          //
+///////////////////////////////////////////////////////////////////////////
+
+//= Print all nodes in the order they would be enumerated.
+// can set MaxBand() to print just some bands
+
+int jhcWorkMem::PrintRaw (int hyp) const
+{
+  jhcNetNode *n = NULL;
+  int kmax = 3, nmax = 1, rmax = 3;
+
+  // sanity check
+  if (mode < 0)
+    return jprintf("\nMEMORY: bad band specs!\n");
+
+  // get print field sizes
+  while ((n = NextNode(n, -1)) != NULL)
+    if (n->Visible() && ((hyp > 0) || !n->HypAny()))
+      n->TxtSizes(kmax, nmax, rmax);
+
+  // write descriptive banner
+  if (mode == 0)
+    jprintf("\nBAND 0");
+  else
+    jprintf("\nBANDS 0-%d", mode);
+  jprintf(" (rim %d, nimbus %d) =", rim, nimbus);
+
+  // print all as: node -link-> arg and list blf not blf0
+  n = NULL;
+  while ((n = NextNode(n, -1)) != NULL)
+    if (n->Visible() && ((hyp > 0) || !n->HypAny()))
+      n->Save(stdout, 2, kmax, nmax, rmax, -2);                
+  jprintf("\n");
+  return 1;
 }

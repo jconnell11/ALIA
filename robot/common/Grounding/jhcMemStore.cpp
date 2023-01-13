@@ -43,7 +43,7 @@ jhcMemStore::~jhcMemStore ()
 jhcMemStore::jhcMemStore ()
 {
   // static configuration
-  ver = 1.10;
+  ver = 1.15;
   strcpy_s(tag, "MemStore");
 
   // overall interaction parameters
@@ -63,7 +63,6 @@ jhcMemStore::jhcMemStore ()
 int jhcMemStore::local_start (const jhcAliaDesc *desc, int i)
 {
   JCMD_SET(mem_form);
-  JCMD_SET(mem_match);
   return -2;
 }
 
@@ -75,7 +74,6 @@ int jhcMemStore::local_start (const jhcAliaDesc *desc, int i)
 int jhcMemStore::local_status (const jhcAliaDesc *desc, int i)
 {
   JCMD_CHK(mem_form);
-  JCMD_CHK(mem_match);
   return -2;
 }
 
@@ -136,39 +134,3 @@ void jhcMemStore::note_that (jhcNetNode *focus, const jhcNetNode *root) const
 }
 
 
-//= Start trying to recall a particular fact.
-// instance number and bid already recorded by base class
-// returns 1 if okay, -1 for interpretation error
-
-int jhcMemStore::mem_match0 (const jhcAliaDesc *desc, int i)
-{
-  if (dmem == NULL)
-    return -1;
-  if (desc->Val("arg") == NULL)
-    return -1;
-  return 1;
-}
-
-
-//= Continue trying to recall a particular fact.
-// keeps spitting out top candidates until none over threshold
-// less precise than original MatchGraph with dmem in jhcAliaDir::sat_criteria
-// returns 1 if done, 0 if still working, -1 for failure
-
-int jhcMemStore::mem_match (const jhcAliaDesc *desc, int i)
-{
-  const jhcNetNode *root = dynamic_cast<const jhcNetNode *>(desc);
-  jhcNetNode *mate, *surf, *fact = root->Val("arg");
-
-  // get next match with enough specificity (ensure first next time)
-  if ((mate = dmem->Recognize(fact, 0.0)) == NULL)           
-    return 1;
-  dmem->Refresh(mate);                          
-
-  // create new NOTE with just object (for possible reactions)
-  surf = atree->CloneNode(*mate);                
-  surf->MoorTo(mate);
-  jprintf(":- RECALL creates %s for memory %s\n", surf->Nick(), mate->Nick());  
-  atree->NoteSolo(surf);
-  return 0;
-}

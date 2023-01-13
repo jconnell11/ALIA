@@ -79,14 +79,16 @@ void jhcGenParse::PrintInput (const char *utag, int sep)
     jprintf("\n============= Ambiguous: %d possible parses! ==============\n\n", n);
   else if ((sep == 1) && (n <= 0))
     jprintf("\n====================== No parses! ========================\n\n");
-  else if ((sep == 1) || (n <= 1))
+  else if (sep == 1)
     jprintf("\n==========================================================\n\n");
 
   // print input, possibly tagged with user name
   if ((utag == NULL) || (*utag == '\0'))
-    jprintf("\"%s\"\n\n", Input());
+    jprintf("\"%s\"\n", Input());
   else
-    jprintf("%s: \"%s\"\n\n", utag, Input());
+    jprintf("%s: \"%s\"\n", utag, Input());
+  if (sep > 0)
+    jprintf("\n");
 }
 
 

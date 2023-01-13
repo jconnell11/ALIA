@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -182,6 +182,7 @@ public:
   afx_msg void OnUtilitiesExtvocab();
   afx_msg void OnUtilitiesTestvocab();
   afx_msg void OnUtilitiesTestgraphizer();
+  afx_msg void OnDemoBasicmsgs();
 };
 
 /////////////////////////////////////////////////////////////////////////////

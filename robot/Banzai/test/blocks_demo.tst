@@ -1,4 +1,4 @@
-what color is it
+what color is the object
 
 where is the red thing
 how many medium tall things are there

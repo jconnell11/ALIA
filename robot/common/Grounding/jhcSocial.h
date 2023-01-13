@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  // controls diagnostic messages
+  // control of diagnostic messages
   int dbg;                   
 
   // attention parameters
@@ -109,14 +109,14 @@ private:
   void dude_seen ();
   void dude_close ();
   void vip_seen ();
-  void user_gone ();
-  jhcAliaDesc *agt_node (int t);
+  void lost_dudes ();
+  jhcAliaDesc *agt_node (int t, int& born);
+  void std_props (jhcAliaDesc *agt, int t, int born);
 
   // looking for speaker
   JCMD_DEF(soc_talk);
-  int chk_stuck (int i, double err);
 
-  // looking at people
+  // orienting toward people
   JCMD_DEF(soc_look);
 
   // moving toward people
@@ -126,6 +126,14 @@ private:
 
   // explore environment
   JCMD_DEF(soc_explore);
+
+  // utilities
+  int chk_neck (int i, double err);
+  int chk_base (int i, double err);
+
+  // semantic messages
+  int err_body ();
+  int err_person (jhcAliaDesc *dude);
 
 
 };

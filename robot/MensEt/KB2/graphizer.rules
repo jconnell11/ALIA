@@ -37,3 +37,12 @@ RULE 4 - "If a thing is someone's something then the someone has the something."
               -agt-> agt-1
               -obj-> obj-1
 
+
+RULE 5 - "If something has some kind of property then that thing's property is it" 
+    if: ako-1 -lex-  ***-1
+              -ako-> hq-1  
+         hq-1 -hq--> obj-1
+  then: ako-2 -lex-  ***-1
+              -ako-> hq-1
+              -wrt-> obj-1
+

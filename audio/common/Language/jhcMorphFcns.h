@@ -128,10 +128,10 @@ private:
 
   // derived forms
   const char *lookup_surf (const char *surf, UL32 tags) const;
-  char *noun_morph (char *val, UL32 tags) const;
-  char *adj_morph (char *val, UL32 tags) const;
-  char *verb_morph (char *val, UL32 tags) const;
-  char *adv_morph (char *val, UL32 tags) const;
+  char *noun_morph (char *val, UL32 tags, int ssz) const;
+  char *adj_morph (char *val, UL32 tags, int ssz) const;
+  char *verb_morph (char *val, UL32 tags, int ssz) const;
+  char *adv_morph (char *val, UL32 tags, int ssz) const;
   char *add_s (char *val, int ssz) const;
   char *add_vowel (char *val, const char *suffix, int ssz) const;
   char *add_ss (char *val, int ssz, int chk) const;

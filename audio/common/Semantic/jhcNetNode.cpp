@@ -192,10 +192,10 @@ bool jhcNetNode::VerbTag () const
 //= Set the language I/O reference recency to the newest for its pool.
 // NOTE: only for language input and output routines (i.e. user knows about node)
 
-void jhcNetNode::MarkRef ()
+void jhcNetNode::MarkConvo ()
 {
   if (home != NULL)
-    ref = home->IncRef();
+    ref = home->IncConvo();
 }
 
 
@@ -274,6 +274,22 @@ int jhcNetNode::Arity (int all) const
   if ((all > 0) && (xtra > 0))
     cnt++;                             // omit for ako2 matching
   return cnt;
+}
+
+
+//= Check if this node or any of its arguments (recursively) is hypothetical.
+// largely for wmem print out function
+
+bool jhcNetNode::HypAny () const
+{
+  int i;
+
+  if (Hyp())
+    return true;
+  for (i = 0; i < na; i++)
+    if (Arg(i)->HypAny())
+      return true;
+  return false;
 }
 
 
@@ -839,7 +855,7 @@ const char *jhcNetNode::Name (int i, double bth) const
 
   if (i >= 0)
     for (j = n - 1; j >= 0; j--)
-      if (RoleMatch(i, "name"))
+      if (RoleMatch(j, "name"))
       {
         p = Prop(j);
         if ((bth <= 0.0) || ((p->Neg() <= 0) && (p->Belief() >= bth)))

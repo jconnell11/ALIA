@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -134,9 +134,9 @@ void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) con
   else if (spact == 6)
     fprintf(log, "-- hail --\n\n");
   else if ((spact == 5) && (add != NULL) && (add->new_oper != NULL))
-    (add->new_oper)->Save(log, 0);
+    (add->new_oper)->Save(log);
   else if ((spact == 4) && (add != NULL) && (add->new_rule != NULL))
-    (add->new_rule)->Save(log, 0);
+    (add->new_rule)->Save(log);
   else if ((spact <= 3) && (spact >= 1) && (bulk != NULL))
   {
     bulk->Save(log, 2);

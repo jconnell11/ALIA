@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ jhcMensCoord::~jhcMensCoord ()
 jhcMensCoord::jhcMensCoord ()
 {
   // current software version
-  ver = 4.85;
+  ver = 5.00;
 
   // connect processing to basic robot I/O
   rwi.BindBody(&body);
@@ -77,7 +77,9 @@ int jhcMensCoord::Defaults (const char *fname)
   int ok = 1;
 
   ok &= time_params(fname);
+  ok &= jhcAliaCore::Defaults(fname);
   ok &= rwi.Defaults(fname);
+  ok &= vis.Defaults(fname);
   ok &= act.Defaults(fname);
   return ok;
 }
@@ -90,7 +92,9 @@ int jhcMensCoord::SaveVals (const char *fname) const
   int ok = 1;
 
   ok &= tps.SaveVals(fname);
+  ok &= jhcAliaCore::SaveVals(fname);
   ok &= rwi.SaveVals(fname);
+  ok &= vis.SaveVals(fname);
   ok &= act.SaveVals(fname);
   return ok;
 }

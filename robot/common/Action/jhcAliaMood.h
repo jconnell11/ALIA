@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ public:
   // social parameters
   jhcParam sps;
   int bereft;
-  double attn, sat, prod, ramp, needy, fade;
+  double attn, sat, prod, ramp, needy, fade, ch2ips;
 
   // power parameters
   jhcParam tps;
@@ -87,6 +87,9 @@ public:
 // should move to jhcStats
 jhcArr bhist;
 int sz, fill;
+
+  // debugging messages
+  int noisy;
 
 
 // PUBLIC MEMBER FUNCTIONS

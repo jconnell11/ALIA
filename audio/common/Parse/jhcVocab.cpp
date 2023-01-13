@@ -681,7 +681,7 @@ const char *jhcVocab::NextGuess (const char *txt)
 
 int jhcVocab::gram_fcn (char *word) const
 {
-  char npi[3][10]  = {"a", "an", "the"};
+  char npi[5][10]  = {"a", "an", "the", "my", "your"};
   char ppi[24][15] = {"in", "on", "at", "to", "from", "into", "onto", "with", "of",
                       "left", "right", "front", "back", "behind", "near", "close", "between",
                       "inside", "outside", "under", "underneath", "over", "above", "toward"};
@@ -699,7 +699,7 @@ int jhcVocab::gram_fcn (char *word) const
   strcpy_s(word, nchar, norm);
 
   // look for phrase starting markers
-  for (i = 0; i < 3; i++)
+  for (i = 0; i < 5; i++)
     if (strcmp(word, npi[i]) == 0)
       return 4;
   for (i = 0; i < 24; i++)

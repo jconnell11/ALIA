@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 /////////////////////////////////////////////////////////////////////////// 
 
 #include "Language/jhcMorphTags.h"     // common audio
-#include "Semantic/jhcNetNode.h"  
 
 #include "Grounding/jhcSceneVis.h"
 
@@ -66,10 +65,11 @@ jhcSceneVis::~jhcSceneVis ()
 
 jhcSceneVis::jhcSceneVis ()
 {
-  ver = 1.70;
+  ver = 1.80;
   strcpy_s(tag, "SceneVis");
   Platform(NULL);
   rpt = NULL;
+  Defaults();
 }
 
 
@@ -224,7 +224,7 @@ void jhcSceneVis::local_reset (jhcAliaNote *top)
 
   // noisy messages
   rpt = top;
-  noisy = 0;
+  dbg = 0;
 
   // state variables
   some = 0;
@@ -256,6 +256,7 @@ void jhcSceneVis::local_volunteer ()
 
 int jhcSceneVis::local_start (const jhcAliaDesc *desc, int i)
 {
+  JCMD_SET(vis_gaze);
   JCMD_SET(vis_value);
   JCMD_SET(vis_val_ok);
   JCMD_SET(vis_color);
@@ -275,6 +276,7 @@ int jhcSceneVis::local_start (const jhcAliaDesc *desc, int i)
 
 int jhcSceneVis::local_status (const jhcAliaDesc *desc, int i)
 {
+  JCMD_CHK(vis_gaze);
   JCMD_CHK(vis_value);
   JCMD_CHK(vis_val_ok);
   JCMD_CHK(vis_color);
@@ -303,8 +305,9 @@ int jhcSceneVis::local_status (const jhcAliaDesc *desc, int i)
 
 void jhcSceneVis::alert_any ()
 {
+  jhcAliaDesc *obj;
   double xy;
-  int item;
+  int item, born;
 
   // wait for next sensor cycle then lock visual data
   if ((rwi == NULL) || (rpt == NULL) || !rwi->Accepting())
@@ -331,9 +334,10 @@ void jhcSceneVis::alert_any ()
   // post message to reasoner if needed 
   if (some >= 2) 
   {
-    jprintf(1, noisy, "vis_alert @ %4.2f\"\n", xy);
+    jprintf(1, dbg, "vis_alert @ %4.2f\"\n", xy);
+    obj = obj_node(item, born);
     rpt->StartNote();
-    obj_node(item);
+    std_props(obj, born);
     rpt->FinishNote();
   }
 }
@@ -349,8 +353,9 @@ void jhcSceneVis::alert_any ()
 
 void jhcSceneVis::alert_close ()
 {
+  jhcAliaDesc *obj;
   double dist;
-  int nearby;
+  int nearby, born;
 
   // wait for next sensor cycle then lock visual data
   if ((rwi == NULL) || (rpt == NULL) || !rwi->Accepting())
@@ -377,9 +382,11 @@ void jhcSceneVis::alert_close ()
   // post message to reasoner if needed (OK to repeat)
   if (close >= 2) 
   {
-    jprintf(1, noisy, "vis_close @ %4.2f\"\n", dist);
+    jprintf(1, dbg, "vis_close @ %4.2f\"\n", dist);
+    obj = obj_node(nearby, born);
     rpt->StartNote();
-    rpt->NewDeg(obj_node(nearby), "hq", "close", ((dist < dist0) ? "very" : NULL));  
+    std_props(obj, born);
+    rpt->NewDeg(obj, "hq", "close", ((dist < dist0) ? "very" : NULL));  
     rpt->FinishNote();
   }
 }
@@ -434,6 +441,84 @@ void jhcSceneVis::lost_tracks ()
       rpt->FinishNote();
       rpt->VisAssoc(id, NULL);                   // erase entry
     }
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                             Gaze Control                              //
+///////////////////////////////////////////////////////////////////////////
+
+//= First call to aim camera at object but not allowed to fail.
+// returns 1 if okay, -1 for interpretation error
+
+int jhcSceneVis::vis_gaze0 (const jhcAliaDesc *desc, int i)
+{
+  if ((rwi == NULL) || (rpt == NULL))
+    return -1;
+  if ((cobj[i] = desc->Val("arg")) == NULL)
+    return -1;
+  ct0[0] = 0;                                    // reset timeout
+  return 1;
+}
+
+
+//= Continue trying to aim camera toward some object.
+// assumes cobj[i] has desired target object
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcSceneVis::vis_gaze (const jhcAliaDesc *desc, int i)
+{
+  jhcMatrix view(4);
+  jhcEliNeck *neck = &(body->neck);
+  double gtim = 1.0, atol = 7.0, gacc = 10.0;
+  double pan, tilt, ht, da;
+  int t;
+
+  // make sure target object is still known 
+  if (!rwi->Accepting())
+    return 0;
+  if ((t = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
+    return err_gone(cobj[i]);
+  if (rwi->Ghost() || (neck->CommOK() <= 0))
+    return err_neck();
+  ht = (rwi->lift)->Height();
+
+  // send proper neck angles for object centroid
+  sobj->World(view, t);
+  neck->AimFor(pan, tilt, view, ht);
+  neck->GazeFix(pan, tilt, gtim, cbid[i]);
+
+  // see if close enough yet
+  da = (rwi->neck)->GazeErr(view, ht);
+  if (da > atol)
+  {
+    if (chk_stuck(i, 0.1 * da) <= 0)
+      return 0;
+    jprintf(2, dbg, "    stuck: gaze = %3.1f\n", da);
+    if (da > gacc)
+      return -1;
+  }
+  return 1;                                      // success
+}
+
+
+//= Check for lack of substantial error reduction over given time.
+// hardcoded for 0.1" position progress, otherwise scale error first 
+// consider merging with jhcTimedFcns::Stuck sometime?
+// returns 1 if at asymptote, 0 if still moving toward goal
+
+int jhcSceneVis::chk_stuck (int i, double err)
+{
+  double prog = 0.1, tim = 0.5;        // about 15 cycles
+
+  if ((ct0[i] == 0) || ((cerr[i] - err) >= prog))
+  {
+    ct0[i] = jms_now();
+    cerr[i] = err;
+  }
+  else if (jms_elapsed(ct0[i]) > tim)
+    return 1;
+  return 0;
 }
 
 
@@ -745,7 +830,7 @@ int jhcSceneVis::vis_position (const jhcAliaDesc *desc, int i)
   for (r = 0; r < nt; r++)
     if ((r != t) && sobj->ObjOK(r))
       if ((ref = trk2node(r)) != NULL)
-        if (ref->LastRef() > 0)                  // user knows about
+        if (ref->LastConvo() > 0)                // user knows about
         {
           // find distance to query object
           dx = sobj->PosX(t) - sobj->PosX(r);
@@ -1007,7 +1092,7 @@ int jhcSceneVis::vis_subit (const jhcAliaDesc *desc, int i)
       cnt++;
       sobj->SetState(t, 2);                      // display as green
     }
-  jprintf("vis_subit: found %d (out of %d)\n", cnt, sobj->CntValid());
+  jprintf(1, dbg, "vis_subit: found %d (out of %d)\n", cnt, sobj->CntValid());
 
   // report resulting count
   rpt->StartNote();
@@ -1049,7 +1134,7 @@ int jhcSceneVis::vis_enum (const jhcAliaDesc *desc, int i)
 {
   int props[33];
   jhcAliaDesc *ref, *ref2, *obj = desc->Val("arg");
-  int cc, r, r2, sel, t, nt, win, pref, cnt = 0;
+  int cc, r, r2, sel, t, nt, win, pref, born, cnt = 0;
 
   // sync to sensors, possibly skip a cycle if just made a suggestion
   if (!rwi->Readable())
@@ -1085,7 +1170,7 @@ int jhcSceneVis::vis_enum (const jhcAliaDesc *desc, int i)
     }
     if (cnt <= 0)
     {
-      jprintf(1, noisy, "vis_enum %d ==> nothing\n", cst[i]);
+      jprintf(1, dbg, "vis_enum %d ==> nothing\n", cst[i]);
       return rwi->ReadDone(-1);
     }
 
@@ -1112,11 +1197,12 @@ int jhcSceneVis::vis_enum (const jhcAliaDesc *desc, int i)
     record(i, win);
 
     // get semantic network node for object and assert that it meets all criteria
-    rpt->StartNote();                      
-    obj = obj_node(win);               // either track node or new one 
+    obj = obj_node(win, born);         // either track node or new one 
+    rpt->StartNote();                  
+    std_props(obj, born);    
     prop2net(obj, props, ref, ref2);
     super2net(obj, sel);
-    jprintf(1, noisy, "vis_enum %d ==> %s\n", cst[i], obj->Nick());
+    jprintf(1, dbg, "vis_enum %d ==> %s\n", cst[i], obj->Nick());
     if ((rpt->FinishNote() > 0) || (sel > 0))
       break;
   }
@@ -2006,23 +2092,37 @@ int jhcSceneVis::cvt_refs (int& r, int& r2, const jhcAliaDesc *ref, const jhcAli
 ///////////////////////////////////////////////////////////////////////////
 
 //= See if node already assigned to visual object, else create new one.
-// should be called inside rpt->StartNote to include "ako object" fact
+// sets "born" to 0 if already existing, 1 if new semantic node (needs HQ and AKO)
+// NOTE: this is generally called before StartNote (to omit object itself)
 
-jhcAliaDesc *jhcSceneVis::obj_node (int t)
+jhcAliaDesc *jhcSceneVis::obj_node (int t, int& born)
 {
   jhcAliaDesc *obj = trk2node(t);
 
+  born = 0;
   if (obj == NULL)
   {
     obj = rpt->NewNode("obj");
-    rpt->NewProp(obj, "ako", "object", 0, 1.0, 1);
-    rpt->NewProp(obj, "hq", "visible", 0, 1.0, 1);
     rpt->VisAssoc(sobj->ObjID(t), obj);
     sobj->SetTag(t, obj->Nick());
+    born = 1;
   }
   rpt->NewFound(obj);                  // make eligible for FIND
   sobj->SetState(t, 2);                // display as green
   return obj;
+}
+
+
+//= Add standard properties to item if newly created.
+// NOTE: this should be called after StartNote
+
+void jhcSceneVis::std_props (jhcAliaDesc *obj, int born)
+{
+  if (born > 0)
+  {
+    rpt->NewProp(obj, "ako", "object", 0, 1.0, 1);
+    rpt->NewProp(obj, "hq", "visible", 0, 1.0, 1);
+  }
 }
 
 
@@ -2175,6 +2275,64 @@ void jhcSceneVis::super2net (jhcAliaDesc *obj, int sel) const
       rpt->AddArg(hq, "alt", rpt->NewNode("obj", "all"));
     rpt->GramTag(hq, JTAG_ASUP);
   }
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                          Semantic Messages                            //
+///////////////////////////////////////////////////////////////////////////
+
+//= Complain about the neck not working.
+// <pre>
+//   NOTE[ act-1 -lex-  work
+//               -neg-  1
+//               -agt-> obj-1
+//         ako-1 -lex-  neck
+//               -ako-> obj-1
+//               -wrt-> self-1 ]
+// </pre>
+// always returns -1 for convenience
+
+int jhcSceneVis::err_neck ()
+{
+  jhcAliaDesc *part, *own, *arm, *fail;
+
+  rpt->StartNote();
+  part = rpt->NewNode("obj");
+  own = rpt->NewProp(part, "ako", "neck");
+  rpt->AddArg(own, "wrt", rpt->Self());
+  arm = rpt->Resolve(part);                      // find or make part
+  fail = rpt->NewNode("act", "work", 1);
+  rpt->AddArg(fail, "agt", arm);                 // mark as not working
+  rpt->FinishNote(fail);
+  return -1;
+}
+
+
+//= Generate error event for object not being seen.
+// <pre>
+//   NOTE[ act-1 -lex-  see
+//               -neg-  1
+//               -agt-> self-1
+//               -obj-> obj-1 ]
+// </pre>
+// returns -1 always for convenience
+
+int jhcSceneVis::err_gone (jhcAliaDesc *obj)
+{
+  jhcAliaDesc *fail;
+
+  // sanity check
+  if (obj == NULL)
+    return -1;
+
+  // event generation
+  rpt->StartNote();
+  fail = rpt->NewNode("act", "see", 1);
+  rpt->AddArg(fail, "agt", rpt->Self());
+  rpt->AddArg(fail, "obj", obj);
+  rpt->FinishNote(fail);
+  return -1;
 }
 
 

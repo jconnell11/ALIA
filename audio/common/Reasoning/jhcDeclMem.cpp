@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,16 +53,72 @@ jhcDeclMem::jhcDeclMem ()
   sep0 = ':';
   ltm0 = 1;
 
-  // scoring thresholds
-  ath  = 1;
-  rth  = 3;
-  alts = 3;
+  // weights and thresholds
+  Defaults();
 
   // messages for selection and retrieval
+  gh  = 0;
   enc = 0;
   ret = 0;
+  detail = 0;
+  noisy = 1;                 // defaulted from jhcAliaCore
+//gh  = 1;
 //enc = 3;
 //ret = 3;
+//detail = 62;                 // retrieval of node 
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                         Processing Parameters                         //
+///////////////////////////////////////////////////////////////////////////
+
+//= Parameters for assessing recognition matches.
+
+int jhcDeclMem::wt_params (const char *fname)
+{
+  jhcParam *ps = &wps;
+  int ok;
+
+  ps->SetTag("ltm_wts", 0);
+  ps->NextSpecF( &nwt,  3.0, "Weight for name match");
+  ps->NextSpecF( &kwt,  2.0, "Weight for kind match");;
+  ps->NextSpecF( &fmod, 0.5, "Derating for modifiers");
+  ps->Skip();
+  ps->NextSpecF( &ath,  1.0, "Min argument similarity");
+  ps->NextSpecF( &farg, 0.2, "Derating for arguments");
+
+  ps->NextSpecF( &rth,  3.0, "Min similarity for recall");
+  ps->NextSpec4( &alts, 3,   "Max ambiguity for recall");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                           Parameter Bundles                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Read all relevant defaults variable values from a file.
+
+int jhcDeclMem::Defaults (const char *fname)
+{
+  int ok = 1;
+
+  ok &= wt_params(fname);
+  return ok;
+}
+
+
+//= Write current processing variable values to a file.
+
+int jhcDeclMem::SaveVals (const char *fname) const
+{
+  int ok = 1;
+
+  ok &= wps.SaveVals(fname);
+  return ok;
 }
 
 
@@ -137,7 +193,7 @@ int jhcDeclMem::Remember (jhcNetNode *fact)
     return -1;
   }
   if ((n2 = xfer.LookUp(fact)) != NULL)
-    jprintf("-: ENCODED %s as memory %s\n", fact->Nick(), n2->Nick());
+    jprintf(1, noisy, "-: ENCODED %s (%s) as memory %s\n", fact->Nick(), fact->LexStr(), n2->Nick());
   return 1;
 }
 
@@ -208,15 +264,15 @@ jhcNetNode *jhcDeclMem::ltm_node (const jhcNetNode *n, const jhcBindings& xfer)
 //= Add discriminative pattern for given node to overall description.
 // returns amount to increment full match score for this augmentation
 
-int jhcDeclMem::add_node (jhcGraphlet& desc, jhcNetNode *n, const jhcNetNode *src, int rels) const
+double jhcDeclMem::add_node (jhcGraphlet& desc, jhcNetNode *n, const jhcNetNode *src, int rels) const
 {
   jhcGraphlet desc2;
-  int sc;
+  double sc;
 
   if (!n->ObjNode())
     return add_pred(desc, n, src, rels);
   if (desc.InDesc(n))
-    return 0;
+    return 0.0;
   sc = elab_obj(desc2, n, src, rels);
   jprintf(3, enc, "  __done ELAB_OBJ: %s (%s)\n\n", n->Nick(), n->LexStr());
   desc.Append(desc2);
@@ -227,20 +283,23 @@ int jhcDeclMem::add_node (jhcGraphlet& desc, jhcNetNode *n, const jhcNetNode *sr
 //= Add given predicate, its modifiers, and its elaborated arguments to description.
 // returns amount match score is increment by augmented description
 
-int jhcDeclMem::add_pred (jhcGraphlet& desc, jhcNetNode *pred, const jhcNetNode *src, int rels) const
+double jhcDeclMem::add_pred (jhcGraphlet& desc, jhcNetNode *pred, const jhcNetNode *src, int rels) const
 {
   jhcGraphlet desc2;
   jhcNetNode *p, *a;
-  int i, np = pred->NumProps(), na = pred->NumArgs(), sc = 1;
+  double sc0, sc;
+  int i, np = pred->NumProps(), na = pred->NumArgs();
 
   // add predicate and figure out matching value
   if (desc.InDesc(pred))
     return 0;
   desc.AddItem(pred);
   if (pred->Val("name") == src)
-    sc += 2;
+    sc0 = nwt;
   else if (pred->Val("ako") == src)
-    sc += 1;
+    sc0 = kwt;
+  else
+    sc0 = 1.0;
 
   // possibly announce entry
   if (src == NULL)
@@ -251,23 +310,27 @@ int jhcDeclMem::add_pred (jhcGraphlet& desc, jhcNetNode *pred, const jhcNetNode 
   // get all adverbs (stack is generally only two deep)
   if (np > 0)
     jprintf(3, enc, "        modifiers: %s (%s)\n", pred->Nick(), pred->LexStr());
+  sc = 0.0;
   for (i = 0; i < np; i++)
     if (pred->RoleIn(i, "deg", "mod"))
       if ((p = pred->PropSurf(i)) != src)
         if (p->Visible() && atree->InList(p) && (p->NumArgs() == 1))
           sc += add_pred(desc, p, pred, 0);         
+  sc0 += fmod * sc;  
   if (np > 0)
     jprintf(3, enc, "        __done modifiers: %s (%s)\n", pred->Nick(), pred->LexStr());
-  
+
   // expand compound predicates and elaborate root arguments (possibly with rels)
   if ((na > 1) || ((na > 0) && (src == NULL))) 
     jprintf(3, enc, "        arguments: %s (%s)\n", pred->Nick(), pred->LexStr());
+  sc = 0.0;
   for (i = 0; i < na; i++)
     if ((a = pred->ArgSurf(i)) != src)
-      add_node(desc, a, pred, rels);
+      sc += add_node(desc, a, pred, rels);
+  sc0 += farg * sc;
   if ((na > 1) || ((na > 0) && (src == NULL))) 
     jprintf(3, enc, "        __done arguments: %s (%s)\n", pred->Nick(), pred->LexStr());
-  return sc;
+  return sc0;
 }
 
 
@@ -275,9 +338,10 @@ int jhcDeclMem::add_pred (jhcGraphlet& desc, jhcNetNode *pred, const jhcNetNode 
 // adds object, discriminative properties, and possibly relations with elaborated arguments 
 // returns max score for matching local object description 
 
-int jhcDeclMem::elab_obj (jhcGraphlet& desc2, jhcNetNode *obj, const jhcNetNode *src, int rels) const
+double jhcDeclMem::elab_obj (jhcGraphlet& desc2, jhcNetNode *obj, const jhcNetNode *src, int rels) const
 {
-  int done, sc = 0, ties = -1;
+  double sc = 0.0;
+  int done, ties = -1;
 
   // initialize description new standalone description
   jprintf(2, enc, "  ELAB_OBJ: %s %s\n", obj->Nick(), ((rels > 0) ? "+ rels" : ""));
@@ -305,12 +369,13 @@ int jhcDeclMem::elab_obj (jhcGraphlet& desc2, jhcNetNode *obj, const jhcNetNode 
 // can constrain to predicates where object has given role, or allow relations also (role = NULL)
 // returns 1 if sufficiently unique, 0 if something added, negative if nothing to add
 
-int jhcDeclMem::obj_prop (int& sc, int& t0, jhcGraphlet& desc, const jhcNetNode *obj, const jhcNetNode *src, const char *role) const
+int jhcDeclMem::obj_prop (double& sc, int& t0, jhcGraphlet& desc, const jhcNetNode *obj, const jhcNetNode *src, const char *role) const
 {
   jhcGraphlet extra;
   jhcNetNode *p, *win = NULL;
-  int any = (((role == NULL) || (*role == '\0')) ? 1 : 0), sc0 = sc;
-  int i, info, t, ni = desc.NumItems(), np = obj->NumProps(), bump = 0, best = -1;
+  double info, sc0 = sc, bump = 0.0;
+  int any = (((role == NULL) || (*role == '\0')) ? 1 : 0);
+  int i, t, ni = desc.NumItems(), np = obj->NumProps(), best = -1;
 
   // look for a property where the object has the given role (if any)
   jprintf(3, enc, "    obj_prop: %s <-%s-\n", obj->Nick(), ((role == NULL) ? "rel" : ((*role == '\0') ? "any" : role)));
@@ -346,7 +411,7 @@ int jhcDeclMem::obj_prop (int& sc, int& t0, jhcGraphlet& desc, const jhcNetNode 
   desc.Append(extra);
   sc += bump;
   t0 = best;
-  jprintf(2, enc, "      --> prop %s (%s) added: sc = %d, ties = %d\n", win->Nick(), win->LexStr(), sc, best);
+  jprintf(2, enc, "      --> prop %s (%s) added: sc = %4.2f, ties = %d\n", win->Nick(), win->LexStr(), sc, best);
   return(((best == 0) && (sc >= rth)) ? 1 : 0);
 }
 
@@ -440,21 +505,26 @@ bool jhcDeclMem::equiv_props (const jhcNetNode *focus, const jhcNetNode *mate, c
 int jhcDeclMem::DejaVu () 
 {
   jhcNetNode *mate, *n = NULL;
-  int cnt = 0;
+  int ret0 = ret, cnt = 0;
 
 jtimer(15, "DejaVu");
   // set up for surface node scan
   if (atree == NULL)
     return 0;
   bth = atree->MinBlf();
-  atree->SetMode(0);
+  atree->MaxBand(0);
   jprintf(1, ret, "\nDejaVu");
 
   // go through all object nodes (no lex -> bin = 0)
   while ((n = atree->NextNode(n, 0)) != NULL)     
     if ((n->Belief() > bth) && n->ObjNode())     
+    {
+      if (n->Inst() == detail)
+        ret = 3;
       if ((mate = Recognize(n, bth)) != NULL)
         cnt += tether(n, mate);
+      ret = ret0;
+    }
 
   // handle "me" and "you" separately (not bin 0)
   n = atree->Human();
@@ -474,10 +544,13 @@ jtimer_x(15);
 
 int jhcDeclMem::tether (jhcNetNode *focus, jhcNetNode *win)
 {
-  jprintf(":- RECOGNIZE %s as memory %s", focus->Nick(), win->Nick());
-  if (focus->Moored() && (focus->Deep() != win))
-    jprintf(" (instead)");
-  jprintf("\n");
+  if (noisy >= 1)
+  {
+    jprintf(":- RECOGNIZE %s (%s) as memory %s", focus->Nick(), focus->LexStr(), win->Nick());
+    if (focus->Moored() && (focus->Deep() != win))
+      jprintf(" (instead)");
+    jprintf("\n");
+  }
   focus->MoorTo(win);
   Refresh(win);                                  // ensure first next time
   atree->NoteSolo(focus);
@@ -486,13 +559,15 @@ int jhcDeclMem::tether (jhcNetNode *focus, jhcNetNode *win)
 
 
 //= Find the best match to WMEM focus node in long-term memory facts.
+// this is a tree partial matcher vs a graph full matcher (cf. jhcSituation)
 // returns best new mate for node, NULL for no change
-// Note: this is a tree partial matcher vs a graph full matcher (cf. jhcSituation)
+// NOTE: jhcMemStore no longer needs this (cf. jhcAliaDir::assume_recall)
 
 jhcNetNode *jhcDeclMem::Recognize (jhcNetNode *focus, double qth) const
 {
   jhcNetNode *win = NULL, *mate = NULL;
-  int sum, bin = ((focus->LexMatch("you")) ? 0 : focus->Code()), hi = 0, tie = 0;
+  double sum, hi = 0.0; 
+  int bin = ((focus->LexMatch("you")) ? 0 : focus->Code()), tie = 0;
 
   // find potential pairing with highest score 
   jprintf(1, ret, "\n  Recognize %s ---------------------------------\n", focus->Nick());
@@ -502,12 +577,12 @@ jhcNetNode *jhcDeclMem::Recognize (jhcNetNode *focus, double qth) const
       // find score of mate
       if ((sum = score_nodes(focus, mate)) < 0)
         continue;
-      sum += score_unary(focus, mate, qth);
+      jprintf(2, ret, "    %s (%s) memory score\n", mate->Nick(), mate->LexStr());
+      if (sum > 0.0)
+        jprintf(3, ret, "      %4.2f lex match\n", sum);
+      sum += score_unary(focus, mate, qth, 0);
       sum += score_rels(focus, mate, qth);
-      if (sum > 0)
-        jprintf(2, ret, "  %2d = score for %s vs %s\n", sum, focus->Nick(), mate->Nick());
-      else
-        jprintf(2, ret, "     . score for %s vs %s\n", focus->Nick(), mate->Nick());
+      jprintf(2, ret, "    %4.2f = total score\n", sum); 
 
       // remember best pairing
       if (sum > hi)                                        // prefer first found
@@ -522,10 +597,14 @@ jhcNetNode *jhcDeclMem::Recognize (jhcNetNode *focus, double qth) const
           win = mate;
         tie++;
       }
+      jprintf(3, ret, "\n");
     }
 
   // check if match is sufficiently good 
-  jprintf(1, ret, "  ==> hi = %d (%s), tie = %d\n", hi, ((win != NULL) ? win->Nick() : "none"), tie);
+  if (win == NULL)
+    jprintf(1, ret, "  ==> no winner\n");
+  else
+    jprintf(1, ret, "  ==> %s winner (hi %4.2f, ties %d)\n", win->Nick(), hi, tie);
   if ((hi < rth) || (tie > alts) || (win == focus->Deep()))
     return NULL;
   return win;
@@ -535,71 +614,77 @@ jhcNetNode *jhcDeclMem::Recognize (jhcNetNode *focus, double qth) const
 //= See if basic properties of two nodes are compatible.
 // returns negative for mis-match, initial score otherwise
 
-int jhcDeclMem::score_nodes (const jhcNetNode *focus, const jhcNetNode *mate) const
+double jhcDeclMem::score_nodes (const jhcNetNode *focus, const jhcNetNode *mate) const
 {
   if (!focus->SameSlots(mate) || (focus->Neg() != mate->Neg()) || (focus->Done() != mate->Done()))
-    return -1;
+    return -1.0;
   if (focus->LexMatch("you") && (mate->Lex() == NULL))     // part of lex_equiv
-    return 0;
+    return 0.0;
   if (!focus->LexSame(mate))                               // other part of lex_equiv
-    return -1;
+    return -1.0;
   if (mate->LexMatch("me"))
-    return 3;                                              // like a name
-  return 0;
+    return nwt;                                            // like a name
+  return 0.0;
 }
 
 
 //= Count the number of unary properties (and modifiers) a pairing has in common.
 // assumes mate is in DMEM and focus is in WMEM (can use halo but not LTM-dependent) 
+// mode: 0 = main prop, 1 = mod of prop, 2 = arg prop, 3 = mod of arg prop 
 
-int jhcDeclMem::score_unary (const jhcNetNode *focus, const jhcNetNode *mate, double qth) const
+double jhcDeclMem::score_unary (const jhcNetNode *focus, const jhcNetNode *mate, double qth, int mode) const
 {
-  const jhcNetNode *p, *p2;
+  double wt[4] = {1.0, fmod, farg, farg * fmod};
+  int lvl[4] = {0, 2, 6, 8};
+  const jhcNetNode *p, *p2, *win = NULL;
   const char *role;
-  int np = focus->NumProps(), np2 = mate->NumProps();
-  int i, j, sc0, sc, best, sum = 0;
+  double sc0, sc, best = -1.0, sum = 0.0;
+  int i, j, np = focus->NumProps(), np2 = mate->NumProps();
 
   // look at each appropriate unary property of focus
-  jprintf(3, ret, "  >properties of %s vs %s\n", focus->Nick(), mate->Nick());
   for (i = 0; i < np; i++)
   {
     p = focus->PropSurf(i);
+    role = focus->Role(i);
     if ((p->Belief() >= qth) && (p->NumArgs() <= 1) && (p->ltm <= 0))   
     {
       // look for similar property associated with LTM mate
-      best = -1;
-      role = focus->Role(i);
+      jprintf(3, ret, "%*s      <-%s- %s (%s)\n", lvl[mode], "", role, p->Nick(), p->LexStr());
+      best = -1.0;
       for (j = 0; j < np2; j++)
         if (mate->RoleMatch(j, role))
         {
           // check for lex or slots mismatch
-          p2 = mate->PropSurf(j);
-          if ((sc0 = score_nodes(p, p2)) < 0)    
+          p2 = mate->Prop(j);                    // not surface
+          if (p2->Halo())                        // due to ghost fact matching
+            continue;
+          if ((sc0 = score_nodes(p, p2)) < 0.0)    
             continue;
 
           // remember score of best match for this property
-          jprintf(3, ret, "      >>> check modifiers of %s (%s)\n", p->Nick(), p->LexStr());
-          sc = sc0 + score_unary(p, p2, qth);
-          jprintf(3, ret, "    <<< modifiers of %s checked\n", p->Nick());
-          best = __max(sc, best);
+          sc = sc0 + fmod * score_unary(p, p2, qth, mode + 1);
+          if (sc > best)
+          {
+            best = sc;
+            win = p2;
+          }
         }
 
       // some properties more important than others
-      if (best < 0)
-        continue;                                // no match found
+      if (best < 0.0)
+        continue;                                
       if (strcmp(role, "name") == 0)
-        best += 3;
+        best += nwt;
       else if (strcmp(role, "ako") == 0)
-        best += 2;
+        best += kwt;
       else
-        best++;
+        best += 1.0;
 
       // combine multiple properties
-      jprintf(3, ret, "      %d = best match of property %s (%s)\n", best, p->Nick(), p->LexStr());
+      jprintf(3, ret, "%*s        %4.2f using %s\n", lvl[mode], "", wt[mode] * best, win->Nick());
       sum += best;                               
     }
   }
-  jprintf(3, ret, "    --> %d property sum for %s\n", sum, focus->Nick());
   return sum;
 }
 
@@ -607,62 +692,58 @@ int jhcDeclMem::score_unary (const jhcNetNode *focus, const jhcNetNode *mate, do
 //= See how many relations a pairing has in common including the match score for arguments.
 // NOTE: does not respect relation convergence/divergence since sharing of arguments is ignored 
 
-int jhcDeclMem::score_rels (const jhcNetNode *focus, const jhcNetNode *mate, double qth) const
+double jhcDeclMem::score_rels (const jhcNetNode *focus, const jhcNetNode *mate, double qth) const
 {
-  const jhcNetNode *p, *p2;
+  const jhcNetNode *p, *p2, *win = NULL;
   const char *role;
-  int np = focus->NumProps(), np2 = mate->NumProps();
-  int i, j, sc0, sc2, sc, best, sum = 0;
+  double sc0, sc2, sc, best = -1.0, sum = 0.0;
+  int i, j, np = focus->NumProps(), np2 = mate->NumProps();
 
   // look at each appropriate n-ary property of focus
-  jprintf(3, ret, "   + rels of %s vs %s\n", focus->Nick(), mate->Nick());
   for (i = 0; i < np; i++)
   {
     p = focus->PropSurf(i);
+    role = focus->Role(i);
     if ((p->Belief() >= qth) && (p->NumArgs() > 1) && (p->ltm <= 0) &&
         (p->AnySlot("alt", "loc", "src", "wrt") || p->LexIn("have")))
     {
       // look for similar relation involving LTM mate
-      best = -1;
-      role = focus->Role(i);
+      jprintf(3, ret, "      <-%s- %s (%s) ...\n", role, p->Nick(), p->LexStr());
+      best = -1.0;
       for (j = 0; j < np2; j++)
         if (mate->RoleMatch(j, role))
         {
           // determine basic compatibility (lex and slots)
           p2 = mate->PropSurf(j);
-          if ((sc0 = score_nodes(p, p2)) < 0)             
+          if ((sc0 = score_nodes(p, p2)) < 0.0)             
             continue;
 
           // check for bad or vague arguments
-          jprintf(3, ret, "      ___ check arguments of %s (%s)\n", p->Nick(), p->LexStr());
-          if ((sc2 = score_args(p, p2, focus, qth)) < 0)  
-          {
-            jprintf(3, ret, "    ___ barf on args of %s !\n", p->Nick());
+          if ((sc2 = score_args(p, p2, focus, qth)) < 0.0)  
             continue;
-          }
-          jprintf(3, ret, "    ___ arguments of %s checked\n", p->Nick());
 
           // check any modifiers
-          jprintf(3, ret, "      >>> check modifiers of %s (%s)\n", p->Nick(), p->LexStr());
-          sc = sc0 + sc2 + score_unary(p, p2, qth);      
-          jprintf(3, ret, "    <<< modifiers of %s checked\n", p->Nick());
+          sc = sc0 + farg * sc2 + fmod * score_unary(p, p2, qth, 0);      
 
           // save score of best matched mate relation
-          best = __max(sc, best);
+          if (sc > best)
+          {
+            best = sc;
+            win = mate;
+          }
         }
 
       // some relations more important than others in combination
-      if (best < 0)
-        continue;                                // no match found
+      if (best < 0.0)
+        continue;                                
       if (strcmp(role, "ako") == 0)
-        best += 2;
+        best += kwt;
       else
-        best++;
-      jprintf(3, ret, "      %d = best match of rel %s (%s)\n", best, p->Nick(), p->LexStr());
+        best += 1.0;
+      jprintf(2, ret, "        %4.2f incl. relation (%s)\n", best, role);
       sum += best;                               
     }
   }
-  jprintf(3, ret, "    --> %d rel sum for %s\n", sum, focus->Nick());
   return sum;
 }
 
@@ -670,33 +751,37 @@ int jhcDeclMem::score_rels (const jhcNetNode *focus, const jhcNetNode *mate, dou
 //= See if relation arguments are compatible and well enough described.
 // returns negative if one or more are bad, else sum of goodnesses
 
-int jhcDeclMem::score_args (const jhcNetNode *focus, const jhcNetNode *mate, const jhcNetNode *obj, double qth) const
+double jhcDeclMem::score_args (const jhcNetNode *focus, const jhcNetNode *mate, const jhcNetNode *obj, double qth) const
 {
   const jhcNetNode *a, *a2;
-  int i, sc0, sc, na = focus->NumArgs(), sum = 0;
+  const char *slot;
+  double sc0, sc, sum = 0.0;
+  int i, na = focus->NumArgs();
 
   // look at each argument of focus
   for (i = 0; i < na; i++)
     if ((a = focus->ArgSurf(i)) != obj)
     {
       // find equivalent argument (same slot) for mate
-      if ((a2 = mate->Val(focus->Slot(i))) == NULL)
+      slot = focus->Slot(i);
+      jprintf(3, ret, "        -%s-> %s (%s)\n", slot, a->Nick(), a->LexStr());
+      if ((a2 = mate->Val(slot)) == NULL)
         return -3;
-      if ((sc0 = score_nodes(a, a2)) < 0)
+      if ((sc0 = score_nodes(a, a2)) < 0.0)
         return -2;
 
       // determine if description is specific enough
-      jprintf(3, ret, "      >>> ARG %s: check properties\n", a->Nick());
-      sc = sc0 + score_unary(a, a2, qth);
-      jprintf(3, ret, "    <<< ARG %s: properties checked\n", a->Nick()); 
-      jprintf(3, ret, "      %d = ARG match for %s\n", sc, a->Nick());
+      jprintf(3, ret, "          %s (%s) argument score\n", a2->Nick(), a2->LexStr());
+      sc = sc0 + score_unary(a, a2, qth, 2);
 
       // add specificity scores for all arguments
       if (sc < ath)
+      {
+        jprintf(3, ret, "          * bad argument match\n");
         return -1;
+      }
       sum += sc;
     }
-  jprintf(3, ret, "      ==> %d ARG sum for rel %s (%s)\n", sum, focus->Nick(), focus->LexStr());
   return sum;
 }
 
@@ -715,42 +800,56 @@ void jhcDeclMem::GhostFacts () const
 
   if (atree == NULL)
     return;
-  atree->SetMode(0);
+  jprintf(1, gh, "GhostFacts\n");
+  atree->MaxBand(0);
   while ((n = atree->NextNode(n)) != NULL)
     if (n->Moored())
-      buoy_preds(n->Moor(), n->top, 1);
+    {
+      jprintf(1, gh, "  %s = memory %s", n->Nick(), (n->Moor())->Nick());
+      buoy_preds(n->Moor(), n->top, 1, 0);
+    }
   atree->Border();                               // end of nearly factual nodes
 }
 
 
 //= Make a halo node for all non-surface properties of this node and recurse.
 
-void jhcDeclMem::buoy_preds (jhcNetNode *n, int tval, int rels) const
+void jhcDeclMem::buoy_preds (jhcNetNode *n, int tval, int rels, int lvl) const
 {
+  char msg[80];
   jhcNetNode *p, *a, *h = n->Buoy();
   int i, j, na, np = n->NumProps();
 
-  // add halo equivalent of base node if predication (not object)
-  if (!n->ObjNode())
+  // add halo equivalent of base node 
+  if (!n->ObjNode())                             // Recognize does all objects
   {
     if (h == NULL)
     {
       h = atree->CloneHalo(*n);
-      h->ltm = 1;                                          // mark LTM-dependence
+      h->ltm = 1;                                // mark LTM-dependence
       h->MoorTo(n);       
+      jprintf(1, gh, "= %s (%s)", h->Nick(), h->LexStr());
     }                                   
     if ((tval > 0) && h->Halo())
-      if ((h->top <= 0) || (tval < h->top))                // keep earliest NOTE
+      if ((h->top <= 0) || (tval < h->top))      // keep earliest NOTE
         h->top = tval;
   }
+  jprintf(1, gh, "\n");
 
   // scan through all unary and n-ary properties of base node
   for (i = 0; i < np; i++)
   {
     // add if property and maybe if relation
-    p = n->Prop(i);                                        // not surf
+    p = n->Prop(i);                              // not surf
     if (p->Home(this) && ((rels > 0) || (p->NumArgs() <= 1)))  
-      buoy_preds(p, tval, 0);                              // include modifiers       
+    {
+      if (gh >= 1)
+      {
+        sprintf_s(msg, "%*s    <-%s- %s", lvl, "", n->Role(i), p->Nick());
+        jprintf("%-28s", msg);
+      }
+      buoy_preds(p, tval, 0, lvl + 2);           // include modifiers       
+    }
 
     // if relation added then add all arguments 
     if (rels <= 0)
@@ -758,9 +857,16 @@ void jhcDeclMem::buoy_preds (jhcNetNode *n, int tval, int rels) const
     na = p->NumArgs();
     for (j = 0; j < na; j++)
     {
-      a = p->Arg(j);                                       // not surf
+      a = p->Arg(j);                             // not surf
       if (a->Home(this) && (a != n))
-        buoy_preds(a, tval, 0);                            // include unary properties
+      {
+        if (gh >= 1)
+        {
+          sprintf_s(msg, "%*s      -%s-> %s", lvl, "", p->Slot(j), a->Nick());
+          jprintf("%-28s", msg);
+        }
+        buoy_preds(a, tval, 0, lvl + 4);         // include unary properties
+      }
     }
   }
 }
@@ -855,7 +961,7 @@ int jhcDeclMem::SaveFacts (const char *base, int level) const
     fprintf(out, "// newly learned facts not in KB0 or KB2\n");
     fprintf(out, "// ======================================\n");
   }
-  fprintf(out, "// Nodes = %d max", NodeCnt());
+  fprintf(out, "// Nodes = %d max", NodeCnt(1));
   cnt = save_bins(out, -1, first[lvl]);
   fclose(out);
   return cnt;

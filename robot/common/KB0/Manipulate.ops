@@ -51,9 +51,9 @@ OP 5 - "To put a thing down ..."
               -arg2-> dir-1 ]
 
 
-OP 6 - "To retract the arm ..."
-  trig:   
-    DO[ act-1 -lex-  retract
+OP 6 - "To tuck the arm ..."
+  trig:
+    DO[ act-1 -lex-  tuck
               -obj-> obj-1 
         ako-1 -lex-  arm
               -ako-> obj-1 ]
@@ -62,7 +62,20 @@ OP 6 - "To retract the arm ..."
               -arg-> obj-1 ]
 
 
-OP 7 - "To point at something ..."
+OP 7 - "To tuck in the arm ..."
+  trig:
+    DO[ act-1 -lex-   tuck
+              -dest-> loc-1 
+        loc-1 -lex-   in
+              -ref--> obj-1 
+        ako-1 -lex-   arm
+              -ako--> obj-1 ]
+---------------
+   FCN[ fcn-1 -lex-  man_tuck
+              -arg-> obj-1 ]
+
+
+OP 8 - "To point at something ..."
   trig:   
     DO[ act-1 -lex-  point
         loc-1 -lex-  at
@@ -73,7 +86,7 @@ OP 7 - "To point at something ..."
               -arg-> obj-1 ]
 
 
-OP 8 - "To point to something ..."
+OP 9 - "To point to something ..."
   trig:   
     DO[ act-1 -lex-   point
               -dest-> obj-1 ]
@@ -84,7 +97,7 @@ OP 8 - "To point to something ..."
 
 // --------------------------------------
 
-OP 9 - "Before grabbing something if you are holding something else put it down."
+OP 10 - "Before grabbing something if you are holding something else put it down."
   trig:   
   ANTE[  act-1 -lex-  grab
                -obj-> obj-1 
@@ -99,7 +112,7 @@ OP 9 - "Before grabbing something if you are holding something else put it down.
               -dir-> act-3 ]
 
 
-OP 10 - "Before lifting something if you are holding something else put it down."
+OP 11 - "Before lifting something if you are holding something else put it down."
   trig:   
   ANTE[  act-1 -lex-  lift
                -obj-> obj-1 
@@ -114,7 +127,7 @@ OP 10 - "Before lifting something if you are holding something else put it down.
               -dir-> act-3 ]
 
 
-OP 11 - "Before taking something if you are holding something else put it down."
+OP 12 - "Before taking something if you are holding something else put it down."
   trig:   
   ANTE[  act-1 -lex-  take
                -obj-> obj-1 
@@ -129,7 +142,7 @@ OP 11 - "Before taking something if you are holding something else put it down."
               -dir-> act-3 ]
 
 
-OP 12 - "Before moving something somewhere if you are holding something else put it down."
+OP 13 - "Before moving something somewhere if you are holding something else put it down."
   trig:   
   ANTE[  act-1 -lex-   move
                -obj--> obj-1
@@ -147,7 +160,7 @@ OP 12 - "Before moving something somewhere if you are holding something else put
 
 // --------------------------------------
 
-OP 13 - "To put something somewhere move it there"
+OP 14 - "To put something somewhere move it there"
   trig: 
     DO[ act-1 -lex-   put
               -obj--> obj-1
@@ -158,7 +171,7 @@ OP 13 - "To put something somewhere move it there"
               -dest-> loc-1 ]
 
 
-OP 14 - "To deposit something put it down"
+OP 15 - "To deposit something put it down"
   trig: 
     DO[ act-1 -lex-  deposit
               -obj-> obj-1 ]
@@ -169,7 +182,7 @@ OP 14 - "To deposit something put it down"
               -loc-> act-2 ]
 
 
-OP 15 - "To point to something point at it"
+OP 16 - "To point to something point at it"
   trig: 
     DO[ act-1 -lex-   point
               -dest-> obj-1 ]
@@ -182,7 +195,7 @@ OP 15 - "To point to something point at it"
 
 // --------------------------------------
 
-OP 16 - "To tell someone that something is somewhere point at it, say here, then retract the arm"
+OP 17 - "To tell someone that something is somewhere point at it, say here, then tuck the arm"
   trig:
     DO[ act-1 -lex-   tell
               -dest-> dude-1
@@ -197,7 +210,7 @@ OP 16 - "To tell someone that something is somewhere point at it, say here, then
     DO[ act-3 -lex-  say
               -obj-> txt-1
         txt-1 -str-  here ]
-    DO[ act-4 -lex-  retract
+    DO[ act-4 -lex-  tuck
               -obj-> obj-3
         ako-3 -lex-  arm
               -ako-> obj-3 ] 

@@ -114,9 +114,9 @@ BEGIN
     BEGIN
         MENUITEM "Surface &Height",             ID_SOCIAL_SURFFIND
         MENUITEM "Surface &Areas",              ID_TABLE_SURFACE
-        MENUITEM "Surface &Zoom",               ID_OBJECTS_SURFACEZOOM
         MENUITEM "Table &Map",                  ID_OBJECTS_SURFACEMAP
         MENUITEM SEPARATOR
+        MENUITEM "Surface &Zoom",               ID_OBJECTS_SURFACEZOOM
         MENUITEM "&Plane Fitting",              ID_OBJECTS_PLANEFIT
         MENUITEM "&Depth Detect",               ID_OBJECTS_DETECT
         MENUITEM "&Color Detect",               ID_OBJECTS_COLORPARAMS
@@ -146,6 +146,8 @@ BEGIN
         MENUITEM "&Activity Level",             ID_MOOD_ACTIVITYLEVEL
         MENUITEM "&Interact Level",             ID_MOOD_INTERACTIONLEVEL
         MENUITEM "&Energy Level",               ID_MOOD_ENERGYLEVEL
+        MENUITEM SEPARATOR
+        MENUITEM "&LTM Match",                  ID_MOOD_LTMMATCH
     END
     POPUP "&Social"
     BEGIN
@@ -173,6 +175,8 @@ BEGIN
     BEGIN
         MENUITEM "&Surf Height",                ID_OBJECTS_SURFHEIGHT
         MENUITEM "Surf &Location",              ID_OBJECTS_SURFLOCATION
+        MENUITEM "Surf &Events",                ID_GRAB_SURFEVENTS
+        MENUITEM "Sur&f Tracking",              ID_GRAB_SURFTRACKING
         MENUITEM SEPARATOR
         MENUITEM "&Grasp Point",                ID_OBJECTS_GRASPPOINT
         MENUITEM "&Empty Spot",                 ID_OBJECTS_EMPTYSPOT
@@ -249,6 +253,9 @@ BEGIN
     POPUP "De&mo"
     BEGIN
         MENUITEM "Demo &Options",               ID_DEMO_DEMOOPTIONS
+        MENUITEM SEPARATOR
+        MENUITEM "Print &Details",              ID_DEMO_CONSOLEMSGS
+        MENUITEM "&Kernel Debug",               ID_DEMO_KERNELDEBUG
         MENUITEM "Attn + Time",                 ID_DEMO_ATTN
         MENUITEM "&Static Pose",                ID_DEMO_STATICPOSE
         MENUITEM SEPARATOR
@@ -313,8 +320,8 @@ CAPTION "About Banzai"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "Banzai Version 4.90",IDC_STATIC,47,11,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2015-2022, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
+    LTEXT           "Banzai Version 5.00",IDC_STATIC,47,11,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2015-2023, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
 END
@@ -403,8 +410,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 4,90,0,1
- PRODUCTVERSION 4,90,0,1
+ FILEVERSION 5,0,0,1
+ PRODUCTVERSION 5,0,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -420,12 +427,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "Banzai Robot Reasoner"
-            VALUE "FileVersion", "4.90.0.1"
+            VALUE "FileVersion", "5.0.0.1"
             VALUE "InternalName", "Banzai"
-            VALUE "LegalCopyright", "Copyright (C) 2022 Etaoin Systems"
+            VALUE "LegalCopyright", "Copyright (C) 2023 Etaoin Systems"
             VALUE "OriginalFilename", "Banzai.exe"
             VALUE "ProductName", "Banzai"
-            VALUE "ProductVersion", "4.90.0.1"
+            VALUE "ProductVersion", "5.0.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -808,6 +815,11 @@ BEGIN
     ID_GRAB_BODYSHIFT       "Parameters for jockeying robot to bring object into workspace"
     ID_ROOM_FORKCALIB       "Adjust height from controller using hand measurements"
     ID_UTILITIES_WEEDGRAMMAR "Find unused non-terminals in grammar"
+    ID_DEMO_CONSOLEMSGS     "Control what basic info gets printed to console window"
+    ID_DEMO_KERNELDEBUG     "Control debugging messages from action kernels"
+    ID_GRAB_SURFEVENTS      "Parameters for signaling detected tables"
+    ID_GRAB_SURFTRACKING    "Parameters for tracking and approaching tables"
+    ID_MOOD_LTMMATCH        "Property weights and thresholds for long term memory recognition"
 END
 
 #endif    // English (United States) resources

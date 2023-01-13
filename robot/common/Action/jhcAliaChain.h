@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,13 +69,15 @@ private:
   // run status on last few cycles
   int prev, done;
 
+  // last goal counting request
+  int req;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
-  // next step in chain (public for jhcGraphizer)
-  jhcAliaChain *fail, *cont, *alt;
+  jhcAliaChain *fail, *cont, *alt;     // next step in chain (public for jhcGraphizer)
   class jhcAliaOp *avoid;
-  int alt_fail;
+  int alt_fail, inum;                  // looping status
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -85,12 +87,13 @@ public:
   jhcAliaChain ();
   int Verdict () const  {return done;}
   int Level () const    {return level;}
+  int LastReq () const  {return req;}  
   UL32 Time0 () const   {return mt0;}
   jhcBindings *Scope () {return &scoping;}
   class jhcAliaCore *Core () {return core;}
   class jhcActionTree *ATree ();
-  bool Fallback () const   {return(backstop != NULL);}
-  bool Variations () const {return((cont == NULL) && (spew >= 2) && (backstop != NULL));}   
+  bool Variations () const {return((cont == NULL) && (spew >= 2) && (backstop != NULL));} 
+  bool Fallback () const;
 
   // configuration
   jhcAliaChain *BindDir (class jhcAliaDir *dir)
@@ -108,8 +111,8 @@ public:
   jhcAliaChain *Last ();
   jhcGraphlet *LastKey ();
   jhcAliaChain *Append (jhcAliaChain *tackon);
-  int MaxDepth () const;
-  int NumGoals (int leaf =0) const;
+  int MaxDepth (int cyc =1);
+  int NumGoals (int leaf =0, int cyc =1);
   void Enumerate ();
 
   // building
@@ -121,7 +124,7 @@ public:
   int Start (class jhcAliaCore *all, int lvl);
   int Start (jhcAliaChain *last);
   int Status ();
-  int Stop ();
+  void Stop ();
   int FindActive (const jhcGraphlet& desc, int halt);
 
   // file functions

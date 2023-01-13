@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ private:
   jhcAliaChain *focus[imax];
   jhcGraphlet err[imax];
   int done[imax], mark[imax];
-  int fill, chock;
+  int fill, chock, blame;
 
   // importance for each item
   double wt[imax];
@@ -71,6 +71,9 @@ private:
 
   // which focus has been selected
   int svc;
+
+  // unique label for counting goals
+  int req;
 
   // part for new NOTE focus
   jhcGraphlet nkey;
@@ -87,9 +90,6 @@ public:
   // operator adjustment parameters
   double pinc, pdec;
             
-  // control of diagnostic messages
-  int noisy;                    
-
 
 // PUBLIC MEMBER FUNCTIONS
 public:
@@ -101,15 +101,16 @@ public:
   int NumFoci () const  {return fill;}
   int Inactive () const {return(fill - Active());}
   int Active () const;
-  int MaxDepth () const;
-  int NumGoals (int leaf =0) const;
+  int MaxDepth ();
+  int NumGoals (int leaf =0);
  
   // list manipulation
   int NextFocus ();
   jhcAliaChain *FocusN (int n) const;
   jhcAliaChain *Current () const {return FocusN(svc);}
-  jhcGraphlet *Error ();
   void ClearErr ();
+  void SaveErr (int doit) {blame = doit;}
+  jhcGraphlet *Error ();
   bool NeverRun (int n) const;
   int BaseBid (int n) const;
   void SetActive (const jhcAliaChain *f, int running =1);
@@ -119,6 +120,7 @@ public:
   int ClrFoci (int init =0, const char *rname =NULL);
   int AddFocus (jhcAliaChain *f, double pref =1.0);
   void NoteSolo (jhcNetNode *n);
+  void ClrFail () {if (svc >= 0) err[svc].Clear();}
 
   // maintenance
   int Update (int gc =1);
@@ -129,6 +131,7 @@ public:
 
   // external interface (jhcAliaNote virtuals)
   void StartNote ();
+  void AddNode (jhcAliaDesc *item) {nkey.AddItem(dynamic_cast<jhcNetNode *>(item));}
   jhcAliaDesc *NewNode (const char *kind, const char *word =NULL, int neg =0, double blf =1.0, int done =0)
     {return MakeNode(kind, word, neg, blf, done);} 
   jhcAliaDesc *NewProp (jhcAliaDesc *head, const char *role, const char *word,
@@ -139,10 +142,10 @@ public:
     {return AddDeg(dynamic_cast<jhcNetNode *>(head), role, word, amt, neg, blf, chk, args);}
   void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val) const
     {if (head != NULL) (dynamic_cast<jhcNetNode *>(head))->AddArg(slot, dynamic_cast<jhcNetNode *>(val));}
+  jhcAliaDesc *Resolve (jhcAliaDesc *focus);
   void Keep (jhcAliaDesc *obj) const
     {jhcNetNode *n = dynamic_cast<jhcNetNode*>(obj); if (n != NULL) n->SetKeep(1);}
-  void NewFound (jhcAliaDesc *obj) const 
-    {SetGen(dynamic_cast<jhcNetNode *>(obj));}
+  void NewFound (jhcAliaDesc *obj) const;
   void GramTag (jhcAliaDesc *prop, int t) const 
     {if (prop != NULL) (dynamic_cast<jhcNetNode *>(prop))->tags = t;}
   jhcAliaDesc *Person (const char *name) const {return FindName(name);}

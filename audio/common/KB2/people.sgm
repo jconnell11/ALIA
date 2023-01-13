@@ -17,7 +17,7 @@
   offer
   serve
   look
-  come
+  come here
   approach
   wait
   move
@@ -33,7 +33,9 @@
   visible * asup   = most visible
   far away * acomp = farther away
   far away * asup  = farthest away
-  come * vpast = came
+  come here * vpast = came here
+  come here * vpres = comes here
+  come here * vprog = coming here
   see * vpast = saw
 
 

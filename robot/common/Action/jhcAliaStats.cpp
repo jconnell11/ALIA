@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,7 +110,7 @@ void jhcAliaStats::Reset ()
 // need to call Shift once all data from this cycle are entered
 // display with Memory 
 
-void jhcAliaStats::Thought (const jhcActionTree& atree)
+void jhcAliaStats::Thought (jhcActionTree& atree)
 {
   int w = atree.WmemSize();
 
@@ -160,7 +160,7 @@ void jhcAliaStats::Memory (jhcDisplay *d, int i, int j, double hz)
 
   if (corner(x, y, i, j, d) <= 0)
     return;
-  d->Graph(hmem, x, y, top, 2, "Goals (%d) and memory (%d) over %3.1f secs", g / 100, m / 100, sz / hz);
+  d->Graph(hmem, x, y, top, 2, "Total goals (%d max) and total memory (%d max) over %3.1f secs", g / 100, m / 100, sz / hz);
   d->GraphOver(wmem, top, 4);
   d->GraphOver(goal, __max(1, ROUND(pk * g)), 8);
   restore(d);
@@ -178,13 +178,13 @@ void jhcAliaStats::Wheels (jhcDisplay *d, int i, int j)
   // driving speed
   if (corner(x, y, i, j, d) <= 0)
     return;
-  d->Graph0(x, y, "Move speed (%3.1f ips)", 0.01 * mpk);
+  d->Graph0(x, y, "Move speed (%3.1f ips max)", 0.01 * mpk);
   d->GraphVal(0, -mpk, 2);
   d->GraphOver(mcmd, -mpk, 8);
   d->GraphOver(mips, -mpk, 4);
 
   // turning speed
-  d->Graph0(d->BelowX(), d->BelowY(), "Turn speed (%3.1f dps)", 0.01 * rpk);
+  d->Graph0(d->BelowX(), d->BelowY(), "Turn speed (%3.1f dps max)", 0.01 * rpk);
   d->GraphVal(0, -rpk, 2);
   d->GraphOver(rcmd, -rpk, 8); 
   d->GraphOver(rdps, -rpk, 1); 
@@ -203,13 +203,13 @@ void jhcAliaStats::Neck (jhcDisplay *d, int i, int j)
   // panning speed
   if (corner(x, y, i, j, d) <= 0)
     return;
-  d->Graph0(x, y, "Pan (+/- %1.0f deg)", 0.01 * ppk);
+  d->Graph0(x, y, "Pan (+/- %1.0f deg max)", 0.01 * ppk);
   d->GraphVal(0, -ppk, 2);
   d->GraphOver(pcmd, -ppk, 8);
   d->GraphOver(pdeg, -ppk, 4);
 
   // tilting speed
-  d->Graph0(d->BelowX(), d->BelowY(), "Tilt (+/- %1.0f deg)", 0.01 * tpk);
+  d->Graph0(d->BelowX(), d->BelowY(), "Tilt (+/- %1.0f deg max)", 0.01 * tpk);
   d->GraphVal(0, -tpk, 2);
   d->GraphOver(tcmd, -tpk, 8);
   d->GraphOver(tdeg, -tpk, 1); 

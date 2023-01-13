@@ -78,14 +78,8 @@
 
 class jhcSlotVal
 {
-// PUBLIC MEMBER VARIABLES
-public:
-  int dbg;
-
-
 // PUBLIC MEMBER FUNCTIONS
 public:
-  jhcSlotVal () {dbg = 0;}
   bool IsFrag (const char *entry) const {return(strchr("!$%", *entry) != NULL);}
   bool IsPair (const char *entry) const {return(strchr(entry, '=') != NULL);}
 

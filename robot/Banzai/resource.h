@@ -206,6 +206,11 @@
 #define ID_GRAB_BODYSHIFT               32934
 #define ID_ROOM_FORKCALIB               32935
 #define ID_UTILITIES_WEEDGRAMMAR        32936
+#define ID_DEMO_CONSOLEMSGS             32937
+#define ID_DEMO_KERNELDEBUG             32938
+#define ID_GRAB_SURFEVENTS              32939
+#define ID_GRAB_SURFTRACKING            32940
+#define ID_MOOD_LTMMATCH                32941
 
 // Next default values for new objects
 // 
@@ -213,7 +218,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32937
+#define _APS_NEXT_COMMAND_VALUE         32942
 #define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

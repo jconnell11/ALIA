@@ -283,13 +283,14 @@ const char *jhcGramExec::Expand (const char *sent, int fix)
   strcpy_s(full, sent);
 
   // pronoun-be separation
-  subst_all("I'm",   "I am");
-  subst_all("'re",   " are");          // you're, we're, they're
-  subst_all("he's",  "he is");
-  subst_all("she's", "she is");
-  subst_all("it's",  "it is");
-  subst_all("who's", "who is");  
-  subst_all("'d",    " would");        // might be "had"
+  subst_all("I'm",    "I am");
+  subst_all("'re",    " are");         // you're, we're, they're
+  subst_all("he's",   "he is");
+  subst_all("she's",  "she is");
+  subst_all("it's",   "it is");
+  subst_all("who's",  "who is");  
+  subst_all("what's", "what is");  
+  subst_all("'d",     " would");       // might be "had"
 
   // expand negations
   if (fix < 2)

@@ -65,7 +65,7 @@ public:
   jhcAliaRule *RuleList () const {return rules;}
   jhcAliaRule *NextRule (jhcAliaRule *r) const 
     {return((r == NULL) ? rules : r->next);} 
-  int AddRule (jhcAliaRule *r, int ann =0);
+  int AddRule (jhcAliaRule *r, int ann =0, int usr =0);
   void Remove (const jhcAliaRule *rem);
 
   // main functions

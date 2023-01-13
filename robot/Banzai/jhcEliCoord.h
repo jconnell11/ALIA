@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,6 +99,9 @@ public:
   jhcManipulate man;
   jhcSupport sup;
 
+  // kernel debugging messages
+  jhcParam kps;
+
 
 // PUBLIC MEMBER FUNCTIONS
 public:
@@ -120,6 +123,9 @@ public:
 
 // PRIVATE MEMBER FUNCTIONS
 private:
+  // processing parameters
+  int kern_params (const char *fname);
+
   // visual semantic linkage
   void check_user (int id);
   void wmem_heads ();

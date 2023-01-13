@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -187,6 +187,11 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_GRAB_BODYSHIFT, &CBanzaiDoc::OnGrabBodyshift)
   ON_COMMAND(ID_ROOM_FORKCALIB, &CBanzaiDoc::OnRoomForkcalib)
   ON_COMMAND(ID_UTILITIES_WEEDGRAMMAR, &CBanzaiDoc::OnUtilitiesWeedgrammar)
+  ON_COMMAND(ID_DEMO_CONSOLEMSGS, &CBanzaiDoc::OnDemoConsolemsgs)
+  ON_COMMAND(ID_DEMO_KERNELDEBUG, &CBanzaiDoc::OnDemoKerneldebug)
+  ON_COMMAND(ID_GRAB_SURFEVENTS, &CBanzaiDoc::OnGrabSurfevents)
+  ON_COMMAND(ID_GRAB_SURFTRACKING, &CBanzaiDoc::OnGrabSurftracking)
+  ON_COMMAND(ID_MOOD_LTMMATCH, &CBanzaiDoc::OnMoodLtmmatch)
       END_MESSAGE_MAP()
 
 
@@ -267,7 +272,7 @@ BOOL CBanzaiDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = ec.Version();
-  LockAfter(4, 2023, 11, 2022);
+  LockAfter(5, 2023, 12, 2022);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -638,8 +643,16 @@ void CBanzaiDoc::OnParametersImagesize()
 
 int CBanzaiDoc::ChkStream (int dual)
 {
+  // use currently bound source
   if (v.Valid() && ((dual <= 0) || v.Dual()))
     return 1;
+
+  // if no body then try opening same video as last session
+  if (rob <= 0)
+    if (OnOpenDocument(theApp.GetLastFile()))
+      return 1;
+
+  // start up depth sensor (usually on robot)
   d.StatusText("Configuring Kinect sensor ...");
   v.noisy = ((cmd_line > 0) ? 0 : 1);
   if (v.SetSource("0.kin") <= 0)
@@ -1720,6 +1733,16 @@ void CBanzaiDoc::OnMoodEnergylevel()
 }
 
 
+// Property weights and thresholds for long term memory recognition
+
+void CBanzaiDoc::OnMoodLtmmatch()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.dmem).wps); 
+}
+
+
 /////////////////////////////////////////////////////////////////////////////
 //                         Linguistic Interaction                          //
 /////////////////////////////////////////////////////////////////////////////
@@ -1734,7 +1757,7 @@ int CBanzaiDoc::interact_params (const char *fname)
   ps->SetTag("banzai_opt", 0);
   ps->NextSpec4( &cam,        0, "Camera available");
   ps->NextSpec4( &rob,        0, "Body (none, yes, autorun)");
-  ps->NextSpec4( &(ec.spin),  0, "Speech (no, w7, web, w11)");  
+  ps->NextSpec4( &(ec.spin),  0, "Speech (none, local, web)");  
   ps->NextSpec4( &(ec.amode), 2, "Attn (none, ends, front, only)");
   ps->NextSpec4( &(ec.tts),   0, "Vocalize output");
   ps->NextSpec4( &fsave,      0, "Face model update");
@@ -1764,6 +1787,26 @@ void CBanzaiDoc::OnDemoAttn()
 	jhcPickVals dlg;
 
   dlg.EditParams(ec.tps); 
+}
+
+
+// Control what basic info gets printed to console window
+
+void CBanzaiDoc::OnDemoConsolemsgs()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(ec.mps); 
+}
+
+
+// Control debugging messages from action kernels
+
+void CBanzaiDoc::OnDemoKerneldebug()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(ec.kps); 
 }
 
 
@@ -3279,6 +3322,26 @@ void CBanzaiDoc::OnObjectsSurfheight()
 	jhcPickVals dlg;
 
   dlg.EditParams((ec.sup).hps);    
+}
+
+
+// Parameters for signaling detected tables
+
+void CBanzaiDoc::OnGrabSurfevents()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.sup).eps);    
+}
+
+
+// Parameters for tracking and approaching tables
+
+void CBanzaiDoc::OnGrabSurftracking()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.sup).tps);    
 }
 
 
@@ -5103,5 +5166,6 @@ void CBanzaiDoc::OnUtilitiesTest()
   }
 
 }
+
 
 

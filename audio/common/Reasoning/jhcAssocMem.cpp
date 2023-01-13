@@ -69,9 +69,9 @@ jhcAssocMem::jhcAssocMem ()
 {
   rules = NULL;
   nr = 0;
-  noisy = 2;
+  noisy = 1;                 // defaulted from jhcAliaCore
   detail = 0;
-//detail = 161;              // show detailed matching for some rule 
+//detail = 186;              // show detailed matching for some rule 
 }
 
 
@@ -80,30 +80,45 @@ jhcAssocMem::jhcAssocMem ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Add new rule onto tail of list.
+// ann: 0 = no msgs, 1 = fail only, 2 = fail with rule, 3 = new rule 
 // returns 1 if successful, 0 or negative for some problem (consider deleting)
 
-int jhcAssocMem::AddRule (jhcAliaRule *r, int ann)
+int jhcAssocMem::AddRule (jhcAliaRule *r, int ann, int usr)
 {
   jhcAliaRule *r0 = rules, *prev = NULL;
 
-  // check for likely duplication
+  // check for likely duplication or other format problems
   if (r == NULL)
     return 0;
   if ((r->result).Empty())
   {
-    jprintf(1, ann, "  ... new rule rejected because result is empty\n\n");
+    jprintf(1, ann, "  ... new rule rejected because result is empty\n");
     return -1;
   }
   if (r->Tautology())
   {
-    jprintf(1, ann, "  ... new rule rejected as a tautology\n\n");
+    jprintf(1, ann, "  ... new rule rejected as a tautology\n");
     return -2;
+  }
+  if (r->Bipartite())
+  {
+    jprintf(1, ann, "  ... new rule rejected as disconnected\n");
+    return -3;
   }
   while ((prev = NextRule(prev)) != NULL)
     if (r->Identical(*prev))
     {
-      jprintf(1, ann, "  ... new rule rejected as identical to rule %d\n\n", prev->RuleNum());
-      return -3;
+      if (usr > 0)
+      {
+        // possibly revise old rule instead of adding
+        jprintf(1, ann, "  ... old rule %d confidence updated from %4.2f to %4.2f\n", 
+                prev->RuleNum(), prev->conf, r->conf);
+        prev->conf = r->conf;
+        delete r;                      // clean up since not saved
+        return 1;
+      }
+      jprintf(1, ann, "  ... new rule rejected as identical to rule %d\n", prev->RuleNum());
+      return -4;
     }
 
   // add to end of list
@@ -121,7 +136,7 @@ int jhcAssocMem::AddRule (jhcAliaRule *r, int ann)
   r->id = ++nr;
 
   // possibly announce formation
-  if ((ann > 0) && (noisy >= 1))
+  if ((ann >= 2) && (noisy >= 1))
   {
     jprintf("\n.................................\n");
     r->Print();
@@ -179,27 +194,28 @@ int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, int dbg) const
   double mth = wmem.MinBlf();
   int cnt = 0, cnt2 = 0;
 
-//dbg = 2;                   // quick way to show halo inferences
+//dbg = 2;                               // quick way to show halo inferences
 
 jtimer(14, "RefreshHalo");
   // possibly announce entry
   jprintf(1, dbg, "HALO refresh ...\n");
 
   // PASS 1 - run 1-step inference on working memory and long term props  
-  wmem.Horizon();            
-  wmem.SetMode(1);           // only match to nodes in main pool and LTM props
+  // only match to nodes in main pool and LTM props
+  wmem.MaxBand(1);                     
   jprintf(2, dbg, "1-step:\n");
   while ((r = NextRule(r)) != NULL)
   {
     r->dbg = ((r->id == detail) ? 3 : 0);
     cnt += r->AssertMatches(wmem, mth, 0, dbg - 1);
   }
+  wmem.Horizon();                      // sets "nimbus" to single vs double rule boundary
 
   // PASS 2 - run 2-step inference using first set of halo assertions
-  wmem.Horizon(); 
-  wmem.SetMode(2);           // match to main pool, LTM props, and 1-step    
-  r = NULL;
+  // match to main pool, LTM props, and 1-step    
+  wmem.MaxBand(2);                     
   jprintf(2, dbg, "2-step:\n");
+  r = NULL;
   while ((r = NextRule(r)) != NULL)
   {
     r->dbg = ((r->id == detail) ? 3 : 0);
@@ -208,8 +224,8 @@ jtimer(14, "RefreshHalo");
 
   // report result
   jprintf(1, dbg, "  %d + %d rule invocations\n\n", cnt, cnt2);
-//wmem.PrintHalo();
 jtimer_x(14);
+//wmem.PrintHalo();
   return cnt;
 }
 
@@ -252,7 +268,7 @@ int jhcAssocMem::Consolidate (const jhcBindings& b, int dbg)
     {
       jprintf(1, dbg, "\n");
       mix->LinkCombo(m2c, *r2, *b2);
-      if (AddRule(mix, 1 + dbg) <= 0)
+      if (AddRule(mix, 1 + dbg, 0) <= 0)
         delete mix;                        // possibly a duplicate
       mix = NULL;                          
       cnt++;
@@ -353,9 +369,13 @@ int jhcAssocMem::Load (const char *base, int add, int rpt, int level)
       // add rule to list if not a duplicate (unlikely)
       r->lvl = level;
       strcpy_s(r->prov, src);
-      if (AddRule(r, 0) <= 0)
+      if (AddRule(r, 1, 0) > 0)
+        n++;
+      else
+      {
+        jprintf(">>> Invalid rule at line %d in: %s\n", in.Last(), fname);
         delete r; 
-      n++;
+      }
     }
   }
 
@@ -412,7 +432,7 @@ int jhcAssocMem::save_rules (FILE *out, int level) const
   while (r != NULL)
   {
     if (r->lvl >= level)
-      if (r->Save(out, 2) > 0)
+      if (r->Save(out) > 0)
       {
         fprintf(out, "\n\n");
         cnt++;

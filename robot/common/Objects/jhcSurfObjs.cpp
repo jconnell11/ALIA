@@ -53,7 +53,7 @@ jhcSurfObjs::jhcSurfObjs (int n)
   // processing parameters for base and components
   SetFit(0.75, 2000, 0.5, 4.0, 4.0, 3.0, 100);
   pp.SetFind(3, 180, 35, 25, 245, 100, 50);
-  pp.SetHue(250, 30, 49, 130, 175, 220);
+  pp.SetHue(0, 30, 49, 130, 175, 220);           // R-O was 250
 
   // own parameters
   Defaults();
@@ -121,7 +121,7 @@ int jhcSurfObjs::tall_params (const char *fname)
   ps->NextSpec4( &cup,  150,   "Occlusion fill width (pel)");        // was 100
   ps->NextSpec4( &bej,    5,   "FOV edge shrinkage (pel)");  
 
-  ps->NextSpec4( &rmode,  2,   "Detection (depth, alt, both)");
+  ps->NextSpec4( &rmode,  0,   "Detection (depth, alt, both)");      // was 2
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;

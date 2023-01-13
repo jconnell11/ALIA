@@ -1,0 +1,93 @@
+OP 1 - "If you are bored then steal an interesting thing"
+  trig:
+  NOTE[  hq-2 -lex-  bored
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+  BIND[ obj-4
+         hq-5 -lex-  interesting
+              -hq--> obj-4 ]
+    DO[ act-3 -lex-  steal
+              -obj-> obj-4 ]
+
+
+OP 2 - "To find an interesting thing find the color of all objects on the table"
+  trig:
+  FIND[ obj-1
+         hq-2 -lex-  interesting
+              -hq--> obj-1 ]
+-----------------
+  BIND[  obj-3
+        kind-4 -lex-  table
+               -ako-> obj-3 ]
+   ~~~ 2
+  EACH[  obj-5
+        kind-6 -lex-  object
+               -ako-> obj-5
+         loc-7 -lex-  on
+               -loc-> obj-5
+               -ref-> obj-3 ]
+  FIND[  obj-8
+        kind-9 -lex-  color
+               -ako-> obj-8
+               -wrt-> obj-5 ]
+     @ 2
+
+
+OP 3 - "To find a table look around slowly"
+  trig:
+  FIND[  obj-1
+        kind-2 -lex-  table
+               -ako-> obj-1 ]
+-----------------
+    DO[ act-3 -lex-  look
+        dir-4 -lex-  around
+              -dir-> act-3 
+        mod-5 -lex-  slowly
+              -mod-> act-3 ]
+
+
+OP 4 - "To steal something grab it, claim it, and walk away"
+  trig:
+    DO[ act-1 -lex-  steal
+              -obj-> obj-2 ]
+-----------------
+    DO[ act-3 -lex-  grab
+              -obj-> obj-2 ]
+    DO[ act-4 -lex-  claim
+              -obj-> obj-2 ]
+    DO[ act-5 -lex-  walk
+        dir-1 -lex-  away
+              -dir-> act-5 ]
+
+
+OP 5 - "To claim something say mine, all mine"
+  trig:
+    DO[ act-1 -lex-  claim
+              -obj-> obj-2 ]
+-----------------
+    DO[ act-3 -lex-  say
+              -obj-> txt-4
+        txt-4 -str-  mine, all mine ]
+
+
+OP 6 - "To walk away wander"
+  trig:
+    DO[ act-1 -lex-  walk
+        dir-2 -lex-  away
+              -dir-> act-1 ]
+-----------------
+    DO[ act-5 -lex-  wander ]
+
+
+OP 7 - "Before wandering tuck in the arm"
+  trig:
+  ANTE[ act-1 -lex- wander ]
+-----------------
+    DO[ act-2 -lex-   tuck
+              -dest-> loc-1 
+        loc-1 -lex-   in
+              -ref--> obj-1 
+        ako-1 -lex-   arm
+              -ako--> obj-1 ]
+

@@ -155,7 +155,7 @@ public:
 
   // high-level people commands
   int WatchPerson (int id, int bid =10);
-  void OrientToward (const jhcMatrix *targ, int bid);
+  void OrientToward (const jhcMatrix *targ, int bid =10);
   double PersonErr (int id) const;
 
   // high-level navigation commands

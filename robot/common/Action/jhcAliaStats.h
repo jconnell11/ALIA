@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ public:
  
   // main functions
   void Reset ();
-  void Thought (const jhcActionTree& atree);
+  void Thought (jhcActionTree& atree);
   void Drive (double m, double mest, double r, double rest);
   void Gaze (double p, double pest, double t, double test);
   void Shift () {fill++;}

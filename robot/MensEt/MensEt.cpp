@@ -110,6 +110,16 @@ BOOL CMensEtApp::InitInstance()
 }
 
 
+// JHC: extract name of last file opened
+
+LPCTSTR CMensEtApp::GetLastFile () const
+{
+	if ((m_pRecentFileList == NULL) || (m_pRecentFileList->GetSize() <= 0))
+    return NULL;
+  return (LPCTSTR)((*m_pRecentFileList)[0]);
+}
+
+
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 

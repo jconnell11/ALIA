@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -384,7 +384,7 @@ jhcNetNode *jhcGraphlet::NextNode (const jhcNetNode *prev, int bin) const
 
 //= Save description focusing on relations.
 // assumes first line indented properly if lvl <= 0 (no CR on last line)
-// detail: 0 no extras, 1 show belief, 2 show tags, 3 show both
+// detail: -2 belief + tags, -1 belief, 0 no extras, 1 default belief, 2 default belief + tags
 // return: 1 = success, 0 = bad format, -1 = file error
 
 int jhcGraphlet::Save (FILE *out, int lvl, int detail) const
@@ -413,13 +413,13 @@ int jhcGraphlet::Save (FILE *out, int lvl, int detail) const
 //= Print the graphlet with some header line preceeding it.
 // largely for debugging
 
-void jhcGraphlet::Print (const char *tag, int lvl,  int detail) const
+void jhcGraphlet::Print (const char *tag, int lvl, int detail) const
 {
   if ((tag == NULL) || (*tag == '\0'))
     jprintf("%*sdescription:", lvl, "");
   else
     jprintf("%*s%s:", lvl, "", tag);
-  Print(lvl + 2);
+  Print(lvl + 2, detail);
   jprintf("\n");
 }
 

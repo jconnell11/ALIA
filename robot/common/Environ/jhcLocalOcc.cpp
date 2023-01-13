@@ -788,7 +788,7 @@ int jhcLocalOcc::Dists (jhcImg& dest, int rot) const
   const jhcImg *ref = ((rot > 0) ? &dest : NULL);
   double d, c, s, len, off = rside / ipp, dr = D2R * 180.0 / ndir;
   double rx0, ry0, rads = robot_pose(rx0, ry0, ref) - D2R * 180.0;
-  int dev, col = 180, hnd = ndir / 2;
+  int dev, col = 180;
 
   if (!dest.Valid(1, 3))
     return Fatal("Bad images to jhcLocalOcc::Dists");
@@ -798,7 +798,7 @@ int jhcLocalOcc::Dists (jhcImg& dest, int rot) const
       c = cos(rads);
       s = sin(rads);
       len = (rfwd + d) / ipp;
-//      col = (((dev >= -hnd) && (dev <= hnd)) ? 230 : 180);
+//      col = ((abs(dev) <= (ndir / 2)) ? 230 : 180);
       DrawLine(dest, rx0 + off * c, ry0 + off * s, rx0 + len * c, ry0 + len * s, 3, col);
     }
   return 1;

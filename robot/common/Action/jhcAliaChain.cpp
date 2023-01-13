@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,11 +118,15 @@ jhcAliaChain::jhcAliaChain ()
   backstop = NULL;
   spew = 0;
   parse = 0;
+  inum = 0;
 
   // set up payload to run
   avoid = NULL;
   prev = 0;
   done = 0;
+
+  // no goal counting requests yet
+  req = 0;
 }
 
 
@@ -133,6 +137,19 @@ jhcActionTree *jhcAliaChain::ATree ()
   if (core == NULL)
     return NULL;
   return &(core->atree);
+}
+
+
+//= Check if there is a backtrack move that will change some variable.
+
+bool jhcAliaChain::Fallback () const
+{
+  jhcAliaDir *d0;
+
+  if (backstop != NULL)
+    if ((d0 = backstop->d) != NULL)
+      return !d0->Assumed();
+  return false;
 }
 
 
@@ -260,44 +277,56 @@ jhcAliaChain *jhcAliaChain::Append (jhcAliaChain *tackon)
 
 
 //= Determine the maximum subgoal depth for this part of the tree.
+// cyc is unique request number -- use LastReq() + 1 to force new count
 
-int jhcAliaChain::MaxDepth () const
+int jhcAliaChain::MaxDepth (int cyc) 
 {
+  // see if chain step already enumerated (for loops)
+  if (req == cyc)
+    return 0;
+  req = cyc;
+
   // if still working then look at payload
   if ((done == 0) && (d != NULL))
-    return d->MaxDepth();
+    return d->MaxDepth(cyc);
   if ((done == 0) && (p != NULL))
-    return p->MaxDepth();
+    return p->MaxDepth(cyc);
   
   // if finished check where control was passed
   if ((done == 1) && (cont != NULL))
-    return cont->MaxDepth();
+    return cont->MaxDepth(cyc);
   if ((done == 2) && (alt != NULL))
-    return alt->MaxDepth();
+    return alt->MaxDepth(cyc);
   if ((done == -2) && (fail != NULL))
-    return fail->MaxDepth();
+    return fail->MaxDepth(cyc);
   return 1; 
 }
 
 
 //= Determine number of simultaneous activities (possibly subgoaled).
 // if leaf > 0 then only considers currently active goals not pass-thrus
+// cyc is unique request number -- use LastReq() + 1 to force new count
 
-int jhcAliaChain::NumGoals (int leaf) const
+int jhcAliaChain::NumGoals (int leaf, int cyc) 
 {
+  // see if chain step already enumerated (for loops)
+  if (req == cyc)
+    return 0;
+  req = cyc;
+
   // if still working then look at payload
   if ((done == 0) && (d != NULL))
-    return d->NumGoals(leaf);
+    return d->NumGoals(leaf, cyc);
   if ((done == 0) && (p != NULL))
-    return p->NumGoals(leaf);
+    return p->NumGoals(leaf, cyc);
   
   // if finished check where control was passed
   if ((done == 1) && (cont != NULL))
-    return cont->NumGoals(leaf);
+    return cont->NumGoals(leaf, cyc);
   if ((done == 2) && (alt != NULL))
-    return alt->NumGoals(leaf);
+    return alt->NumGoals(leaf, cyc);
   if ((done == -2) && (fail != NULL))
-    return fail->NumGoals(leaf);
+    return fail->NumGoals(leaf, cyc);
   return 0; 
 }
 
@@ -583,10 +612,11 @@ int jhcAliaChain::Start (jhcAliaChain *prior)
     level = prior->level;
     mt0 = prior->mt0;
     scoping.Copy(prior->scoping);
+    inum = prior->inum;
 
     // possibly set a new backtracking point if coming from a FIND/BIND
     d0 = prior->GetDir();
-    if ((d0 != NULL) && d0->ConcreteFind())
+    if ((d0 != NULL) && d0->IsFind())
       backstop = prior;
     else
       backstop = prior->backstop;
@@ -616,7 +646,7 @@ int jhcAliaChain::start_payload (int lvl)
 int jhcAliaChain::Status ()
 {
 //  jhcAliaChain *bulk2;
-  const jhcAliaDir *d0;
+  jhcAliaDir *d0;
   int first = ((prev == 0) ? 1 : 0);
 
   // remember current state for next call
@@ -647,7 +677,10 @@ int jhcAliaChain::Status ()
     if ((done == -2) && (backstop != NULL) && (jms_elapsed(mt0) <= core->Dither()))
     {
       if ((core != NULL) && ((d0 = backstop->d) != NULL))
+      {
         jprintf(1, core->noisy, "\n%*s@@@ unwind and retry %s[ %s ]\n", level, "", d0->KindTag(), d0->KeyTag());
+        d0->HideAssume();             // prevent proliferation of imagined items
+      }
       return backstop->Start(NULL);
     }
 
@@ -684,30 +717,32 @@ int jhcAliaChain::Status ()
 
 
 //= Courtesy signal to activity that it is no longer needed. 
-// returns current non-zero state (fail, stop, cont, or alt)
 
-int jhcAliaChain::Stop ()
+void jhcAliaChain::Stop ()
 {
-  // see if activation passed to next step
-  if ((done == 1) && (cont != NULL))
-    return cont->Stop();
-  else if ((done == 2) && (alt != NULL))
-    return alt->Stop();
-  else if ((done == -2) && (fail != NULL))
-    return fail->Stop();
+  int verdict = done;
+
+  // check if already throughly stopped (for loops)
+  if (done == -1)
+    return;
+  done = -1;
 
   // stop payload if still active
-  if (done == 0)
+  if (verdict == 0)
   {
     if (d != NULL)
       d->Stop();
     else if (p != NULL)
       p->Stop();
-    done = -1;
   }
 
-  // failed, stopped, or end of chain
-  return done;
+  // see if activation passed to next step
+  if ((verdict == 1) && (cont != NULL))
+    cont->Stop();
+  else if ((verdict == 2) && (alt != NULL))
+    alt->Stop();
+  else if ((verdict == -2) && (fail != NULL))
+    fail->Stop();
 }
 
 
@@ -1018,9 +1053,11 @@ int jhcAliaChain::Save (FILE *out, int lvl, int *step, int detail)
     st = &label;
   }
 
-  // possibly terminate last chain 
+  // possibly terminate last chain or quit
   if (*st < 0)
     jfprintf(out, "%*s ...\n", lvl, "");
+  if (abs(idx) != abs(*st))
+    return 1;
 
   // see if a label should be emitted for this step
   if ((lvl >= 0) && (idx < 0))
@@ -1033,7 +1070,7 @@ int jhcAliaChain::Save (FILE *out, int lvl, int *step, int detail)
     // CHK directive might need an alternate, all directives can have a "fail" handler
     if ((ans = d->Save(out, sp, detail)) <= 0)
       return ans;
-    if (d->HasAlt() && (alt != NULL))
+    if (alt != NULL)
       jfprintf(out, "%*s   %% %d\n", lvl, "", abs(alt->idx));
     if (fail != NULL)
       jfprintf(out, "%*s   # %d\n", lvl, "", abs(fail->idx));

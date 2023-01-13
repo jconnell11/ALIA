@@ -6,3 +6,10 @@ RULE 1 - "Surfaces are tables"
               -ako-> obj-1
   then: ako-2 -lex-  table
               -ako-> obj-1
+
+
+RULE 2 - "Tables are surfaces"
+    if: ako-1 -lex-  table
+              -ako-> obj-1
+  then: ako-2 -lex-  surface
+              -ako-> obj-1

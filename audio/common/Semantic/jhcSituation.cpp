@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -127,8 +127,9 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
 {
   jhcBindings *b = m + __max(0, mc - 1);
   const jhcNetNode *val, *anchor = NULL, *focus = NULL;
+  jhcNetNode *mate;
   const char *role;
-  int i, np, pnum, n = b->NumPairs(), cnt = 0;
+  int i, h, hmax, np, pnum, n = b->NumPairs(), cnt = 0;
 
   // get a bound node from query graphlet (np static)
   for (i = 0; ((i < n) && (focus == NULL)); i++)
@@ -154,16 +155,24 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   jprintf(2, dbg, "%*s  try_props: %s (from %s)\n", 2 * n, "", focus->Nick(), anchor->Nick());
 
   // consider properties of anchor's binding as candidates (most recent first)
+  hmax = f.NumBands();
   np = val->NumProps();
-  for (i = np - 1; i >= 0; i--)
-    if (val->RoleMatch(i, role))
-    {
-      // continue matching with selected mate for focus
-      n = try_binding(focus, val->PropSurf(i), m, mc, pat, f, f2);
-      if (n < 0)
-        return 1;
-      cnt += n;
-    }
+  for (h = 0; h < hmax; h++)                     // prefer non-halo
+    for (i = np - 1; i >= 0; i--)
+      if (val->RoleMatch(i, role))
+      {
+        // continue matching with selected mate for focus
+        mate = val->PropSurf(i);
+        if (!f.InBand(mate, h))
+        {
+          jprintf(4, dbg, "%*s   mate = %s --> not band %d\n", 2 * n, "", mate->Nick(), h);
+          continue;
+        }
+        n = try_binding(focus, mate, m, mc, pat, f, f2);
+        if (n < 0)
+          return 1;
+        cnt += n;
+      }
   return cnt;
 }
 
@@ -176,8 +185,9 @@ int jhcSituation::try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat,
 {
   jhcBindings *b = m + __max(0, mc - 1);
   const jhcNetNode *fact, *anchor = NULL, *focus = NULL;
+  jhcNetNode *mate;
   const char *slot;
-  int i, na, anum, n = b->NumPairs(), cnt = 0;
+  int i, h, hmax, na, anum, n = b->NumPairs(), cnt = 0;
 
   // get a bound node from query graphlet (na static)
   for (i = 0; ((i < n) && (focus == NULL)); i++)
@@ -203,15 +213,23 @@ int jhcSituation::try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   jprintf(2, dbg, "%*s  try_args: %s (from %s)\n", 2 * n, "", focus->Nick(), anchor->Nick());
 
   // consider arguments of anchor's binding as candidates (NumArgs might change during loop)
-  for (i = 0; i < fact->NumArgs(); i++)
-    if (strcmp(fact->Slot(i), slot) == 0)
-    {
-      // continue matching with selected mate for focus
-      n = try_binding(focus, fact->ArgSurf(i), m, mc, pat, f, f2);
-      if (n < 0)
-        return 1;
-      cnt += n;
-    }
+  hmax = f.NumBands();
+  for (h = 0; h < hmax; h++)                     // prefer non-halo
+    for (i = 0; i < fact->NumArgs(); i++)
+      if (strcmp(fact->Slot(i), slot) == 0)
+      {
+        // continue matching with selected mate for focus
+        mate = fact->ArgSurf(i);
+        if (!f.InBand(mate, h))
+        {
+          jprintf(4, dbg, "%*s   mate = %s --> not band %d\n", 2 * n, "", mate->Nick(), h);
+          continue;
+        }
+        n = try_binding(focus, mate, m, mc, pat, f, f2);
+        if (n < 0)
+          return 1;
+        cnt += n;
+      }
   return cnt;
 }
 
@@ -246,7 +264,7 @@ int jhcSituation::try_bare (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   jprintf(2, dbg, "%*s  try_bare: %s initial focus\n", b->NumPairs() * 2, "", focus->Nick());
 
   // consider nodes with matching labels as candidates (NextNode list might change during loop)
-  while ((mate = f.NextNode(mate)) != NULL)
+  while ((mate = f.NextNode(mate)) != NULL)    
   {
     // continue matching with selected mate for focus
     n = try_binding(focus, mate, m, mc, pat, f, f2);
@@ -292,7 +310,7 @@ int jhcSituation::try_hash (jhcBindings *m, int& mc, const jhcGraphlet& pat,
 
   // only consider nodes with matching hashes as candidate matches
   bin = ((b->LexSub(focus) == NULL) ? -1 : focus->Code());
-  while ((mate = f.NextNode(mate, bin)) != NULL)
+  while ((mate = f.NextNode(mate, bin)) != NULL)         
   {
     // continue matching with selected mate for focus
     n = try_binding(focus, mate, m, mc, pat, f, f2);
@@ -314,7 +332,7 @@ int jhcSituation::try_binding (const jhcNetNode *focus, jhcNetNode *mate, jhcBin
   int rc, i, nb = 0, n = __max(0, mc - 1), lvl = 2 * m[n].NumPairs(), cnt = 0;
 
   // sanity check
-  if (!mate->Visible())
+  if ((refmode <= 0) && !mate->Visible())
     return jprintf(3, dbg, "%*s   mate = %s not visible\n", lvl, "", mate->Nick());
   
   // make sure superficial pairing is okay

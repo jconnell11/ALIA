@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,13 +66,18 @@ class jhcGraphizer : protected jhcSlotVal
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  // max length of intermediate association lists
-  static const int amax = 1000; 
+  static const int amax = 1000;        /** Max length of intermediate alists. */
+  static const int nest = 4;           /** Maximum nesting depth of loops.    */
 
   // for resolving references
   jhcNodePool *univ;
   jhcAliaChain *skolem;
   int create, resolve;
+
+  // for implicit loops
+  jhcAliaChain *multi;                  // "for" multi-step loop (if any)
+  jhcAliaChain *root;                   // outermost looping EACH/ANY
+  jhcAliaChain *loop;                   // innermost looping EACH/ANY
 
 
 // PROTECTED MEMBER VARIABLES
@@ -89,6 +94,9 @@ protected:
 public:
   // morphology (possibly shared)
   jhcMorphFcns mf;           
+
+  // show subroutine calls
+  int dbg;                
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -137,6 +145,7 @@ private:
   void demote_bind () const;
 
   // action phrases
+  jhcNetNode *build_ach (const char *alist, jhcNodePool& pool);
   jhcNetNode *build_do (const char *alist, jhcNodePool& pool);
   jhcNetNode *build_name (const char *alist, jhcNodePool& pool); 
   jhcNetNode *build_fact (const char **after, const char *alist, jhcNodePool& pool, 
@@ -149,21 +158,32 @@ private:
   // object phrases
   jhcNetNode *build_obj (const char **after, const char *alist, jhcNodePool& pool, 
                          jhcNetNode *f0 =NULL, double blf =1.0, int qcnt =0);
-  jhcNetNode *obj_owner (const char *alist, jhcNodePool& pool, jhcNetNode *f0 =NULL);
-  jhcNetNode *ref_props (jhcNetNode *n, jhcNodePool& pool, const char *pron) const;
-  bool match_any (const char *txt, const char *val, const char *val2, const char *val3 =NULL, const char *val4 =NULL) const;
+  void obj_poss (jhcNetNode *obj, jhcNetNode *kind, const char *alist, jhcNodePool& pool);
+  void obj_comp (jhcNetNode **fact, jhcNetNode *obj, const char *alist, jhcNodePool& pool);
+  int setup_loop (const char *word);
 
+  // basic object description
+  jhcNetNode *obj_desc (jhcNetNode **last, jhcNetNode *obj, const char *alist, jhcNodePool& pool, double blf);
+  jhcNetNode *ref_props (jhcNetNode *n, jhcNodePool& pool, const char *pron) const;
+  jhcNetNode *adj_comp (const char **after, jhcNetNode *obj, const char *deg, const char *alist, 
+                        jhcNodePool& pool, int neg, double blf =1.0);
   jhcNetNode *obj_deg (const char **after, jhcNetNode *obj, const char *deg, const char *alist, 
                        jhcNodePool& pool, int neg, double blf =1.0);
-  jhcNetNode *obj_comp (const char **after, jhcNetNode *obj, const char *deg, const char *alist, 
-                        jhcNodePool& pool, int neg, double blf =1.0);
-  jhcNetNode *add_place (const char **after, jhcNetNode *obj, char *pair, const char *alist, 
-                         jhcNodePool& pool, int neg =0, double blf =1.0);
   jhcNetNode *obj_has (const char **after, jhcNetNode *obj, const char *prep, const char *alist, 
                        jhcNodePool& pool, int neg =0, double blf =1.0);
+  jhcNetNode *add_place (const char **after, jhcNetNode *obj, char *pair, const char *alist, 
+                         jhcNodePool& pool, int neg =0, double blf =1.0);
+
+  // copula interpretation
   jhcNetNode *add_cop (const char **after, jhcNetNode *obj, const char *alist, jhcNodePool& pool, int pos =0);
-  const char *nsuper_kind (char *kind, int ssz, const char *alist) const;
+  jhcNetNode *obj_owner (const char *alist, jhcNodePool& pool);
   double belief_val (const char *word) const;
+  const char *nsuper_kind (char *kind, int ssz, const char *alist) const;
+
+  // utilities
+  bool match_any (const char *txt, const char *val, const char *val2, const char *val3 =NULL,
+                  const char *val4 =NULL, const char *val5 =NULL, const char *val6 =NULL) const;
+  void call_list (int lvl, const char *fcn, const char *alist, int skip =0, const char *entry =NULL) const;
 
 
 };

@@ -6,13 +6,16 @@
 =[AKO]
   arm
   hand
-  head
+  neck
+  body
+  base
 
 
 // adjective
 
 =[HQ]
   tired
+  broken
 
 
 // -----------------------------------------
@@ -35,6 +38,7 @@
   close
   hold
   extend
+  retract
   shift
   reset
   point
@@ -45,7 +49,6 @@
 // imperative verbs requiring object and location or direction
 
 =[ACT-2]
-  tuck
 
 
 // modifier

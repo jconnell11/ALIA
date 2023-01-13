@@ -92,13 +92,16 @@ public:
   // halo consolidation
   void AddCombo (jhcBindings& m2c, const jhcAliaRule& step1, const jhcBindings& b1);
   void LinkCombo (jhcBindings& m2c, const jhcAliaRule& step2, const jhcBindings& b2);
+
+  // rule tests
   bool Identical (const jhcAliaRule& ref) const;
   bool Tautology ();
+  bool Bipartite ();
 
   // file functions
   int Load (jhcTxtLine& in);
-  int Save (FILE *out, int detail =0) const;
-  int Print (int detail =0) const {return Save(stdout, detail);}
+  int Save (FILE *out) const;
+  int Print () const {return Save(stdout);}
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -116,7 +119,10 @@ private:
   // halo consolidation
   jhcNetNode *get_equiv (jhcBindings& m2c, const jhcNetNode *probe, int bcpy);
   void connect_args (jhcGraphlet& desc, const jhcBindings& m2c) const;
+
+  // rule tests
   bool same_struct (const jhcNetNode *focus, const jhcNetNode *mate) const;
+  void spread_res (jhcNetNode *src, int chk);
 
   // file functions
   int load_clauses (jhcTxtLine& in);

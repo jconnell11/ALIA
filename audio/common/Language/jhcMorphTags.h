@@ -59,6 +59,13 @@ enum JTAG_VAL
 
   JTV_ADV,    // adverb
 
+  JTV_FEM,    // feminine pronoun ("she")
+  JTV_MASC,   // masculine pronoun ("he")
+  JTV_ITEM,   // concrete pronoun ("it")
+  JTV_THEM,   // group of things ("them")
+  JTV_HERE,   // proximal location ("here")
+  JTV_THERE,  // distal location ("there")
+
   JTV_MAX
 
 };
@@ -92,8 +99,14 @@ const char JTAG_STR[JTV_MAX][10] =
   "vfut", 
   "vinf",
 
-  "adv"
+  "adv",
 
+  "fem",
+  "masc",
+  "item",
+  "them",
+  "here",
+  "there"
 };
 
 
@@ -125,7 +138,14 @@ enum JTAG_MASK
   JTAG_VFUT  = (0x01 << JTV_VFUT),
   JTAG_VINF  = (0x01 << JTV_VINF), 
 
-  JTAG_ADV   = (0x01 << JTV_ADV)
+  JTAG_ADV   = (0x01 << JTV_ADV),
+
+  JTAG_FEM   = (0x01 << JTV_FEM),      // digit 4
+  JTAG_MASC  = (0x01 << JTV_MASC),
+  JTAG_ITEM  = (0x01 << JTV_ITEM),
+  JTAG_THEM  = (0x01 << JTV_THEM),
+  JTAG_HERE  = (0x01 << JTV_HERE),     // digit 5
+  JTAG_THERE = (0x01 << JTV_THERE)     
 
 };
 
@@ -148,6 +168,11 @@ const UL32 JTAG_ADJ = (JTAG_APROP | JTAG_ACOMP | JTAG_ASUP);
 //= All mask bits associated with verbs.
 
 const UL32 JTAG_VERB = (JTAG_VIMP | JTAG_VPRES | JTAG_VPAST | JTAG_VPROG | JTAG_VFUT | JTAG_VINF);
+
+
+//= All mask bits associated with pronouns.
+
+const UL32 JTAG_PRON = (JTAG_FEM | JTAG_MASC | JTAG_ITEM | JTAG_HERE | JTAG_THERE);
 
 
 #endif  // once

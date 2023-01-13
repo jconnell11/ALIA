@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,9 @@ public:
   // can call NewNode and NewProp to fill in, call FinishNote at end
   virtual void StartNote () =0;
 
+  //= Add some pre-existing node to current NOTE description.
+  virtual void AddNode (jhcAliaDesc *item) =0;
+
   //= Add a new node of some type to current note.
   // returns a pointer to the new node or NULL if error
   virtual jhcAliaDesc *NewNode (const char *kind, const char *word =NULL, int neg =0, double blf =1.0, int done =0) =0;
@@ -59,6 +62,10 @@ public:
 
   //= Make some other node be an named argument of the head.
   virtual void AddArg (jhcAliaDesc *head, const char *slot, jhcAliaDesc *val) const =0;
+
+  //= Find node in main memory that matches description so far.
+  // if equivalent exists then description is erased, else focus node is returned
+  virtual jhcAliaDesc *Resolve (jhcAliaDesc *focus) =0;
 
   //= Keep the node from being erased by garbage collector.
   virtual void Keep (jhcAliaDesc *obj) const =0;

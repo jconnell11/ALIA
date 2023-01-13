@@ -12,6 +12,7 @@
 =[NAME]
   Rick
   Mary
+  Dan
   Ken
   Vassar
   Gwen
@@ -47,6 +48,7 @@
   bowl
   lion
   man
+  screw
 
 
 // mass noun plurals (cannot take "a" like "sand")
@@ -79,6 +81,7 @@
   brown
   furry
   little
+  favorite
 
 
 // -----------------------------------------
@@ -104,7 +107,12 @@
   look
   claim
   eat
-
+  like
+  remove
+  scan
+  steal
+  walk
+  
 
 // imperative verbs requiring object and location or direction
 

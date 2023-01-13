@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -115,8 +115,8 @@ public:
 
   // file functions
   int Load (jhcTxtLine& in); 
-  int Save (FILE *out, int detail =1);
-  int Print (int detail =1) {return Save(stdout, detail);}
+  int Save (FILE *out);
+  int Print () {return Save(stdout);}
 
 
 // PRIVATE MEMBER FUNCTIONS

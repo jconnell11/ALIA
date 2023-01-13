@@ -163,6 +163,8 @@ BEGIN
     POPUP "&Demo"
     BEGIN
         MENUITEM "Demo &Options",               ID_DEMO_OPTIONS
+        MENUITEM SEPARATOR
+        MENUITEM "Print &Details",              ID_DEMO_BASICMSGS
         MENUITEM "&Attn + Time",                ID_DEMO_TIMING
         MENUITEM "&Remote Params",              ID_PARAMETERS_REMOTEPARAMS
         MENUITEM SEPARATOR
@@ -220,8 +222,8 @@ CAPTION "About MensEt"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "MensEt Version 4.90",IDC_STATIC,48,11,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2018-2022, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
+    LTEXT           "MensEt Version 5.00",IDC_STATIC,48,11,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2018-2023, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
 END
@@ -310,8 +312,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 4,90,0,1
- PRODUCTVERSION 4,90,0,1
+ FILEVERSION 5,0,0,1
+ PRODUCTVERSION 5,0,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -327,12 +329,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "MensEt Robot Reasoner"
-            VALUE "FileVersion", "4.90.0.1"
+            VALUE "FileVersion", "5.0.0.1"
             VALUE "InternalName", "MensEt"
-            VALUE "LegalCopyright", "Copyright (C) 2022 Etaoin Systems"
+            VALUE "LegalCopyright", "Copyright (C) 2023 Etaoin Systems"
             VALUE "OriginalFilename", "MensEt.exe"
             VALUE "ProductName", "MensEt"
-            VALUE "ProductVersion", "4.90.0.1"
+            VALUE "ProductVersion", "5.0.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -610,6 +612,7 @@ BEGIN
     ID_UTILITIES_TESTVOCAB  "Refine grammar terms for consistent morphology"
     ID_UTILITIES_TESTGRAPHIZER 
                             "Check for correct semantic networks from standard input forms"
+    ID_DEMO_BASICMSGS       "Control what basic info gets printed to console window"
 END
 
 #endif    // English (United States) resources

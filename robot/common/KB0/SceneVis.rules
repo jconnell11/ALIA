@@ -326,7 +326,6 @@ RULE 52 - "A length is a measurement"
               -ako-> hq-1
   then: ako-2 -lex-  measurement
               -ako-> hq-1
-         hq-2 -lex-  visual
 
 RULE 53 - "A width is a measurement"
     if: ako-1 -lex-  width

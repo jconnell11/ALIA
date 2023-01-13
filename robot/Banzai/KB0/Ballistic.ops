@@ -149,9 +149,9 @@ OP 15 - "To extend the arm ..."
               -arg-> act-1 ]
 
 
-OP 176 - "To tuck in the arm ..."
+OP 16 - "To retract the arm ..."
   trig:
-    DO[ act-1 -lex-  tuck in
+    DO[ act-1 -lex-  retract
               -obj-> obj-1 
         ako-1 -lex-  arm
               -ako-> obj-1 ]
@@ -220,4 +220,71 @@ OP 22 - "To look some direction ..."
 ---------------
    FCN[ fcn-1 -lex-  ball_neck
               -arg-> act-1 ]
+
+
+// ----------------------------------------
+
+OP 23 - "To look around look right then ..."
+  trig:
+    DO[ act-1 -lex-  look 
+        dir-1 -lex-  around
+              -dir-> act-1 ]
+-----------------
+    DO[ act-3 -lex-  look
+        dir-3 -lex-  right
+              -dir-> act-3 ]
+    DO[ act-4 -lex-  look
+        dir-4 -lex-  down
+              -dir-> act-4 ]           // full down for navigation
+    DO[ act-5 -lex-  look
+        dir-5 -lex-  left
+              -dir-> act-5 ]
+
+
+OP 24 - "Before looking around look left then look up slightly"
+  trig:
+  ANTE[ act-1 -lex-  look 
+        dir-1 -lex-  around
+              -dir-> act-1 ]
+-----------------
+    DO[ act-2 -lex-  look
+        dir-2 -lex-  left
+              -dir-> act-2 ]
+    DO[ act-3 -lex-  look
+        dir-3 -lex-  up
+              -dir-> act-3 
+        amt-1 -lex-  slightly
+              -amt-> act-3 ]
+
+
+OP 25 - "To scan around look level then look very slowly right ..."
+  trig:
+    DO[ act-1 -lex-  scan 
+        dir-1 -lex-  around
+              -dir-> act-1 ]
+-----------------
+    DO[ act-2 -lex-  look
+        dir-2 -lex-  level
+              -dir-> act-2 
+        dir-3 -lex-  left
+              -dir-> act-2 ]
+    DO[ act-3 -lex-  look
+        dir-4 -lex-  right
+              -dir-> act-3 
+        mod-1 -lex-  slowly
+              -mod-> act-3 
+        deg-1 -lex-  very
+              -deg-> mod-1 ]
+    DO[ act-4 -lex-  look
+        dir-5 -lex-  down
+              -dir-> act-4 
+        amt-1 -lex-  slightly
+              -amt-> act-4 ]
+    DO[ act-5 -lex-  look
+        dir-6 -lex-  left
+              -dir-> act-5 
+        mod-2 -lex-  slowly
+              -mod-> act-5 
+        deg-2 -lex-  very
+              -deg-> mod-2 ]
 

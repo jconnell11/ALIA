@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,19 +129,20 @@ void jhcAliaPlay::MarkSeeds ()
 
 
 //= Determine the maximum subgoal depth for this part of the tree.
+// cyc is unique request number
 
-int jhcAliaPlay::MaxDepth () const
+int jhcAliaPlay::MaxDepth (int cyc) 
 {
   int i, deep, win = 0;
 
   // examine all parallel activities
   for (i = 0; i < ng; i++)
-    if ((deep = guard[i]->MaxDepth()) > win)
+    if ((deep = guard[i]->MaxDepth(cyc)) > win)
       win = deep;
 
   // examine all required activities
   for (i = 0; i < na; i++)
-    if ((deep = main[i]->MaxDepth()) > win)
+    if ((deep = main[i]->MaxDepth(cyc)) > win)
       win = deep;
   return win;
 }
@@ -149,18 +150,19 @@ int jhcAliaPlay::MaxDepth () const
 
 //= Determine number of simultaneous activities (possibly subgoaled).
 // if leaf > 0 then only considers currently active goals not pass-thrus
+// cyc is unique request number
 
-int jhcAliaPlay::NumGoals (int leaf) const
+int jhcAliaPlay::NumGoals (int leaf, int cyc)
 {
   int i, cnt = 0;
 
   // examine all parallel activities
   for (i = 0; i < ng; i++)
-    cnt += guard[i]->NumGoals(leaf);
+    cnt += guard[i]->NumGoals(leaf, cyc);
 
   // examine all required activities
   for (i = 0; i < na; i++)
-    cnt += main[i]->NumGoals(leaf);
+    cnt += main[i]->NumGoals(leaf, cyc);
   return cnt;
 }
 

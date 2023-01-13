@@ -392,6 +392,10 @@ void jhcAliaRule::connect_args (jhcGraphlet& desc, const jhcBindings& m2c) const
 }
 
 
+///////////////////////////////////////////////////////////////////////////
+//                              Rule Tests                               //
+///////////////////////////////////////////////////////////////////////////
+
 //= Determine if some other rule essentially matches this one.
 // ignores differences in belief between nodes in result
 // only guards against EXACT duplicate with items in SAME order
@@ -444,18 +448,91 @@ bool jhcAliaRule::same_struct (const jhcNetNode *focus, const jhcNetNode *mate) 
 bool jhcAliaRule::Tautology () 
 {
   jhcSituation sit;
-  jhcBindings m;
-  int mc = 1;
+  jhcBindings m0, m;
+  const jhcNetNode *s, *r;
+  int i, j, nc, na, mc = 1;
 
   // copy just precondition nodes to a new situation
   sit.BuildCond();
-  sit.Assert(cond, m);
-  m.Clear();
+  sit.Assert(cond, m0);
 
   // see if situation gets a match with rule result
-  m.expect = cond.NumItems();
+  nc = cond.NumItems();
+  m.expect = nc;
   sit.bth = -1.0;
-  return(sit.MatchGraph(&m, mc, *(sit.Pattern()), result) > 0);
+  if (sit.MatchGraph(&m, mc, *(sit.Pattern()), result) <= 0)
+    return false;
+
+  // check that all args are the same (A kiss B -> B kiss A is okay)
+  for (i = 0; i < nc; i++) 
+  {
+    s = m.GetKey(i);                                       // copied cond
+    r = m.GetSub(i);
+    na = s->NumArgs();
+    for (j = 0; j < na; j++)
+      if (r->Val(s->Slot(j)) != m0.FindKey(s->Arg(j)))     // original cond
+        return false;
+  }
+  return true;
+}
+
+
+//= Determine if rule result completely unrelated to rule condition.
+// determines if any result node lacks link to some item from condition 
+
+bool jhcAliaRule::Bipartite ()
+{
+  jhcNetNode *item;
+  int i, nc = cond.NumItems(), nr = result.NumItems();
+
+  // clear all marks in result and condition
+  for (i = 0; i < nc; i++)
+  {
+    item = cond.Item(i);
+    item->mark = 0;
+  }
+  for (i = 0; i < nr; i++)
+  {
+    item = result.Item(i);
+    item->mark = 0;
+  }
+
+  // spread mark from all items in condition
+  // then check for any unmarked item in result
+  for (i = 0; i < nc; i++)
+  {
+    item = cond.Item(i);
+    if (item->mark <= 0)
+      spread_res(item, 0);
+  }
+  for (i = 0; i < nr; i++)
+  {
+    item = result.Item(i);
+    if (item->mark <= 0)
+      return true;
+  }
+  return false;
+}
+
+
+//= Check all nodes connected to this one and mark them if they are in the result.
+
+void jhcAliaRule::spread_res (jhcNetNode *src, int chk)
+{
+  int i, n;
+
+  // skip if node already examined or not part of result
+  if ((src->mark > 0) || ((chk > 0) &&  !result.InDesc(src)))
+    return;
+  src->mark = 1;
+
+  // mark all arguments and properties
+  n = src->NumArgs();
+  for (i = 0; i < n; i++)
+    spread_res(src->ArgSurf(i), 1);
+  n = src->NumProps();
+  for (i = 0; i < n; i++)
+    spread_res(src->PropSurf(i), 1);
 }
 
 
@@ -544,33 +621,32 @@ int jhcAliaRule::load_clauses (jhcTxtLine& in)
 
 
 //= Save self out in machine readable form to current position in a file.
-// detail: 0 no extras, 1 show belief, 2 show tags, 3 show both
 // return: 1 = successful, 0 = bad format, -1 = file error
 
-int jhcAliaRule::Save (FILE *out, int detail) const
+int jhcAliaRule::Save (FILE *out) const
 {
   int i;
 
   // header ("RULE <id> - <gist>") and optional provenance
-  if ((detail >= 2) && (*prov != '\0'))
+  if (*prov != '\0')
     jfprintf(out, "// originally rule %d from %s\n\n", pnum, prov);  
   jfprintf(out, "RULE");
   if (id > 0)
     jfprintf(out, " %d", id);
-  if ((detail >= 2) && (*gist != '\0'))
+  if (*gist != '\0')
     jfprintf(out, " - \"%s\"", gist);
   jfprintf(out, "\n");
 
   // precondition
   jfprintf(out, "    if: ");
-  cond.Save(out, -8, detail);
+  cond.Save(out, -8, 0);
   jfprintf(out, "\n");
 
   // caveats
   for (i = 0; i < nu; i++)
   {
     jfprintf(out, "unless: ");
-    unless[i].Save(out, -8, detail);
+    unless[i].Save(out, -8, 0);
     jfprintf(out, "\n");
   }
 
@@ -580,7 +656,7 @@ int jhcAliaRule::Save (FILE *out, int detail) const
 
   // save consequent and add blank line
   jfprintf(out, "  then: ");
-  result.Save(out, -8, detail);
+  result.Save(out, -8, 0);
   jfprintf(out, "\n");
   return((ferror(out) != 0) ? -1 : 1);
 }

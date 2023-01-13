@@ -248,7 +248,7 @@ int jhcTalkFcn::build_string (const jhcAliaDesc *desc, int inst)
 
 int jhcTalkFcn::fix_surface (char *txt)
 {
-  fix_itis(txt);
+//  fix_itis(txt);
   fix_verb(txt);
   fix_det(txt);
   fix_abbrev(txt);
@@ -258,6 +258,7 @@ int jhcTalkFcn::fix_surface (char *txt)
 
 //= Drop off leading "it is" from property descriptions.
 // example: "it is red" -> "red", need to run before fix_abbrev
+// Note: bad idea for non-copula like "it is not working"
 
 void jhcTalkFcn::fix_itis (char *txt)
 {

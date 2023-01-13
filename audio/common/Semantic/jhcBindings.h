@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ private:
   // match keys and substitutions (now on heap)
   const jhcNetNode **key;
   jhcNetNode **sub;
-  int *term;
+  int *term, *mark;
   int nb;
 
 
@@ -66,17 +66,20 @@ public:
     {return((expect > 0) && (nb >= expect));}
   bool Empty () const {return(nb <= 0);}
   int AnyHyp () const;
+  int AuxMax () const;
 
   // main functions
   jhcNetNode *LookUp (const jhcNetNode *k) const;
+  int GetAux (const jhcNetNode *k) const;
   const jhcNetNode *FindKey (const jhcNetNode *subst) const;
   const char *LexSub (const jhcNetNode *k) const;
   int LexBin (const jhcNetNode& k) const;
   bool LexAgree (const jhcNetNode *focus, const jhcNetNode *mate) const;
-  int Bind (const jhcNetNode *k, jhcNetNode *subst);
+  int Bind (const jhcNetNode *k, jhcNetNode *subst, int aux =0);
+  int RemKey (jhcNetNode *k);
+  int RemFinal (jhcNetNode *k);
   int TrimTo (int n);
   int Pop () {return TrimTo(nb - 1);}
-  void RemFinal (jhcNetNode *key);
 
   // list functions
   int NumPairs () const {return nb;} 
@@ -103,9 +106,8 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // list functions
-  int index (const jhcNetNode *probe) const;
+  int index (const jhcNetNode *k) const;
   const char *lookup_lex (const char *var) const;
-
 
 
 };

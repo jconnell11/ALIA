@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,11 +45,11 @@ class jhcNodePool : public jhcNodeList
 // PRIVATE MEMBER VARIABLES
 private:
   class jhcGraphlet *acc;
-  jhcNetNode *pool;
-  jhcNetNode **bucket;
+  jhcNetNode *pool, *last;
+  jhcNetNode **bucket, **cap;
   int *pop;
   int dn, psz, label, ncnt, nbins;
-  int rnum, xarg, xadd, xdel, xmod, xltm;
+  int refnum, ref0, xarg, xadd, xdel, xmod, xltm;
 
   // translation while loading
   jhcNetNode **trans;
@@ -83,7 +83,8 @@ public:
   void PurgeAll ();
   jhcNetNode *Pool (int bin =-1) const;
   jhcNetNode *Next (const jhcNetNode *ref, int bin =-1) const;
-  int NodeCnt () const;
+  jhcNetNode *NextPool (const jhcNetNode *ref) const;
+  int NodeCnt (int hyp =1) const;
   int Changes ();
   void Dirty (int cnt =1) {xmod += cnt;}
 
@@ -93,22 +94,24 @@ public:
   int Assert (const jhcGraphlet& pat, jhcBindings& b, double conf =1.0, 
               int tval =0, const jhcNodeList *univ =NULL);
   jhcNetNode *SetGen (jhcNetNode *n, int v =0) const;
-  int IncRef () {return ++rnum;}
   int Refresh (jhcNetNode *n);
   void Refresh (const jhcGraphlet& gr);
+  int IncConvo ()   {return ++refnum;}
+  void InitConvo () {ref0 = refnum;}
+  int LocalConvo() const {return ref0;}
 
   // basic construction
   jhcNetNode *MakeNode (const char *kind, const char *word =NULL, int neg =0, double def =1.0, int done =0);
-  jhcNetNode *CloneNode (const jhcNetNode& n);
+  jhcNetNode *CloneNode (const jhcNetNode& n, int bset =1);
   jhcNetNode *AddProp (jhcNetNode *head, const char *role, const char *word,
                        int neg =0, double def =1.0, int chk =0, int args =1);
   jhcNetNode *AddDeg (jhcNetNode *head, const char *role, const char *word, const char *amt, 
                       int neg =0, double def =1.0, int chk =0, int args =1);
+  jhcNetNode *BuoyFor (jhcNetNode *deep);
   void SetLex (jhcNetNode *n, const char *txt);
   bool InPool (const jhcNetNode *n) const {return InList(n);}
   void MarkBelief (jhcNetNode *n, double blf) const 
     {if (n == NULL) return; n->SetBelief(blf); n->GenMax(ver);}
-  jhcNetNode *BuoyFor (jhcNetNode *deep);
 
   // searching
   jhcNetNode *FindName (const char *full) const;
@@ -118,19 +121,20 @@ public:
   // list access (overrides virtual)
   virtual jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const
     {return((prev == NULL) ? Pool(bin) : Next(prev, bin));}
-  virtual int Length () const {return NodeCnt();}
+  virtual int Length () const {return NodeCnt(1);}
   virtual bool InList (const jhcNetNode *n) const;
   virtual int NumBins () const {return nbins;}
   virtual int SameBin (const jhcNetNode& focus, const jhcBindings *b) const 
     {return((b != NULL) ? BinCnt(b->LexBin(focus)) : focus.Code());}
     
   // writing functions
-  int Save (const char *fname, int lvl =0) const;
-  int Print (int lvl =0) const
-    {return sort_nodes(stdout, lvl, 0);}
+  int Save (const char *fname, int lvl =0, int hyp =0) const;
+  int Print (int lvl =0, int hyp =0) const
+    {return sort_nodes(stdout, lvl, 0, hyp);}
   int SaveBin (const char *fname, int bin =-1, int imin =0) const;
   int PrintBin (int bin =-1, int imin =0) const
     {return save_bins(stdout, bin, imin);}
+  int PrintRaw () const;
 
   // reading functions
   void ClrTrans (int n =100);
@@ -144,7 +148,7 @@ protected:
   // list editing
   int RemNode (jhcNetNode *n);
 
-  // writing functions
+  // writing functions (used by jhcDeclMem)
   int save_bins (FILE *out, int bin, int imin) const;
 
 
@@ -163,8 +167,11 @@ private:
   const char *extract_kind (char *kind, const char *desc, int ssz);
   void update_lex (jhcNetNode *n, const char *wd, int rev);
 
+  // list editing
+  int rem_from_list (int h0, jhcNetNode *n);
+
   // writing functions
-  int sort_nodes (FILE *out, int lvl, int imin) const;
+  int sort_nodes (FILE *out, int lvl, int imin, int hyp) const;
 
   // reading functions
   jhcNetNode *chk_topic (jhcNetNode *topic, jhcTxtLine& in, int tru);

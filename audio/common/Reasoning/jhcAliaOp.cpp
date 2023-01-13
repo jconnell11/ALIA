@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,7 +129,9 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth)
   bin = ((focus->Lex() == NULL) ? -1 : focus->Code());
   omax = dir.MaxOps();
   tval = dir.own;
-  bth = (((k == JDIR_CHK) || (k == JDIR_FIND) || (k == JDIR_BIND)) ? -mth : mth);
+  if ((k == JDIR_BIND) || (k == JDIR_EACH) || (k == JDIR_ANY))
+    k = JDIR_FIND;
+  bth = (((k == JDIR_CHK) || (k == JDIR_FIND)) ? -mth : mth);
 
   // generally require main nodes (i.e. verb) of directives to match
   if (k == JDIR_CHK)
@@ -142,14 +144,18 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth)
       cnt += found;
     }
   else if (k == JDIR_NOTE)
+{
+jprintf(3, dbg, "search for NOTE focal mate (bands %d, bin %d) ...\n", f.NumBands(), bin);
     while ((mate = f.NextNode(mate, bin)) != NULL)
     {
+jprintf(3, dbg, "candidate focal mate = %s\n", mate->Nick());
       // NOTE triggers match anything in memory (including halo)
       // checks for relatedness at end (i.e. tval in match_found)
       if ((found = try_mate(focus, mate, dir, f)) < 0)
         return found;
       cnt += found;
     }
+}
   else                       // most directives (DO, FIND, ...)
     cnt = try_mate(focus, dir.KeyMain(), dir, f);    
   return cnt;
@@ -385,21 +391,20 @@ int jhcAliaOp::load_pattern (jhcTxtLine& in)
 
 
 //= Save self out in machine readable form to current position in a file.
-// detail: 0 no extras, 1 show belief, 2 show tags, 3 show both
 // return: 1 = successful, 0 = bad format, -1 = file error
 
-int jhcAliaOp::Save (FILE *out, int detail)
+int jhcAliaOp::Save (FILE *out)
 {
   jhcAliaDir dir;
   int i;
 
   // header ("OP <id> - <gist>") and optional provenance
-  if ((detail >= 2) && (*prov != '\0'))
+  if (*prov != '\0')
     jfprintf(out, "// originally operator %d from %s\n\n", pnum, prov);  
   jfprintf(out, "OP");
   if (id > 0)
     jfprintf(out, " %d", id);
-  if ((detail >= 2) && (*gist != '\0'))
+  if (*gist != '\0')
     jfprintf(out, " - \"%s\"", gist);
   jfprintf(out, "\n");
 
@@ -407,13 +412,13 @@ int jhcAliaOp::Save (FILE *out, int detail)
   jfprintf(out, "  trig:\n");
   dir.kind = kind;
   (dir.key).Copy(cond);
-  dir.Save(out, 2, detail);
+  dir.Save(out, 2, 0);
 
   // caveats
   for (i = 0; i < nu; i++)
   {
     jfprintf(out, "unless: ");
-    unless[i].Save(out, -8, detail);
+    unless[i].Save(out, -8, 0);
     jfprintf(out, "\n");
   }
 
@@ -428,7 +433,7 @@ int jhcAliaOp::Save (FILE *out, int detail)
   // associated expansion
   jfprintf(out, "-----------------\n");
   if (meth != NULL)
-    meth->Save(out, 2, NULL, detail);
+    meth->Save(out, 2, NULL, 0);
   return((ferror(out) != 0) ? -1 : 1);
 }
 

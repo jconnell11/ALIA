@@ -131,7 +131,7 @@ int jhcEliBase::move_params (const char *fname)
 
   ps->SetTag("base_move", 0);
   ps->NextSpecF( &(mctrl.vstd),  30.0, "Std move speed (ips)");    // 1.5x = 2.5 mph (max 47 ips)
-  ps->NextSpecF( &(mctrl.astd),  20.0, "Std move accel (ips^2)");  // 22.5" to full speed
+  ps->NextSpecF( &(mctrl.astd),  20.0, "Std move accel (ips^2)");  // 22.5" to full speed 
   ps->NextSpecF( &(mctrl.dstd),  10.0, "Std move decel (ips^2)");  // 45" slow down zone 
   ps->NextSpecF( &(tctrl.vstd),  90.0, "Std turn speed (dps)");  
   ps->NextSpecF( &(tctrl.astd), 360.0, "Std turn accel (dps^2)");  // 11.25 deg to full (was 180)
@@ -220,8 +220,8 @@ int jhcEliBase::Reset (int rpt, int chk)
   jprintf(1, rpt, "\nBase reset ...\n");
   clr_locks(1);
   DriveClear();
-  bcom.SetRTS(0);
-  led0 = 0;
+  bcom.SetRTS(0);            // force light off
+  led0 = 0;                  
 
   // connect to proper serial port (if needed)
   if (berr == 0)
@@ -576,6 +576,10 @@ int jhcEliBase::Freeze (int doit, double tupd)
   stiff = 1;
   if (tupd > 0.0)
     Issue(tupd);
+
+  // light off
+  bcom.SetRTS(0);
+  led0 = 0;
   return CommOK();
 }
 

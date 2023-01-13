@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -111,7 +111,6 @@ private:
 
   jhcAssocMem amem;            // working memory expansions
   jhcProcMem pmem;             // reactions and expansions
-  jhcDeclMem dmem;             // long term facts
   char rob[40];                // name of active robot
 
   jhcAliaDLL gnd[dmax];        // extra grounding DLLs
@@ -123,6 +122,7 @@ private:
   double det;                  // determination to achieve intent
   double argh;                 // wait before retry of intention
   double waver;                // initial period to all re-FIND-ing
+  int deep;                    // maximum subgoal stack depth
 
   int svc;                     // which focus is being worked on
   int bid;                     // importance of next activity in focus
@@ -140,7 +140,9 @@ protected:
 
 // PUBLIC MEMBER VARIABLES
 public:
+  jhcParam mps;
   jhcActionTree atree;         // working memory and call roots
+  jhcDeclMem dmem;             // long term facts
   jhcNetBuild net;             // language to network conversion
   jhcGramExec gr;              // text parser
   jhcVocab vc;                 // known words and corrections
@@ -149,6 +151,9 @@ public:
   char cfile[80];              // preferred log file for conversions  
   int vol;                     // load volition operators
   int noisy;                   // controls diagnostic messages
+  int finder;                  // controls FIND progress messages
+  int pshow;                   // controls parser result messages
+  int memhyp;                  // print hypotheticals at end
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -164,12 +169,11 @@ public:
   int NextBid () const    {return bid;}
   int LastTop () const    {return topval;}
   double Stretch (double secs) const {return(det * secs);}
+  int MaxStack () const   {return deep;}
 
   // processing parameter bundles 
-  int Defaults (const char *fname =NULL)       
-    {return mood.Defaults(fname);}
-  int SaveVals (const char *fname) const 
-    {return mood.SaveVals(fname);}
+  int Defaults (const char *fname =NULL);       
+  int SaveVals (const char *fname) const;
 
   // extensions
   void KernExtras (const char *kdir);
@@ -206,7 +210,7 @@ public:
   jhcAliaOp *Probe () {return &(pmem.probe);}
 
   // halo control
-  int Percolate (const jhcAliaDir& dir);
+  int Percolate (const jhcGraphlet& dkey);
 
   // external grounding
   int FcnStart (const jhcNetNode *fcn);
@@ -219,7 +223,7 @@ public:
   int SayStop (const jhcGraphlet& g, int inst);
 
   // debugging
-  void ShowMem () {atree.PrintMain();}
+  void ShowMem () {atree.PrintMain(memhyp);}
   void LoadLearned ();
   void DumpLearned () const;
   void DumpSession ();
@@ -228,6 +232,9 @@ public:
 
 // PRIVATE MEMBER FUNCTIONS
 private:
+  // processing parameters
+  int msg_params (const char *fname);
+
   // extensions
   int add_info (const char *dir, const char *base, int rpt, int level);
   bool readable (char *fname, int ssz, const char *msg, ...) const;
@@ -244,6 +251,7 @@ private:
 
   // debugging
   void copy_file (const char *dest, const char *src) const;
+
 
 };
 

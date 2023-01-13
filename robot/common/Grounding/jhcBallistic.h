@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  // controls diagnostic messages
+  // control of diagnostic messages
   int dbg;                   
 
   // event parameters
@@ -178,7 +178,7 @@ private:
 
   // utilities
   bool stuck (int i, double err, double prog, int start, int mid);
-
+  int err_hw (const char *sys);
 
 };
 

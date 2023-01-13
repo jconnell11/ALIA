@@ -19,3 +19,4 @@ OP 2 - "To say something to someone ..."
    FCN[ fcn-1 -lex-   echo_wds 
               -dest-> agt-1
               -pat--> txt-1 ]
+

@@ -23,6 +23,8 @@
 
 #include "Action/jhcAliaDir.h"         // common robot
 
+#include "Language/jhcMorphTags.h"     // common audio
+
 #include "Language/jhcNetRef.h"
 
 
@@ -48,7 +50,7 @@ jhcNetRef::jhcNetRef (jhcNodePool *u, double bmin)
   partial = NULL;
   refmode = 1;
   halo = 1;
-//dbg = 1;               // local debug statements (2 for matcher)
+//dbg = 3;               // local debug statements (2 or 3 for matcher)
 }
 
 
@@ -61,9 +63,10 @@ jhcNetRef::jhcNetRef (jhcNodePool *u, double bmin)
 // can optionally re-use "f0" node from "add" pool as place to copy structure
 // automatically makes a new node, if needed, with all properties true
 // "fmode": -1 = always create new item (not used as input)
-//           0 = always make FIND
-//           1 = always make BIND (create > 0)
+//           0 = resolve locally else make FIND
+//           1 = resolve locally else make BIND (create > 0)
 //           2 = resolve locally else create item (resolve > 0)
+//           3 = always make EACH/ANY
 
 jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0, 
                                  double blf, jhcAliaChain **skolem)
@@ -76,24 +79,18 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
 
 //dbg = 1;                             // quick debugging
 
-  // never try to FIND/BIND something with no description (primarily "it")
-  // Note: now generates FIND[ x ] which is resolved in jhcAliaDir::complete_find
-//  const jhcNetNode *main = cond.Main();
-//  if ((find >= 0) && (cond.NumItems() == 1) && (main->Lex() == NULL) && (main->NumArgs() <= 0))
-//    find = 2;
-
   // possibly tell what is sought
   if (dbg >= 1)
   {
-    jprintf("\nNetref [%d] >= %4.2f\n", find, bth);
-    cond.Print("pattern", 2);
+    jprintf("\nNetRef [find %d] >= %4.2f\n", find, bth);
+    cond.Print("pattern", 2, 3);
   }
 
   // must have some accumulator in order to find new assertions
   partial = add.Accum();
-  if (((find == 0) || (find == 1)) && (partial == NULL))
+  if (((find == 0) || (find == 1) || (find == 3)) && (partial == NULL))
   {
-    jprintf(">>> no accumulator in jhcNetRef::FindMake !!!\n");
+    jprintf(">>> No accumulator in jhcNetRef::FindMake !!!\n");
     return NULL;
   }
 
@@ -105,23 +102,24 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
     find = -1;                                   // skip skolem addition
   }
   win.Copy(b);
-  recent = -1;
+  limit = univ->LocalConvo();                    // search within sentence
+  recent = limit;                                
 
-  // always look for existing node if find > 1 (was 0 prior to 11/21) 
+  // generally look for existing node 
   b.expect = cond.NumItems();
-  if ((find <= 1) || ((got = MatchGraph(&b, mc, cond, add, f2)) <= 0))
+  if ((find < 0) || (find >= 3) || ((got = MatchGraph(&b, mc, cond, add, f2)) <= 0))
   {
     // nothing found now (or did not look)
     if (partial != NULL)
       n0 = partial->NumItems();
     add.Assert(cond, win, blf, 0, univ);         // force belief
-    if ((find == 0) || (find == 1))
+    if ((find == 0) || (find == 1) || (find == 3))
     {
       // add a new FIND to chain instead of creating
       if ((var = append_find(n0, blf, skolem, find)) == NULL)
         return NULL;
       jprintf(1, dbg, "  ==> %s from new %s\n", ((find > 0) ? "BIND" : "FIND"), var->Nick());
-      var->MarkRef();                           // user speech
+      var->MarkConvo();                          // user speech
       return var;
     }
   }
@@ -130,7 +128,7 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
   jprintf(1, dbg, " ==> %s %s %s\n", ((got > 0) ? "existing" : "created"), 
           win.LookUp(focus)->Nick(), ((pend > 0) ? "(purge FINDs)" : ""));
   var = win.LookUp(focus);
-  var->MarkRef();                                // user speech
+  var->MarkConvo();                              // user speech
   return var;
 }
 
@@ -153,7 +151,7 @@ jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem, i
   if ((skolem == NULL) || (n <= n0))
     return NULL;
   ch = new jhcAliaChain;
-  dir = new jhcAliaDir((assume > 0) ? JDIR_BIND : JDIR_FIND);     
+  dir = new jhcAliaDir(JDIR_BIND);     // was FIND for assume <= 0      
   ch->BindDir(dir);
 
   // copy new parts of description (from Assert) to key of directive
@@ -187,19 +185,16 @@ jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem, i
 int jhcNetRef::match_found (jhcBindings *m, int& mc) 
 {
   jhcNetNode *sub, *mate = m->LookUp(focus);
-  int i, nb = m->NumPairs(), when = mate->LastRef();
-
-  // outer graphlet items are usually incomplete so reject them
-  if (mate->String())
-    return 0;
-  if ((partial != NULL) && partial->InList(mate))
-    return 0;
-  if (focus->ObjNode() && !mate->ObjNode())      // too restrictive?
-    return 0;
+  int i, nb = m->NumPairs(), when = mate->LastConvo();
 
   // do not increase count if same binding found through different path
-  if (win.Same(*m))
+  if ((when <= limit) || win.Same(*m))
     return 0;
+
+  // handle special case of naked FIND/BIND with just a target variable: FIND[ x ]
+  if ((cond.NumItems() == 1) && (focus->Lex() == NULL) && focus->ObjNode())    
+    if (mate->String() || mate->Halo() || (filter_pron(mate) <= 0))
+      return 0;
 
   // possibly reject variable matches involving halo nodes
   if (halo <= 0)
@@ -221,10 +216,49 @@ int jhcNetRef::match_found (jhcBindings *m, int& mc)
 }
 
 
+//= Enforce any restrictions on naked node choice encoded by grammatical tags.
+// saves best mate for focus in "pron" member variable and sets "recent" > 0
+// returns 0 if rejected, 1 if best so far
+// NOTE: modified form of jhcAliaDir::filter_pron
+
+int jhcNetRef::filter_pron (const jhcNetNode *mate)
+{
+  UL32 tags = focus->tags;
+
+  // generally looking for a physical thing not a fact or idea
+  if (!mate->ObjNode())                
+  {
+    if (tags != 0)                     // "that" has args
+      return jprintf(2, dbg, "MATCH - but reject %s as predicate node\n", mate->Nick());
+  }
+  else if ((tags & JTAG_FEM) != 0)     // "she"
+  {
+    if ((mate->FindProp("hq", "male", 0, bth) != NULL) ||
+        (mate->FindProp("hq", "female", 1, bth) != NULL))
+      return jprintf(2, dbg, "MATCH - but reject %s as not female\n", mate->Nick());
+  }
+  else if ((tags & JTAG_MASC) != 0)    // "he"
+  {
+    if ((mate->FindProp("hq", "female", 0, bth) != NULL) ||
+        (mate->FindProp("hq", "male", 1, bth) != NULL))
+      return jprintf(2, dbg, "MATCH - but reject %s as not male\n", mate->Nick());
+  }
+  else if ((tags & JTAG_ITEM) != 0)    // "it"
+  {
+    if ((mate->FindProp("hq", "male", 0, bth) != NULL) ||
+        (mate->FindProp("hq", "female", 0, bth) != NULL))
+      return jprintf(2, dbg, "MATCH - but reject %s as gendered\n", mate->Nick());
+  }
+  else if (tags == 0)                  // "them" has no args
+    return jprintf(2, dbg, "MATCH - but reject %s as object node\n", mate->Nick());
+  return 1;                
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                          Language Generation                          //
 ///////////////////////////////////////////////////////////////////////////
-
+/*
 //= See how many matches there are to description in "cond" graphlet.
 // can optionally pop last few nodes off description when matching complete
 
@@ -251,4 +285,4 @@ int jhcNetRef::NumMatch (const jhcNodeList *wmem, double mth, int retract)
   cond.Pop(retract);
   return hits;
 }
-
+*/

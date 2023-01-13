@@ -55,8 +55,8 @@
 // indefinite plural noun phrase
 
 =[%obj-s]
-  (<desc>) <AKO-S> ((<be>) <comp>)
-  (<desc>) things ((<be>) <comp>)
+  (all) (<desc>) <AKO-S> ((<be>) <comp>)
+  (all) (<desc>) things ((<be>) <comp>)
 
 
 // definite noun phrase

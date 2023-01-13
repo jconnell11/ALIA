@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,10 +59,12 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int ath;                             // min argument similarity
-  int rth;                             // min similarity for recall 
-  int alts;                            // max ambiguity for recall
-  int enc, ret;                        // progress messages
+  int noisy, gh, enc, ret, detail;     // specific debugging                
+
+  // matching weights and thresholds
+  jhcParam wps;
+  double nwt, kwt, fmod, ath, farg, rth;
+  int alts;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -71,6 +73,10 @@ public:
   ~jhcDeclMem ();
   jhcDeclMem ();
   void Bind (class jhcActionTree *w) {atree = w;}
+
+  // processing parameter bundles 
+  int Defaults (const char *fname =NULL);
+  int SaveVals (const char *fname) const;
 
   // explicit formation
   int Remember (jhcNetNode *top);
@@ -89,12 +95,15 @@ public:
 
 // PRIVATE MEMBER FUNCTIONS
 private:
+  // processing parameters
+  int wt_params (const char *fname);
+
   // explicit formation
   jhcNetNode *jhcDeclMem::ltm_node (const jhcNetNode *n, const jhcBindings& xfer);
-  int add_node (jhcGraphlet& desc, jhcNetNode *n, const jhcNetNode *src, int rels) const;
-  int add_pred (jhcGraphlet& desc, jhcNetNode *pred, const jhcNetNode *src, int rels) const;
-  int elab_obj (jhcGraphlet& desc2, jhcNetNode *obj, const jhcNetNode *src, int rels) const;
-  int obj_prop (int& sc, int& best, jhcGraphlet& desc, const jhcNetNode *obj, const jhcNetNode *src, const char *role) const;
+  double add_node (jhcGraphlet& desc, jhcNetNode *n, const jhcNetNode *src, int rels) const;
+  double add_pred (jhcGraphlet& desc, jhcNetNode *pred, const jhcNetNode *src, int rels) const;
+  double elab_obj (jhcGraphlet& desc2, jhcNetNode *obj, const jhcNetNode *src, int rels) const;
+  int obj_prop (double& sc, int& best, jhcGraphlet& desc, const jhcNetNode *obj, const jhcNetNode *src, const char *role) const;
   int num_tied (const jhcGraphlet& desc) const;
   bool equiv_nodes (const jhcNetNode *focus, const jhcNetNode *mate, const jhcNetNode *obj) const;
   bool equiv_props (const jhcNetNode *focus, const jhcNetNode *mate, const jhcGraphlet *desc) const; 
@@ -103,13 +112,13 @@ private:
 
   // familiarity
   int tether (jhcNetNode *focus, jhcNetNode *win);
-  int score_nodes (const jhcNetNode *focus, const jhcNetNode *mate) const;
-  int score_unary (const jhcNetNode *focus, const jhcNetNode *mate, double qth) const;
-  int score_rels (const jhcNetNode *focus, const jhcNetNode *mate, double qth) const;
-  int score_args (const jhcNetNode *focus, const jhcNetNode *mate, const jhcNetNode *obj, double qth) const;
+  double score_nodes (const jhcNetNode *focus, const jhcNetNode *mate) const;
+  double score_unary (const jhcNetNode *focus, const jhcNetNode *mate, double qth, int mode) const;
+  double score_rels (const jhcNetNode *focus, const jhcNetNode *mate, double qth) const;
+  double score_args (const jhcNetNode *focus, const jhcNetNode *mate, const jhcNetNode *obj, double qth) const;
 
   // spotlight
-  void buoy_preds (jhcNetNode *n, int tval, int rels) const;
+  void buoy_preds (jhcNetNode *n, int tval, int rels, int lvl) const;
 
 
 };

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,6 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "Interface/jhcMessage.h"      // common video
-
-#include "Reasoning/jhcActionTree.h"   // common audio    
-#include "Semantic/jhcNetNode.h"     
-#include "Semantic/jhcSituation.h"
 
 #include "Eli/jhcEliGrok.h"            // common robot - since only spec'd as class in header
 
@@ -58,7 +54,7 @@ jhcManipulate::~jhcManipulate ()
 jhcManipulate::jhcManipulate ()
 {
   // static configuration
-  ver = 2.05;
+  ver = 2.10;
   strcpy_s(tag, "Manipulate");
 
   // vector sizes
@@ -70,14 +66,14 @@ jhcManipulate::jhcManipulate ()
   // overall interaction parameters
   Platform(NULL);
   rpt = NULL;
-  dbg = 0;
-dbg = 3;
 
   // no object in hand currently
   clear_grip();
 
   // dynamic values and parameters
   Defaults();
+  dbg = 1;
+dbg = 3;
 }
 
 
@@ -431,13 +427,13 @@ int jhcManipulate::man_grab (const jhcAliaDesc *desc, int i)
   // lock to sensor cycle and check update standard cached info
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (arm->CommOK() <= 0))
-    return err_arm();
   init_vals(i);
 
   // make sure target object still is known 
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
     return err_gone(cobj[i]);
+  if (rwi->Ghost() || (arm->CommOK() <= 0))
+    return err_arm();
 
   // check for serendipitous grasp or interference
   if (cst[i] <= 3) 
@@ -509,13 +505,13 @@ int jhcManipulate::man_lift (const jhcAliaDesc *desc, int i)
   // lock to sensor cycle and update standard cached info
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (arm->CommOK() <= 0))
-    return err_arm();
   init_vals(i);
 
   // make sure target object is still known 
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
     return err_gone(cobj[i]);
+  if (rwi->Ghost() || (arm->CommOK() <= 0))
+    return err_arm();
 
   // check for serendipitous grasp or interference
   if (cst[i] <= 3)                   
@@ -596,13 +592,13 @@ int jhcManipulate::man_take (const jhcAliaDesc *desc, int i)
   // lock to sensor cycle and update standard cached info
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (arm->CommOK() <= 0))
-    return err_arm();
   init_vals(i);
 
   // make sure target object is still known 
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
     return err_gone(cobj[i]);
+  if (rwi->Ghost() || (arm->CommOK() <= 0))
+    return err_arm();
 
   // check for serendipitous grasp or interference
   if (cst[i] <= 3)                     
@@ -695,8 +691,6 @@ int jhcManipulate::man_move (const jhcAliaDesc *desc, int i)
   // lock to sensor cycle and update standard cached info
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (arm->CommOK() <= 0))
-    return err_arm();
   init_vals(i);
 
   // make sure target and reference object(s) are still known 
@@ -704,6 +698,8 @@ int jhcManipulate::man_move (const jhcAliaDesc *desc, int i)
     return err_gone(cobj[i]);
   if (ref_tracks(cref[i], cref2[i], cmode[i], cspot[i]) < 0)   
     return -1;                         // generates err_gone also
+  if (rwi->Ghost() || (arm->CommOK() <= 0))
+    return err_arm();
 
   // check for serendipitous grasp or interference
   if (cst[i] >= 1)
@@ -1296,14 +1292,19 @@ int jhcManipulate::release_obj ()
 
 int jhcManipulate::stow_arm ()
 {
-  double wz, under, dp, da, ht = lift->Height();
+  double pk, wz, under, dp, da, ht = lift->Height();
 
-  // set up absolute retracted pose
+  // set up absolute retracted pose (only lift if some obstruction)
   if (cst2[inst] == 0)
   {
     jprintf(1, dbg, "|- Manipulate %d: stow %s\n", cbid[inst], 
             ((cobj[inst] != NULL) ? cobj[inst]->Nick() : "arm"));
-    wz = obj_peaks(arm->retx, arm->rety, arm->Width(), 1) + over + hang;
+
+    pk = obj_peaks(arm->retx, arm->rety, arm->Width(), 1);
+    if (pk <= sobj->ztab)
+      wz = pos->Z() + ht;              // current height okay
+    else
+      wz = pk + over + hang;
     cpos[inst].SetVec3(arm->retx, arm->rety, wz);
     cdir[inst].SetVec3(arm->rdir, -tip, 0.0);
     cst2[inst] = 1;
@@ -2504,42 +2505,28 @@ int jhcManipulate::ref_tracks (int& a, int& a2, int rn, const jhcAliaDesc *place
 //                          Semantic Messages                            //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Complain about arm not working.
+//= Complain about the arm not working.
 // <pre>
-//   NOTE[  hq-1 -lex-  broken
-//               -hq--> obj-1
+//   NOTE[ act-1 -lex-  work
+//               -neg-  1
+//               -agt-> obj-1
 //         ako-1 -lex-  arm 
 //               -ako-> obj-1
-//         has-1 -lex-  has
-//               -obj-> obj-1
-//               -agt-> self-1 ]
+//               -wrt-> self-1 ]
 // </pre>
 // always returns -1 for convenience
 
 int jhcManipulate::err_arm ()
 {
-  jhcSituation sit;
-  jhcActionTree *atree = dynamic_cast<jhcActionTree *>(rpt);
-  jhcNetNode *part, *has;
-  jhcAliaDesc *arm, *own, *fail;
+  jhcAliaDesc *part, *own, *arm, *fail;
 
-  // see if node for robot's arm already exists (add to LTM facts?)
-  sit.BuildCond();
-  part = sit.MakeNode("obj");
-  has = sit.AddProp(part, "ako", "arm");
-  has->AddArg("wrt", atree->Robot());
-  atree->SetMode(0);
-  arm = sit.FindRef(part, *atree);
-
-  // generate broken assertion (always)
   rpt->StartNote();
-  if (arm == NULL)
-  {
-    arm = rpt->NewNode("obj");
-    own = rpt->NewProp(arm, "ako", "arm");
-    rpt->AddArg(own, "wrt", rpt->Self());
-  }
-  fail = rpt->NewProp(arm, "hq", "broken");   
+  part = rpt->NewNode("obj");
+  own = rpt->NewProp(part, "ako", "arm");
+  rpt->AddArg(own, "wrt", rpt->Self());
+  arm = rpt->Resolve(part);                      // find or make part
+  fail = rpt->NewNode("act", "work", 1);
+  rpt->AddArg(fail, "agt", arm);                 // mark as not working
   rpt->FinishNote(fail);
   return -1;
 }

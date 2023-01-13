@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,8 +72,8 @@ public:
   int AddReq (jhcAliaChain *act);
   int AddSimul (jhcAliaChain *act);
   void MarkSeeds ();
-  int MaxDepth () const;
-  int NumGoals (int leaf =0) const;
+  int MaxDepth (int cyc =1);
+  int NumGoals (int leaf =0, int cyc =1);
 
   // read only variables
   int NumReq () const   {return na;} 

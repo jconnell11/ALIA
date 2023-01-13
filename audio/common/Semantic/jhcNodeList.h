@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,8 @@ public:
   virtual bool Prohibited (const jhcNetNode *n) const {return(n == NULL);}
   virtual int NumBins () const {return 1;}
   virtual int SameBin (const jhcNetNode& focus, const jhcBindings *b) const {return 1;}
+  virtual int NumBands () const {return 1;}
+  virtual bool InBand (const jhcNetNode *n, int part) const {return true;}
 
 
 };

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ class jhcWorkMem : public jhcNodePool
 // PRIVATE MEMBER VARIABLES
 private:
   // main vs halo separation
-  int rim, nimbus, mode;
+  int rim, nimbus, mode;     // rim = last LTM, nimbus = last single rule
   jhcNetNode *self;          // fixed node representing the robot
   jhcNetNode *user;          // node for current person communicating
 
@@ -64,6 +64,11 @@ protected:
   jhcNodePool halo;          // expectations
 
 
+// PUBLIC MEMBER VARIABLES
+public:
+  int noisy;                 // control of diagnostic messages
+
+
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and initialization
@@ -71,10 +76,11 @@ public:
   jhcWorkMem ();
   void Border ()  {rim = halo.LastLabel();}
   void Horizon () {nimbus = halo.LastLabel();}
-  int LastGhost () const {return rim;}
-  void SetMode (int lvl =3) {mode = lvl;}
-  int WmemSize () const {return NodeCnt();}
-  int HaloSize () const {return halo.NodeCnt();}
+  int LastGhost () const  {return rim;}
+  int LastSingle () const {return nimbus;} 
+  void MaxBand (int lvl =3) {mode = lvl;}
+  int WmemSize (int hyp =0) const {return NodeCnt(hyp);}
+  int HaloSize (int hyp =0) const {return halo.NodeCnt(hyp);}
 
   // belief threshold
   double MinBlf () const {return skep;}
@@ -88,9 +94,11 @@ public:
 
   // list access (overrides virtual)
   jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const;
-  int Length () const {return NodeCnt();}
+  int Length () const {return NodeCnt(1);}
   bool Prohibited (const jhcNetNode *n) const;
   int SameBin (const jhcNetNode& focus, const jhcBindings *b) const;
+  int NumBands () const {return(mode + 1);}
+  bool InBand (const jhcNetNode *n, int part) const;
 
   // halo functions
   void ClearHalo () {halo.PurgeAll();}
@@ -112,15 +120,16 @@ public:
 
   // writing functions
   int Save (const char *fname, int lvl =0)
-    {SetMode(0); return jhcNodePool::Save(fname, lvl);}
-  int Print (int lvl =0) 
-    {SetMode(0); return jhcNodePool::Print(lvl);}
+    {MaxBand(0); return jhcNodePool::Save(fname, lvl);}
+  int Print (int lvl =0, int hyp =0) 
+    {MaxBand(0); return jhcNodePool::Print(lvl, hyp);}
 
   // debugging
-  void PrintMain ()  
-    {jprintf("\nWMEM (%d nodes) =", Length()); Print(2); jprintf("\n");}
-  void PrintHalo () const 
-    {jprintf("\nHALO (%d nodes) =", HaloSize()); halo.Print(2); jprintf("\n");}
+  void PrintMain (int hyp =0)  
+    {jprintf("\nWMEM (%d nodes) =", WmemSize(hyp)); Print(2, hyp); jprintf("\n");}
+  void PrintHalo (int hyp =0) const 
+    {jprintf("\nHALO (%d nodes) =", HaloSize(hyp)); halo.Print(2, hyp); jprintf("\n");}
+  int PrintRaw (int hyp =0) const;
 
 
 // PROTECTED MEMBER FUNCTIONS
@@ -146,6 +155,7 @@ private:
   int rem_unmarked (int dbg);
 
   // external nodes
+  int ann_link (const jhcNetNode *obj, const jhcNetNode *former, int kind, int rnum) const;
   void rem_ext (const jhcAliaDesc *obj);
 
 

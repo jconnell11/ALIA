@@ -69,7 +69,10 @@ public:
   //= Get a specific name out of all the names associated with this item.
   // if "bth" > 0.0 then only returns non-negated words with belief over threshold
   // most recently added terms returned first
-  virtual const char *Name (int i =0, double bth =0.0) const =0;
+  virtual const char *Name (int i =0, double bth =0.5) const =0;
+
+  //= Get likely label for a person face detection.
+  virtual const char *Label () const =0;
 
   //= Checks if particular name is one of the references associated with this item.
   // can alternatively check if the node is definitely NOT associated with some word
@@ -88,7 +91,7 @@ public:
   virtual int Inst () const =0;
 
   //= Tell what cycle the node was last mentioned in conversation.
-  virtual int LastRef () const =0;
+  virtual int LastConvo () const =0;
 
 
 };

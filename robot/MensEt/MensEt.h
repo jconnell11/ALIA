@@ -27,6 +27,10 @@ public:
   // JHC override
   void AddToRecentFileList(LPCTSTR lpszPathName);
 
+  // JHC retrieval
+  LPCTSTR GetLastFile () const;
+
+
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CMensEtApp)

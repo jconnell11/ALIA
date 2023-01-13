@@ -53,20 +53,28 @@
 // action to take
 
 =[cmd]
+  <!ach> (<too>)
   <!do> (<too>)
-  <!chk> (<too>)
-  <!chk-t> (<too>)
   <!find> (<too>)
   <!find-t> (<too>)
   <!find-c> (<too>)
+  <!chk> (<too>)
+  <!chk-t> (<too>)
+  <!for> (<too>)
 
 
 // hypothetical action (not a command)
 
 =[cmd-s]
   <!do-s>
-  <find-s>
+  <!find-s>
   <!chk-s>
+
+
+// explicit multi-step loop
+
+=[!for]
+  for <%obj>
 
 
 // partial repeat indicator
@@ -78,6 +86,12 @@
 
 // --------------------------------------------------
 
+// ACH directive
+
+=[!ach]
+  make sure (that) <%fact>
+
+
 // DO directive ("you" or missing subject, 0 to 2 objects)
 
 =[!do]
@@ -88,7 +102,7 @@
   (you <PREF>) (<adv3>) <SAY> (to <np>) <QUOTE>
   <STOP> <ACT-G> (<np> (<np>)) (<vmod3>)
   <NEG-V> <ACT> (<np> (<np>)) (<vmod3>)
-  <ACT> (that) <%fact>
+//  <ACT> (that) <%fact>                         // "know"?
   
 
 // hypothetical DO directive for prohibition
@@ -139,6 +153,8 @@
   find (out) <query>
   find <np>
   look for <np>
+  determine <np>
+  check <np>
 
 
 // implicit tell for answering wh-question

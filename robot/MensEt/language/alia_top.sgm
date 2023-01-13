@@ -227,6 +227,7 @@
 
 =[chain]
   <step>
+  <!for> <cmd>
   <step> (<step> (<step> (<step> (<step>)))) <seq> <cmd>
   <step> (<step> (<step> (<step> (<step>)))) <seq> <%play>
 

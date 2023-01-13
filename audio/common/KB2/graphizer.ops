@@ -1,17 +1,7 @@
 // Responses to command failures  
 // ================================================
 
-OP 1 - "Before explaining failing to do something find out why that thing"
-  trig:
-  ANTE[ act-1 -lex-  explain
-              -obj-> act-2 ]
------------------
-  FIND[ cuz-1 -lex-   because
-              -why--> act-2
-              -sit--> fact-1 ]
-
-
-OP 2 - "To explain something when that something is because something else then tell me that something else"
+OP 1 - "To explain something when that something is because something else then tell me that something else"
   trig:
     DO[  act-1 -lex-  explain
                -obj-> fail-1
@@ -24,10 +14,10 @@ OP 2 - "To explain something when that something is because something else then 
     DO[  act-3 -lex-   tell
                -dest-> user-1
                -obj--> sit-1 
-        user-1 -lex-   me ] 
+        user-1 -lex-   you ] 
 
 
-OP 3 - "To explain failing to do something that I asked you pass"
+OP 2 - "To explain failing to do something that I asked you about pass"
   trig:
     DO[  act-1 -lex-   explain
                -obj--> fail-1
@@ -41,7 +31,7 @@ OP 3 - "To explain failing to do something that I asked you pass"
     DO[ act-4 -lex-  pass ]
 
 
-OP 4 - "To explain failing to do something apologize"
+OP 3 - "To explain failing to do something apologize"
   trig:
     DO[  act-1 -lex-  explain
                -obj-> fail-1
@@ -53,7 +43,7 @@ OP 4 - "To explain failing to do something apologize"
 
 // ----------------------------------------
 
-OP 5 - "To apologize say sorry I couldn't do that"
+OP 4 - "To apologize say sorry I couldn't do that"
   trig:
     DO[ act-1 -lex-  apologize ]
 -----------------
@@ -62,7 +52,7 @@ OP 5 - "To apologize say sorry I couldn't do that"
         txt-1 -str-  sorry I couldn't do that ]
 
 
-OP 6 - "To apologize say I failed whoever"
+OP 5 - "To apologize say I failed whoever"
   trig:
     DO[ act-1 -lex-  apologize ]
 -----------------
@@ -71,10 +61,28 @@ OP 6 - "To apologize say I failed whoever"
         txt-1 -str-  I failed ?0 ]
 
 
-OP 7 - "To apologize say oops, something went wrong"
+OP 6 - "To apologize say oops, something went wrong"
   trig:
     DO[ act-1 -lex-  apologize ]
 -----------------
     DO[ act-2 -lex-  say
               -obj-> txt-1
         txt-1 -str-  oops, something went wrong ]
+
+
+// ----------------------------------------
+
+OP 7 - "To find the color of something find out what color it is"
+  trig:
+  FIND[  hq-1
+        ako-1 -lex-  ***-1
+              -ako-> hq-1
+              -wrt-> obj-1 ]
+-----------------
+  FIND[  hq-2 -hq--> obj-1
+        ako-2 -lex-  ***-1
+              -ako-> hq-2 ]
+
+
+
+

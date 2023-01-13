@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,22 +33,23 @@
 #include "Reasoning/jhcActionTree.h"
 #include "Semantic/jhcGraphlet.h"     
 
+#include "Semantic/jhcSituation.h"
+
 
 //= Generates natural language string from network.
 
-class jhcDegrapher 
+class jhcDegrapher : private jhcSituation
 {
 // PRIVATE MEMBER VARIABLES
 private:
   char phrase[500];
-  const jhcGraphlet *gr;
   const jhcMorphFcns *mf;
   jhcWorkMem *wmem;
   
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int dbg;                             
+  int noisy;                             
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -74,47 +75,34 @@ public:
   const char *NodeRef (jhcAliaDesc *n, int nom =1)
     {return NodeRef(dynamic_cast<jhcNetNode *>(n), nom);}
 
-  // main functions (incomplete and not used!)
-  const char *Generate (const jhcGraphlet& graph, jhcWorkMem& mem);
-
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // formatted output
-  const char *node_ref (char *txt, int ssz, jhcNetNode *n, int nom, const char *avoid) const;
-  const char *pred_ref (char *txt, int ssz, jhcNetNode *n, int inf) const;
-  const char *full_pred (char *txt, int ssz, const jhcNetNode *n, int inf) const;
+  const char *node_ref (char *txt, int ssz, jhcNetNode *n, int nom, const char *avoid);
+  const char *pred_ref (char *txt, int ssz, jhcNetNode *n, int inf);
+  const char *full_pred (char *txt, int ssz, const jhcNetNode *n, int inf);
+  void list_conj (char *txt, int ssz, const jhcNetNode *multi) const;
+  void agt_verb (char *txt, int ssz, const jhcNetNode *n);
+  void copula (char *txt, int ssz, jhcNetNode *targ, const jhcNetNode *n);
+
 
   // object reference
-  const char *obj_ref (char *txt, int ssz, jhcNetNode *n, int nom, const char *avoid) const;
+  const char *obj_ref (char *txt, int ssz, jhcNetNode *n, int nom, const char *avoid);
   const char *pron_ref (char *txt, int ssz, const jhcNetNode *n, int nom) const;
   bool chk_prop (const jhcNetNode *n, const char *role, const char *label, 
                  const jhcGraphlet *desc) const;
-  const char *name_ref (jhcNetRef& nr, const jhcNetNode *n) const;
-  const char *add_kind (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n, const char *avoid) const;
-  const char *add_adj (char *txt, int ssz, jhcNetRef& nr, const jhcNetNode *n, const char *avoid) const;
-  const char *hyp_ref (char *txt, int ssz, const jhcNetNode *n, const char *avoid) const;
+  const char *name_ref (const jhcNetNode *n);
+  const char *add_kind (char *txt, int ssz, const jhcNetNode *n, const char *avoid);
+  const char *add_adj (char *txt, int ssz, const jhcNetNode *n, const char *avoid);
+  const char *hyp_ref (char *txt, int ssz, const jhcNetNode *n, const char *avoid);
 
   // utilities
   char *strcatf_s (char *txt, int ssz, const char *fmt, ...) const;
+  int num_match (int strip);
 
-  // main functions
-  int follow_args (jhcNetNode *n) const;
-  const char *form_sent (char *txt, int ssz, const jhcNetNode *n, int top) const;
-  const char *form_intj (char *txt, int ssz, const jhcNetNode *n) const;
-  const char *form_conj (char *txt, int ssz, const jhcNetNode *n) const;
-
-  const char *form_vp (char *txt, int ssz, const jhcNetNode *n) const;
-  const char *form_verb (char *txt, int ssz, const jhcNetNode *n, UL32 tags) const;
-
-  const char *form_np (char *txt, int ssz, const jhcNetNode *n) const;
-  const char *form_ref (char *txt, int ssz, const jhcNetNode *n) const;
-  const char *form_poss (char *txt, int ssz, const jhcNetNode *n) const;
-  const char *form_det (char *txt, int ssz, const jhcNetNode *n) const;
-  const char *form_adj (char *txt, int ssz, const jhcNetNode *n) const;
-  const char *form_noun (char *txt, int ssz, const jhcNetNode *n, UL32 tags) const;
-
-  const char *add_sp (char *txt, int ssz, const char *w, const char *suf =NULL) const;
+  // overrides
+  int match_found (jhcBindings *m, int& mc) {return 1;}
 
 
 };

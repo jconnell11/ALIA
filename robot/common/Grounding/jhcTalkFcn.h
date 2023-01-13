@@ -42,12 +42,11 @@
 
 class jhcTalkFcn : public jhcStdKern
 {
-  static const int smax = 10;        /** Maximum pending things to say. */
+  static const int smax = 10;          /** Maximum pending things to say. */
 
 // PRIVATE MEMBER VARIABLES
 private:
   // string generation
-  jhcDegrapher dg;
   char full[smax][500];
 
   // output arbitration
@@ -58,7 +57,8 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int noisy;
+  // network to sentence
+  jhcDegrapher dg;
 
 
 // PUBLIC MEMBER FUNCTIONS

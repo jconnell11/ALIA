@@ -188,10 +188,6 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
   rem = 0.0;
   sense = 0;
   think = 0;
-
-  // suppress some printouts
-  noisy = 1;
-  atree.noisy = 1;
   return 1;
 }
 
@@ -386,6 +382,7 @@ int jhcAliaSpeech::Respond (int alert)
   char mark[80] = "##  +------------------------------------------------------------------------";
   int bid, n;
 
+jtimer(16, "Respond");
   // possibly wake up system then evaluate any language input
   now = jms_now();
   if (alert > 0)
@@ -410,6 +407,7 @@ int jhcAliaSpeech::Respond (int alert)
     mark[n + 9] = '\0';
     jprintf("\n%s+\n##  | \"%c%s\" |\n%s+\n\n", mark, toupper(output[0]), output + 1, mark);
   }
+jtimer_x(16);
   return 1;
 }
 
@@ -514,6 +512,7 @@ void jhcAliaSpeech::DayDream ()
   double frac = 1.0;
   int cyc, n = 1, ms = ROUND(1000.0 / shz);      // standard sensing time
 
+jtimer(17, "DayDream");
   // determine how many total thought cycles to run right now
   if (start == 0)
     start = now;
@@ -531,6 +530,7 @@ void jhcAliaSpeech::DayDream ()
   rem = frac - cyc;          // how many thought cycles NOT completed
   think += cyc;
   sense++;
+jtimer_x(17);
 }
 
 

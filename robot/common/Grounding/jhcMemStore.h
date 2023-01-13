@@ -44,10 +44,6 @@ private:
   jhcDeclMem *dmem;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-
-
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and initialization
@@ -57,7 +53,6 @@ public:
 
   // main functions
   JCMD_DEF(mem_form);
-  JCMD_DEF(mem_match);
 
 
 // PRIVATE MEMBER FUNCTIONS

@@ -102,6 +102,7 @@
   sideways
   around
   in
+  away
 
 
 // -----------------------------------------
@@ -132,12 +133,22 @@
 =[def]
   the
   <REF-D>
+  <ENUM>
 
 
 // alternate definite article (not used?)
 
 =[alt]
   other
+
+
+// loop marker for a group of definite items
+
+=[ENUM]
+  each (of the)
+  every
+  all ((of) the)
+  any (of the)
 
 
 // ordinal (not used?)

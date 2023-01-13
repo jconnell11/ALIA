@@ -615,7 +615,7 @@ void jhcEliGrok::assert_watch ()
       if (fabs(ang) <= crane)
       {
         OrientToward(targ, bid);
-        return;
+//        return;                        // preserve wwin value
       }
     }
 
@@ -728,7 +728,9 @@ void jhcEliGrok::assert_servo ()
   vlock = 0;          
 
   // pick a steering angle and travel speed (or update map)
+jprintf("    target: dist %4.2f, head %4.2f\n", vd, va);
   nav.Swerve(trav, head, vd, va, voff);
+jprintf("      --> base: drive %3.1f, turn %3.1f\n", trav, head);
   base->TurnTarget(head, 1.0, bid);
   base->MoveTarget(trav, 1.0, bid);
 }
@@ -804,12 +806,16 @@ void jhcEliGrok::assert_scan ()
   }
   flock = 0;         
 
+jprintf("  assert_scan: elasped %4.2f\n", jms_elapsed(ahead));
+
   // look at feet if needed, otherwise occasionally look ahead
   if ((quick_survey(bid) > 0) || (jms_elapsed(ahead) < cruise))
     return;
-jprintf("* CRUISE\n");
   if (!neck->GazeDone(0.0, road))
+{
+jprintf("    tilt = %4.2f [cmd %4.2f]\n", neck->Tilt(), road);
     neck->GazeTarget(0.0, road, 1.0, 1.0, bid);      
+}
   else
     ahead = jms_now();                 // reset cycle timer
 }
@@ -844,15 +850,18 @@ int jhcEliGrok::quick_survey (int bid)
     feet = 1;
   }
 
+jprintf("    quick_survey: feet = %d\n", feet);
   // force rapid look at a sequence of 4 fixations (no time gaps)
   while (feet < 5)
   {
     pan  = (((feet == 1) || (feet == 2)) ? -sacp : sacp);
     tilt = (((feet == 1) || (feet == 4)) ?  sact : sact2);
+jprintf("      saccade - pan %3.1f, tilt %3.1f (bid %d)\n", pan, tilt, bid);
     if (neck->GazeDone(pan, tilt))
       feet++;
     else
     {
+jprintf("        neck at %3.1f, %3.1f\n", neck->Pan(), neck->Tilt());
       // no base motion during saccade
       neck->GazeTarget(pan, tilt, -1.5, -1.5, bid);      
       base->DriveTarget(0.0, 0.0, 1.0, bid);      

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,8 +72,8 @@ jhcActionTree::jhcActionTree ()
   svc = -1;
   now = 0;
 
-  // debugging
-  noisy = 3;           // usually copied from jhcAliaCore (=1)
+  // goal count requisition number
+  req = 0;
 }
 
 
@@ -92,13 +92,13 @@ int jhcActionTree::Active () const
 
 //= Determine the maximum subgoal depth across all active foci.
 
-int jhcActionTree::MaxDepth () const
+int jhcActionTree::MaxDepth () 
 {
-  int i, deep, win = 0;
+  int i, deep, cyc = ++req, win = 0;
 
   for (i = 0; i < fill; i++)
     if (done[i] <= 0)
-      if ((deep = focus[i]->MaxDepth()) > win)
+      if ((deep = focus[i]->MaxDepth(cyc)) > win)
         win = deep;
   return win;
 }
@@ -107,13 +107,13 @@ int jhcActionTree::MaxDepth () const
 //= Determine number of activities (possibly subgoaled) across all active foci.
 // if leaf > 0 then only considers currently active goals not pass-thrus
 
-int jhcActionTree::NumGoals (int leaf) const
+int jhcActionTree::NumGoals (int leaf)
 {
-  int i, cnt = 0;
+  int i, cyc = ++req, cnt = 0;         
 
   for (i = 0; i < fill; i++)
     if (done[i] <= 0)
-      cnt += focus[i]->NumGoals(leaf);
+      cnt += focus[i]->NumGoals(leaf, cyc);
   return cnt;
 }
 
@@ -153,22 +153,23 @@ jhcAliaChain *jhcActionTree::FocusN (int n) const
 }
 
 
-//= Return last explicit error message associated with the current focus.
-
-jhcGraphlet *jhcActionTree::Error () 
-{
-  if ((svc < 0) || (svc >= fill) || err[svc].Empty())
-    return NULL;
-  return &(err[svc]);
-}
-
-
 //= Clear any error message associated with the current focus.
 
 void jhcActionTree::ClearErr ()
 {
   if ((svc >= 0) && (svc < fill))
     err[svc].Clear();
+}
+
+
+//= Return last explicit error message associated with the current focus.
+// explicit errors typically only useful for DO directives
+
+jhcGraphlet *jhcActionTree::Error () 
+{
+  if ((svc < 0) || (svc >= fill) || err[svc].Empty())
+    return NULL;
+  return &(err[svc]);
 }
 
 
@@ -238,6 +239,9 @@ int jhcActionTree::ClrFoci (int init, const char *rname)
 {
   int i;
 
+  // reset goal count requisition number
+  req = 0; 
+
   // clear focal items
   for (i = 0; i < fill; i++)
   {
@@ -247,11 +251,12 @@ int jhcActionTree::ClrFoci (int init, const char *rname)
   }
   fill = 0;
   chock = 0;
+  blame = 1;                 // record specific failure reasons
   svc = -1;
-  if (init <= 0)
-    return 1;
 
   // clear halo and working memory
+  if (init <= 0)
+    return 1;
   nkey.Clear();
   BuildIn(NULL);
   Reset();
@@ -472,7 +477,7 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
   jhcAliaRule *r;
   const jhcBindings *b;
   double s, blf, blf2, blf3, lo, hi = 0.0;
-  int i, ni = key.NumItems(), detail = 1;
+  int i, ni = key.NumItems();
 
   // examine each element of the situation 
   for (i = 0; i < ni; i++)
@@ -500,7 +505,7 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
         {
           r->SetConf(blf3);
           mood.Believe(blf3 - blf2);
-          jprintf(1, detail, "  ADJUST: rule %d --> %s conf to %4.2f\n", r->RuleNum(), 
+          jprintf(1, noisy, "  ADJUST: rule %d --> %s conf to %4.2f\n", r->RuleNum(), 
                   ((blf3 > blf2) ? "raise" : "lower"), blf3);
         }
       }
@@ -710,10 +715,12 @@ int jhcActionTree::promote (jhcBindings& h2m, jhcNetNode *n)
   // special handling if LTM node is brought in
   if (n->ObjNode() && !deep->Halo())
   {
-    jprintf("\n:- PROMOTE creates %s for memory %s\n", n2->Nick(), deep->Nick());
+    jprintf(1, noisy, "\n:- PROMOTE creates %s (%s) for memory %s\n", n2->Nick(), n2->LexStr(), deep->Nick());
     n2->MoorTo(deep);
     NoteSolo(n2);
   }
+  else
+    jprintf(1, noisy, " + creating %s (%s) for halo %s\n", n2->Nick(), n2->LexStr(), n->Nick());
   return 1;
 }
 
@@ -732,7 +739,40 @@ void jhcActionTree::StartNote ()
 }
 
 
+//= Find node in main memory that matches description so far.
+// typically used to find or make some part of the robot, such as its arm
+// if equivalent exists then description is erased, else focus node is returned
+
+jhcAliaDesc *jhcActionTree::Resolve (jhcAliaDesc *focus)
+{
+  jhcSituation sit;
+  jhcBindings b;
+  int mc = 1;
+
+  MaxBand(0);
+  b.expect = nkey.NumItems();
+  if (sit.MatchGraph(&b, mc, nkey, *this) <= 0)
+    return focus;
+  nkey.Clear();
+  return b.LookUp(dynamic_cast<jhcNetNode *>(focus));
+}
+
+
+//= Make sure node is visible and non-hypotheical then mark it as eligible for FIND.
+// needed when new node is volunteered by grounding kernel outside of NOTE
+
+void jhcActionTree::NewFound (jhcAliaDesc *obj) const 
+{
+  jhcNetNode *item = dynamic_cast<jhcNetNode *>(obj);
+
+  item->SetBelief(1.0);
+  item->Reveal();
+  SetGen(item);
+}
+
+
 //= Add current note as a focus, possibly marking some part as the main error.
+// since depth-first subroutine calls per focus only one "blame" var needed
 // return number of focus if added, -2 if empty
 
 int jhcActionTree::FinishNote (jhcAliaDesc *fail)
@@ -748,9 +788,10 @@ int jhcActionTree::FinishNote (jhcAliaDesc *fail)
     nkey.SetMain(dynamic_cast<jhcNetNode *>(fail));
   nkey.MainProp();           
   
-  // possibly set failure message for top level
-  if ((fail != NULL) && (svc >= 0))
-    err[svc].Copy(nkey);
+  // possibly set failure message for top level focus
+  if ((fail != NULL) && (svc >= 0) && (svc < fill))
+    if (blame > 0)
+      err[svc].Copy(nkey);
 
   // add NOTE as new attentional focus
   ch0 = new jhcAliaChain;

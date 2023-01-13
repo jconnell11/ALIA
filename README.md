@@ -18,16 +18,20 @@ If you want to get fancier, you can switch over to speech mode. Use menu selecti
 ![Banzai blocks demo](blocks_demo.bmp)
 
 Also available is the lastest release of the [Banzai](https://github.com/jconnell11/ALIA/releases/download/v4.90/Banzai_v490.zip) program and its [DLLs](https://github.com/jconnell11/ALIA/releases/download/v4.80/Banzai_DLL.zip). This uses the same NLU and reasoning engines, but controls a larger mobile manipulator, [ELI](robot/Banzai/ELI_robot.jpg). It is included here because it demonstrates how to create a "grounding" for a different physical robot via classes such as [jhcBallistic.cpp](robot/common/Grounding/jhcBallistic.cpp). 
-To try this out (without a robot) use menu selection "File / Open Video" and select [environ/blocks_t512.bmp](robot/Banzai/environ/blocks_t512.bmp). Then do "Demo / Text File" with [blocks_demo.tst](robot/Banzai/test/blocks_demo.tst). Keep hitting ENTER to go on to the next sentence. You should get the responses shown above. An example of full manipulation can be seen in [this video](https://youtu.be/9sdTyfvoMPg).
+To try this out (without a robot) use menu selection "File / Open Video" and select [environ/blocks_t512.bmp](robot/Banzai/environ/blocks_t512.bmp). Then do "Demo / Text File" with [blocks_demo.tst](robot/Banzai/test/blocks_demo.tst). Keep hitting ENTER to go on to the next sentence. You should get the responses shown above. 
 
-Recently long term memory has been added. You can tell the system something like "Joe's wife is Jill" then "Remember that". All facts, rules, and operators are stored in the KB subdirectory. The next time you start the program you can ask "Who is Joe's wife" and get the proper answer. Simple typo correction and vocabulary inference have also been added. Finally, if you have an [ELI robot](JHC_robot_2020.jpg) (which almost no one does), there are reasonably competent manipulation routines as shown in [this video](https://youtu.be/9sdTyfvoMPg).
+Recently long term memory has been added. You can tell the system something like "Joe's wife is Jill" then "Remember that". All facts, rules, and operators are stored in the KB subdirectory. The next time you start the program you can ask "Who is Joe's wife" and get the proper answer. Simple typo correction and vocabulary inference have also been added. 
 
 ![Banzai manipulation](stacking_sm.jpg)
 
-ALIA is implemented in [Visual C++ 2019](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&rel=16) (free) and should compile cleanly with the files here. However, to actually run the system you will need a slew of DLLs and some data files. These are separate zip archives under the v4.80 release (never change). 
+If you have an ELI robot (which almost no one does), there are reasonably competent manipulation routines as demonstrated in this [video](https://youtu.be/9sdTyfvoMPg). You can also craft full behaviors conversationally, including iterative constructs like "all", as shown [here](https://youtu.be/Yoq7n6lGhYo).
+
+![Stealing stuff](red_handed.jpg)
+
+ALIA is implemented in [Visual C++ 2019](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&rel=16) (free) and should compile cleanly with the files here. However, to actually run the system you will need some data files (e.g. the KB0 directory) and a slew of DLLs. The zip archives under the v4.80 release can be used for all versions.
 
 ---
 
-November 2022 - Jonathan Connell - jconnell@alum.mit.edu
+January 2023 - Jonathan Connell - jconnell@alum.mit.edu
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,9 +65,9 @@ jhcProcMem::jhcProcMem ()
 {
   ops = NULL;
   np = 0;
-  noisy = 2;
+  noisy = 2;                 // defaulted from jhcAliaCore
   detail = 0;
-//detail = 144;               // show detailed matching for some operator 
+//detail = 44;               // show detailed matching for some operator 
 }
 
 
@@ -161,13 +161,13 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
   k = dir->kind;
   if ((k < 0) || (k >= JDIR_MAX))
     return -1;
-  if (k == JDIR_BIND)                  // BIND = FIND + assume
+  if ((k == JDIR_BIND) || (k == JDIR_EACH) || (k == JDIR_ANY))
     k = JDIR_FIND;
 
   // set up to get up to bmax bindings using halo as needed
   mmax = dir->MaxOps();
   dir->mc = mmax;
-  wmem.SetMode(3);
+  wmem.MaxBand(3);
 
   // try matching all operators above the preference threshold
   while (p != NULL)
@@ -319,7 +319,7 @@ int jhcProcMem::save_ops (FILE *out, int level) const
   while (p != NULL)
   {
     if (p->lvl >= level)
-      if (p->Save(out, 2) > 0)
+      if (p->Save(out) > 0)
       {
         fprintf(out, "\n\n");
         cnt++;

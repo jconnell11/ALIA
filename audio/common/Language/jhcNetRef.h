@@ -44,7 +44,7 @@ private:
   const jhcNetNode *focus;
   jhcGraphlet *partial;
   jhcBindings win;
-  int recent;
+  int limit, recent;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -64,11 +64,12 @@ public:
                         double blf =-1.0, jhcAliaChain **skolem =NULL);
   jhcNetNode *LookUp (const jhcNetNode *old) const {return win.LookUp(old);}
 
+/*
   // language generation
   jhcNetNode *Main () const {return cond.Main();}
   int NumMatch (const jhcNodeList *wmem, double mth, int retract =0);
   jhcNetNode *BestMate () const {return win.LookUp(cond.Main());}
-
+*/
   // debugging
   void Print (int lvl =0) const 
     {jprintf("%*sNetRef =", lvl, ""); cond.Print(lvl + 2); jprintf("\n");}
@@ -81,6 +82,7 @@ private:
 
   // virtual override
   int match_found (jhcBindings *m, int& mc);
+  int filter_pron (const jhcNetNode *mate);
 
 
 };

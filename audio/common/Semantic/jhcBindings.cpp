@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2022 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@
 
 jhcBindings::~jhcBindings ()
 {
+  delete [] mark;
   delete [] term;
   delete [] sub;
   delete [] key;
@@ -46,6 +47,7 @@ jhcBindings::jhcBindings (const jhcBindings *ref)
   key  = new const jhcNetNode * [bmax];
   sub  = new jhcNetNode * [bmax];
   term = new int [bmax];
+  mark = new int [bmax];
 
   // initialize contents
   nb = 0;
@@ -67,6 +69,7 @@ jhcBindings *jhcBindings::Copy (const jhcBindings& ref)
     key[nb]  = ref.key[nb];
     sub[nb]  = ref.sub[nb];
     term[nb] = ref.term[nb];
+    mark[nb] = ref.mark[nb];
   }
   expect = ref.expect;
   return this;
@@ -88,6 +91,19 @@ int jhcBindings::AnyHyp () const
 }
 
 
+//= Get highest value of auxilliary information associated with any key.
+// jhcAliaDir uses to determine looping since Bind is called with aux = 1
+
+int jhcBindings::AuxMax () const
+{
+  int i, hi = -1;
+
+  for (i = 0; i < nb; i++)
+    hi = __max(hi, mark[i]);
+  return hi;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                              List Functions                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -100,6 +116,17 @@ jhcNetNode *jhcBindings::LookUp (const jhcNetNode *k) const
   int i = index(k);
 
   return((i >= 0) ? sub[i] : NULL);
+}
+
+
+//= Retrive whatever auxilliary information with stored with this key.
+// return -1 if key not found
+
+int jhcBindings::GetAux (const jhcNetNode *k) const
+{
+  int i = index(k);
+
+  return((i >= 0) ? mark[i] : -1);
 }
 
 
@@ -211,8 +238,9 @@ bool jhcBindings::LexAgree (const jhcNetNode *focus, const jhcNetNode *mate) con
 // if NULL substitution (out) is given, key (in) remains in list but LookUp returns NULL
 // generally returns number of bindings, including new, for use with TrimTo(N - 1) 
 // return: N = number of bindings, 0 = no more room, -1 = duplicate key, -2 = bad key
+// NOTE: use RemKey to completely remove a pair
 
-int jhcBindings::Bind (const jhcNetNode *k, jhcNetNode *subst)
+int jhcBindings::Bind (const jhcNetNode *k, jhcNetNode *subst, int aux)
 {
   // see if key already in list
   if (k == NULL)
@@ -228,8 +256,51 @@ int jhcBindings::Bind (const jhcNetNode *k, jhcNetNode *subst)
   term[nb] = 0;
   if (k->LexVar() && (lookup_lex(k->Lex()) == NULL))
     term[nb] = 1;
+  mark[nb] = aux;
   nb++;
   return nb;
+}
+
+
+//= Remove any binding found for the specified key.
+// returns 1 if removed, 0 if not found
+
+int jhcBindings::RemKey (jhcNetNode *k)
+{
+  int i, j;
+ 
+  // look for position of key in list
+  for (i = 0; i < nb; i++)
+    if (key[i] == k)
+      break;
+  if (i >= nb)
+    return 0;
+
+  // drop pair and compact remainder of list
+  for (j = i + 1; j < nb; j++)
+  {
+    key[j - 1]  = key[j];
+    sub[j - 1]  = sub[j];
+    term[j - 1] = term[j];
+    mark[j - 1] = mark[j];
+  }
+  nb--;
+  return 1;
+}
+
+
+//= Remove most recent binding, but only if it has the specified key.
+// returns 1 if removed, 0 if not found
+
+int jhcBindings::RemFinal (jhcNetNode *k)
+{
+  if (nb > 0)
+    if (key[nb - 1] == k)    
+    {
+      nb--;
+      return 1;
+    }
+  return 0;
 }
 
 
@@ -245,16 +316,6 @@ int jhcBindings::TrimTo (int n)
     return 0;
   nb = n;
   return 1;
-}
-
-
-//= Remove most recent binding, but only if it has the specified key.
-
-void jhcBindings::RemFinal (jhcNetNode *k)
-{
-  if (nb > 0)
-    if (key[nb - 1] == k)    
-      nb--;
 }
 
 
@@ -322,9 +383,8 @@ int jhcBindings::SubstMiss (const jhcNodeList& f) const
 
 bool jhcBindings::Same (const jhcBindings& ref) const
 {
-  const jhcNetNode *s;
   const char *var, *wd;
-  int i;
+  int i, j;
 
   // must have exactly the same number of bindings
   if (nb != ref.nb)
@@ -334,9 +394,9 @@ bool jhcBindings::Same (const jhcBindings& ref) const
   for (i = 0; i < nb; i++)
   {
     // punt if key does not exist in reference or value is different
-    if ((s = ref.LookUp(key[i])) == NULL)
+    if ((j = ref.index(key[i])) < 0)
       return false;
-    if (s != sub[i])
+    if ((sub[i] != ref.sub[j]) || (mark[i] != ref.mark[j]))
       return false;
 
     // punt if lex variable does not exist in reference or value is different
@@ -354,6 +414,7 @@ bool jhcBindings::Same (const jhcBindings& ref) const
 
 //= Replace each value in list with its lookup in the reference bindings.
 // self: obj-8 = obj-1 + ref: obj-1 = obj-237 --> self: obj-8 = obj-237 
+// does not change mark[] auxilliary information associated with key
 
 void jhcBindings::ReplaceSubs (const jhcBindings& alt)
 {
@@ -391,9 +452,12 @@ void jhcBindings::Print (const char *prefix, int lvl, int num) const
   for (i = start; i < stop; i++)
   {
     // list key node and substitution node then possibly lexical variable with value
-    jprintf("%*s  %*s = %s\n", lvl, "", (k + n + 1), key[i]->Nick(), ((sub[i] != NULL) ? sub[i]->Nick() : "NULL"));
+    jprintf("%*s  %*s = %s", lvl, "", (k + n + 1), key[i]->Nick(), ((sub[i] != NULL) ? sub[i]->Nick() : "NULL"));
     if (term[i] > 0)
-      jprintf("%*s  %*s = %s\n", lvl, "", (k + n + 1), key[i]->Lex(), sub[i]->Lex());
+      jprintf("%*s  %*s = %s", lvl, "", (k + n + 1), key[i]->Lex(), sub[i]->Lex());
+    if (mark[i] != 0)
+      jprintf(" [%d]", mark[i]);                 // add any non-zero mark at end
+    jprintf("\n");
   }
 }
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -123,6 +123,7 @@ BEGIN_MESSAGE_MAP(CMensEtDoc, CDocument)
   ON_COMMAND(ID_UTILITIES_EXTVOCAB, &CMensEtDoc::OnUtilitiesExtvocab)
   ON_COMMAND(ID_UTILITIES_TESTVOCAB, &CMensEtDoc::OnUtilitiesTestvocab)
   ON_COMMAND(ID_UTILITIES_TESTGRAPHIZER, &CMensEtDoc::OnUtilitiesTestgraphizer)
+    ON_COMMAND(ID_DEMO_BASICMSGS, &CMensEtDoc::OnDemoBasicmsgs)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -182,7 +183,7 @@ BOOL CMensEtDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = mc.Version(); 
-  LockAfter(4, 2023, 11, 2022);
+  LockAfter(5, 2023, 12, 2022);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -710,7 +711,7 @@ int CMensEtDoc::interact_params (const char *fname)
   ps->SetTag("mens_opt", 0);
   ps->NextSpec4( &cam,        0, "Camera available");
   ps->NextSpec4( &tid,        0, "Target robot");
-  ps->NextSpec4( &(mc.spin),  0, "Speech (no, w7, web, w11)");  
+  ps->NextSpec4( &(mc.spin),  0, "Speech (none, local, web)");  
   ps->NextSpec4( &(mc.amode), 2, "Attn (none, any, front, only)");
   ps->NextSpec4( &(mc.tts),   0, "Vocalize output");
   ps->Skip();
@@ -733,6 +734,16 @@ void CMensEtDoc::OnDemoOptions()
   dlg.EditParams(ips);    
   if (tid != tid0)
     (mc.body).LoadCfg(cdir, tid);
+}
+
+
+// Control what basic info gets printed to console window
+
+void CMensEtDoc::OnDemoBasicmsgs()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(mc.mps);    
 }
 
 

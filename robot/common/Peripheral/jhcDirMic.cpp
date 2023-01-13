@@ -437,7 +437,7 @@ void jhcDirMic::update_mix (double val)
 double jhcDirMic::ClosestPt (jhcMatrix *pt, const jhcMatrix& ref, int src, int chk) const
 {
   jhcMatrix rel(4), norm(4), ortho(4);
-  double off, a = OffsetAng(ref, src), rads = D2R * a, ca = cos(rads), sa = sin(rads);
+  double off, a = OffsetAng(ref, 0.0), rads = D2R * a, ca = cos(rads), sa = sin(rads);
 
   // find mic-ref vector, then opposite edge of triangle with angle a
   rel.DiffVec3(ref, loc);

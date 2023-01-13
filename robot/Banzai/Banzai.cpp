@@ -8,7 +8,8 @@
 #include "BanzaiDoc.h"
 #include "BanzaiView.h"
 
-#include "afxadv.h"   // JHC: for CRecentFileList
+#include "afxadv.h"                    // JHC: for CRecentFileList
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -106,6 +107,16 @@ void CBanzaiApp::AddToRecentFileList(LPCTSTR lpszPathName)
 	
 	if (m_pRecentFileList != NULL)
 		m_pRecentFileList->Add(lpszPathName);
+}
+
+
+// JHC: extract name of last file opened
+
+LPCTSTR CBanzaiApp::GetLastFile () const
+{
+	if ((m_pRecentFileList == NULL) || (m_pRecentFileList->GetSize() <= 0))
+    return NULL;
+  return (LPCTSTR)((*m_pRecentFileList)[0]);
 }
 
 

@@ -100,7 +100,7 @@ public:
   jhcNetNode (int num, class jhcNodePool *pool);
   jhcNetNode *NodeTail () const {return next;}
   void SetTail (jhcNetNode *n)  {next = n;}
-  void SetRef (int val)         {ref = val;}  
+  void SetConvo (int val)       {ref = val;}  
   void SetHash (int h)          {hash = h;}
   void SetWord (const char *wd) {strcpy_s(lex, wd);}
 
@@ -118,7 +118,7 @@ public:
   int LexVar () const      {return((*lex == '*') ? 1 : 0);}
   bool Halo () const       {return(id < 0);}
   bool Visible () const    {return(vis > 0);}
-  int LastRef () const     {return((vis > 0) ? ref : 0);}
+  int LastConvo () const   {return ref;}
   bool String () const     {return(Literal() != NULL);}
 
   // reading negation and belief, etc.
@@ -142,8 +142,8 @@ public:
   void Reveal (int doit =1) {vis = doit;}
   void TopMax (int tval)    {top = __max(top, tval);}
   void GenMax (int ver)     {if (ver > 0) gen = __max(gen, ver);}
-  void MarkRef ();
-  void XferRef (jhcNetNode *n) 
+  void MarkConvo ();
+  void XferConvo (jhcNetNode *n) 
     {if ((n != NULL) && (n != this)) {ref = n->ref; n->ref = 0;}}
   void SetKind (const char *k, char sep ='\0');
   void SetString (const char *txt);
@@ -163,6 +163,7 @@ public:
   bool ArgsFull () const {return(NumArgs() >= amax);}
   bool ObjNode () const  {return(NumArgs() <= 0);}
   int Arity (int all =1) const;
+  bool HypAny () const;
   jhcNetNode *Arg (int i =0) const;
   jhcNetNode *ArgSurf (int i =0) const {return Arg(i)->Surf();}
   const char *Slot (int i =0) const;
@@ -224,8 +225,10 @@ public:
     {return((n != NULL) && (strcmp(lex, n->lex) == 0));}
   const char *Tag () const 
     {return((*lex != '\0') ? lex : nick);}
-  const char *Name (int i =0, double bth =0.0) const;
+  const char *Name (int i =0, double bth =0.5) const;
   bool HasName (const char *word, int tru_only =0) const;
+  const char *Label () const
+    {const char *ans = Name(); if (ans != NULL) return ans; return Nick();}
     
   // writing functions
   void NodeSize (int& k, int& n) const;

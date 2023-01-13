@@ -6,7 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include <conio.h>
 #include <stdarg.h>
 
 #include "Interface/jms_x.h"           // common video
@@ -50,7 +49,6 @@ jhcAliaCore::jhcAliaCore ()
   // global variables
   ver = 3.00;
   vol = 1;                   // enable free will reactions
-  noisy = 1;
 
   // add literal text output and stack crawler to function repertoire
   talk.Bind(&(net.mf));
@@ -68,7 +66,65 @@ jhcAliaCore::jhcAliaCore ()
   *rob = '\0';
   *cfile = '\0';
   log = NULL;
+  Defaults();
   Reset(0, NULL, 0);
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                         Processing Parameters                         //
+///////////////////////////////////////////////////////////////////////////
+
+//= Parameters used for selecting which console messages are displayed.
+
+int jhcAliaCore::msg_params (const char *fname)
+{
+  jhcParam *ps = &mps;
+  int ok;
+
+  ps->SetTag("core_msg", 0);
+  ps->NextSpec4( &noisy,             1, "Directive calls (std = 1)");
+  ps->NextSpec4( &pshow,             2, "Parsing details (std = 2)");
+  ps->NextSpec4( &(net.dbg),         0, "Text interpretation (dbg = 3)");
+  ps->NextSpec4( &((talk.dg).noisy), 0, "Output generation (dbg = 2)");
+  ps->NextSpec4( &finder,            0, "FIND processing (dbg = 1)");
+  ps->NextSpec4( &memhyp,            0, "Final wmem hyp (dbg = 1)");
+
+  ps->NextSpec4( &(amem.detail),     0, "Matching of rule number");    
+  ps->NextSpec4( &(pmem.detail),     0, "Matching of op number");   
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                           Parameter Bundles                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Read all relevant defaults variable values from a file.
+
+int jhcAliaCore::Defaults (const char *fname)
+{
+  int ok = 1;
+
+  ok &= msg_params(fname);
+  ok &= mood.Defaults(fname);
+  ok &= dmem.Defaults(fname);
+  return ok;
+}
+
+
+//= Write current processing variable values to a file.
+
+int jhcAliaCore::SaveVals (const char *fname) const
+{
+  int ok = 1;
+
+  ok &= mps.SaveVals(fname);
+  ok &= mood.SaveVals(fname);
+  ok &= dmem.SaveVals(fname);
+  return ok;
 }
 
 
@@ -291,7 +347,7 @@ int jhcAliaCore::Accept (jhcAliaRule *r, jhcAliaOp *p)
     return -2;
   if (r != NULL)
   {
-    if ((ans = amem.AddRule(r, 1)) > 0)
+    if ((ans = amem.AddRule(r, 2, 1)) > 0)       
       mood.Infer();
   }
   if (p != NULL)
@@ -373,10 +429,14 @@ void jhcAliaCore::Reset (int forget, const char *rname, int cvt)
   det   = 1.0;
   argh  = 1.0;               // secs
   waver = 5.0;               // secs
+  deep  = 20;
 
   // communicate debugging level
   atree.noisy = noisy;
   pmem.noisy = noisy;
+  amem.noisy = noisy;
+  dmem.noisy = noisy;
+  mood.noisy = noisy;
 
   // record starting time and make conversion log file
   t0 = jms_now();
@@ -424,7 +484,7 @@ int jhcAliaCore::Interpret (const char *input, int awake, int amode, int spin)
         sent = fix;
         nt = gr.Parse(sent, 0);
         if (nt > 0)
-          jprintf(1, noisy, "{ Fixed typos in: \"%s\" }\n", gr.NoContract());
+          jprintf(1, noisy, " { Fixed typos in original: \"%s\" }\n", gr.NoContract());
       }
     if (nt <= 0)
       if (guess_cats(sent) > 0)                  // handle unknown words
@@ -434,11 +494,11 @@ int jhcAliaCore::Interpret (const char *input, int awake, int amode, int spin)
   }
 
   // show parsing steps and reduce "lonely" (even if not understood)
-  gr.PrintInput();
+  gr.PrintInput(NULL, __min(noisy, 1));
   if (nt > 0)
   {
-    mood.Hear((int) strlen(input));      
-    gr.PrintResult(3, 1);
+    mood.Hear((int) strlen(input));     
+    gr.PrintResult(pshow, 1);
   }
 
   // generate semantic nets (nt = 0 gives huh? response)
@@ -462,7 +522,7 @@ int jhcAliaCore::guess_cats (const char *sent)
   while ((txt = vc.NextGuess(txt)) != NULL)
   {
     // retrieve guess about the category of some word
-    jprintf(1, noisy, "{ Adding \"%s\" to grammar %s category }\n", vc.Unknown(), vc.Category());
+    jprintf(1, noisy, " { Adding \"%s\" to grammar %s category }\n", vc.Unknown(), vc.Category());
     if (cnt++ <= 0)
       sp_listen(0);
     cat = (net.mf).GramBase(wd, vc.Unknown(), vc.Category());
@@ -524,8 +584,8 @@ jhcAliaChain *jhcAliaCore::Reinterpret ()
     while (gr.NextBest() >= 0)
       if (net.Assemble(gr.AssocList(alist, 1)) == spact)
       {   
-        jprintf("\n@@@ switch to parser Tree %d:\n\n", gr.Selected());
-        jprintf("  --> %s\n\n", gr.NoTabs(alist));
+        jprintf(1, noisy, "\n@@@ switch to parser Tree %d:\n\n", gr.Selected());
+        jprintf(1, noisy, "  --> %s\n\n", gr.NoTabs(alist));
         return net.TrySeq();
       }
   return NULL;
@@ -574,14 +634,6 @@ int jhcAliaCore::RunAll (int gc)
       res = s->Status();
     atree.SetActive(s, ((res == 0) ? 1 : 0));    // replacement might have occurred
     cnt++;
-  }
-
-  // possibly wait for user to view step results
-  if (noisy >= 3)
-  {
-    jprintf("Hit any key to continue ...");
-    _getch();
-    jprintf("\n\n");
   }
   return cnt;
 }
@@ -668,7 +720,7 @@ int jhcAliaCore::HaltActive (jhcGraphlet& desc)
 
   // restore negative and mark as done
   main->SetNeg(1);
-  main->SetBelief(1.0);
+//  main->SetBelief(1.0);
   return ans;
 }
 
@@ -678,22 +730,16 @@ int jhcAliaCore::HaltActive (jhcGraphlet& desc)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Assign all nodes from this NOTE a unique source marker.
+// marks all nodes in graphlet with special NOTE id (always increases)
+// ignores objects because they carry no intrinsic semantic value
 
-int jhcAliaCore::Percolate (const jhcAliaDir& dir) 
+int jhcAliaCore::Percolate (const jhcGraphlet& dkey)
 {
   jhcNetNode *n;
-  const jhcGraphlet *key = &(dir.key);
-  int i, tval, ni = key->NumItems();
+  int i, ni = dkey.NumItems(), tval = ++topval;
 
-  // only assign new id if needed
-  if (dir.own > 0)
-    return dir.own;
-  tval = ++topval;
-
-  // mark all nodes in graphlet with special NOTE id (always increases)
-  // ignore objects because they carry no intrinsic semantic value
   for (i = 0; i < ni; i++)
-    if ((n = key->Item(i)) != NULL)
+    if ((n = dkey.Item(i)) != NULL)
       if (n->top < tval)      // need object marking for ghost facts
       {
         n->top = tval;

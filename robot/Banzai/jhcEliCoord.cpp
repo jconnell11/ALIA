@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@
 jhcEliCoord::jhcEliCoord ()
 {
   // current software version (sync with MensEt)
-  ver = 4.90;
+  ver = 5.00;
   
   // connect processing to basic robot I/O
   rwi.BindBody(&body);
@@ -69,6 +69,34 @@ jhcEliCoord::~jhcEliCoord ()
 
 
 ///////////////////////////////////////////////////////////////////////////
+//                         Processing Parameters                         //
+///////////////////////////////////////////////////////////////////////////
+
+//= Parameters used for overall control of timing.
+// this should be called in Defaults and tps used in SaveVals
+
+int jhcEliCoord::kern_params (const char *fname)
+{
+  jhcParam *ps = &kps;
+  int ok;
+
+  ps->SetTag("kern_dbg", 0);
+  ps->NextSpec4( &(svis.dbg),    2, "SceneVis objects (std = 2)");
+  ps->NextSpec4( &(sup.dbg),     2, "Support surfaces (std = 2)");
+  ps->NextSpec4( &(soc.dbg),     2, "Social agents (std = 2)");
+  ps->Skip();
+  ps->NextSpec4( &(ball.dbg),    1, "Ballistic body (std = 1)");
+  ps->NextSpec4( &(man.dbg),     1, "Manipulation arm (std = 1)");
+
+  ps->NextSpec4( &(dmem.enc),    0, "LTM encoding (dbg = 3)");
+  ps->NextSpec4( &(dmem.detail), 0, "LTM retrieval for node");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
 //                           Parameter Bundles                           //
 ///////////////////////////////////////////////////////////////////////////
 
@@ -80,6 +108,7 @@ int jhcEliCoord::Defaults (const char *fname)
 
   // local parameters
   ok &= time_params(fname);
+  ok &= kern_params(fname);
   ok &= jhcAliaCore::Defaults(fname);
 
   // kernel parameters
@@ -104,6 +133,7 @@ int jhcEliCoord::SaveVals (const char *fname)
 
   // local parameters
   ok &= tps.SaveVals(fname);
+  ok &= kps.SaveVals(fname);
   ok &= jhcAliaCore::SaveVals(fname);
 
   // kernel parameters
@@ -275,7 +305,7 @@ void jhcEliCoord::check_user (int id)
   agt = atree.ExtRef(id, 1);
   if (agt == NULL)
   {
-    jprintf(1, noisy, "\n  ... linking user %s to head track %d ...\n", user->Nick(), id);
+    jprintf(1, noisy, "\n  ... linking user %s to person %d ...\n", user->Nick(), id);
     atree.ExtLink(id, user, 1);
   }
   else if (agt != user)

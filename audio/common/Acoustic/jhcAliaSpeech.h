@@ -71,7 +71,6 @@ protected:
 public:
   // configuration
   char gram[80], kdir[200], kdir2[200];
-  int noisy;              
 
   // timing parameters
   jhcParam tps;

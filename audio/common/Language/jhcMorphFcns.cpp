@@ -441,19 +441,35 @@ int jhcMorphFcns::AddSpVocab (jhcSpeechX *p, const char *fname, int rpt)
 
 const char *jhcMorphFcns::SurfWord (char *surf, const char *base, UL32 tags, int ssz) const
 {
-  const char *irr;
+  char head[80];
+  const char *irr, *tail;
 
+  // lookup any special form saved as a morphological exception
   if ((irr = lookup_surf(base, tags)) != NULL)
     return irr;
+
+  // if compound ("do something") lookup any special form for first word 
+  if ((tail = strchr(base, ' ')) != NULL)
+  {
+    strncpy_s(head, base, (int)(tail - base));
+    if ((irr = lookup_surf(head, tags)) != NULL)
+    {
+      strcpy_s(surf, ssz, irr);
+      strcat_s(surf, ssz, tail);
+      return surf;
+    }
+  }
+
+  // apply standard rules depending on what is desired
   strcpy_s(surf, ssz, base);
   if (((tags & JTAG_NOUN) != 0) || ((tags & JTAG_PROPER) != 0))
-    return noun_morph(surf, tags);
+    return noun_morph(surf, tags, ssz);
   if ((tags & JTAG_ADJ) != 0)
-    return adj_morph(surf, tags);
+    return adj_morph(surf, tags, ssz);
   if ((tags & JTAG_VERB) != 0)
-    return verb_morph(surf, tags);
-  if ((tags & JTAG_ADV) != 0)          // convert base adjective to adverb
-    return adv_morph(surf, tags);
+    return verb_morph(surf, tags, ssz);
+  if ((tags & JTAG_ADV) != 0)                    // convert base adjective to adverb
+    return adv_morph(surf, tags, ssz);
   return NULL;
 }
 
@@ -489,42 +505,42 @@ const char *jhcMorphFcns::lookup_surf (const char *base, UL32 tags) const
 
 //= Add correct suffix to some noun based on tags.
 
-char *jhcMorphFcns::noun_morph (char *val, UL32 tags) const
+char *jhcMorphFcns::noun_morph (char *val, UL32 tags, int ssz) const
 {
   // proper nouns 
   if ((tags & JTAG_NAME) != 0)
     return val;
   if ((tags & JTAG_NAMEP) != 0)
-    return add_ss(val, 80, 0);
+    return add_ss(val, ssz, 0);
 
   // common nouns
   if ((tags & JTAG_NSING) != 0)
     return val;
   if ((tags & JTAG_NPL) != 0)
-    return add_s(val, 80);
+    return add_s(val, ssz);
   if ((tags & JTAG_NPOSS) != 0)
-    return add_ss(val, 80, 1);
+    return add_ss(val, ssz, 1);
   return NULL;
 }
 
 
 //= Add correct suffix to some adjective based on tags.
 
-char *jhcMorphFcns::adj_morph (char *val, UL32 tags) const
+char *jhcMorphFcns::adj_morph (char *val, UL32 tags, int ssz) const
 {
   if ((tags & JTAG_APROP) != 0)
     return val;
   if ((tags & JTAG_ACOMP) != 0)
-    return add_vowel(val, "er", 80);
+    return add_vowel(val, "er", ssz);
   if ((tags & JTAG_ASUP) != 0)
-    return add_vowel(val, "est", 80);
+    return add_vowel(val, "est", ssz);
   return NULL;
 }
 
 
 //= Add correct suffix to some verb based on tags.
 
-char *jhcMorphFcns::verb_morph (char *val, UL32 tags) const
+char *jhcMorphFcns::verb_morph (char *val, UL32 tags, int ssz) const
 {
   char rest[80] = "";
   char *tail;
@@ -542,17 +558,17 @@ char *jhcMorphFcns::verb_morph (char *val, UL32 tags) const
 
   // add ending to first word
   if ((tags & JTAG_VPRES) != 0)
-    add_s(val, 80);
+    add_s(val, ssz);
   else if ((tags & JTAG_VPROG) != 0)
-    add_vowel(val, "ing", 80);          
+    add_vowel(val, "ing", ssz);          
   else if ((tags & JTAG_VPAST) != 0)
-    add_vowel(val, "ed", 80); 
+    add_vowel(val, "ed", ssz); 
   else
     return NULL;
 
   // reassemble phrase (if needed)
   if (*rest != '\0')
-    strcat_s(val, 80, rest);
+    strcat_s(val, ssz, rest);
   return val;
 }
 
@@ -560,7 +576,7 @@ char *jhcMorphFcns::verb_morph (char *val, UL32 tags) const
 //= Add -ly suffix to some adjective to generate related adverb.
 // checks for "-ll", "-e", and "-y" endings 
 
-char *jhcMorphFcns::adv_morph (char *val, UL32 tags) const
+char *jhcMorphFcns::adv_morph (char *val, UL32 tags, int ssz) const
 {
   int n = (int) strlen(val);
   char *end = val + n;
@@ -572,7 +588,7 @@ char *jhcMorphFcns::adv_morph (char *val, UL32 tags) const
     end[-1] = '\0';
   else if ((n >= 1) && (end[-1] == 'y'))         // easy -> easi+ly
     end[-1] = 'i';
-  strcat_s(val, 80, "ly");                       // slow -> slow+ly
+  strcat_s(val, ssz, "ly");                      // slow -> slow+ly
   return val;
 }
 
