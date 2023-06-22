@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -74,6 +74,7 @@ jhcEliNeck::jhcEliNeck ()
   LoadCfg();
   Defaults();
   current_pose(pos0, dir);
+  stable = 30;                         // in case no body
 }
 
 
@@ -221,14 +222,12 @@ int jhcEliNeck::SaveCfg (const char *fname) const
 
 //= Associate arm with some (possibly shared) Dyamixel interface.
 
-void jhcEliNeck::Bind (jhcDynamixel *ctrl)
+void jhcEliNeck::Bind (jhcDynamixel& ctrl)
 {
   jt[0].Bind(ctrl);
   jt[1].Bind(ctrl);
-  dyn = ctrl;
+  dyn = &ctrl;
   nok = 1;
-  if (ctrl == NULL)
-    nok = -1;
 }
 
 
@@ -300,8 +299,9 @@ int jhcEliNeck::Reset (int rpt, int chk)
   now = 0;
   p0 = Pan();
   t0 = Tilt();
-  ipv  = 0.0;
-  itv  = 0.0;
+  ipv = 0.0;
+  itv = 0.0;
+  stable = 0;  
 
   // control loop performance
   pvel = 0.0;
@@ -476,6 +476,12 @@ int jhcEliNeck::Update ()
       ipv += mix * (p - ipv); 
       itv += mix * (t - itv); 
     }
+
+  // update stable count
+  if ((fabs(dir.P() - p0) <= ndone) && (fabs(dir.T() - t0) <= ndone))
+    stable = __max(0, stable) + 1;
+  else
+    stable = __min(0, stable) - 1;
 
   // set up for new target arbitration
   clr_locks(0);

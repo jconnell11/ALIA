@@ -109,6 +109,87 @@ int jhcProcMem::AddOperator (jhcAliaOp *p, int ann)
 }
 
 
+//= Create a copy of last operator used by "src" but replace action "mark" by "seq".
+// "map" translates from variables in "seq" to vars in actually invoked "mark"
+// returns 1 if succesful, 0 or negative for some problem
+
+int jhcProcMem::AddVariant (const jhcAliaOp& op0, const jhcNetNode& main, const jhcBindings& s2o, 
+                            jhcAliaChain *seq, int ann)
+{
+  jhcBindings o2c, s2c;
+  jhcAliaOp *op;
+  jhcAliaChain **entry;
+  jhcAliaChain *tail, *seq2;
+  const jhcAliaDir *dir;
+
+  // simplest case (no edit required)
+  if (seq == NULL)
+    return 1;
+
+  // remove equivalent of marked step from copy of original operator
+  op = op_copy(o2c, op0);
+  op->pref = op0.pref;
+  entry = (op->meth)->StepEntry(o2c.LookUp(&main), &(op->meth));
+  if (entry == NULL)
+  {
+    delete op;
+    return 0;
+  }
+  tail = disconnect(**entry);
+  delete *entry;                                 // might leave unused nodes
+
+  // splice in equivalent replacement (unless no-op) using correct vars 
+  dir = seq->GetDir();
+  if ((dir != NULL) && (dir->Kind() == JDIR_DO) && (dir->key).Empty() &&
+      ((tail != NULL) || (entry != &(op->meth))))
+    *entry = tail;
+  else
+  {
+    s2c.CopyReplace(s2o, o2c);
+    seq2 = seq->Instantiate(*op, s2c);           // never NULL
+    *entry = seq2->Append(tail);
+  }
+
+  // possibly announce new operator formation then add to list
+  if (noisy >= 1)
+  {
+    jprintf("\nREVISE: OP %d method", op0.OpNum());
+    if (dir != NULL)
+      jprintf(" with alternate %s[ %s ]", dir->KindTag(), dir->KeyTag());
+    jprintf("\n");
+  }
+  return AddOperator(op, ann);
+}
+
+
+//= Copy original operator exactly and record new_var -> old_var translations.
+
+jhcAliaOp *jhcProcMem::op_copy (jhcBindings& b, const jhcAliaOp& op0) const
+{
+  jhcAliaOp *op = new jhcAliaOp(op0.kind);
+
+  op->BuildCond();
+  op->Assert(*(op0.Pattern()), b);
+  op->BuildIn(NULL);  
+  op->meth = (op0.meth)->Instantiate(*op, b);
+  return op;
+}
+
+
+//= Remove all transition pointers from procedure step so they don't get deleted later.
+// returns original continuation from step (assumes single directive)
+
+jhcAliaChain *jhcProcMem::disconnect (jhcAliaChain& step) const
+{
+  jhcAliaChain *tail = step.cont;               
+
+  step.cont = NULL;              
+  step.alt  = NULL;
+  step.fail = NULL;
+  return tail;
+}
+
+
 //= Remove an operator from the list and permanently delete it.
 // must make sure original rem pointer is set to NULL in caller
 // used by jhcAliaDir to clean up incomplete ADD operator
@@ -148,12 +229,12 @@ void jhcProcMem::Remove (const jhcAliaOp *rem)
 
 //= Find applicable operators that match trigger directive.
 // operators and bindings are stored inside directive itself
-// returns total number of bindings found
+// returns total number of bindings found, negative for error
 
-int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth) const
+int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth) 
 {
   jhcAliaOp *p = ops;
-  int i, k, mc0, mmax;
+  int i, k, n, mc0, mmax;
 
   // get operator type by examining directive kind
   if (dir == NULL)
@@ -163,6 +244,8 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
     return -1;
   if ((k == JDIR_BIND) || (k == JDIR_EACH) || (k == JDIR_ANY))
     k = JDIR_FIND;
+  else if (k == JDIR_ESC)
+    k = JDIR_CHK;
 
   // set up to get up to bmax bindings using halo as needed
   mmax = dir->MaxOps();
@@ -170,33 +253,42 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
   wmem.MaxBand(3);
 
   // try matching all operators above the preference threshold
+  // ignore preference until at least some match has been found
+  dir->anyops = 0;
   while (p != NULL)
   {
-    if ((p->kind == k) && (p->pref >= pth))
+    if ((p->kind == k) && ((dir->anyops <= 0) || (p->pref >= pth)))
     {
-      // save operator associated with each group of bindings
+      // get all bindings that result in matches to this operator
+      // set "any" flag to indicate that some match has been found
       mc0 = dir->mc;
       p->dbg = ((p->id == detail) ? 3 : 0);
-      if (p->FindMatches(*dir, wmem, mth) < 0)
+      if (p->FindMatches(*dir, wmem, mth, 0) < 0)
         break;
-      for (i = mc0 - 1; i >= dir->mc; i--)
-        dir->op[i] = p;                         
+
+      // ignore matches if operator preference was below threshold      
+      // otherwise save operator associated with this group of bindings
+      if (p->pref < pth)
+        dir->mc = mc0;
+      else
+        for (i = mc0 - 1; i >= dir->mc; i--)
+          dir->op[i] = p;                         
     }
     p = p->next;
   }
 
   // possibly report summary of what was found
+  n = mmax - dir->mc;
   if (noisy >= 2)
   {
-    int n = mmax - dir->mc;
-    jprintf("%d matches", n);
+    jprintf("Got %d matches", n);
     if (n > 0)
       jprintf(": OPS = ");
     for (i = mmax - 1; i >= dir->mc; i--)
       jprintf("%d ", (dir->op[i])->id);
     jprintf("\n");
   }
-  return(mmax - dir->mc);
+  return n;
 }
 
 
@@ -229,7 +321,7 @@ int jhcProcMem::Load (const char *base, int add, int rpt, int level)
   }
   if (!in.Open(fname))
   {
-    jprintf("  >>> Could not read operator file: %s !\n", fname);
+//    jprintf("  >>> Could not read operator file: %s !\n", fname);
     return -1;
   }
 
@@ -396,7 +488,7 @@ int jhcProcMem::Overrides (const char *base)
   }
   if (!in.Open(fname))
   {
-    jprintf("  >>> Could not read preference file: %s !\n", fname);
+//    jprintf("  >>> Could not read preference file: %s !\n", fname);
     return -1;
   }
 

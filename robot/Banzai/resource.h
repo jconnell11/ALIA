@@ -211,6 +211,11 @@
 #define ID_GRAB_SURFEVENTS              32939
 #define ID_GRAB_SURFTRACKING            32940
 #define ID_MOOD_LTMMATCH                32941
+#define ID_MOOD_CONFADJUST              32942
+#define ID_MOOD_PREFADJUST              32943
+#define ID_MOOD_RULEOPADJ               32944
+#define ID_DEMO_CYCLERATE               32945
+#define ID_GRAB_SURFMOTION              32946
 
 // Next default values for new objects
 // 
@@ -218,7 +223,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32942
+#define _APS_NEXT_COMMAND_VALUE         32947
 #define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

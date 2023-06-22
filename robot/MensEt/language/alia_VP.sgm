@@ -19,10 +19,10 @@
   <%obj-i> <$add>
 
 
-// abstract action by some agent
+// abstract action by some agent or participial phrase
 
 =[%fact-g]
-  (<BLF>) <ACT-G> (<np> (<np>))
+  (<BLF>) (<adv3>) <ACT-G> (<np> (<np>)) (<vmod3>)
 
 
 // inverted fact used as a noun modifier
@@ -95,8 +95,10 @@
 // DO directive ("you" or missing subject, 0 to 2 objects)
 
 =[!do]
+  (you <PREF>) do nothing
   (you <PREF>) (<adv3>) <ACT> (<np> (<np>)) (<vmod3>)
   (you <PREF>) (<adv3>) <ACT-2> <np> <$dest> (<manner>)
+  (you <PREF>) (<adv3>) <ACT-2> <np> <$rel-d> (<manner>)
   (you <PREF>) (<adv3>) <ACT-2> <np> <DIR> (<manner>)
   (you <PREF>) (<adv3>) <ACT-2> <DIR> <np> (<manner>)
   (you <PREF>) (<adv3>) <SAY> (to <np>) <QUOTE>
@@ -123,6 +125,7 @@
 
 =[SAY]
   say
+  ask
 
 
 // from 1 to 16 words
@@ -231,7 +234,7 @@
 =[$q-desc]
   who (<be>) <np> (<be>)
   who <$add>
-  what <$add>
+//  what <$add>
   what (<be>) <np> (<be>) <ACT-G>
 
 
@@ -312,7 +315,8 @@
 // generic verb phrase modifier
 
 =[vmod]
-  <AMT>
+  (<DEG>) <AMT>
+  <quant>
   <dir3>
   <manner>
   <$rel>
@@ -320,10 +324,18 @@
   <$dest>
 
 
+// explicit numeric quantity
+
+=[quant]
+  (about) <^INT> <n>
+  for <^INT> <n>
+  up to <^INT> <n>
+
+
 // possibly compound direction
 
 =[dir3]
-  <DIR> ((<DIR>) and <DIR>)
+  (<DEG>) <DIR> (((<DEG>) <DIR>) and (<DEG>) <DIR>)
 
 
 // manner of acting
@@ -339,6 +351,12 @@
   with <np>
 
 
+// location for ACT-2 verb
+
+=[$rel-d]
+  <place>
+
+
 // action starting place
 
 =[$src]
@@ -350,6 +368,7 @@
 
 =[$dest]
   to <np>
-  (to) <place>
+  to <place>
   <LOC-D> <np>
+//  <place>
 

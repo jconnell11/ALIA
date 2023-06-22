@@ -42,13 +42,14 @@ private:
   int aok;                             /** Communications status.       */
   double tilt, roll, tip, mag, ang;    // cached instantaneous results
 
+  // parameters
+  int x0, y0;
+  double mgx, mgy;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
-  // parameters
   jhcParam aps;
-  int x0, y0;
-  double mgx, mgy;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -58,7 +59,7 @@ public:
   jhcAccelXY ();
 
   // configuration
-  void Bind (jhcDynamixel *ctrl);
+  void Bind (jhcDynamixel& ctrl);
   int CommOK () const {return aok;}
 
   // processing parameter bundles 

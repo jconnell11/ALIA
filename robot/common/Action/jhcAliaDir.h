@@ -31,6 +31,7 @@
 #include "Parse/jhcTxtLine.h"          // common audio
 #include "Semantic/jhcBindings.h"
 #include "Semantic/jhcGraphlet.h"
+#include "Semantic/jhcNetNode.h"
 #include "Semantic/jhcNodePool.h"
 #include "Semantic/jhcSituation.h"
 
@@ -40,10 +41,10 @@
 //= Various different kinds of directives.
 // NOTE is a special bridge between declarative and procedural
 // must remain consistent with "ktag" strings
-//                  0          1          2          3          4          5         6          7
-enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_PUNT, JDIR_FCN,  JDIR_ACH, JDIR_KEEP, JDIR_CHK, 
-                JDIR_FIND, JDIR_BIND, JDIR_EACH, JDIR_ANY,  JDIR_NONE, JDIR_TRY, JDIR_ADD,  JDIR_MAX};
-//                  8          9         10         11         12         13        14         15    
+//                  0          1          2          3          4          5          6          7      
+enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_GATE, JDIR_PUNT, JDIR_GND,  JDIR_WAIT, JDIR_ACH, 
+                JDIR_FIND, JDIR_BIND, JDIR_EACH, JDIR_ANY,  JDIR_CHK,  JDIR_ESC,  JDIR_ADD,  JDIR_EDIT, JDIR_MAX};
+//                  8          9         10         11         12         13         14         15         16  
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -54,76 +55,89 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_PUNT, JDIR_FCN,  JDIR_ACH,
 // in particular is is responsible for choosing which operators to use
 // <pre>
 // NOTE: for asserting a new fact
-//       try all applicable operators one-by-one
-//       done (success) when no more operators
-//       times out when done (can only be top-level)
-//       can be matched with halo inferences
+//       tries all applicable handler operators one-by-one
+//       operators can be matched with halo inferences
+//       succeeds when first operator succeeds
+//       can start whole operator selection multiple times
+//       fails when exceeds persistence time budget
 //
-//   DO: for requesting an action
-//       automatically calls ANTE before
-//       try all applicable operators one-by-one
-//       success when first operator succeeds (mark)
-//       fail when no more operators (marked)
-//       progress to DO when done (success/fail)
-//       times out when done if top-level focus    
+//   DO: for requesting action or stopping on-going action
+//       calls ANTE and GATE before main if requesting
+//       tries all applicable method operators one-by-one
+//       succeeds when first operator succeeds 
+//       fails when no more operators 
+//       empty description succeeds immediately (no-op)
 // 
-// ANTE: preparing for an action
-//       try all applicable operators one-by-one
-//       progress to DO when no more operators
-//       cannot be top-level focus
+// ANTE: preparing for an action or method selection
+//       tries all applicable operators one-by-one
+//       success or failure of operators irrelevant
+//       progresses to GATE when no more operators
+//       part of ANTE-GATE-DO automatic sequence
+// 
+// GATE: checking prohibitions on action
+//       relevant operators end with PUNT or PASS
+//       progresses to DO when first operator succeeds
+//       part of ANTE-GATE-DO automatic sequence
 // 
 // PUNT: signal failure of triggering condition
-//       shortcircuits backtracking mechanism
-//       cannot be top-level focus 
-//
-//  FCN: interface to kernel routines (including output)
-//       done determined externally
+//       forces current sequence to fail with no retry
+//       never a trigger for operators
+// 
+//  GND: interface to kernel routines (including output)
+//       done determined externally by kernel
 //       returns success/fail
-//       cannot be top-level focus 
+//       never a trigger for operators
+// 
+// WAIT: holds up execution until fact is matched
+//       suceeds (cont) when fact is true
+//       never a trigger for operators
 // 
 //  ACH: work towards making item true
-//       done (success) when item true (new or old)
-//       try all applicable operators one-by-one
-//       done (fail) when no more operators   
-//       times out when done if top-level focus  
-// 
-// KEEP: prevent item from becoming false
-//       done (fail) when item false (new or old)
-//       try all applicable operators one-by-one
-//       done (idle) when no more operators
-//       never succeeds, can only be stopped
-//       times out when done if top-level focus 
-// 
-//  CHK: test if item known to be true/false
-//       try all applicable operators one-by-one
-//       done (success) when item true/false
-//       returns continue/alternate based on true/false
-//       done (fail) when no more operators   
-//       times out when done if top-level focus    
+//       tries all applicable operators one-by-one
+//       succeeds when item true (new or old)
+//       fails when no more operators   
 // 
 // FIND: bind description to known item
-//       guess: wmem > ops > dmem (no assume)
-//       done (temporary success) when a binding found
-//       if successors fail, restart to get new binding
+//       guess: wmem > ops > LTM (no assume)
+//       succeeds (temporarily) when a binding found
+//       backtracks to get new binding if later directives fail
 //       fails when no more guesses or max of 3 tried
 // 
 // BIND: similar to FIND but will create new item if stuck
 //       only used for referential phrases, never a command
+//       triggers FIND operators
 //
 // EACH: similar to FIND but unlimited guesses
-//       fails if no first binding, no backtracking
-//       returns alt (success) when no more bindings 
+//       fails if no first binding, never backtracks
+//       succeeds (alt) when no more bindings 
 //       typically used for implicit "all" loops
+//       triggers FIND operators
 //
-//  ANY: similar to EACH but returns alt if no first binding
+//  ANY: similar to EACH but succeeds (alt) if no bindings
+//       triggers FIND operators
 //
-// NONE: actions to try if FIND/BIND/EACH/ANY stuck
-//
-//  TRY: accept new command or question sequence
-//       allows detection of failure at any step
+//  CHK: continue if assertion is newly known to be true/false
+//       tries all applicable operators one-by-one
+//       succeeds (cont) when item is definitely true
+//       succeeds (alt) when item is definitely false 
+//       fails when no more operators and no matching facts
 // 
+//  ESC: escape if assertion is newly known to be true/false
+//       tries all applicable operators one-by-one
+//       succeeds (cont) when item is definitely false
+//       succeeds (cont) when no more operators and no matching facts
+//       fails when item is definitely true
+//       triggers CHK operators
+//
 //  ADD: accept new rule or operator into system
-//       allows delay to see if user is reliable
+//       comes after speech act to allow rejection 
+//       never a trigger for operators
+//  
+// EDIT: alter or replace operator responsible for action
+//       follow-on directives replace action in new operator
+//       negative action description always dings preference
+//       positive boosts preference only if no follow-on
+//       never a trigger for operators
 // 
 // </pre>
 
@@ -141,7 +155,7 @@ private:
   static const char * const ktag[JDIR_MAX];
 
   // calling environment and scoping
-  jhcAliaChain *step;
+//  jhcAliaChain *step;
   jhcNetNode *fact[smax], *val0[smax];
   int anum[smax];
   int nsub, inum0;
@@ -150,7 +164,7 @@ private:
   jhcGraphlet full;
   const jhcNetNode *focus;
   jhcNetNode *pron;
-  int subset, gtst, exc, recent;
+  int subset, find0, chk0, exc, recent;
 
   // choices for FIND directive
   jhcNetNode *guess[emax];
@@ -168,7 +182,7 @@ private:
   int inst, verdict, wait, chk_state;
 
   // NOTE perseverance
-  UL32 t0, t1;
+  UL32 t1, fin;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -185,13 +199,18 @@ public:
   // current matching progress
   class jhcAliaOp *op[omax];
   jhcBindings match[omax];
-  int mc;
+  int mc, anyops;
 
   // action currently in progress
   jhcAliaChain *meth;
+  UL32 t0; 
+  int sel;
 
   // control of procedural diagnostic messages
   int noisy;                    
+
+
+jhcAliaChain *step;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -204,6 +223,7 @@ public:
   bool IsFind () const         {return((kind == JDIR_FIND) || (kind == JDIR_BIND));}
   const char *KindTag () const {return ktag[kind];}
   jhcNetNode *KeyMain () const {return key.Main();}
+  jhcNetNode *KeyAct () const  {return key.MainAct();}
   const char *KeyNick () const {return key.MainNick();}
   const char *KeyTag () const  {return key.MainTag();}
   int MaxOps () const          {return omax;}
@@ -216,7 +236,10 @@ public:
   int NumGuess () const {return __max(cand, cand0);}
   int NumTries () const {return nri;}
   bool Assumed () const {return !hyp.Empty();}
-  void HideAssume () {jhcNetNode *n = hyp.Main(); if (n != NULL) n->SetBelief(0.0);}
+  void HideAssume () 
+    {jhcNetNode *n = hyp.Main(); if (n != NULL) n->SetBelief(0.0);}
+  bool UserSelf () const  
+    {return((cond.NumItems() == 1) && (cond.Main())->LexIn("me", "you"));}
 
   // building
   void Copy (const jhcAliaDir& ref);
@@ -233,7 +256,13 @@ public:
   int Start (jhcAliaChain *st);
   int Status ();
   int Stop ();
-  int FindActive (const jhcGraphlet& desc, int halt);
+
+  // execution tracing
+  int HaltActive (const jhcGraphlet& desc, const jhcAliaDir *skip =NULL, int halt =1);
+  void FindCall (const jhcAliaDir **act, const jhcAliaDir **src, jhcBindings *d2a, 
+                 const jhcGraphlet& desc, UL32& start, int done =1, const jhcAliaDir *prev =NULL, int cyc =1);
+  class jhcAliaOp *LastOp () const     {return((sel < 0) ? NULL : op[sel]);}
+  const jhcBindings *LastVars () const {return((sel < 0) ? NULL : &(match[sel]));}
 
   // file functions
   int Load (jhcNodePool& pool, jhcTxtLine& in); 
@@ -246,7 +275,6 @@ public:
 private:
   // creation and initialization
   int reset ();
-  int delete_meth ();
 
   // building
   void share_context (jhcNodePool& pool, const jhcGraphlet *ctx);
@@ -274,13 +302,14 @@ private:
   void get_context (jhcGraphlet *ctx, jhcNetNode *focus, const jhcBindings& b) const;
 
   // CHK control 
-  void init_cond ();
-  int reduce_cond (const jhcAliaOp *op, const jhcBindings& match);
+  void init_cond (int ver);
+  int reduce_cond (const class jhcAliaOp *op, const jhcBindings& match);
   int seek_match ();
   int pat_confirm (const jhcGraphlet& desc, int chk);
   int complete_chk (jhcBindings *m, int& mc);
 
   // FIND control
+  int me_you ();
   int seek_instance ();
   jhcNetNode *sat_criteria (const jhcGraphlet& desc, int exc, int after, int ltm);
   int complete_find (jhcBindings *m, int& mc);

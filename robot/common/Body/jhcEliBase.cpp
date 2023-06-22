@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -145,7 +145,7 @@ int jhcEliBase::move_params (const char *fname)
 }
 
 
-//= Parameters used for interpreting encoder values.
+//= Parameters used for interpreting encoder values and battery charge.
 
 int jhcEliBase::geom_params (const char *fname)
 {
@@ -1208,10 +1208,11 @@ double jhcEliBase::DriveAbsRate (double tr2, double hd2, double tr1, double hd1,
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                           Attention Light                             //
+//                             Nose Light                                //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Request that light under head be on or off.
+// part of base (not neck) because driven by serial port handshake line
 // returns 1 if newly set, 0 if pre-empted by higher priority
 
 int jhcEliBase::AttnLED (int on, int bid)

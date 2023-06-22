@@ -1,12 +1,82 @@
 // basic commands for examining the ALIA action tree
 // ==================================================
 
-OP 1 - "Before explaining why some action is failing ..."
+OP 1 - "Before explaining why some plan is failing ..."
   trig:
-  ANTE[  act-1 -lex-  explain
-               -obj-> fail-2
-        fail-2 -lex-  fail
-               -act-> plan-3 ]
+  ANTE[  fcn-1 -lex-  explain
+               -fcn-> act-1
+         act-1 -obj-> fail-2
+         fcn-2 -lex-  fail
+               -fcn-> fail-2
+        fail-2 -act-> plan-3 ]
 ---------------
-   FCN[ fcn-1 -lex-  why_try 
-              -arg-> fail-2 ]
+   GND[ call-1 -lex-  why_fail
+               -arg-> fail-2 ]
+
+
+// --------------------------------------
+
+OP 2 - "To check if you are doing something ..."
+  trig:
+   CHK[  act-1 -agt-> self-1 
+        self-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex-  why_run
+               -arg-> act-1 ]
+
+
+OP 3 - "To check if you are doing something to something ..."
+  trig:
+   CHK[  act-1 -agt-> self-1 
+               -obj-> obj-1
+        self-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex-  why_run
+               -arg-> act-1 ]
+
+
+OP 4 - "To check if you are doing something to something for someone  ..."
+  trig:
+   CHK[  act-1 -agt->  self-1 
+               -dest-> obj-2
+               -obj->  obj-1
+        self-1 -lex-   me ]
+---------------
+   GND[ call-1 -lex-  why_run
+               -arg-> act-1 ]
+
+
+// --------------------------------------
+
+OP 5 - "To check if you did something ..."
+  trig:
+   CHK[  act-1 -ach-  1
+               -agt-> self-1 
+        self-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex-  why_run
+               -arg-> act-1 ]
+
+
+OP 6 - "To check if you did something to something ..."
+  trig:
+   CHK[  act-1 -ach-  1
+               -agt-> self-1 
+               -obj-> obj-1
+        self-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex-  why_run
+               -arg-> act-1 ]
+
+
+OP 7 - "To check if you did something to something for someone  ..."
+  trig:
+   CHK[  act-1 -ach-   1
+               -agt->  self-1 
+               -dest-> obj-2
+               -obj->  obj-1
+        self-1 -lex-   me ]
+---------------
+   GND[ call-1 -lex-  why_run
+               -arg-> act-1 ]
+

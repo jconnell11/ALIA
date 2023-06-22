@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,26 +103,26 @@ private:
   int parked;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // debugging messages
-  int noisy;
-
-  // trapezoidal profile generators
-  jhcMotRamp mctrl, tctrl;
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // communication parameters
-  jhcParam cps;
   double ploop, iloop, dloop, rpm;
   int bport, bbaud, pwm, ppr;
 
   // profiled motion parameters
-  jhcParam mps;
   double mdead, tdead;
 
   // geometric calibration
-  jhcParam gps;
   double wd, ws, vmax;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  int noisy;                 // debugging messages
+  jhcParam cps, mps, gps;
+
+  // trapezoidal profile generators
+  jhcMotRamp mctrl, tctrl;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -130,6 +130,10 @@ public:
   // creation and initialization
   ~jhcEliBase ();
   jhcEliBase ();
+  double MoveTol () const {return mdead;}
+  double TurnTol () const {return tdead;}
+  double MaxVolt () const {return vmax;}
+  void ResetBat (double v =0.0) {vmax = v;}
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);
@@ -176,8 +180,8 @@ public:
   double StepMove () const  {return dm;}
   double MoveCmdV () const  {return mvel;}
   double TurnCmdV () const  {return tvel;}
-  double MoveIPS (int abs =0) const {return((abs > 0) ? fabs(imv) : imv);}
-  double TurnDPS (int abs =0) const {return((abs > 0) ? fabs(itv) : itv);}
+  double MoveIPS (int abs =1) const {return((abs > 0) ? fabs(imv) : imv);}
+  double TurnDPS (int abs =1) const {return((abs > 0) ? fabs(itv) : itv);}
   int Static () const {return parked;}
   void AdjustXY (double& tx, double& ty, double tx0 =0.0, double ty0 =0.0) const;
   void AdjustTarget (jhcMatrix& pos) const;
@@ -270,7 +274,7 @@ public:
   int MoveWin () const  {return mlock0;}
   int TurnWin () const  {return tlock0;}
 
-  // attention light
+  // nose light
   int AttnLED (int on, int bid =10);
 
   // ------------------------ UTILS -----------------------------

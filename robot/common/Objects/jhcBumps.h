@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -191,6 +191,7 @@ public:
   double MapY (int i, int trk =1) const {return W2Y(PosY(i, trk));}
   int Flat (int i) const;
   int Component (int i) const;
+  void CamBox (jhcRoi& box, int i, int ydim =480) const;
   void Retain (int i) {pos.NoMiss(i);}
   void RetainAll ();
   void KeepShape (int i);

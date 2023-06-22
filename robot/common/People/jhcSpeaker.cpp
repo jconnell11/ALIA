@@ -65,7 +65,7 @@ jhcSerial *jhcSpeaker::AttnLED ()
   int i;
 
   for (i = 0; i < amax; i++)
-    if ((mic[i].mport > 0) && (mic[i].light > 0))
+    if ((mic[i].Port() > 0) && (mic[i].LED() > 0))
       return &(mic[i].mcom);
   return NULL;
 }
@@ -100,7 +100,7 @@ int jhcSpeaker::LoadCfg (const char *fname)
 
   // clear microphone port numbers (= validity flags)
   for (i = 0; i < amax; i++)
-    mic[i].mport = 0;
+    mic[i].SetPort(0);
   if (m0 != NULL)
     return 1;
 
@@ -139,7 +139,7 @@ int jhcSpeaker::SaveCfg (const char *fname) const
 
   // store valid devices (good port numbers) but erase other lines
   for (i = 0; i < amax; i++)
-    if (mic[i].mport > 0)
+    if (mic[i].Port() > 0)
       ok &= mic[i].SaveCfg(fname);   
     else
       (mic[i].gps).RemVals(fname); 
@@ -174,7 +174,7 @@ void jhcSpeaker::Reset ()
   // clear all array microphone processing
   if (m0 == NULL)
     for (i = 0; i < amax; i++)
-      if (mic[i].mport > 0)
+      if (mic[i].Port() > 0)
         mic[i].Reset();
 
   // no speaker currently found
@@ -194,7 +194,7 @@ void jhcSpeaker::Update (int voice)
   int i;
 
   for (i = 0; i < amax; i++)
-    if (mic[i].mport > 0)
+    if (mic[i].Port() > 0)
       mic[i].Update(voice);
 }
 
@@ -234,7 +234,7 @@ int jhcSpeaker::Analyze (int voice)
     win = pick_dude(*m0, best);
   else
     for (i = 0; i < amax; i++)
-      if (mic[i].mport > 0)
+      if (mic[i].Port() > 0)
         if ((n = pick_dude(mic[i], best)) >= 0)
           win = n;
           
@@ -297,7 +297,7 @@ int jhcSpeaker::MicsMap (jhcImg& dest, int invert) const
     draw_mic(dest, *m0, invert);
   else
     for (i = 0; i < amax; i++)
-      if (mic[i].mport > 0)
+      if (mic[i].Port() > 0)
         draw_mic(dest, mic[i], invert);
   return 1;
 }
@@ -323,8 +323,8 @@ void jhcSpeaker::draw_mic (jhcImg& dest, const jhcDirMic& m, int invert) const
   y = ((invert <= 0) ? mid.Y() : dest.YLim() - mid.Y());
 
   // get tilt compensated width and pan angle
-  hw = hw0 * cos(D2R * m.tilt);
-  a = D2R * m.pan;
+  hw = hw0 * cos(D2R * m.Tilt());
+  a = D2R * m.Pan();
   if (invert > 0)
     a = PI - a;
 
@@ -371,7 +371,7 @@ int jhcSpeaker::SoundMap (jhcImg& dest, int invert, int src) const
     map_beam(dest, *m0, invert, src);
   else
     for (i = 0; i < amax; i++)
-      if (mic[i].mport > 0)
+      if (mic[i].Port() > 0)
         map_beam(dest, mic[i], invert, src);
   return 1;
 }
@@ -382,7 +382,7 @@ int jhcSpeaker::SoundMap (jhcImg& dest, int invert, int src) const
 void jhcSpeaker::map_beam (jhcImg& dest, const jhcDirMic& m, int invert, int src) const
 {
   jhcMatrix pos(4), tip(4);
-  double rads = D2R * (m.Dir(src) + m.pan + 90.0), len = 192.0;   // 16 feet
+  double rads = D2R * (m.Dir(src) + m.Pan() + 90.0), len = 192.0;   // 16 feet
   double mx, my, tx, ty;
 
   // get base in screen coordinates
@@ -419,7 +419,7 @@ int jhcSpeaker::SoundCam (jhcImg& dest, int cam, int rev, int src) const
     front_beam(dest, *m0, rev, src);
   else
     for (i = 0; i < amax; i++)
-      if (mic[i].mport > 0)
+      if (mic[i].Port() > 0)
         front_beam(dest, mic[i], rev, src);
   return 1;
 }
@@ -431,7 +431,7 @@ int jhcSpeaker::SoundCam (jhcImg& dest, int cam, int rev, int src) const
 void jhcSpeaker::front_beam (jhcImg& dest, const jhcDirMic& m, int rev, int src) const
 {
   jhcMatrix tip(4), rel(4);
-  double rads = D2R * (m.Dir(src) + m.pan + 90.0), len = 72.0;   // 6 feet
+  double rads = D2R * (m.Dir(src) + m.Pan() + 90.0), len = 72.0;   // 6 feet
   double tx, ty, sc = dest.YDim() / (double) s3->InputH();
 
   // find end of long ray in screen coordinates
@@ -468,7 +468,7 @@ int jhcSpeaker::OffsetsMap (jhcImg& dest, int trk, int invert, int src, int styl
     map_off(dest, *m0, trk, invert, src, style);
   else
     for (i = 0; i < amax; i++)
-      if (mic[i].mport > 0)
+      if (mic[i].Port() > 0)
         map_off(dest, mic[i], trk, invert, src, style);
   return 1;
 }
@@ -541,7 +541,7 @@ int jhcSpeaker::OffsetsCam (jhcImg& dest, int cam, int trk, int rev, int src, in
     front_off(dest, *m0, trk, rev, src, style);
   else
     for (i = 0; i < amax; i++)
-      if (mic[i].mport > 0)
+      if (mic[i].Port() > 0)
         front_off(dest, mic[i], trk, rev, src, style);
   return 1;
 }

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -334,16 +334,14 @@ int jhcEliArm::SaveCfg (const char *fname) const
 
 //= Associate arm with some (possibly shared) Dyamixel interface.
 
-void jhcEliArm::Bind (jhcDynamixel *ctrl)
+void jhcEliArm::Bind (jhcDynamixel& ctrl)
 {
   int i;
 
   for (i = 0; i < 7; i++)
     jt[i].Bind(ctrl);
-  dyn = ctrl;
+  dyn = &ctrl;
   aok = 1;
-  if (ctrl == NULL)
-    aok = -1;
 }
 
 
@@ -675,7 +673,7 @@ int jhcEliArm::Update (int mega)
 {
   jhcMatrix orig(4), diff(4);
   UL32 last = now;
-  double s, a, g, wprev = w0, mix = 0.5, twang = 3.0;      // 3 ips = 0.1" / 33 ms
+  double s, a, g, wprev = w0, mix = 0.2, twang = 3.0;      // 3 ips = 0.1" / 33 ms
   int i;
 
   // make sure hardware is working
@@ -1351,7 +1349,7 @@ double jhcEliArm::SqueezeErr (double f, int abs) const
 
 double jhcEliArm::MaxWidth () const
 {
-  return deg2w(jt[6].amax);
+  return deg2w(jt[6].MaxAng());
 }
 
 
@@ -2007,7 +2005,7 @@ int jhcEliArm::JtPos (jhcMatrix& pos, int n) const
 
   zdir = jt[n].AxisZ();
   orig = jt[n].Axis0();
-  pos.ScaleVec3(*zdir, jt[n].dhd, 1.0);
+  pos.ScaleVec3(*zdir, jt[n].NextZ(), 1.0);
   pos.IncVec3(*orig);
   return 1;
 }
@@ -2050,7 +2048,7 @@ double jhcEliArm::Forearm () const
 int jhcEliArm::ZeroGrip (int always)
 {
   jhcJoint *g = jt + 6;
-  double z, z0 = g->zero, a0 = g->amin, a1 = g->amax;
+  double z, z0 = g->Ang0(), a0 = g->MinAng(), a1 = g->MaxAng();
   double lo = 0.3, hi = 0.4, dps = 30.0, adj = 10.0; 
   int k, i = 0, j = 0, fwd = 100, back = 20, time = 33;
 
@@ -2064,9 +2062,7 @@ int jhcEliArm::ZeroGrip (int always)
   for (k = 0; k < 2; k++)
   {
     // erase zero and widen motion limits
-    g->zero = 0.0;
-    g->amin = -150.0;
-    g->amax = 150.0;
+    g->SetRange(150.0, 0.0, -150.0);
     g->Reset();
 
     // start closing movement then wait for high force
@@ -2109,9 +2105,7 @@ int jhcEliArm::ZeroGrip (int always)
     z = z0;                                          
 
   // set joint zero and restore old angle limits
-  g->zero = z;
-  g->amin = a0;
-  g->amax = a1;
+  g->SetRange(a1, z, a0);
   g->Reset();
   return 1;
 }
@@ -2279,8 +2273,7 @@ int jhcEliArm::Drop ()
 
 int jhcEliArm::SetConfig (const jhcMatrix& ang, double rate)
 {
-  char txt[80];
-  double quit = 5.0;
+  double quit = 2.0;                   // was 5 secs
   UL32 start = jms_now();
   int n = ang.Rows(), ok = 1, ms = 33;
 
@@ -2299,7 +2292,6 @@ int jhcEliArm::SetConfig (const jhcMatrix& ang, double rate)
     // check for timeout
     if (jms_elapsed(start) > quit)
     {
-      jprintf(">>> Timeout %s in jhcEliArm::SetConfig !\n", ang.ListVec(txt, "%3.1f"));
       ok = 0;
       break;
     }
@@ -2329,7 +2321,7 @@ int jhcEliArm::SetConfig (const jhcMatrix& ang, double rate)
 
 int jhcEliArm::Stow (int fix)
 {
-  jhcMatrix end(4), dir(4), cfg(6);
+  jhcMatrix end(4), dir(4), cfg(7);
   int ans = 1;
 
   // get arm into roughly normal state

@@ -3,81 +3,95 @@
 
 OP 1 - "If you don't understand me then announce that"
   trig:
-  NOTE[ act-1 -lex-  understand
-              -neg-  1
+  NOTE[ fcn-1 -lex-  understand
+              -fcn-> act-1
+        act-1 -neg-  1
               -agt-> obj-1
               -obj-> obj-2
         obj-1 -lex-  me
         obj-2 -lex-  you ]
 -----------------
-    DO[ act-2 -lex-   announce
-              -obj--> act-1 ]
+    DO[ fcn-2 -lex-  announce
+              -fcn-> act-2
+        act-2 -obj-> act-1 ]
 
 
 OP 2 - "To announce that you don't understand me say to them I don't understand"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> act-2 
-        act-2 -lex-  understand
-              -neg-  1
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> act-2 
+        fcn-2 -lex-  understand
+              -fcn-> act-2
+        act-2 -neg-  1
               -agt-> obj-1
               -obj-> obj-2
         obj-1 -lex-  me 
         obj-2 -lex-  you ]
 -----------------
-    DO[ act-3 -lex-   say
-              -dest-> obj-2
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -dest-> obj-2
               -obj--> txt-1
         txt-1 -str-   I don't understand ]
 
 
 OP 3 - "To announce that you don't understand me say to them could you re-phrase that"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> act-2 
-        act-2 -lex-  understand
-              -neg-  1
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> act-2 
+        fcn-2 -lex-  understand
+              -fcn-> act-2
+        act-2 -neg-  1
               -agt-> obj-1
               -obj-> obj-2
         obj-1 -lex-  me 
         obj-2 -lex-  you ]
 -----------------
-    DO[ act-3 -lex-   say
-              -dest-> obj-2
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -dest-> obj-2
               -obj--> txt-1
         txt-1 -str-   could you re-phrase that ]
 
 
 OP 4 - "To announce that you don't understand me say to them I didn't quite get that whoever"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> act-2 
-        act-2 -lex-  understand
-              -neg-  1
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> act-2 
+        fcn-2 -lex-  understand
+              -fcn-> act-2
+        act-2 -neg-  1
               -agt-> obj-1
               -obj-> obj-2
         obj-1 -lex-  me 
         obj-2 -lex-  you ]
 -----------------
-    DO[ act-3 -lex-   say
-              -dest-> obj-2
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -dest-> obj-2
               -obj--> txt-1
         txt-1 -str-   I didn't quite get that ?0 ]
 
 
 OP 5 - "To announce that you don't understand me say to them I'm confused whoever"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> act-2 
-        act-2 -lex-  understand
-              -neg-  1
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> act-2 
+        fcn-2 -lex-  understand
+              -fcn-> act-2
+        act-2 -neg-  1
               -agt-> obj-1
               -obj-> obj-2
         obj-1 -lex-  me 
         obj-2 -lex-  you ]
 -----------------
-    DO[ act-3 -lex-   say
-              -dest-> obj-2
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -dest-> obj-2
               -obj--> txt-1
         txt-1 -str-   I'm confused ?0 ]
 
@@ -86,98 +100,113 @@ OP 5 - "To announce that you don't understand me say to them I'm confused whoeve
 
 OP 6 - "If you don't know some word then announce that"
   trig:
-  NOTE[ act-1 -lex-  know
-              -neg-  1
+  NOTE[ fcn-1 -lex-  know
+              -fcn-> act-1
+        act-1 -neg-  1
               -agt-> agt-1
               -obj-> txt-1
         agt-1 -lex-  me
         ako-1 -lex-  word
               -ako-> txt-1 ]
 -----------------
-    DO[ act-2 -lex-   announce
-              -obj--> act-1 ]
+    DO[ fcn-2 -lex-  announce
+              -fcn-> act-2
+        act-2 -obj-> act-1 ]
 
 
 OP 7 - "To announce that you don't know a word say I'm not familiar with the word whatever"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> act-2 
-        act-2 -lex-  know
-              -neg-  1
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> act-2 
+        fcn-2 -lex-  know
+              -fcn-> act-2
+        act-2 -neg-  1
               -agt-> agt-1
               -obj-> txt-1
         agt-1 -lex-  me 
         ako-1 -lex-  word
               -ako-> txt-1 ]
 -----------------
-    DO[ act-3 -lex-    say
-              -obj---> txt-2
-        txt-2 -str-    I'm not familiar with the word ?1
-              -arg1->  txt-1 ]
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -obj--> txt-2
+        txt-2 -str    I'm not familiar with the word ?1
+              -arg1-> txt-1 ]
 
 
-OP 8 - "To announce that you don't know a word say what does the word whatever mean"
+OP 8 - "To announce that you don't know a word ask what does the word whatever mean"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> act-2 
-        act-2 -lex-  know
-              -neg-  1
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> act-2 
+        fcn-2 -lex-  know
+              -fcn-> act-2
+        act-2 -neg-  1
               -agt-> agt-1
               -obj-> txt-1
         agt-1 -lex-  me 
         ako-1 -lex-  word
               -ako-> txt-1 ]
 -----------------
-    DO[ act-3 -lex-    say
-              -obj---> txt-2
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -obj--> txt-2
         txt-2 -str-    What does the word ?1 mean
               -arg1->  txt-1 ]
 
 
-OP 9 - "To announce that you don't know a word say can you explain the word whatever"
+OP 9 - "To announce that you don't know a word ask can you explain the word whatever"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> act-2 
-        act-2 -lex-  know
-              -neg-  1
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> act-2 
+        fcn-2 -lex-  know
+              -fcn-> act-2
+        act-2 -neg-  1
               -agt-> agt-1
               -obj-> txt-1
         agt-1 -lex-  me 
         ako-1 -lex-  word
               -ako-> txt-1 ]
 -----------------
-    DO[ act-3 -lex-    say
-              -obj---> txt-2
-        txt-2 -str-    Can you explain the word ?1
-              -arg1->  txt-1 ]
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -obj--> txt-2
+        txt-2 -str-   Can you explain the word ?1
+              -arg1-> txt-1 ]
 
 
 // ----------------------------------------
 
 OP 10 - "If someone tells you something say to them that's interesting"
   trig:
-  NOTE[ act-2 -lex-   tell
-              -agt--> obj-1
+  NOTE[ fcn-1 -lex-   tell
+              -fcn--> act-1
+        act-1 -agt--> obj-1
               -dest-> obj-2
               -obj--> obj-3
         obj-2 -lex-   me ]
 -----------------
-    DO[ act-3 -lex-   say
-              -dest-> obj-1
+    DO[ fcn-2 -lex-   say
+              -fcn--> act-2 
+        act-2 -dest-> obj-1
               -obj--> txt-1
         txt-1 -str-   that's interesting ]
 
 
 OP 11 - "If someone tells you something say to them got it whoever"
   trig:
-  NOTE[ act-2 -lex-   tell
-              -agt--> obj-1
+  NOTE[ fcn-1 -lex-   tell
+              -fcn--> act-1
+        act-1 -agt--> obj-1
               -dest-> obj-2
               -obj--> obj-3
         obj-2 -lex-   me ]
 -----------------
-    DO[ act-3 -lex-   say
-              -dest-> obj-1
+    DO[ fcn-2 -lex-   say
+              -fcn--> act-2 
+        act-2 -dest-> obj-1
               -obj--> txt-1
         txt-1 -str-   got it ?0 ]
 
@@ -186,32 +215,36 @@ OP 11 - "If someone tells you something say to them got it whoever"
 
 OP 12 - "If someone gives you a rule say to them thanks for the tip"
   trig:
-  NOTE[ input-1 -lex-   give
-                -agt--> obj-1  
-                -dest-> obj-2  
-                -obj--> obj-3  
-          obj-2 -lex-   me 
-          ako-1 -lex-   rule
-                -ako--> obj-3 ]
+  NOTE[ fcn-1 -lex-   give
+              -fcn--> act-1
+        act-1 -agt--> obj-1  
+              -dest-> obj-2  
+              -obj--> obj-3  
+        obj-2 -lex-   me 
+        ako-1 -lex-   rule
+              -ako--> obj-3 ]
 -----------------
-    DO[ act-2 -lex-   say
-              -dest-> obj-1
+    DO[ fcn-2 -lex-   say
+              -fcn--> act-2
+        act-2 -dest-> obj-1
               -obj--> txt-1
         txt-1 -str-   thanks for the tip ]
 
 
 OP 13 - "If someone gives you a rule say to them okay I'll remember whoever"
   trig:
-  NOTE[ input-1 -lex-   give
-                -agt--> obj-1  
-                -dest-> obj-2  
-                -obj--> obj-3  
-          obj-2 -lex-   me 
-          ako-1 -lex-   rule
-                -ako--> obj-3 ]
+  NOTE[ fcn-1 -lex-   give
+              -fcn--> act-1
+        act-1 -agt--> obj-1  
+              -dest-> obj-2  
+              -obj--> obj-3  
+        obj-2 -lex-   me 
+        ako-1 -lex-   rule
+              -ako--> obj-3 ]
 -----------------
-    DO[ act-2 -lex-   say
-              -dest-> obj-1
+    DO[ fcn-2 -lex-   say
+              -fcn--> act-2
+        act-2 -dest-> obj-1
               -obj--> txt-1
         txt-1 -str-   okay I'll remember ?0 ]
 
@@ -220,31 +253,35 @@ OP 13 - "If someone gives you a rule say to them okay I'll remember whoever"
 
 OP 14 - "If someone gives you an operator say to them I'm glad to learn that"
   trig:
-  NOTE[ input-1 -lex-   give
-                -agt--> obj-1  
-                -dest-> obj-2  
-                -obj--> obj-3  
-          obj-2 -lex-   me 
-          ako-1 -lex-   operator
-                -ako--> obj-3 ]
+  NOTE[ fcn-1 -lex-   give
+              -fcn--> act-1
+        act-1 -agt--> obj-1  
+              -dest-> obj-2  
+              -obj--> obj-3  
+        obj-2 -lex-   me 
+        ako-1 -lex-   operator
+              -ako--> obj-3 ]
 -----------------
-    DO[ act-2 -lex-   say
-              -dest-> obj-1
+    DO[ fcn-2 -lex-   say
+              -fcn--> act-2
+        act-2 -dest-> obj-1
               -obj--> txt-1
         txt-1 -str-   I'm glad to learn that ]
 
 
 OP 15 - "If someone gives you an operator say to them good advice whoever"
   trig:
-  NOTE[ input-1 -lex-   give
-                -agt--> obj-1  
-                -dest-> obj-2  
-                -obj--> obj-3  
-          obj-2 -lex-   me 
-          ako-1 -lex-   operator
-                -ako--> obj-3 ]
+  NOTE[ fcn-1 -lex-   give
+              -fcn--> act-1
+        act-1 -agt--> obj-1  
+              -dest-> obj-2  
+              -obj--> obj-3  
+        obj-2 -lex-   me 
+        ako-1 -lex-   operator
+              -ako--> obj-3 ]
 -----------------
-    DO[ act-2 -lex-   say
-              -dest-> obj-1
+    DO[ fcn-2 -lex-   say
+              -fcn--> act-2
+        act-2 -dest-> obj-1
               -obj--> txt-1
         txt-1 -str-   good advice ?0 ]

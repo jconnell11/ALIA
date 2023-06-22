@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,8 +34,6 @@
 
 jhcAliaSpeech::~jhcAliaSpeech ()
 {
-  // for debugging - only happens when program closes
-  DumpAll();
 }
 
 
@@ -43,14 +41,12 @@ jhcAliaSpeech::~jhcAliaSpeech ()
 
 jhcAliaSpeech::jhcAliaSpeech ()
 {
-  strcpy_s(gram,  "language/alia_top.sgm");    // main grammar file
-  strcpy_s(kdir,  "KB0/");                     // for kernels
-  strcpy_s(kdir2, "KB2/");                     // extra abilities
   spin  = 0;                                   // no speech reco
   amode = 2;                                   // attn word at front
   tts   = 0;                                   // no speech out
   acc   = 0;                                   // forget rules/ops
   time_params(NULL);
+  gr.SetBonus("ACT-2");                        // prefer these trees
 }
 
 
@@ -60,9 +56,46 @@ int jhcAliaSpeech::SpeechRC () const
 {
   if (spin == 2)
     return web.Hearing();
-  if (spin == 1)
-    return sp.Hearing();
-  return 0;
+  return sp.Hearing();                 // can set with Click()
+}
+
+
+//= Switch recognition acoustic model based on user's identity.
+// examines semantic net if "name" from face reco not valid
+// Note: only really needed for Microsoft SAPI (spin = 1)
+
+void jhcAliaSpeech::UserVoice (const char *name)
+{
+  jhcNetNode *user = atree.Human();
+  const char *who; 
+  int cnt, w = 0, best = 0;
+
+  // possibly set speech model based on face recognition (never a denial)
+  if ((name != NULL) && (*name != '\0'))
+  {
+    if (strcmp(name, sp.UserName()) == 0)            // full string matches
+      return;
+    if (sp.SetUser(name, 0, 1) > 0)
+    {
+      jprintf(1, noisy, "  ... acoustic model => %s ...\n\n", sp.VoiceModel());
+      return;
+    }
+  }
+
+  // try setting speech model to longest lexical tag (ignore restrictions)
+  while ((who = atree.Name(user, w++)) != NULL)
+  {
+    cnt = (int) strlen(who);
+    if (cnt > best)
+    {
+      name = who;
+      best = cnt;
+    }
+  }
+  if (best > 0)
+    if (strncmp(name, sp.UserName(), best) != 0)     // beginning matches ("Jon")
+      if (sp.SetUser(name, 0, 1) > 0)
+        jprintf(1, noisy, "  ... acoustic model => %s ...\n\n", sp.VoiceModel());
 }
 
 
@@ -79,13 +112,9 @@ int jhcAliaSpeech::time_params (const char *fname)
   int ok;
 
   ps->SetTag("asp_time", 0);
-  ps->NextSpecF( &stretch,  3.5, "Attention window (sec)");    // was 2.5 (local)
-  ps->NextSpecF( &splag,    0.5, "Post speech delay (sec)");   // was 0.1 (local)
-  ps->NextSpecF( &wait,     0.3, "Text out delay (sec)");      // was 0.15
-  ps->Skip(3);
-
-  ps->NextSpecF( &thz,     80.0, "Thought cycle rate (Hz)");  
-  ps->NextSpecF( &shz,     30.0, "Default body rate (Hz)");  
+  ps->NextSpecF( &stretch, 3.5, "Attention window (sec)");     // was 2.5 (local)
+  ps->NextSpecF( &splag,   0.5, "Post speech delay (sec)");    // was 0.1 (local)
+  ps->NextSpecF( &wait,    0.3, "Text out delay (sec)");       // was 0.15
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -100,14 +129,9 @@ int jhcAliaSpeech::time_params (const char *fname)
 // can also set up robot name as an attention word
 // returns 1 if okay, 0 or negative for error
 
-int jhcAliaSpeech::Reset (const char *rname, const char *vname)
+int jhcAliaSpeech::Reset (const char *rname, const char *vname, int cvt)
 {
-  char extra[200], extra2[200];
-
-  // remember interface choice and set attentional state
-  sprintf_s(extra,  "%sbaseline.lst", kdir2);
-  sprintf_s(extra2, "%svolition.lst", kdir2);
-  awake = 0;
+  // dispatch based on interface choice 
   if (spin == 3)
     jprintf(">>> Windows 11 Live Caption interface not written yet!\n");
   else if (spin == 2)
@@ -124,11 +148,11 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
     jprintf(1, noisy, "\nSPEECH -> OK\n");
     jprintf(1, noisy, "=========================\n\n");
   }
-  else if (spin == 1)
+  else if (spin == 1)        // maintains separate copy of grammar
   {
     // constrain local speech recognition by same grammar as core
     jprintf(1, noisy, "SPEECH local ...\n\n");
-    sp.SetGrammar(gram); 
+    sp.SetGrammar("language/alia_top.sgm"); 
     if (sp.Init(1, 0) <= 0)            // show partial transcriptions
     {
       jprintf(1, noisy, "\nSPEECH -> FAILED !!!\n");
@@ -140,17 +164,21 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
 
     // add words associated with kernels (slow second time?)
     jprintf(1, noisy, "Augmenting speech grammar with:\n");
-    (net.mf).AddSpVocab(&sp, "language/vocabulary.sgm", 1);
+    add_sp_vocab("language/vocabulary.sgm", 1);
     kern_gram();
-    base_gram(extra);                  // includes graphizer.sgm
+    base_gram("KB2/baseline.lst");     // includes graphizer.sgm
     if (vol > 0)
-      base_gram(extra2);
+      base_gram("KB2/volition.lst");
 
-    // add robot name as attention word (speech only)
-    self_name(rname);
+    // start parsed speech recognition from main rule
     sp.MarkRule("toplevel");          
     sp.Listen(1);
     jprintf(1, noisy, "\nSPEECH -> OK\n");
+    jprintf(1, noisy, "=========================\n\n");
+  }
+  else if (spin == 0)
+  {
+    jprintf(1, noisy, "\nSPEECH -> OFF (text only)\n");
     jprintf(1, noisy, "=========================\n\n");
   }
   
@@ -161,20 +189,6 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
     sp.SetVoice(vname);
   sp.Reset();
 
-  // set basic grammar for core and clear state (speech already set)
-  jprintf("Initializing ALIA core %4.2f\n\n", Version());
-  MainGrammar(gram, "toplevel", rname);
-  jhcAliaCore::Reset(1, rname, 1);
-
-  // load rules, operators, and words for kernels (speech already set)
-  (net.mf).AddVocab(&gr, "language/vocabulary.sgm", 0, -1);
-  KernExtras(kdir);
-  Baseline(extra, 1, 2);               // includes graphizer.sgm
-  if (vol > 0)
-    Baseline(extra2, 1, 2);
-  if (acc >= 1)
-    LoadLearned();
-
   // clear text input and output buffers
   *lastin = '\0';
   *input = '\0';
@@ -182,13 +196,47 @@ int jhcAliaSpeech::Reset (const char *rname, const char *vname)
   *output = '\0';
   *pend = '\0';
   yack = 0;
+  awake = 0;                           // attention state
 
-  // reset loop timing
-  start = 0;
-  rem = 0.0;
-  sense = 0;
-  think = 0;
+  // initialize underlying reasoning system
+  jhcAliaCore::Reset(rname, cvt);
   return 1;
+}
+
+
+//= Loads a grammar file to speech recognition as well as all morphological variants.
+// assumes original grammar file has some section labelled "=[XXX-morph]"
+// returns positive if successful, 0 or negative for problem
+// NOTE: use instead of base LoadGrammar function since adds proper variants
+
+int jhcAliaSpeech::add_sp_vocab (const char *fname, int rpt)
+{
+  const char deriv[80] = "jhc_temp.txt";
+  char strip[80];
+  char *end;
+
+  // load basic grammar file like usual
+  if ((fname == NULL) || (*fname == '\0'))
+    return -3;
+  if (sp.LoadSpGram(fname) <= 0)
+    return -2;
+  if (rpt > 0)
+  {
+    // list file as loaded
+    strcpy_s(strip, fname);
+    if ((end = strrchr(strip, '.')) != NULL)
+      *end = '\0';
+    jprintf("   %s\n", strip);
+  }
+
+  // read and apply morphology to add derived forms as well
+  if ((net.mf).LoadExcept(fname) < 0)
+    return 1;
+  if ((net.mf).LexDeriv(fname, 0, deriv) < 0)
+    return -1;
+  if (sp.LoadSpGram(deriv) <= 0)
+    return 0;
+  return 2;
 }
 
 
@@ -205,8 +253,8 @@ void jhcAliaSpeech::kern_gram ()
     tag = k->BaseTag();
     if (*tag != '\0')
     {
-      sprintf_s(fname, "%s%s.sgm", kdir, tag);
-      (net.mf).AddSpVocab(&sp, fname, 1);
+      sprintf_s(fname, "KB0/%s.sgm", tag);
+      add_sp_vocab(fname, 1);
     }
     k = k->NextPool();
   }
@@ -255,59 +303,11 @@ void jhcAliaSpeech::base_gram (const char *list)
 
     // read various types of input 
     sprintf_s(fname, "%s%s.sgm", dir, line);  
-    (net.mf).AddSpVocab(&sp, fname, 1);
+    add_sp_vocab(fname, 1);
   } 
 
   // clean up
   fclose(in);
-}
-
-
-//= Add the robot's own name as an attention word to local speech system.
-
-void jhcAliaSpeech::self_name (const char *name)
-{
-  char first[80];
-  char *sep;
-
-  if ((name == NULL) || (*name == '\0'))
-    return;
-  jprintf("\nAdding robot name: %s\n", name);
-  sp.ExtendRule("ATTN", name, 0); 
-  strcpy_s(first, name);
-  if ((sep = strchr(first, ' ')) != NULL)
-  {
-    *sep = '\0';
-    sp.ExtendRule("ATTN", first, 0); 
-  }
-  AddName(name);                       // adds full and first to <NAME>
-}
-
-
-//= Add the name of a particular person to parsing and speech grammars.
-// make sure to call Listen(1) afterward to re-engage speech recognition
-
-void jhcAliaSpeech::AddName (const char* name)
-{
-  char first[80];
-  char* sep;
-
-  // get first name from full name
-  if ((name == NULL) || (*name == '\0'))
-    return;
-  strcpy_s(first, name);
-  if ((sep = strchr(first, ' ')) != NULL)
-    *sep = '\0';
-
-  // update parsing grammar and possibly speech front-end also 
-  sp_listen(0);
-  gram_add("NAME", name, 0);
-  gram_add("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP), 0);
-  if (sep != NULL)
-  {
-    gram_add("NAME", first, 0);
-    gram_add("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP), 0);
-  }
 }
 
 
@@ -322,7 +322,7 @@ void jhcAliaSpeech::sp_listen (int doit)
 
 //= Extend a local speech recognition grammar rule for a new word.
 // lvl: -1 = vocab, 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
-// Note: should call sp_listen(0) before this
+// Note: takes the place of jhcAliaCore::gram_add, should call sp_listen(0) before this
 
 void jhcAliaSpeech::gram_add (const char *cat, const char *wd, int lvl)
 {
@@ -338,7 +338,7 @@ void jhcAliaSpeech::gram_add (const char *cat, const char *wd, int lvl)
 
 int jhcAliaSpeech::VoiceInit ()
 {
-  sp.SetGrammar(gram);      
+  sp.SetGrammar("language/alia_top.sgm");      
   if (sp.Init(0, noisy) <= 0)
     return 0;
   sp.MarkRule("toplevel");    
@@ -357,11 +357,14 @@ int jhcAliaSpeech::UpdateSpeech ()
   if (done > 0)
     return 0;
   if ((tts > 0) && (spin != 1))
-    sp.Update(0, web.Hearing());       // just TTS (web may be inactive)
+    sp.Update(0, 1, web.Hearing());    // just TTS (web may be inactive)
   if (spin == 2)
     web.Update(sp.Talking());
   else if (spin == 1)
-    sp.Update();                       // does TTS also
+    sp.Update(1, tts);                 // can do reco and TTS 
+
+  // catalog previous acoustic state
+  stat.Speech(SpeechRC(), BusyTTS(), Attending());
 
   // see if exit requested
   if (((spin == 2) && web.Escape()) || 
@@ -372,20 +375,18 @@ int jhcAliaSpeech::UpdateSpeech ()
 
 
 //= Generate actions in response to update sensory information.
-// if "alert" > 0 then forces system to pay attention to input
+// if "stare" > 0 then forces system to pay attention to input
 // should mark all seed nodes to retain before calling this
-// returns 1 if happy, 0 to end interaction 
+// returns 1 always for convenienace
 // NOTE: should call UpdateSpeech before this and DayDream after this
 
-int jhcAliaSpeech::Respond (int alert)
+int jhcAliaSpeech::Respond (int stare)
 {
-  char mark[80] = "##  +------------------------------------------------------------------------";
-  int bid, n;
+  int bid;
 
 jtimer(16, "Respond");
   // possibly wake up system then evaluate any language input
-  now = jms_now();
-  if (alert > 0)
+  if (stare > 0)
     awake = now;
   xfer_input();
 
@@ -399,14 +400,8 @@ jtimer(16, "Respond");
     sp.Say(bid, output);
     sp.Issue();
   }
-
-  // show prominently in log file (capitalize first letter)
-  if ((n = (int) strlen(output)) > 0)
-  {
-    n = __min(n, 70);
-    mark[n + 9] = '\0';
-    jprintf("\n%s+\n##  | \"%c%s\" |\n%s+\n\n", mark, toupper(output[0]), output + 1, mark);
-  }
+  else
+    sp.Blurt((bid > 0) ? 1 : 0);
 jtimer_x(16);
   return 1;
 }
@@ -435,6 +430,7 @@ void jhcAliaSpeech::xfer_input ()
   else  
   {
     hear = ((*input != '\0') ? 2 : 0);
+    sp.Click(hear);
     sent = input;
   }
 
@@ -444,10 +440,10 @@ void jhcAliaSpeech::xfer_input ()
 
   // pass input (if any) to semantic network generator
   if (hear < 0)
-    perk = Interpret(NULL, attn, amode, -1);               // for "huh?" response
+    perk = Interpret(NULL, attn, amode);         // for "huh?" response
   else if (hear >= 2)
-    perk = Interpret(sent, attn, amode, spin);
-  if (perk >= 2)                                           // attention word heard
+    perk = Interpret(sent, attn, amode);
+  if (perk >= 2)                                 // attention word heard
     attn = 1;
   if ((attn > 0) && (hear != 0))
     awake = now;
@@ -455,7 +451,7 @@ void jhcAliaSpeech::xfer_input ()
   // see if system should continue paying attention
   if (awake != 0) 
   {
-    if (sp.Talking() > 0)                                  // prolong during TTS output
+    if (BusyTTS() > 0)                           // prolong during TTS output
       awake = now;
     else if ((attn > 0) && (sp.Silence() > splag) && (jms_secs(now, awake) > stretch))
     {
@@ -504,54 +500,15 @@ int jhcAliaSpeech::syllables (const char *txt) const
 }
 
 
-//= Perform several cycles of reasoning disconnected from sensors and actuators.
-// quits early if some Run() takes too long to prevent missing sensor schedule
-
-void jhcAliaSpeech::DayDream ()
-{
-  double frac = 1.0;
-  int cyc, n = 1, ms = ROUND(1000.0 / shz);      // standard sensing time
-
-jtimer(17, "DayDream");
-  // determine how many total thought cycles to run right now
-  if (start == 0)
-    start = now;
-  else 
-  {
-    frac = thz * jms_secs(now, last) + rem;
-    n = ROUND(frac);
-  }
-  last = now;
-
-  // possibly catch up on thinking (commands will be ignored)
-  for (cyc = 1; cyc < n; cyc++)
-    if (jms_diff(jms_now(), last) < ms)
-      RunAll(0);
-  rem = frac - cyc;          // how many thought cycles NOT completed
-  think += cyc;
-  sense++;
-jtimer_x(17);
-}
-
-
 //= Call at end of run to put robot in stable state and possibly save knowledge.
 
-void jhcAliaSpeech::Done ()
+void jhcAliaSpeech::Done (int save)
 {
-  // stop running actions
-  StopAll();
-  atree.ClrFoci();
-
-  // stop speech input and output
   if (spin == 2)
     web.Close();
   else if (spin == 1)
     sp.Listen(0);
-  CloseCvt();
-
-  // possibly save state
-  if (acc >= 2)
-    DumpLearned();
+  jhcAliaCore::Done(save);
 }
 
 
@@ -621,6 +578,7 @@ const char *jhcAliaSpeech::NewOutput ()
 {
   const char *msg = NULL;
   UL32 now;
+  int n;
 
   // see if last output delayed long enough or interrupted
   now = jms_now();
@@ -632,18 +590,25 @@ const char *jhcAliaSpeech::NewOutput ()
       msg = blip_txt(1);
   }
 
-  // queue any new output for printing after slight delay
+  // see if any message for user
   if (*output != '\0')
   {
+    // queue for printing after slight delay
     mood.Speak((int) strlen(output));
     strcpy_s(pend, output);
     yack = now;
+
+    // start TTS immediately but allow for later override
     if ((spin <= 0) && (tts > 0))
     {
-      // start TTS immediately but allow for later override
-      sp.Say(sense, output);               
+      sp.Say(SenseCnt(), output);               
       sp.Utter();
     }
+
+    // possibly open speech gate for user response
+    n = (int) strlen(output);
+    if (output[n - 1] == '?')
+      awake = now;
   }
   return msg;
 }

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,11 +28,11 @@
 
 #include "jhcGlobal.h"
 
-#include "Manus/jhcManusRWI.h"         // common robot   
-#include "Objects/jhcStackSeg.h"
+#include "Objects/jhcStackSeg.h"       // common robot
 #include "Objects/jhcPatchProps.h"
+#include "RWI/jhcManusRWI.h"         
 
-#include "Action/jhcStdKern.h"       
+#include "Kernel/jhcStdKern.h"       
 
 
 //= Interface to Manus visual behavior kernel for ALIA system.
@@ -65,7 +65,6 @@ public:
   // creation and initialization
   ~jhcTargetVis ();
   jhcTargetVis ();
-  void Platform (jhcManusRWI *io);
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -75,10 +74,11 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // overridden virtuals
-  void local_reset (jhcAliaNote *top);
+  void local_platform (void *soma);
+  void local_reset (jhcAliaNote& top);
   void local_volunteer ();
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
   // event functions
   void alert_close ();

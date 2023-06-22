@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -130,6 +130,8 @@ public:
   int BelowX () const;
   int BelowY (int n =1) const;
   void ScreenPos (int& x, int& y, int i =0, int j =-1);
+  void PadH (int pels) {imgx += pels;}
+  void PadV (int pels) {imgy += pels;}
 
   // image rendering
   int Show (const jhcImg& src, int x =0, int y =0, 
@@ -172,10 +174,10 @@ public:
     {return GraphOver(*h, maxval, col);}                       /** Like other GraphOver but de-references pointer. */
   int GraphOverV (const jhcArr& h, int maxval, int col =0)
     {return GraphV(h, imgx, imgy, maxval, -col);}              /** Draws another trace on last vertical graph. */
-  int GraphMark (double bin, int col =1, double ht =1.0);
-  int GraphMarkV (double bin, int col =1, double ht =1.0);
-  int GraphVal (int lvl, int maxval, int col =0);
-  int GraphValV (int lvl, int maxval, int col =0);
+  int GraphMark (double bin, int col =1, double ht =1.0, int dash =0);
+  int GraphMarkV (double bin, int col =1, double ht =1.0, int dash =0);
+  int GraphVal (int lvl, int maxval, int col =0, int dash =0);
+  int GraphValV (int lvl, int maxval, int col =0, int dash =0);
   
   // on-screen text
   int String (int x, int y, const char *msg, ...);

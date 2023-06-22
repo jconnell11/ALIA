@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@
 jhcGramExec::jhcGramExec ()
 {
   // current version
-  ver = 1.80;
+  ver = 1.85;
 
   // max number of words that "+" can match
   dict_n = 5; 
@@ -47,6 +47,9 @@ jhcGramExec::jhcGramExec ()
   // grammar
   gram = NULL;
   parse_clear();
+
+  // tree selection
+  *bonus = '\0';
 
   // parsing
   chart = NULL;
@@ -329,6 +332,7 @@ int jhcGramExec::Parse (const char *sent, int fix)
       nnode[i] = Nodes(i);
       nwild[i] = WildCards(i);
       ndict[i] = DictItems(i);
+      nspec[i] = BonusNodes(i);
     }
     tree = -1;
     NextBest();              
@@ -413,11 +417,11 @@ int jhcGramExec::normalize (int n0, const jhcGramRule *r)
       n = normalize(n, s->back);
     else
     {
-      // if wildcard then get raw word, else copy terminal
-      if (strcmp(s->symbol, "#") == 0)
-        strcat_s(norm, Span(wd, n, n, 1));     // raw input
+      // if wildcard or number then get raw word, else copy terminal
+      if ((strcmp(s->symbol, "#") == 0) || (strcmp(s->symbol, "@") == 0))
+        strcat_s(norm, Span(wd, n, n, 1));   
       else
-        strcat_s(norm, s->symbol);
+        strcat_s(norm, s->symbol);           
 
       // add space after word and advance index
       strcat_s(norm, " ");
@@ -434,7 +438,7 @@ int jhcGramExec::normalize (int n0, const jhcGramRule *r)
 
 int jhcGramExec::NextBest ()
 {
-  int i, n, w, k, n0, w0, k0, scan = __min(nt, 10);
+  int i, n, w, k, b, n0, w0, k0, b0, scan = __min(nt, 10);
 
   // invalidate current selection
   if ((tree >= 0) && (tree < 10))
@@ -448,12 +452,15 @@ int jhcGramExec::NextBest ()
     {
       w = nwild[i];
       k = ndict[i];
-      if ((tree < 0) || (w < w0) || 
-         ((w == w0) && (k < k0)) ||
-         ((w == w0) && (k == k0) && (n <= n0)))
+      b = nspec[i];
+      if ((tree < 0) || (w < w0) ||                            // least wildcards
+         ((w == w0) && (k < k0)) ||                            // fewest dictation words
+         ((w == w0) && (k == k0) && (b > b0)) ||               // most bonus terms
+         ((w == w0) && (k == k0) && (b == b0) && (n <= n0)))   // least total nodes
       {
         w0 = w; 
         k0 = k;
+        b0 = b;
         n0 = n;
         tree = i;
       }
@@ -484,7 +491,7 @@ int jhcGramExec::wild_cnt (const jhcGramRule *s) const
   t = s->tail;
   while (t != NULL)
   {
-    // add one for each "#" wildcard found (only kind)
+    // add one for each "#" wildcard found (only kind, ignore @)
     if (t->non > 0)
       cnt += wild_cnt(t->back);
     else if (strcmp(t->symbol, "#") == 0)
@@ -520,7 +527,7 @@ int jhcGramExec::dict_cnt (const jhcGramRule *s) const
     // find sequences of wildcards WITHIN each expansion
     if (t->non > 0)
       cnt += dict_cnt(t->back);
-    else if (strcmp(t->symbol, "#") == 0)
+    else if (strcmp(t->symbol, "#") == 0)        // ignore @
     {
       // increment only once per sequence "# # # ..."
       if (prev <= 0)
@@ -553,13 +560,48 @@ int jhcGramExec::node_cnt (const jhcGramRule *s) const
   if (s == NULL)
     return 0;
 
-  // go through all steps in rule expansion
+  // go through all steps in rule expansiong
   t = s->tail;
   while (t != NULL)
   {
     // add number of nodes under each non-terminal encountered
     if (t->non > 0)
       cnt += node_cnt(t->back);
+    t = t->tail;
+  }
+  return cnt;
+}
+
+
+//= Count number of bonus non-terminal nodes in a particular interpretation.
+
+int jhcGramExec::BonusNodes (int n) const
+{
+  return bonus_cnt(nth_full(n));
+}
+
+
+//= Count how many times the bonus non-terminal appears in tree.
+
+int jhcGramExec::bonus_cnt (const jhcGramRule *s) const
+{
+  const jhcGramStep *t;
+  int cnt = 0;
+
+  if ((*bonus == '\0') || (s == NULL))
+    return 0;
+
+  // go through all steps in rule expansiong
+  t = s->tail;
+  while (t != NULL)
+  {
+    // add number of bonus nodes under each non-terminal encountered
+    if (t->non > 0)
+    {
+      if (strcmp(t->symbol, bonus) == 0)
+        cnt++;
+      cnt += bonus_cnt(t->back);
+    }
     t = t->tail;
   }
   return cnt;
@@ -749,6 +791,7 @@ void jhcGramExec::append (char *dest, const char *extra, int ssz) const
 
 //= See if attention (to speech) should be renewed based on input sentence.
 // mode: 0 = always, 1 = ATTN at start/end, 2 = ATTN at start, 3 = ATTN only (hail)
+// NOTE: not used by ALIA, jhcAliaCore::Interpret calls jhcNetBuild version instead
 
 int jhcGramExec::NameSaid (const char *sent, int mode) const
 {
@@ -761,7 +804,7 @@ int jhcGramExec::NameSaid (const char *sent, int mode) const
   if (*sent == '\0')
     return 0;
 
-  // strip off initial "Hey" if present
+  // strip off initial "Hey" if present (does not check for yes/no variants)
   if ((_strnicmp(tail, "Hey", 3) == 0) && (isalpha(tail[3]) == 0))
   {
     tail += 4;
@@ -867,7 +910,7 @@ void jhcGramExec::print_focus (int indent, int start, int end)
 // returns number of basic entries listed
 // NOTE: needs access to configured jhcMorphFcns instance
 
-int jhcGramExec::SaveCats (const char *fname, int lvl, const jhcMorphFcns *mf) const
+int jhcGramExec::SaveCats (const char *fname, int lvl, const jhcMorphFcns& mf) const
 {
   char fn[200];
   FILE *out;
@@ -898,15 +941,12 @@ int jhcGramExec::SaveCats (const char *fname, int lvl, const jhcMorphFcns *mf) c
   n += list_cat(out, "MOD", lvl);
 
   // copy all exceptions to end of main file
-  if (mf != NULL)
-  {
-    fprintf_s(out, "\n\n// ================================================\n");
-    fprintf_s(out, "\n// irregular morphologies (np, acomp, asup, vpres, vprog, vpast)\n");
-    fprintf_s(out, "\n=[XXX-morph]\n");
-    noun_vars(out, lvl, mf);
-    adj_vars(out,  lvl, mf);
-    verb_vars(out, lvl, mf);
-  }
+  fprintf_s(out, "\n\n// ================================================\n");
+  fprintf_s(out, "\n// irregular morphologies (np, acomp, asup, vpres, vprog, vpast)\n");
+  fprintf_s(out, "\n=[XXX-morph]\n");
+  noun_vars(out, lvl, mf);
+  adj_vars(out,  lvl, mf);
+  verb_vars(out, lvl, mf);
 
   // clean up
   fclose(out);
@@ -947,7 +987,7 @@ int jhcGramExec::list_cat (FILE *out, const char *non, int lvl) const
 
 //= Add irregular noun plural forms to file list.
 
-void jhcGramExec::noun_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
+void jhcGramExec::noun_vars (FILE *out, int lvl, const jhcMorphFcns& mf) const
 {
   char base[80];
   const jhcGramRule *r = gram;
@@ -971,7 +1011,7 @@ void jhcGramExec::noun_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
       }
 
      // record any irregular plurals
-     if ((var = mf->Irregular(base, JTAG_NPL)) != NULL)
+     if ((var = mf.Irregular(base, JTAG_NPL)) != NULL)
        fprintf_s(out, "  %s * npl = %s\n", base, var);
     }
     r = r->next;             // next grammar rule
@@ -981,7 +1021,7 @@ void jhcGramExec::noun_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
 
 //= Add irregular adjective comparative and superlative forms to file list.
 
-void jhcGramExec::adj_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
+void jhcGramExec::adj_vars (FILE *out, int lvl, const jhcMorphFcns& mf) const
 {
   char base[80];
   const jhcGramRule *r = gram;
@@ -1005,9 +1045,9 @@ void jhcGramExec::adj_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
       }
 
      // record any irregular comparatives or superlatives
-     if ((var = mf->Irregular(base, JTAG_ACOMP)) != NULL)
+     if ((var = mf.Irregular(base, JTAG_ACOMP)) != NULL)
        fprintf(out, "  %s * acomp = %s\n", base, var);
-     if ((var = mf->Irregular(base, JTAG_ASUP)) != NULL)
+     if ((var = mf.Irregular(base, JTAG_ASUP)) != NULL)
        fprintf(out, "  %s * asup  = %s\n", base, var);
     }
     r = r->next;             // next grammar rule
@@ -1017,7 +1057,7 @@ void jhcGramExec::adj_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
 
 //= Add irregular verb present, past, and progressive forms to file list.
 
-void jhcGramExec::verb_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
+void jhcGramExec::verb_vars (FILE *out, int lvl, const jhcMorphFcns& mf) const
 {
   char base[80];
   const jhcGramRule *r = gram;
@@ -1041,11 +1081,11 @@ void jhcGramExec::verb_vars (FILE *out, int lvl, const jhcMorphFcns *mf) const
       }
 
      // record any irregular present tenses, past tenses, or progressives
-     if ((var = mf->Irregular(base, JTAG_VPRES)) != NULL)
+     if ((var = mf.Irregular(base, JTAG_VPRES)) != NULL)
        fprintf(out, "  %s * vpres = %s\n", base, var);
-     if ((var = mf->Irregular(base, JTAG_VPAST)) != NULL)
+     if ((var = mf.Irregular(base, JTAG_VPAST)) != NULL)
        fprintf(out, "  %s * vpast = %s\n", base, var);
-     if ((var = mf->Irregular(base, JTAG_VPROG)) != NULL)
+     if ((var = mf.Irregular(base, JTAG_VPROG)) != NULL)
        fprintf(out, "  %s * vprog = %s\n", base, var);
     }
     r = r->next;             // next grammar rule
@@ -1126,7 +1166,9 @@ int jhcGramExec::parse_load (const char *grammar, int lvl)
   if ((grammar == NULL) || (*grammar == '\0'))
     return 0;
   if (fopen_s(&in, grammar, "r") != 0)
-    return jprintf(">>> Could not open %s in jhcGramExec::parse_load!\n", grammar);
+    return -1;
+//  if (fopen_s(&in, grammar, "r") != 0)
+//    return jprintf(">>> Could not open %s in jhcGramExec::parse_load!\n", grammar);
 
   // save this file's directory (included files are relative)
   strcpy_s(dir, grammar);
@@ -1618,14 +1660,18 @@ void jhcGramExec::rem_chart ()
 
 int jhcGramExec::scan (const char *token, int n, const char *peek)
 {
+  char extra[40];
   jhcGramRule *s = chart;
+  double val;
 
   while (s != NULL)
   {
     if (s->wn == n)                                        // good up thru word N
       if ((s->dot != NULL) && ((s->dot)->non <= 0))        // awaiting a terminal
         if ((_stricmp((s->dot)->symbol, token) == 0) ||    // terminal matches
-            (strcmp((s->dot)->symbol, "#") == 0))          //   or wildcard
+            (strcmp((s->dot)->symbol, "#") == 0) ||        //   or wildcard present
+            ((strcmp((s->dot)->symbol, "@") == 0) &&       //   or numeric value found
+             (sscanf_s(token, "%lf%s", &val, extra, 40) == 1)))
           if (add_chart(s, n + 1, NULL, 0, peek) <= 0)
             return 0;
     s = s->next;
@@ -1687,13 +1733,17 @@ int jhcGramExec::predict (const char *cat, int n, const char *peek)
 
 int jhcGramExec::add_chart (const jhcGramRule *r, int end, jhcGramRule *s0, int init, const char *peek)
 {
+  char extra[40];
   jhcGramRule *s;
   const jhcGramStep *first = r->tail;
+  double val;
 
   // skip if next part of rule is a non-matching terminal
   if ((init > 0) && (peek != NULL) && (first != NULL))
     if ((first->non <= 0) && (*(first->symbol) != '#'))
-      if (_stricmp(first->symbol, peek) != 0)
+      if ((_stricmp(first->symbol, peek) != 0) && 
+          ((strcmp(first->symbol, "@") != 0) || 
+           (sscanf_s(peek, "%lf%s", &val, extra, 40) != 1)))
         return 1;
 
   // make an exact copy of rule or old state

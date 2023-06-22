@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -840,6 +840,19 @@ double jhcSurfObjs::ViewOrient (double wdir) const
 }
 
 
+//= Convert real-world location (inches) to integer pixel location in COLOR image.
+
+void jhcSurfObjs::CamPels (int& ix, int &iy, const jhcMatrix& wpt, int ydim) const
+{
+  double mx, my, fx, fy, isc = (double) ydim / (double) InputH();
+
+  ViewXY(mx, my, wpt.X(), wpt.Y());
+  ImgPt(fx, fy, mx + x0 - 0.5 * mw, my + y0, wpt.Z(), isc);
+  ix = ROUND(fx);
+  iy = ROUND(fy);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                          Debugging Graphics                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -887,10 +900,8 @@ int jhcSurfObjs::AttnCam (jhcImg& dest, int pick, int known, int all)
 void jhcSurfObjs::attn_obj (jhcImg& dest, int i, int t, int col) 
 {
   jhcRoi box;
-  double *wlh = shp[i];
 
-  ImgPrism(box, pos.TX(i) + x0 - 0.5 * mw, pos.TY(i) + y0, pos.TZ(i), 
-           wlh[5], wlh[3], wlh[4], wlh[2], ISC(dest)); 
+  CamBox(box, i, dest.YDim());
   RectEmpty(dest, box, t, -col);
   if (pos.tag[i][0] != '\0') 
     LabelBox(dest, box, pos.tag[i], -16, -col);

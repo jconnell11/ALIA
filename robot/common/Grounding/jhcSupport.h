@@ -27,11 +27,11 @@
 
 #include "jhcGlobal.h"
 
-#include "Eli/jhcEliGrok.h"            // common robot   
-#include "Environ/jhcTable.h"
+#include "Environ/jhcTable.h"          // common robot   
 #include "Geometry/jhcMatrix.h"
+#include "RWI/jhcEliGrok.h"            
 
-#include "Action/jhcStdKern.h"       
+#include "Kernel/jhcStdKern.h"       
 
 
 //= Interface to ELI surface finder kernel for ALIA system.
@@ -42,6 +42,9 @@ class jhcSupport : public jhcStdKern
 // PRIVATE MEMBER VARIABLES
 private:
   static const int smax = 10;          /** Max remembered patches. */
+
+  // instance control variables
+  jhcMatrix *cpos;             
 
   // link to hardware and components
   jhcEliGrok *rwi;                     // likely shared
@@ -60,30 +63,31 @@ private:
   double soff[smax];
   int sid[smax];
   int last_id;   
-// int current;
+
+
+// PRIVATE MEMBER PARAMETERS
+private:
+  // table detection event parameters
+  double d1, d0, dhys, dnear, h1, h0;
+  int tnew;
+
+  // surface motion parameters
+  double ptol, ttol, atol, acc, app;
+
+  // height parameters
+  double hmax, havg, hmth, mavg, mlth, lavg, flr;
+
+  // location and azimuth parameters
+  double dfar, dmid, band, dxy, hfov;
+
+  // tracking and selection parameters
+  double ztol, xytol, mix, inset, gtol, drop;
 
 
 // PUBLIC MEMBER VARIABLES
 public:
-  // control of diagnostic messages
-  int dbg;                   
-
-  // height parameters
-  jhcParam hps;
-  double hmax, havg, hmth, mavg, mlth, lavg, flr, dh;
-
-  // location and azimuth parameters
-  jhcParam lps;
-  double dfar, dmid, band, dxy, hfov, vfov, atol, drop;
-
-  // table detection event parameters
-  jhcParam eps;
-  double d1, d0, dhys, dnear, h1, h0;
-  int tnew;
-
-  // tracking and selection parameters
-  jhcParam tps;
-  double ztol, xytol, mix, inset, gtol, gacc, app, acc;
+  int dbg;                   // control of diagnostic messages
+  jhcParam eps, mps, hps, lps, tps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -91,7 +95,6 @@ public:
   // creation and initialization
   ~jhcSupport ();
   jhcSupport ();
-  void Platform (jhcEliGrok *io);
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -101,22 +104,24 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // processing parameters
+  int event_params (const char *fname);
+  int motion_params (const char *fname);
   int height_params (const char *fname);
   int location_params (const char *fname);
-  int event_params (const char *fname);
   int track_params (const char *fname);
 
   // overridden virtuals
-  void local_reset (jhcAliaNote *top);
+  void local_platform (void *soma);
+  void local_reset (jhcAliaNote& top);
   void local_volunteer ();
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
   // event functions
   void update_patches ();
   void table_seen ();
   void table_close ();
-  jhcAliaDesc *current_vis (int& born);
+  int current_vis (jhcAliaDesc **obj);
 
   // surface finding 
   JCMD_DEF(surf_enum);
@@ -125,6 +130,7 @@ private:
 
   // surface interaction
   JCMD_DEF(surf_look);
+  JCMD_DEF(surf_orient);
   JCMD_DEF(surf_goto);
 
   // utilities
@@ -150,8 +156,10 @@ private:
   void add_ht (jhcAliaDesc *obj, int aqnt) const;
 
   // semantic messages
+  void msg_gone (jhcAliaDesc *surf);
   int err_hw (const char *sys);
   int err_vis (jhcAliaDesc *item);
+
 
 
 };

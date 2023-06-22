@@ -1,3 +1,6 @@
+// relieve boredom by stealing interesting things
+// ================================================
+
 OP 1 - "If you are bored then steal an interesting thing"
   trig:
   NOTE[  hq-2 -lex-  bored
@@ -7,18 +10,19 @@ OP 1 - "If you are bored then steal an interesting thing"
   BIND[ obj-4
          hq-5 -lex-  interesting
               -hq--> obj-4 ]
-    DO[ act-3 -lex-  steal
-              -obj-> obj-4 ]
+    DO[ fcn-3 -lex-  steal
+              -fcn-> act-3
+        act-3 -obj-> obj-4 ]
 
 
-OP 2 - "To find an interesting thing find the color of all objects on the table"
+OP 2 - "To find an interesting thing find the color of all objects on the surface"
   trig:
   FIND[ obj-1
          hq-2 -lex-  interesting
               -hq--> obj-1 ]
 -----------------
   BIND[  obj-3
-        kind-4 -lex-  table
+        kind-4 -lex-  surface
                -ako-> obj-3 ]
    ~~~ 2
   EACH[  obj-5
@@ -34,60 +38,83 @@ OP 2 - "To find an interesting thing find the color of all objects on the table"
      @ 2
 
 
-OP 3 - "To find a table look around slowly"
+OP 3 - "To steal something grab it, claim it, and walk away"
   trig:
-  FIND[  obj-1
-        kind-2 -lex-  table
-               -ako-> obj-1 ]
+    DO[ fcn-1 -lex-  steal
+              -fcn-> act-1
+        act-1 -obj-> obj-2 ]
 -----------------
-    DO[ act-3 -lex-  look
-        dir-4 -lex-  around
-              -dir-> act-3 
-        mod-5 -lex-  slowly
-              -mod-> act-3 ]
-
-
-OP 4 - "To steal something grab it, claim it, and walk away"
-  trig:
-    DO[ act-1 -lex-  steal
-              -obj-> obj-2 ]
------------------
-    DO[ act-3 -lex-  grab
-              -obj-> obj-2 ]
-    DO[ act-4 -lex-  claim
-              -obj-> obj-2 ]
-    DO[ act-5 -lex-  walk
+    DO[ fcn-3 -lex-  grab
+              -fcn-> act-3
+        act-3 -obj-> obj-2 ]
+    DO[ fcn-4 -lex-  claim
+              -fcn-> act-4
+        act-4 -obj-> obj-2 ]
+    DO[ fcn-5 -lex-  walk
+              -fcn-> act-5
         dir-1 -lex-  away
               -dir-> act-5 ]
 
 
-OP 5 - "To claim something say mine, all mine"
+// ----------------------------------------------
+
+OP 4 - "To claim something say mine, all mine"
   trig:
-    DO[ act-1 -lex-  claim
-              -obj-> obj-2 ]
+    DO[ fcn-1 -lex-  claim
+              -fcn-> act-1
+        act-1 -obj-> obj-2 ]
 -----------------
-    DO[ act-3 -lex-  say
-              -obj-> txt-4
+    DO[ fcn-3 -lex-  say
+              -fcn-> act-3
+        act-3 -obj-> txt-4
         txt-4 -str-  mine, all mine ]
 
 
-OP 6 - "To walk away wander"
+OP 5 - "To claim something say I really like this"
   trig:
-    DO[ act-1 -lex-  walk
+    DO[ fcn-1 -lex-  claim
+              -fcn-> act-1
+        act-1 -obj-> obj-2 ]
+-----------------
+    DO[ fcn-3 -lex-  say
+              -fcn-> act-3
+        act-3 -obj-> txt-4
+        txt-1 -str-  I really like this ]
+
+
+OP 6 - "To claim something say this belongs to me now"
+  trig:
+    DO[ fcn-1 -lex-  claim
+              -fcn-> act-1
+        act-1 -obj-> obj-2 ]
+-----------------
+    DO[ fcn-3 -lex-  say
+              -fcn-> act-3
+        act-3 -obj-> txt-4
+        txt-1 -str-  this belongs to me now ]
+
+
+// ----------------------------------------------
+
+OP 7 - "To walk away wander"
+  trig:
+    DO[ fcn-1 -lex-  walk
+              -fcn-> act-1
         dir-2 -lex-  away
               -dir-> act-1 ]
 -----------------
-    DO[ act-5 -lex-  wander ]
+    DO[ fcn-5 -lex-  wander 
+              -fcn-> act-5 ]
 
 
-OP 7 - "Before wandering tuck in the arm"
+OP 8 - "Before wandering tuck the arm"
   trig:
-  ANTE[ act-1 -lex- wander ]
+  ANTE[ fcn-1 -lex-  wander
+              -fcn-> act-2 ]
 -----------------
-    DO[ act-2 -lex-   tuck
-              -dest-> loc-1 
-        loc-1 -lex-   in
-              -ref--> obj-1 
-        ako-1 -lex-   arm
-              -ako--> obj-1 ]
-
+  BIND[  obj-5
+        kind-6 -lex-  arm
+               -ako-> obj-5 ]
+    DO[ fcn-3 -lex-  tuck
+              -fcn-> act-4
+        act-4 -obj-> obj-5 ]

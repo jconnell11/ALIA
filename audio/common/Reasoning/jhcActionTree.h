@@ -30,12 +30,15 @@
 
 #include <stdio.h>                     // needed for FILE
 
+#include "Data/jhcParam.h"             // common video
+
 #include "Action/jhcAliaChain.h"       // common robot
 #include "Action/jhcAliaMood.h"
 
-#include "Reasoning/jhcAliaNote.h"      
+#include "Semantic/jhcBindings.h"      // common audio
+
+#include "API/jhcAliaNote.h"           
 #include "Reasoning/jhcWorkMem.h"      
-#include "Semantic/jhcBindings.h"
 
 
 //= Holds attentional foci for ALIA system.
@@ -59,7 +62,7 @@ private:
   jhcAliaChain *focus[imax];
   jhcGraphlet err[imax];
   int done[imax], mark[imax];
-  int fill, chock, blame;
+  int fill, chock;
 
   // importance for each item
   double wt[imax];
@@ -75,21 +78,28 @@ private:
   // unique label for counting goals
   int req;
 
-  // part for new NOTE focus
-  jhcGraphlet nkey;
+  // operator selection
+  double pess;               // preference threshold (pessimism)
+  double wild;               // respect for operator preference
+
+
+// PRIVATE MEMBER PARAMETERS
+private:
+  // rule and operator adjustment parameters
+  double bth0, cinc, cdec, pth0, pinc, pdec, fresh;
 
 
 // PUBLIC MEMBER VARIABLES
 public:
+  jhcParam aps;
+
   // surprise parameters
   double drill, dwell, calm;  
-
-  // rule adjustment parameters
-  double binc, bdec;    
-
-  // operator adjustment parameters
-  double pinc, pdec;
             
+  // NOTE generation variables
+  jhcGraphlet nkey;
+  int blame;                 // record specific error messages     
+
 
 // PUBLIC MEMBER FUNCTIONS
 public:
@@ -103,13 +113,26 @@ public:
   int Active () const;
   int MaxDepth ();
   int NumGoals (int leaf =0);
- 
+
+  // processing parameter bundles 
+  int LoadCfg (const char *fname =NULL);
+  int SaveCfg (const char *fname) const;
+
+  // operator selection parameters
+  double Wild () const     {return wild;}
+  double MinPref () const  {return pess;}
+  double RestPref () const {return pth0;}
+  void SetMinPref (double p) {pess = __max(0.1, __min(p, 1.0));}
+  double RestBlf () const  {return bth0;}
+
+  // rule and operator adjustment
+  double AdjRuleConf (class jhcAliaRule *rule, double cf) const;
+  double AdjOpPref (class jhcAliaOp *op, int up) const;
+
   // list manipulation
   int NextFocus ();
   jhcAliaChain *FocusN (int n) const;
   jhcAliaChain *Current () const {return FocusN(svc);}
-  void ClearErr ();
-  void SaveErr (int doit) {blame = doit;}
   jhcGraphlet *Error ();
   bool NeverRun (int n) const;
   int BaseBid (int n) const;
@@ -117,7 +140,8 @@ public:
   int ServiceWt (double pref);
 
   // list modification
-  int ClrFoci (int init =0, const char *rname =NULL);
+  void ResetFoci (const char *rname =NULL);
+  void ClrFoci ();
   int AddFocus (jhcAliaChain *f, double pref =1.0);
   void NoteSolo (jhcNetNode *n);
   void ClrFail () {if (svc >= 0) err[svc].Clear();}
@@ -125,15 +149,25 @@ public:
   // maintenance
   int Update (int gc =1);
 
-  // halo interaction (incl. override)
+  // halo interaction 
   double CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood);
   int ReifyRules (jhcBindings& b, int note =2);
 
+  // execution tracing
+  int HaltActive (const jhcGraphlet& desc, const class jhcAliaDir *skip, int bid);
+  bool Recent (const jhcGraphlet& desc, int done =1) 
+    {return(find_call(NULL, NULL, desc, done) != NULL);}
+  class jhcAliaOp *Motive (const jhcGraphlet& desc, const jhcNetNode **step =NULL, jhcBindings *d2o =NULL);
+  const class jhcAliaDir *FindFail () const;
+
   // external interface (jhcAliaNote virtuals)
   void StartNote ();
-  void AddNode (jhcAliaDesc *item) {nkey.AddItem(dynamic_cast<jhcNetNode *>(item));}
-  jhcAliaDesc *NewNode (const char *kind, const char *word =NULL, int neg =0, double blf =1.0, int done =0)
-    {return MakeNode(kind, word, neg, blf, done);} 
+  void AddNode (jhcAliaDesc *item) 
+    {nkey.AddItem(dynamic_cast<jhcNetNode *>(item));}
+  jhcAliaDesc *NewObj (const char *kind, const char *word =NULL, double blf =1.0)
+    {return MakeNode(kind, word, 0, blf, 0);} 
+  jhcAliaDesc *NewAct (const char *verb =NULL, int neg =0, int done =0, double blf =1.0)
+    {return MakeAct(verb, neg, blf, done);}
   jhcAliaDesc *NewProp (jhcAliaDesc *head, const char *role, const char *word,
                         int neg =0, double blf =1.0, int chk =0, int args =1)
     {return AddProp(dynamic_cast<jhcNetNode *>(head), role, word, neg, blf, chk, args);}
@@ -144,13 +178,16 @@ public:
     {if (head != NULL) (dynamic_cast<jhcNetNode *>(head))->AddArg(slot, dynamic_cast<jhcNetNode *>(val));}
   jhcAliaDesc *Resolve (jhcAliaDesc *focus);
   void Keep (jhcAliaDesc *obj) const
-    {jhcNetNode *n = dynamic_cast<jhcNetNode*>(obj); if (n != NULL) n->SetKeep(1);}
+    {if (obj != NULL) (dynamic_cast<jhcNetNode*>(obj))->SetKeep(1);}
   void NewFound (jhcAliaDesc *obj) const;
   void GramTag (jhcAliaDesc *prop, int t) const 
     {if (prop != NULL) (dynamic_cast<jhcNetNode *>(prop))->tags = t;}
-  jhcAliaDesc *Person (const char *name) const {return FindName(name);}
-  jhcAliaDesc *Self () const                   {return Robot();}
-  jhcAliaDesc *User () const                   {return Human();}
+  jhcAliaDesc *Person (const char *name) const 
+    {return FindName(name);}
+  const char *Name (const jhcAliaDesc *obj, int i =0) const 
+    {return((obj == NULL) ? NULL : (dynamic_cast<const jhcNetNode *>(obj))->Name(i, MinBlf()));}
+  jhcAliaDesc *Self () const {return Robot();}
+  jhcAliaDesc *User () const {return Human();}
   int VisAssoc (int vid, jhcAliaDesc *obj, int kind =0) 
     {return ExtLink(vid, dynamic_cast<jhcNetNode *>(obj), kind);}
   int VisID (const jhcAliaDesc *obj, int kind =0) const 
@@ -170,6 +207,13 @@ public:
 
 // PRIVATE MEMBER FUNCTIONS
 private:
+  // processing parameters
+  int adj_params (const char *fname);
+
+  // rule and operator adjustment
+  double inc_conf (jhcAliaRule *r, double conf0) const;
+  double dec_conf (jhcAliaRule *r, double conf0) const;
+
   // list modification
   int drop_oldest ();
 
@@ -182,6 +226,12 @@ private:
   // maintenance
   int prune_foci ();
   void rem_compact (int n);
+
+  // execution tracing
+  const class jhcAliaDir *find_call (const class jhcAliaDir **act, jhcBindings *d2a, 
+                                     const class jhcGraphlet& desc, int run);
+  const jhcAliaDir *play_prob (const jhcAliaPlay *play) const;
+  const jhcAliaDir *failed_dir (jhcAliaChain *start) const;
 
 
 };

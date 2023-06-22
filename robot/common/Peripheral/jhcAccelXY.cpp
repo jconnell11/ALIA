@@ -93,12 +93,10 @@ int jhcAccelXY::acc_params (const char *fname)
 
 //= Associate arm with some (possibly shared) Dyamixel interface.
 
-void jhcAccelXY::Bind (jhcDynamixel *ctrl)
+void jhcAccelXY::Bind (jhcDynamixel& ctrl)
 {
-  dyn = ctrl;
+  dyn = &ctrl;
   aok = 1;
-  if (ctrl == NULL)
-    aok = -1;
 }
 
 

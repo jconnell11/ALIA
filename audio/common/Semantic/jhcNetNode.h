@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "Semantic/jhcAliaDesc.h"
+#include "API/jhcAliaDesc.h"
 
 
 //= Node in semantic network for ALIA system.
@@ -189,6 +189,7 @@ public:
   jhcNetNode *PropMatch (int i, const char *role, double bth =0.0, int neg =0) const;
   int NumFacts (const char *role) const;
   jhcNetNode *Fact (const char *role, int n =0) const;
+  jhcNetNode *AnyFact (const char *role) const;
 
   // long term memory linkage
   jhcNetNode *Buoy () const {return buoy;}
@@ -225,10 +226,8 @@ public:
     {return((n != NULL) && (strcmp(lex, n->lex) == 0));}
   const char *Tag () const 
     {return((*lex != '\0') ? lex : nick);}
-  const char *Name (int i =0, double bth =0.5) const;
+  const char *Name (int i, double bth) const;
   bool HasName (const char *word, int tru_only =0) const;
-  const char *Label () const
-    {const char *ans = Name(); if (ans != NULL) return ans; return Nick();}
     
   // writing functions
   void NodeSize (int& k, int& n) const;

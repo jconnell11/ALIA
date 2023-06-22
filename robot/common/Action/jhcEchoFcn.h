@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@
 
 #include "jhcGlobal.h"
 
-#include "Action/jhcAliaKernel.h"      // common robot
+#include "API/jhcAliaKernel.h"        
 
 
 // Default handler for non-grounded ALIA functions.
@@ -48,20 +48,21 @@ public:
   // creation and initialization
   ~jhcEchoFcn ();
   jhcEchoFcn ();
-  void AddFcns (class jhcAliaKernel *pool);
-  void Reset (jhcAliaNote *attn);                    
+  void AddFcns (class jhcAliaKernel& pool);
+  void Platform (void *soma);
+  void Reset (jhcAliaNote& attn);                    
 
   // main functions
   void Volunteer ();
-  int Start (const jhcAliaDesc *desc, int bid);
-  int Status (const jhcAliaDesc *desc, int inst);
-  int Stop (const jhcAliaDesc *desc, int inst);
+  int Start (const jhcAliaDesc& desc, int bid);
+  int Status (const jhcAliaDesc& desc, int inst);
+  int Stop (const jhcAliaDesc& desc, int inst);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // main functions
-  void fcn_args (const jhcAliaDesc *desc);
+  void fcn_args (const jhcAliaDesc& desc);
 
 
 };

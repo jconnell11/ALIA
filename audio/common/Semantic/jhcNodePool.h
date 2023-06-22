@@ -78,6 +78,7 @@ public:
   int Version () const   {return ver;}
   int VisDef () const    {return vis0;}
   int BinCnt (int bin) const;
+  int LexHash (const char *wd) const;
 
   // list functions
   void PurgeAll ();
@@ -89,13 +90,14 @@ public:
   void Dirty (int cnt =1) {xmod += cnt;}
 
   // main functions
-  jhcGraphlet *BuildIn (jhcGraphlet *g) {jhcGraphlet *old = acc; acc = g; return old;}
-  jhcGraphlet *Accum () const {return acc;}
-  int Assert (const jhcGraphlet& pat, jhcBindings& b, double conf =1.0, 
+  class jhcGraphlet *BuildIn (class jhcGraphlet& g) {return BuildIn(&g);}
+  class jhcGraphlet *BuildIn (class jhcGraphlet *g) {class jhcGraphlet *old = acc; acc = g; return old;}
+  class jhcGraphlet *Accum () const {return acc;}
+  int Assert (const class jhcGraphlet& pat, jhcBindings& b, double conf =1.0, 
               int tval =0, const jhcNodeList *univ =NULL);
   jhcNetNode *SetGen (jhcNetNode *n, int v =0) const;
   int Refresh (jhcNetNode *n);
-  void Refresh (const jhcGraphlet& gr);
+  void Refresh (const class jhcGraphlet& gr);
   int IncConvo ()   {return ++refnum;}
   void InitConvo () {ref0 = refnum;}
   int LocalConvo() const {return ref0;}
@@ -103,6 +105,9 @@ public:
   // basic construction
   jhcNetNode *MakeNode (const char *kind, const char *word =NULL, int neg =0, double def =1.0, int done =0);
   jhcNetNode *CloneNode (const jhcNetNode& n, int bset =1);
+  jhcNetNode *MakeAct (const char *word, int neg =0, double def =1.0, int done =0);
+  jhcNetNode *CloneAct (const jhcNetNode *src, int neg =0);
+  jhcNetNode *MakePoss (jhcNetNode *owner, jhcNetNode *obj, int neg =0, double def =1.0, int done =0);
   jhcNetNode *AddProp (jhcNetNode *head, const char *role, const char *word,
                        int neg =0, double def =1.0, int chk =0, int args =1);
   jhcNetNode *AddDeg (jhcNetNode *head, const char *role, const char *word, const char *amt, 
@@ -113,8 +118,7 @@ public:
   void MarkBelief (jhcNetNode *n, double blf) const 
     {if (n == NULL) return; n->SetBelief(blf); n->GenMax(ver);}
 
-  // searching
-  jhcNetNode *FindName (const char *full) const;
+  // utilities
   jhcNetNode *FindNode (const char *desc, int make =0, int omit =0);
   jhcNetNode *Wash (const jhcNetNode *ref) const;
 
@@ -134,13 +138,12 @@ public:
   int SaveBin (const char *fname, int bin =-1, int imin =0) const;
   int PrintBin (int bin =-1, int imin =0) const
     {return save_bins(stdout, bin, imin);}
-  int PrintRaw () const;
 
   // reading functions
   void ClrTrans (int n =100);
   int Load (const char *fname, int add =0, int nt =100);
   int Load (jhcTxtLine& in, int tru);
-  int LoadGraph (jhcGraphlet *g, jhcTxtLine& in, int tru =0);
+  int LoadGraph (class jhcGraphlet& g, jhcTxtLine& in, int tru =0);
 
 
 // PROTECTED MEMBER FUNCTIONS
@@ -166,6 +169,7 @@ private:
   int parse_name (char *kind, const char *desc, int ssz);
   const char *extract_kind (char *kind, const char *desc, int ssz);
   void update_lex (jhcNetNode *n, const char *wd, int rev);
+  void copy_mods (jhcNetNode *dest, const jhcNetNode *src);
 
   // list editing
   int rem_from_list (int h0, jhcNetNode *n);

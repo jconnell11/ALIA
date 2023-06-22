@@ -8,9 +8,6 @@
     <Filter Include="Source Files\Afx-Standard">
       <UniqueIdentifier>{3959e9d2-bba1-482d-9315-239edf58ed2c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Program">
-      <UniqueIdentifier>{6da51842-c436-464f-9607-23597037a955}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\common video">
       <UniqueIdentifier>{cc29e74f-fbfb-4d3f-a917-8f586ead2c65}</UniqueIdentifier>
     </Filter>
@@ -32,9 +29,6 @@
     </Filter>
     <Filter Include="Header Files\Afx-Standard">
       <UniqueIdentifier>{d06389fe-338e-4fe3-b0d2-4dbe637ca48f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\Program">
-      <UniqueIdentifier>{9e459f3e-64cf-4626-ba94-65c7a9388426}</UniqueIdentifier>
     </Filter>
     <Filter Include="Header Files\common video">
       <UniqueIdentifier>{3b643639-7114-44c3-b1b0-88c7f811ce2a}</UniqueIdentifier>
@@ -100,12 +94,6 @@
     <Filter Include="Source Files\common robot\Action">
       <UniqueIdentifier>{79aa4757-4aae-4fa4-ba7a-d2c709aca5a7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\common robot\Manus">
-      <UniqueIdentifier>{96e1f851-8abc-4ee0-bcec-378e9e2b4582}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\common robot\Manus">
-      <UniqueIdentifier>{6233cba1-4c10-45f8-b38d-2282f0b190b5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\common robot\Body">
       <UniqueIdentifier>{66ca892c-dd72-46c8-9793-1cfa8c066826}</UniqueIdentifier>
     </Filter>
@@ -133,11 +121,20 @@
     <Filter Include="Source Files\common robot\Grounding">
       <UniqueIdentifier>{410bf5a7-63c7-4271-9942-4a980764a129}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\common robot\Geometry">
-      <UniqueIdentifier>{53857702-6493-4e29-9066-44739d026f3c}</UniqueIdentifier>
+    <Filter Include="Source Files\common robot\RWI">
+      <UniqueIdentifier>{6233cba1-4c10-45f8-b38d-2282f0b190b5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\common robot\Geometry">
-      <UniqueIdentifier>{2a0dc161-6248-42a1-8c2d-37e8de11cb21}</UniqueIdentifier>
+    <Filter Include="Header Files\common robot\RWI">
+      <UniqueIdentifier>{96e1f851-8abc-4ee0-bcec-378e9e2b4582}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common robot\Kernel">
+      <UniqueIdentifier>{cdc85d3d-2ddf-4ce2-9c6c-a2fd437ac921}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Kernel">
+      <UniqueIdentifier>{40df9446-bd73-48b3-9a1f-03cef53f2b08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio\API">
+      <UniqueIdentifier>{29f62b13-574a-4b0e-9be5-1283e0665753}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -318,9 +315,6 @@
     <ClCompile Include="..\..\robot\common\Body\jhcManusBody.cpp">
       <Filter>Source Files\common robot\Body</Filter>
     </ClCompile>
-    <ClCompile Include="jhcMensCoord.cpp">
-      <Filter>Source Files\Program</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\video\common\Interface\jhcSerial.cpp">
       <Filter>Source Files\common video\Interface</Filter>
     </ClCompile>
@@ -399,9 +393,6 @@
     <ClCompile Include="..\..\video\common\Processing\jhcVect.cpp">
       <Filter>Source Files\common video\Processing</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\robot\common\Manus\jhcInteractFSM.cpp">
-      <Filter>Source Files\common robot\Manus</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\robot\common\Objects\jhcPatchProps.cpp">
       <Filter>Source Files\common robot\Objects</Filter>
     </ClCompile>
@@ -411,13 +402,7 @@
     <ClCompile Include="..\..\video\common\Processing\jhcDist.cpp">
       <Filter>Source Files\common video\Processing</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Manus\jhcManusRWI.cpp">
-      <Filter>Source Files\common robot\Manus</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Grounding\jhcSoundFcn.cpp">
-      <Filter>Source Files\common robot\Grounding</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\Grounding\jhcTalkFcn.cpp">
       <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
     <ClCompile Include="..\common\Grounding\jhcBasicAct.cpp">
@@ -434,12 +419,6 @@
     </ClCompile>
     <ClCompile Include="MensEtFrm.cpp">
       <Filter>Source Files\Afx-Standard</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\Geometry\jhcMatrix.cpp">
-      <Filter>Source Files\common robot\Geometry</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\Body\jhcBackgRWI.cpp">
-      <Filter>Source Files\common robot\Body</Filter>
     </ClCompile>
     <ClCompile Include="..\..\audio\common\Language\jhcMorphFcns.cpp">
       <Filter>Source Files\common audio\Language</Filter>
@@ -462,20 +441,44 @@
     <ClCompile Include="..\common\Action\jhcAliaMood.cpp">
       <Filter>Source Files\common robot\Action</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Action\jhcStdKern.cpp">
-      <Filter>Source Files\common robot\Action</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\Grounding\jhcIntrospect.cpp">
-      <Filter>Source Files\common robot\Grounding</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp">
       <Filter>Source Files\common audio\Parse</Filter>
     </ClCompile>
     <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp">
       <Filter>Source Files\common audio\Reasoning</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Grounding\jhcMemStore.cpp">
-      <Filter>Source Files\common robot\Grounding</Filter>
+    <ClCompile Include="..\common\RWI\jhcMensCoord.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcInteractFSM.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcManusRWI.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcBackgRWI.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Kernel\jhcAliaKudos.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Kernel\jhcIntrospect.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Kernel\jhcMemStore.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Kernel\jhcStdKern.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Kernel\jhcTalkFcn.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Kernel\jhcAliaTimer.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Action\jhcAliaChart.cpp">
+      <Filter>Source Files\common robot\Action</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -668,17 +671,11 @@
     <ClInclude Include="..\..\robot\common\Action\jhcAliaDir.h">
       <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\robot\common\Action\jhcAliaKernel.h">
-      <Filter>Header Files\common robot\Action</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\robot\common\Action\jhcAliaPlay.h">
       <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
     <ClInclude Include="..\..\robot\common\Action\jhcEchoFcn.h">
       <Filter>Header Files\common robot\Action</Filter>
-    </ClInclude>
-    <ClInclude Include="jhcMensCoord.h">
-      <Filter>Header Files\Program</Filter>
     </ClInclude>
     <ClInclude Include="..\..\video\common\Interface\jhcSerial.h">
       <Filter>Header Files\common video\Interface</Filter>
@@ -767,15 +764,6 @@
     <ClInclude Include="..\common\Objects\jhcStackSeg.h">
       <Filter>Header Files\common robot\Objects</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\Manus\jhcInteractFSM.h">
-      <Filter>Header Files\common robot\Manus</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaNote.h">
-      <Filter>Header Files\common audio\Reasoning</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\audio\common\Semantic\jhcAliaDesc.h">
-      <Filter>Header Files\common audio\Semantic</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Objects\jhcPatchProps.h">
       <Filter>Header Files\common robot\Objects</Filter>
     </ClInclude>
@@ -788,13 +776,7 @@
     <ClInclude Include="..\..\video\common\Processing\jhcTools.h">
       <Filter>Header Files\common video\Processing</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\Manus\jhcManusRWI.h">
-      <Filter>Header Files\common robot\Manus</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Grounding\jhcSoundFcn.h">
-      <Filter>Header Files\common robot\Grounding</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Grounding\jhcTalkFcn.h">
       <Filter>Header Files\common robot\Grounding</Filter>
     </ClInclude>
     <ClInclude Include="..\common\Grounding\jhcBasicAct.h">
@@ -811,12 +793,6 @@
     </ClInclude>
     <ClInclude Include="MensEtFrm.h">
       <Filter>Header Files\Afx-Standard</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Geometry\jhcMatrix.h">
-      <Filter>Header Files\common robot\Geometry</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Body\jhcBackgRWI.h">
-      <Filter>Header Files\common robot\Body</Filter>
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Language\jhcMorphFcns.h">
       <Filter>Header Files\common audio\Language</Filter>
@@ -845,20 +821,53 @@
     <ClInclude Include="..\common\Action\jhcAliaMood.h">
       <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\Action\jhcStdKern.h">
-      <Filter>Header Files\common robot\Action</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Grounding\jhcIntrospect.h">
-      <Filter>Header Files\common robot\Grounding</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\audio\common\Parse\jhcVocab.h">
       <Filter>Header Files\common audio\Parse</Filter>
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h">
       <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\Grounding\jhcMemStore.h">
-      <Filter>Header Files\common robot\Grounding</Filter>
+    <ClInclude Include="..\common\RWI\jhcMensCoord.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcManusRWI.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcInteractFSM.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcBackgRWI.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Kernel\jhcAliaKudos.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Kernel\jhcIntrospect.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Kernel\jhcMemStore.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Kernel\jhcStdKern.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Kernel\jhcTalkFcn.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Kernel\jhcAliaTimer.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\API\jhcAliaDesc.h">
+      <Filter>Header Files\common audio\API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\API\jhcAliaKernel.h">
+      <Filter>Header Files\common audio\API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\API\jhcAliaNote.h">
+      <Filter>Header Files\common audio\API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Action\jhcAliaChart.h">
+      <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

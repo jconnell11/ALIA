@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,17 +60,20 @@ private:
   int stiff;                    /** Whether lift is under active control.  */
 
 
-// PUBLIC MEMBER VARIABLES
-public:
+// PRIVATE MEMBER PARAMETERS
+private:
   // controller parameters
-  jhcParam fps;
-  int lport, lbaud, ms;
   double ht0, ldone, quit;
+  int lport, lbaud, ms;
 
   // geometric calibration
-  jhcParam gps;
-  int pmax, pmin;
   double top, bot;
+  int pmax, pmin;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  jhcParam fps, gps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -78,6 +81,11 @@ public:
   // creation and initialization 
   ~jhcEliLift ();
   jhcEliLift ();
+  int RawFB () const  {return raw;}
+  int RawMax () const {return pmax;}
+  int RawMin () const {return pmin;}
+  double Default () const {return ht0;}
+  double LiftTol () const {return ldone;}
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);
@@ -90,8 +98,8 @@ public:
   int Check (int rpt =0, int tries =2);
   int CommOK (int bad =0) const {return lok;}
   void Inject (double ht0) {ht = ht0;}
-  int RawFB () const {return raw;}
   void AdjustRaw (double ht0, int v0, double ht1, int v1);
+  void ResetRaw (int p1, int p0) {pmax = p1; pmin = p0;}
 
   // low level commands
   int Freeze (int doit =1, double tupd =0.033);

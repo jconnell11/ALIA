@@ -73,11 +73,14 @@ private:
   char gist[200];       
   jhcAliaOp *next;
   JDIR_KIND kind; 
-  double pref0, pref;
   double time0, tavg, tstd;
   int id, lvl;
 
+  // action appropriateness
+  double pref0, pref;
+
   // matching state
+  jhcAliaDir *d;
   int first, tval, omax;
 
 
@@ -87,7 +90,7 @@ public:
   char prov[80];
   int pnum;
 
-  // proposed action and desirability
+  // proposed result action
   jhcAliaChain *meth;
 
 
@@ -96,7 +99,7 @@ public:
   // simple functions
   int OpNum () const      {return id;}
   double Pref () const    {return pref;}
-  void SetPref (double v) {pref = 0.01 * ROUND(100.0 * v);}
+  double SetPref (double v);
   double Time () const    {return tavg;}
   double Dev () const     {return tstd;}
   double Budget () const  {return(tavg + tstd);}
@@ -108,9 +111,8 @@ public:
   void SetGist (const char *sent);
 
   // main functions
-  int FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth);
+  int FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth, int fcn);
   bool SameEffect (const jhcBindings& b1, const jhcBindings& b2) const;
-  void AdjPref (double dv) {SetPref(pref + dv);}
   void AdjTime (double secs);
 
   // file functions

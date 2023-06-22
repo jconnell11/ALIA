@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ jhcChatBox::jhcChatBox(CWnd* pParent /*=NULL*/)
   // state
   log = NULL;
   *entry = '\0';
+  *prior = '\0';
   last = 0;
   disable = 0;
   quit = 0;
@@ -160,6 +161,10 @@ int jhcChatBox::Interact ()
     GetMessage(&msg, NULL, 0, 0);
     if ((msg.message == WM_KEYDOWN) && (msg.wParam == VK_RETURN))        
       grab_text();
+    else if ((msg.message == WM_KEYDOWN) && (msg.wParam == VK_UP))        
+      recall_text();
+    else if ((msg.message == WM_KEYDOWN) && (msg.wParam == VK_DELETE))        
+      clear_text();
     else if ((msg.message == WM_KEYDOWN) && (msg.wParam == VK_ESCAPE))   
       quit = 1;
     else
@@ -176,7 +181,7 @@ int jhcChatBox::Interact ()
 //= Get text from edit control and add to chat history.
 // also make an internal copy as a conventional char string
 
-void jhcChatBox::grab_text()
+void jhcChatBox::grab_text ()
 {
   jhcString guts;
   char *end;
@@ -205,13 +210,43 @@ void jhcChatBox::grab_text()
 }
 
 
+//= Recall last entry typed by user but wait for enter key to submit. 
+
+void jhcChatBox::recall_text ()
+{
+  jhcString guts;
+  int n = (int) strlen(prior);
+
+  if (n <= 0)
+    return;
+  guts.Set(prior);
+  m_input.SetWindowText(guts.Txt());
+  m_input.SetSel(n, n);
+  m_input.SetFocus();
+}
+
+
+//= Erase any text just entered by user.
+
+void jhcChatBox::clear_text ()
+{
+  *entry = '\0';
+  m_input.SetWindowText(_T(""));
+  m_input.SetFocus();
+}
+
+
 //= Copy most recent user input (may miss some if not called regularly).
 // returns pointer to passed string (cleared if nothing)
 
 char *jhcChatBox::Get (char *input, int ssz)
 {
   strcpy_s(input, ssz, entry);
-  *entry = '\0';
+  if (*entry != '\0')
+  {
+    strcpy_s(prior, entry);
+    *entry = '\0';
+  }
   return input;
 }
 
@@ -270,8 +305,8 @@ void jhcChatBox::Inject (const char *line)
   m_input.SetWindowText(in.Txt());
 
   // adjust cursor
-  SendMessage(EM_SETSEL, 0, -1);
-  SetFocus();
+  m_input.SetSel(n, n);
+  m_input.SetFocus();
 }
 
 

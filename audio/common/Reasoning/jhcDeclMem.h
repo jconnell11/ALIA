@@ -57,14 +57,17 @@ private:
   double bth;                          // cached belief threshold
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  int noisy, gh, enc, ret, detail;     // specific debugging                
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // matching weights and thresholds
-  jhcParam wps;
   double nwt, kwt, fmod, ath, farg, rth;
   int alts;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  jhcParam wps;
+  int noisy, gh, enc, ret, detail;     // specific debugging                
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -72,7 +75,7 @@ public:
   // creation and initialization
   ~jhcDeclMem ();
   jhcDeclMem ();
-  void Bind (class jhcActionTree *w) {atree = w;}
+  void Bind (class jhcActionTree& w) {atree = &w;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -99,7 +102,7 @@ private:
   int wt_params (const char *fname);
 
   // explicit formation
-  jhcNetNode *jhcDeclMem::ltm_node (const jhcNetNode *n, const jhcBindings& xfer);
+  jhcNetNode *ltm_node (const jhcNetNode *n, const jhcBindings& xfer);
   double add_node (jhcGraphlet& desc, jhcNetNode *n, const jhcNetNode *src, int rels) const;
   double add_pred (jhcGraphlet& desc, jhcNetNode *pred, const jhcNetNode *src, int rels) const;
   double elab_obj (jhcGraphlet& desc2, jhcNetNode *obj, const jhcNetNode *src, int rels) const;

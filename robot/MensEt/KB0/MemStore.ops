@@ -3,29 +3,35 @@
 
 OP 1 - "To remember something ... then acknowledge"
   trig:
-    DO[ act-1 -lex-  remember
-              -obj-> fact-1 ]
+    DO[ fcn-1 -lex-  remember
+              -fcn-> act-1
+        act-1 -obj-> fact-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  mem_form 
-              -arg-> fact-1 ]
-    DO[ act-2 -lex-  acknowledge ]
+   GND[ call-1 -lex-  mem_form 
+               -arg-> fact-1 ]
+    DO[ fcn-2 -lex-  acknowledge 
+              -fcn-> act-2 ]
 
 
 OP 2 - "To acknowledge say okay"
   trig:
-    DO[ act-1 -lex-  acknowledge ]
+    DO[ fcn-1 -lex-  acknowledge 
+              -fcn-> act-1 ]
 ---------------
-    DO[ act-2 -lex-  say
-              -obj-> txt-1
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
         txt-1 -str-  okay ]
 
 
 OP 3 - "To acknowledge say done"
   trig:
-    DO[ act-1 -lex-  acknowledge ]
+    DO[ fcn-1 -lex-  acknowledge 
+              -fcn-> act-1 ]
 ---------------
-    DO[ act-2 -lex-  say
-              -obj-> txt-1
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
         txt-1 -str-  done ]
 
 

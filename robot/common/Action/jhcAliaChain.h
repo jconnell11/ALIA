@@ -96,16 +96,14 @@ public:
   bool Fallback () const;
 
   // configuration
-  jhcAliaChain *BindDir (class jhcAliaDir *dir)
-    {if ((p == NULL) && (d == NULL)) d = dir; return this;}
-  jhcAliaChain *BindPlay (class jhcAliaPlay *play)
-    {if ((p == NULL) && (d == NULL)) p = play; return this;}
+  void BindDir (class jhcAliaDir *dir) {d = dir;}
+  void BindPlay (class jhcAliaPlay *play) {p = play;}
   class jhcAliaDir *GetDir () const {return d;}
   class jhcAliaPlay *GetPlay () const {return p;}
-  bool Empty () const 
-    {return((d == NULL) && (p == NULL));}
+  bool Empty () const {return((d == NULL) && (p == NULL));}
   bool StepDir (int kind) const;
   void RefSteps (jhcNetNode *src, const char *slot, jhcNodePool& pool, int init =1);
+  int PlayAct (jhcAliaChain *act, int mode);
   jhcAliaChain *StepN (int n);
   jhcAliaChain *Penult ();
   jhcAliaChain *Last ();
@@ -113,6 +111,7 @@ public:
   jhcAliaChain *Append (jhcAliaChain *tackon);
   int MaxDepth (int cyc =1);
   int NumGoals (int leaf =0, int cyc =1);
+  void SetReq (int cyc) {req = cyc;}
   void Enumerate ();
 
   // building
@@ -125,7 +124,12 @@ public:
   int Start (jhcAliaChain *last);
   int Status ();
   void Stop ();
-  int FindActive (const jhcGraphlet& desc, int halt);
+
+  // execution tracing
+  int HaltActive (const jhcGraphlet& desc, const class jhcAliaDir *skip =NULL, int halt =1);
+  void FindCall (const class jhcAliaDir **act, const class jhcAliaDir **src, jhcBindings *d2a, 
+                 const jhcGraphlet& desc, UL32& start, int done =1, const class jhcAliaDir *prev =NULL, int cyc =1);
+  jhcAliaChain **StepEntry (const jhcNetNode *act, jhcAliaChain **from =NULL, int cyc =0);
 
   // file functions
   int Load (jhcNodePool& pool, jhcTxtLine& in, int play =0); 
@@ -142,8 +146,7 @@ private:
   void cut_loops ();
 
   // building
-  jhcAliaChain *dup_self (int& node, jhcAliaChain *seen[], jhcNodePool& mem, 
-                          jhcBindings& b, const jhcGraphlet *ctx);
+  jhcAliaChain *dup_self (int& node, jhcAliaChain *seen[], jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx);
   void clr_labels (int head);
 
   // main functions

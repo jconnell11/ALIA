@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,8 +57,8 @@ jhcBumps::jhcBumps (int n)
 
   // set default tracking values
   pos.SetName("bump");
-  pos.SetTrack(4.0, 4.0, 2.0, 0.0, 0.0, 0.0, 2.0, 0.1);        // was 8", 2", 1", 12" (12Hz), then 6" 
-  pos.SetFilter(noise, noise, noise, 0.8, 0.8, 0.2, 10, 30);   // was all 0.1 then 0.2
+  pos.SetTrack(5.0, 5.0, 2.0, 0.0, 0.0, 0.0, 2.0, 0.1);        // was 8", 2", 1", 12" (12Hz), then 6" 
+  pos.SetFilter(noise, noise, noise, 0.8, 0.8, 0.2, 10, 15);   // was all 0.1 then 0.2, was gone 30
 
   // background thread parameter
   trk_bg = 1;
@@ -161,7 +161,7 @@ int jhcBumps::detect_params (const char *fname)
   ps->SetTag(tag, 0);
   ps->NextSpec4( &sm,     5,    "Map interpolation (pel)");    // was 9 then 11 then 7
   ps->NextSpec4( &pmin,   4,    "Min averaging (pel)");        // was 3, 0, 22 then 10
-  ps->NextSpecF( &hobj,   0.35, "Object ht threshold (in)");   // was 0.75, 1.0, then 0.5
+  ps->NextSpecF( &hobj,   0.5,  "Object ht threshold (in)");   // was 0.75, 1.0, then 0.35
   ps->NextSpecF( &htol,   0.1,  "Object ht tolerance (in)");   // was 0.25
   ps->NextSpec4( &sc,     5,    "Evidence smoothing (pel)");   // was 7
   ps->NextSpec4( &sth,   60,    "Shape binary threshold");     // was 80
@@ -1167,6 +1167,19 @@ int jhcBumps::Component (int i) const
   int det = pos.DetectFor(i);
 
   return((det >= 0) ? rlab[det] : -1);
+}
+
+
+//= For specified tracked object find bounding box in color camera image.
+// assumes camera image has height "ydim"
+// NOTE: must call AdjGeometry(cam) before this
+
+void jhcBumps::CamBox (jhcRoi& box, int i, int ydim) const
+{
+  double *wlh = shp[i];
+
+  ImgPrism(box, pos.TX(i) + x0 - 0.5 * mw, pos.TY(i) + y0, pos.TZ(i), 
+           wlh[5], wlh[3], wlh[4], wlh[2], ydim / (double) InputH()); 
 }
 
 

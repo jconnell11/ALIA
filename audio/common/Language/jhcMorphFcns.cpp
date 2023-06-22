@@ -24,8 +24,7 @@
 #include <ctype.h>
 #include <string.h>
 
-#include "Acoustic/jhcSpeechX.h"       // since only spec'd as class in header
-#include "Parse/jhcGenParse.h"         // since only spec'd as class in header
+#include "Parse/jhcGenParse.h"         // common audio - since only spec'd as class in header
 
 #include "Language/jhcMorphFcns.h"
 
@@ -364,16 +363,16 @@ int jhcMorphFcns::SaveExcept (const char *fname) const
 // returns positive if successful, 0 or negative for problem
 // NOTE: use instead of base LoadGram function since adds proper variants
 
-int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname, int rpt, int lvl)
+int jhcMorphFcns::AddVocab (jhcGenParse& p, const char *fname, int rpt, int lvl)
 {
   const char deriv[80] = "jhc_temp.txt";
   char strip[80];
   char *end;
 
   // load basic grammar file like usual
-  if ((p == NULL) || (fname == NULL) || (*fname == '\0'))
+  if ((fname == NULL) || (*fname == '\0'))
     return -3;
-  if (p->LoadGram(fname, lvl) <= 0)
+  if (p.LoadGram(fname, lvl) <= 0)
     return -2;
   if (rpt > 0)
   {
@@ -385,47 +384,11 @@ int jhcMorphFcns::AddVocab (jhcGenParse *p, const char *fname, int rpt, int lvl)
   }
 
   // read and apply morphology to add derived forms as well
-  if (LoadExcept(fname) <= 0)
+  if (LoadExcept(fname) < 0)
     return 1;
   if (LexDeriv(fname, 0, deriv) < 0)
     return -1;
-  if (p->LoadGram(deriv, lvl) <= 0)
-    return 0;
-  return 2;
-}
-
-
-//= Loads a grammar file to speech recognition as well as all morphological variants.
-// assumes original grammar file has some section labelled "=[XXX-morph]"
-// returns positive if successful, 0 or negative for problem
-// NOTE: use instead of base LoadGrammar function since adds proper variants
-
-int jhcMorphFcns::AddSpVocab (jhcSpeechX *p, const char *fname, int rpt)
-{
-  const char deriv[80] = "jhc_temp.txt";
-  char strip[80];
-  char *end;
-
-  // load basic grammar file like usual
-  if ((p == NULL) || (fname == NULL) || (*fname == '\0'))
-    return -3;
-  if (p->LoadSpGram(fname) <= 0)
-    return -2;
-  if (rpt > 0)
-  {
-    // list file as loaded
-    strcpy_s(strip, fname);
-    if ((end = strrchr(strip, '.')) != NULL)
-      *end = '\0';
-    jprintf("   %s\n", strip);
-  }
-
-  // read and apply morphology to add derived forms as well
-  if (LoadExcept(fname) <= 0)
-    return 1;
-  if (LexDeriv(fname, 0, deriv) <= 0)
-    return -1;
-  if (p->LoadSpGram(deriv) <= 0)
+  if (p.LoadGram(deriv, lvl) <= 0)
     return 0;
   return 2;
 }

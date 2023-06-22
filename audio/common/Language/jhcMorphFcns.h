@@ -75,8 +75,7 @@ public:
   int SaveExcept (const char *fname) const;
   
   // main functions
-  int AddVocab (class jhcGenParse *p, const char *fname, int rpt =0, int lvl =0);
-  int AddSpVocab (class jhcSpeechX *p, const char *fname, int rpt =0);
+  int AddVocab (class jhcGenParse& p, const char *fname, int rpt =0, int lvl =0);
  
   // derived forms
   const char *SurfWord (char *surf, const char *base, UL32 tags, int ssz) const;

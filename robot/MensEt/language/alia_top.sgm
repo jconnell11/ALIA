@@ -4,34 +4,118 @@
 #include "alia_NP.sgm"
 #include "alia_VP.sgm"
 #include "alia_lex.sgm"
+#include "integer.sgm"
 
 
 // valid utterances once attention established
 
 =[toplevel]
- (hey) <ATTN>
- ((hey) <ATTN>) <main>
- <main> <ATTN>
+  (hey (there)) <ATTN>
+  ((hey) <ATTN>) <HELLO> (<$intro>) (<ATTN>)
+  ((hey) <ATTN>) <$intro> (<ATTN>)
+  ((hey) <ATTN>) <BYE> (<ATTN>)
+  <kudo> (<ATTN>)
+  ((hey) <ATTN>) <main> (<ATTN>)
+
+
+// introduction of user by name
+
+=[$intro]
+  I am (<NEG>) <NAME>
+  this is (<NEG>) <NAME>
+  my name is (<NEG>) <NAME>
 
 
 // main categories of utterances
 
 =[main]
-  <HELLO>
-  <BYE>
-  <%Attn>
+  <%Immediate>
+  <%Revision>
   <%Rule>
   <%Operator>
 
 
 // --------------------------------------------------
 
+// opening feedback remarks ("yup" and "bad boy")
+
+=[kudo]
+  <YES>
+  <NO>
+  <ok>
+  <HQ> (<AKO>)
+  <AKO>
+
+
+// affirmative opening
+
+=[YES]
+  yes
+  yup
+  yeah
+  right
+
+
+// critical opening 
+
+=[NO]
+  no
+  nope
+  wrong
+
+
+// neutral positive opening
+
+=[ok]
+  okay
+  sure
+
+
+// --------------------------------------------------
+
 // something to do or note
 
-=[%Attn]
+=[%Immediate]
   (<POLITE>) <chain> (<POLITE>)
-  <%fact>
-  <%fact-n>
+  (<YES>) <%fact>
+  (<NO>) <%fact>
+  (<YES>) <%fact-n>
+  (<NO>) <%fact-n>
+
+
+// --------------------------------------------------
+
+// make a change to some procedural operator
+
+=[%Revision]
+  <ACC> <cmd>                                         
+  <REJ> <NEG-V> <cmd>                     
+  (<ACC>) or <$proc> (instead)                         
+  (<ACC>) or you <PREF> <$proc> (instead) 
+  (<REJ>) you <PREF> <$proc> instead                    
+  (<REJ>) <$proc> instead 
+  (<REJ>) <NEG-V> <cmd> but <$proc>
+  (<REJ>) <NEG-V> <cmd> (but) <$proc> instead
+  (<REJ>) <NEG-V> <cmd> (but) instead <$proc>                       
+  (<ACC>) (or) you <PREF> <$proc> instead of <cmd-g>   
+  (<ACC>) instead of <cmd-g> you <PREF> <$proc>
+
+
+// acceptance of prior action
+
+=[ACC]
+  yes
+  yeah
+  yup
+  okay
+  sure
+
+
+// rejection of prior action
+
+=[REJ]
+  no
+  nope
 
 
 // --------------------------------------------------
@@ -93,12 +177,14 @@
   (<DEG>) <HQ> <equiv> (<DEG>) <HQ>
   <DIR> <equiv> <DIR>
   <MOD> <equiv> <MOD>
+  <ACT-G> <equiv> <ACT-G>
 
 
-// modifier equivalence relation 
+// predicate equivalence relation 
 
 =[equiv]
   means
+  implies
 
 
 // --------------------------------------------------
@@ -110,6 +196,7 @@
   (<so>) <$trig> <equiv> <$proc> (<$trig>)
   (<so>) <$proc> <$trig>
   (<so>) <$trig-n> ((<conj>) instead <$proc> (<$trig>))
+  (<so>) <$trig-p>
  
 
 // operator trigger goal
@@ -153,7 +240,7 @@
 // advice not to do something
 
 =[$trig-n]
-  <dont> ever <cmd> (<situation>)
+  <dont> (ever) <cmd> (<situation>)
   (you should) never <cmd> (<situation>)
   <dont> <cmd-s> (<situation>)
   (you should) never <cmd-s> (<situation>)
@@ -190,13 +277,30 @@
   do that
 
 
+// advice to override a prohibition
+
+=[$trig-p]
+  <allow> <cmd> (<situation>)
+  <situation> (<then>) <allow> <cmd>
+
+
+// permission to do something
+
+=[allow]
+ you can
+ it is okay to
+ it's okay to
+ it is ok to
+ it's ok to
+
+
 // operator procedure to follow (PREF in do!)
 
 =[$proc]
   <chain>
 
 
-// --------------------------------------------------
+// ==================================================
 
 // a conjunction of aspects (up to 5 conditions/caveats)
 
@@ -230,13 +334,15 @@
   <!for> <cmd>
   <step> (<step> (<step> (<step> (<step>)))) <seq> <cmd>
   <step> (<step> (<step> (<step> (<step>)))) <seq> <%play>
+  <step> (<step> (<step> (<step> (<step>)))) <seq> <%play-t>
 
 
 // sequential step in chain
 
 =[step]
-  <%play> (then)
   <cmd> (<seq>)
+  <%play> (<seq>)
+  <%play-t> (<seq>)
 
 
 // sequential continuation
@@ -268,8 +374,39 @@
   <par-i> 
 
 
+// activity terminated by some specific condition
+
+=[%play-t]
+  <STAY> <%fact> <chain-c>
+  <chain-c> <STAY> <%fact>
+  <STAY> <%fact> <KEEP> <chain-g> 
+  <KEEP> <chain-g> <STAY> <%fact>
 
 
+// wait for absence or presense of some condition
+
+=[STAY]
+  while
+  until
 
 
+// indication that activities should loop
+
+=[KEEP]
+  keep
+  continue
+
+
+// series of progressive tense commands
+
+=[chain-g]
+  <cmd-g> 
+  <cmd-g> ((<seq>) <cmd-g> ((<seq>) <cmd-g>)) <seq> <cmd-g>
+
+
+//= series of simple commands (no plays)
+
+=[chain-c]
+  <cmd>
+  <cmd> ((<seq>) <cmd> ((<seq>) <cmd>)) <seq> <cmd>
 

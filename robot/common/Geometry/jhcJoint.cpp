@@ -73,6 +73,10 @@ jhcJoint::jhcJoint ()
 }
 
 
+///////////////////////////////////////////////////////////////////////////
+//                             Configuration                             //
+///////////////////////////////////////////////////////////////////////////
+
 //= Initialize geometric transforms (and compute angular range of motion).
 
 void jhcJoint::InitGeom ()

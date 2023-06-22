@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1159,6 +1159,12 @@ double jhcMatrix::RotDiff3 (const jhcMatrix& ref) const
 
 double jhcMatrix::ang180 (double ang) const
 {
+  if (ang > 180.0)
+    return(ang - 360.0 * ROUND(ang / 360.0));
+  if (ang <= -180.0)
+    return(ang + 360.0 * ROUND(-ang / 360.0));
+  return ang;
+/*
   double a = ang;
 
   while (a > 180.0)
@@ -1166,6 +1172,7 @@ double jhcMatrix::ang180 (double ang) const
   while (a <= -180.0)
     a += 360.0;
   return a;
+*/
 }
 
 

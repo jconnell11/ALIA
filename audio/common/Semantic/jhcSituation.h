@@ -66,14 +66,14 @@ public:
   // creation and initialization
   ~jhcSituation ();
   jhcSituation ();
-  void Init (const jhcGraphlet& desc);
+  void InitCond (const jhcGraphlet& desc);
   const jhcGraphlet *Pattern () const {return &cond;}
   int NumPat () const {return cond.NumItems();}
   bool InPat (const jhcNetNode *n) const {return cond.InDesc(n);}
 
   // helpers for construction
-  void ClrCond ()    {cond.Clear(); BuildIn(&cond);}
-  void BuildCond ()  {BuildIn(&cond);}
+  void ClrCond ()    {cond.Clear(); BuildIn(cond);}
+  void BuildCond ()  {BuildIn(cond);}
   int BuildUnless () {if (nu >= umax) return 0; BuildIn(unless + nu); return ++nu;}
   void CmdHead (jhcNetNode *cmd) {cond.SetMain(cmd);}
   void PropHead () {cond.MainProp();}

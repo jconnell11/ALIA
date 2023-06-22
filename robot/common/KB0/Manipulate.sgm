@@ -12,20 +12,23 @@
 // imperative verbs
 
 =[ACT]
-  grab
-  lift
-  take
   hold
+  clutch
+  put
   tuck
   point
+  take
+  lift
+  grab
+  snatch
 
 
 // imperative verbs requiring object and location or direction
 
 =[ACT-2]
-  deposit
-  move
   put
+  move
+  deposit
 
 
 // ================================================

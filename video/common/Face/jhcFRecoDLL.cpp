@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -119,8 +119,9 @@ int jhcFRecoDLL::SaveVals (const char *fname, int data)
   int ok = 1;
 
   if ((data > 0) && (db != NULL))
-    if (SaveDB() < 0)
-      ok = 0;
+    if (NumPeople() > np0)             // only save if list grows
+      if (SaveDB() < 0)
+        ok = 0;
   ok &= mps.SaveVals(fname);
   return ok;
 }
@@ -555,6 +556,7 @@ void jhcFRecoDLL::ClrDB ()
     dude = rest;
   }
   db = NULL;
+  np0 = 0;
 }
 
 
@@ -637,6 +639,7 @@ int jhcFRecoDLL::LoadDB (const char *fname, int append)
 
   // clean up
   fclose(in);
+  np0 = NumPeople(0);
   return cnt;
 }
 

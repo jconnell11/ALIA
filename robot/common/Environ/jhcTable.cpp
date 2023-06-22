@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -378,7 +378,7 @@ double jhcTable::NextSurf ()
   int i, t0 = tsel, n = wlob.Active();
 
   // find distance of current surface from origin
-  if (tsel >= 0)
+  if (tsel >= 0) 
   {
     wlob.BlobCentroid(&cx, &cy, tsel);
     dx = cx - mx;

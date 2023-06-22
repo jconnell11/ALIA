@@ -28,13 +28,15 @@
 
 #include "jhcGlobal.h"
 
-#include "Reasoning/jhcAliaNote.h"     // common audio
-#include "Semantic/jhcAliaDesc.h" 
+#include "API/jhcAliaDesc.h"           // common audio
+#include "API/jhcAliaNote.h"     
 
 #include "Data/jhcParam.h"             // common video
 
-#include "Action/jhcStdKern.h"         // common robot
-#include "Eli/jhcEliGrok.h"       
+#include "Geometry/jhcMatrix.h"        // common robot
+#include "RWI/jhcEliGrok.h"           
+
+#include "Kernel/jhcStdKern.h"         
 
 
 //= Interface to ELI people tracking kernel for ALIA system.
@@ -49,6 +51,9 @@ class jhcSocial : public jhcStdKern
 {
 // PRIVATE MEMBER VARIABLES
 private:
+  // instance control variables
+  jhcMatrix *cpos;     
+
   // link to hardware
   jhcEliGrok *rwi;
   jhcEliNeck *neck;
@@ -61,23 +66,23 @@ private:
   int folks, pal, prox, reco, uid;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // control of diagnostic messages
-  int dbg;                   
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // attention parameters
-  jhcParam aps;
   double pnear, alone, scare, ltol, lquit;
 
   // sound localization parameters
-  jhcParam sps;
   double pdist, rtime, sdev, aimed, gtime, side, btime;
   int recent;
 
   // motion parameters 
-  jhcParam mps;
   double cozy, direct, aquit, ideal, worry, orient, atime, ftime;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  int dbg;                   // control of diagnostic messages
+  jhcParam aps, sps, mps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -85,7 +90,6 @@ public:
   // creation and initialization
   ~jhcSocial (); 
   jhcSocial ();
-  void Platform (jhcEliGrok *robot);
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -100,18 +104,19 @@ private:
   int move_params (const char *fname);
 
   // overridden virtuals
-  void local_reset (jhcAliaNote *top);
+  void local_platform (void *soma);
+  void local_reset (jhcAliaNote& top);
   void local_volunteer ();
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
   // reported events
+  void vip_seen ();
+  void head_talk ();
   void dude_seen ();
   void dude_close ();
-  void vip_seen ();
   void lost_dudes ();
-  jhcAliaDesc *agt_node (int t, int& born);
-  void std_props (jhcAliaDesc *agt, int t, int born);
+  void wmem_heads ();
 
   // looking for speaker
   JCMD_DEF(soc_talk);
@@ -134,6 +139,8 @@ private:
   // semantic messages
   int err_body ();
   int err_person (jhcAliaDesc *dude);
+  void link_track (jhcAliaDesc *agt, int t);
+  void std_props (jhcAliaDesc *agt, int t);
 
 
 };

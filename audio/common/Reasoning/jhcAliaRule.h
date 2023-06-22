@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -79,15 +79,14 @@ public:
 // PUBLIC MEMBER FUNCTIONS
 public:
   // simple functions
-  int RuleNum () const    {return id;}
-  double Conf () const    {return conf;}
-  void SetConf (double v) {conf = 0.01 * ROUND(100.0 * v); result.ForceBelief(conf);}
+  int RuleNum () const {return id;}
+  double Conf () const {return conf;}
+  double SetConf (double v);
   void SetGist (const char *sent);
 
   // main functions
   int AssertMatches (jhcWorkMem& f, double mth, int add =0, int noisy =0);
   void Inferred (jhcGraphlet& key, const jhcBindings& b) const;
-  void AdjConf (double dv) {SetConf(conf + dv);}
 
   // halo consolidation
   void AddCombo (jhcBindings& m2c, const jhcAliaRule& step1, const jhcBindings& b1);
@@ -114,7 +113,7 @@ private:
   int match_found (jhcBindings *m, int& mc); 
   int same_result (const jhcBindings *m, int mc, int t0) const;
   bool result_uses (const jhcNetNode *key) const;
-  void init_result (jhcBindings *b, int tval, int ver, int zero);
+  void init_result (jhcBindings& b, int tval, int ver, int zero);
 
   // halo consolidation
   jhcNetNode *get_equiv (jhcBindings& m2c, const jhcNetNode *probe, int bcpy);

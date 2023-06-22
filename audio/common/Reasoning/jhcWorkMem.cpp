@@ -25,8 +25,6 @@
 
 #include "Interface/jms_x.h"           // common video
 
-#include "Reasoning/jhcAliaRule.h"     // common audio - since only spec'd as class in header
-
 #include "Reasoning/jhcWorkMem.h"
 
 
@@ -105,78 +103,206 @@ void jhcWorkMem::clr_ext ()
 
 void jhcWorkMem::InitPeople (const char *rname)
 {
-  jhcNetNode *p;
-  char first[80];
-  char *sep;
+  jhcGraphlet gr;
 
-  // make nodes for participants in conversation
+  // ALIA system itself (never changes)
+  BuildIn(gr);
   self = MakeNode("self", "me", 0, -1.0);
-  self->Reveal();
-  p = AddProp(self, "ako", "robot", 0, -1.0);
-  p->Reveal();
+  AddProp(self, "ako", "robot", 0, -1.0);
   if ((rname != NULL) && (*rname != '\0'))
-  {
-    // copy robot's name (if any) to "self" node
-    p = AddProp(self, "name", rname, 0, -1.0);
-    p->Reveal();
-    strcpy_s(first, rname);
-    if ((sep = strchr(first, ' ')) != NULL)
-    {
-      *sep = '\0';
-      p = AddProp(self, "name", first, 0, -1.0);
-      p->Reveal();
-    }
-  }
-  user = NULL;               // any old binding likely deleted
-  ShiftUser();
+    AddName(self, rname);
+
+  // default human who is generating input
+  user = MakeNode("user", "you", 0, -1.0);
+  AddProp(user, "ako", "person", 0, -1.0);
+  RevealAll(gr);
 }
 
 
-//= Find an old user with the given name or make up a new one.
-// useful when face recognition notices a change
-// returns value of "user" member variable for convenience
-
-jhcNetNode *jhcWorkMem::ShiftUser (const char *name)
-{
-  jhcNetNode *p, *n = NULL;
-
-  // see if named user already exists
-  if ((name != NULL) && (*name != '\0'))
-    while ((n = NextNode(n)) != NULL)
-      if (n->HasName(name, 1))
-        return SetUser(n);
-
-  // make up a new user node and add pronouns
-  n = MakeNode("dude", NULL, 0, -1.0);
-  n->Reveal();
-  if ((name != NULL) && (*name != '\0'))
-  {
-    p = AddProp(n, "name", name, 0, -1.0);
-    p->Reveal();
-  }
-  return SetUser(n);
-}
-
-
-//= Force user to be some existing node.
+//= Force user to be some existing node or create a new one.
+// Note: personhood fact must be added separately
 
 jhcNetNode *jhcWorkMem::SetUser (jhcNetNode *n)
 {
-  jhcNetNode *p;
+  jhcNetNode *user0 = user;
+
+  // remove "you" from old user if changing person
+  if ((user != NULL) && (n == user))
+    return user;
+  SetLex(user, "");
+  
+  // possibly create first user
+  if (n == NULL)
+  {
+    user = MakeNode("user", "you", 0, -1.0);
+    user->Reveal();
+  }
+  else
+  {
+    user = n;
+    SetLex(user, "you");
+  }
+
+  // possibly announce change
+  if (user0 != NULL)
+    jprintf(1, noisy, "\n  ... changing user from %s to %s ...\n", user0->Nick(), user->Nick());
+  return user;
+}
+
+
+//= Add a new name (full and perhaps first) to given network node.
+// always checks to see if name already present
+// NOTE: this needs StartNote/FinishNote or equivalent to be realized
+
+void jhcWorkMem::AddName (jhcNetNode *n, const char *name, int neg)
+{
+  char first[80];
+  char *sep;
 
   // sanity check
-  if (n == user)
-    return user;
+  if ((n == NULL) || (name == NULL) || (*name == '\0'))
+    return;
 
-  // reassign "you" to new node
-  SetLex(user, "");
-  user = n;
-  SetLex(user, "you");
+  // try splitting off first name (if any)
+  strcpy_s(first, name);
+  if ((sep = strchr(first, ' ')) != NULL)
+    *sep = '\0';
+  else
+    *first = '\0';
 
-  // make sure that personhood is marked
-  p = AddProp(user, "ako", "person", 0, -1.0);
-  p->Reveal();
-  return user;
+  // assert name facts (add "not Jon C" but skip "not Jon")
+  AddProp(n, "name", name, neg, -1.0, 1);
+  if ((*first != '\0') && (neg <= 0))
+    AddProp(n, "name", first, 0, -1.0, 1);
+}
+
+
+//= Find a node associated with the particular person's name.
+// checks first for full name then for just first name (part before space)
+// returns most recent matching node, NULL if none
+
+jhcNetNode *jhcWorkMem::FindName (const char *full) const
+{
+  char first[80];
+  jhcNetNode *p, *n = NULL;
+  char *sep;
+  double bth = MinBlf();
+  int h;
+
+  // sanity check
+  if ((full == NULL) || (*full == '\0'))
+    return NULL;
+
+  // search for full name (most recent at HEAD of list in main)
+  h = LexHash(full);
+  while ((n = Next(n, h)) != NULL)
+    if ((n->Neg() <= 0) && (n->Belief() >= bth) && n->LexMatch(full))
+      if ((p = n->Val("name")) != NULL)
+        if (!NameClash(p, full))       // for "not" restrictions
+          return p;
+
+  // possibly get just first name
+  strcpy_s(first, full);
+  if ((sep = strchr(first, ' ')) == NULL)
+    return NULL;
+
+  // search for first name (most recent at HEAD of list in main)
+  n = NULL;
+  h = LexHash(first);
+  while ((n = Next(n, h)) != NULL)
+    if ((n->Neg() <= 0) && (n->Belief() >= bth) && n->LexMatch(first))
+      if ((p = n->Val("name")) != NULL)
+        if (!NameClash(p, first))      // for "not" restriction
+          return p;
+  return NULL;
+}
+
+
+//= See if any actual name or name restriction from node conflicts with given name.
+// will automatically break given name into first name and full name
+
+bool jhcWorkMem::NameClash (const jhcNetNode *n, const char *name, int neg) const
+{
+  char first[80]; 
+  const jhcNetNode *p;
+  char *sep;
+  int i, np;
+
+  // sanity check
+  if ((n == NULL) || (name == NULL) || (*name == '\0'))
+    return false;
+
+  // pull off first name (if any) into separate string.
+  strcpy_s(first, name);
+  if ((sep = strchr(first, ' ')) != NULL)
+    *sep = '\0';
+  else
+    *first = '\0';
+
+  // check for consistency or inconsistency with known names
+  np = n->NumProps();
+  for (i = 0; i < np; i++)
+    if (n->RoleMatch(i, "name"))
+    {
+      p = n->PropSurf(i);
+      if (!p->Halo() && (p->Belief() >= MinBlf()))
+        if (incompatible(p->Lex(), p->Neg(), name, first, neg))
+          return true;
+    }
+  return false;
+}
+
+
+//= Tells whether current name from user name conflicts with new label given.
+// assumes single part new name will be in full ("Jon") with blank first ("")
+
+bool jhcWorkMem::incompatible (const char *name, int nneg, const char *full, const char *first, int fneg) const
+{
+  char nick[80];
+  char *sep;
+
+  // check if new assertion is denying some name
+  if (fneg > 0)
+  {
+    // ignore node name restrictions (-Jon vs -X)
+    if (nneg > 0)
+      return false;
+
+    // flag exact contradictions (Jon C vs -Jon C)
+    if (strcmp(name, full) == 0)
+      return true;
+
+    // check if node's first name matches denied full (Jon C vs -Jon)
+    strcpy_s(nick, name);
+    if ((sep = strchr(nick, ' ')) == NULL)
+      return false;
+    *sep = '\0';
+    return(strcmp(nick, first) == 0);
+  }
+
+  // check if positive new assertion has two parts
+  if (*first != '\0')
+  {
+    // see if either new part matches a node restriction (-Jon vs Jon C)
+    if (nneg > 0)
+      return((strcmp(name, full) == 0) || (strcmp(name, first) == 0));
+
+    // barf if node name is not the same as new first or full (Ken vs Jon C)
+    return((strcmp(name, full) != 0) && (strcmp(name, first) != 0));
+  }
+
+  // check positive one part new name against full node name
+  if (nneg > 0)
+    return(strcmp(name, full) == 0);   // -Jon vs Jon
+  if (strcmp(name, full) == 0)         // Jon vs Jon
+    return false;
+
+  // check if positive one part name matches node's first name
+  strcpy_s(nick, name);
+  if ((sep = strchr(nick, ' ')) == NULL)
+    return true;
+  *sep = '\0';
+  return(strcmp(nick, first) != 0);    // Jon C vs Jon
 }
 
 
@@ -325,7 +451,7 @@ bool jhcWorkMem::VisMem (const jhcNetNode* n, int ghost) const
   if ((n == NULL) || !n->Visible())
     return false;
   if (ghost <= 0)
-    return InList(n);
+    return InMain(n);
   return(halo.InList(n) && (abs(n->Inst()) <= rim));
 }
 
@@ -551,7 +677,7 @@ int jhcWorkMem::ExtLink (int rnum, jhcNetNode *obj, int kind)
   jhcNetNode *former = NULL;
   int i;
 
-  // look for pre-existing entry
+  // look for pre-existing entry for ID
   for (i = 0; i < emax; i++)
     if ((cat[i] == kind) && (ext[i] == rnum))
       break;
@@ -675,6 +801,28 @@ int jhcWorkMem::ExtEnum (int last, int kind) const
 ///////////////////////////////////////////////////////////////////////////
 //                          Debugging Functions                          //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Print everything in main memory sorted nicely.
+// if hyp <= 0 then omits fact with any hypothetical leaf args
+
+void jhcWorkMem::PrintMain (int hyp)  
+{
+  jprintf("\nWMEM (%d nodes) =", WmemSize(hyp)); 
+  Print(2, hyp); 
+  jprintf("\n");
+}
+
+
+//= Print everything in the halo (including ghost facts).
+// if hyp <= 0 then omits fact with any hypothetical leaf args
+
+void jhcWorkMem::PrintHalo (int hyp) const 
+{
+  jprintf("\nHALO (%d nodes) =", HaloSize(hyp)); 
+  halo.Print(2, hyp); 
+  jprintf("\n");
+}
+
 
 //= Print all nodes in the order they would be enumerated.
 // can set MaxBand() to print just some bands

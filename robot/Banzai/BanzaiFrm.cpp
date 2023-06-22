@@ -76,7 +76,7 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
   cs.x = 430;
   cs.y = 5;
   cs.cx = 1370;
-  cs.cy = 890; 
+  cs.cy = 890;               // 915 for PadV(25) graphs
 
 	// JHC: change window title 
   cs.lpszName = _T("Banzai Application");

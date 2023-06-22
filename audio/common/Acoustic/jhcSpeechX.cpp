@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -604,10 +604,11 @@ void jhcSpeechX::Inject (const char *txt, int stop)
 // can use result "prolong" from alternative speech reco when just TTS in use
 // returns status of recognition (0 = quiet, 1 = speech, 2 = recognition)
 
-int jhcSpeechX::Update (int reco, int prolong) 
+int jhcSpeechX::Update (int reco, int tts, int prolong) 
 {
   // see if finished talking and check grammar parser
-  ChkOutput(); 
+  if (tts > 0)
+    ChkOutput(); 
   if ((reco > 0) && (txtin <= 0))
   {
     rcv = NULL;
@@ -678,7 +679,7 @@ void jhcSpeechX::SuggestPos (double azim, double elev, double dist)
 
 
 //= Try to set the speech recognition engine for a particular user's voice.
-// can be useful for priming speech reconiton based on face recognition
+// can be useful for priming speech recogniton based on face recognition
 
 int jhcSpeechX::SuggestUser (const char *name, ...) 
 {

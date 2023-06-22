@@ -36,13 +36,13 @@ extern CMensEtApp theApp;
 
 // JHC: for basic functionality
 
-#include "Data/jhcImgIO.h"
+#include "Data/jhcImgIO.h"             // common video
 #include "Interface/jhcMessage.h"
 #include "Interface/jhcPickVals.h"
 #include "Interface/jhcString.h"
 #include "Interface/jms_x.h"
 
-#include "Manus/jhcInteractFSM.h"
+#include "RWI/jhcInteractFSM.h"        // common robot
 
 
 // whether to do faster background video capture
@@ -123,7 +123,8 @@ BEGIN_MESSAGE_MAP(CMensEtDoc, CDocument)
   ON_COMMAND(ID_UTILITIES_EXTVOCAB, &CMensEtDoc::OnUtilitiesExtvocab)
   ON_COMMAND(ID_UTILITIES_TESTVOCAB, &CMensEtDoc::OnUtilitiesTestvocab)
   ON_COMMAND(ID_UTILITIES_TESTGRAPHIZER, &CMensEtDoc::OnUtilitiesTestgraphizer)
-    ON_COMMAND(ID_DEMO_BASICMSGS, &CMensEtDoc::OnDemoBasicmsgs)
+  ON_COMMAND(ID_DEMO_BASICMSGS, &CMensEtDoc::OnDemoBasicmsgs)
+  ON_COMMAND(ID_DEMO_CYCLERATE, &CMensEtDoc::OnDemoCyclerate)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -183,7 +184,7 @@ BOOL CMensEtDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = mc.Version(); 
-  LockAfter(5, 2023, 12, 2022);
+  LockAfter(11, 2023, 6, 2023);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -468,6 +469,11 @@ int CMensEtDoc::ChkStream (int dw, int dh)
 {
   int ans;
 
+  // if no body then try opening same video as last session
+  if (tid <= 0)
+    if (OnOpenDocument(theApp.GetLastFile()))
+      return 1;
+
   // always rebuild SQ13 camera receiver
   if (!v.Valid() || v.IsClass("jhcOcv3VSrc"))
   {
@@ -502,7 +508,7 @@ void CMensEtDoc::OnTestPlayvideo()
 
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
 
   // loop over selected set of frames  
@@ -712,7 +718,7 @@ int CMensEtDoc::interact_params (const char *fname)
   ps->NextSpec4( &cam,        0, "Camera available");
   ps->NextSpec4( &tid,        0, "Target robot");
   ps->NextSpec4( &(mc.spin),  0, "Speech (none, local, web)");  
-  ps->NextSpec4( &(mc.amode), 2, "Attn (none, any, front, only)");
+  ps->NextSpec4( &(mc.amode), 2, "Wake (on, ends, front, solo)");
   ps->NextSpec4( &(mc.tts),   0, "Vocalize output");
   ps->Skip();
 
@@ -747,7 +753,17 @@ void CMensEtDoc::OnDemoBasicmsgs()
 }
 
 
-// Adjust thought rate, attention mode, etc.
+// Adjust thinking speed and default body update rate
+
+void CMensEtDoc::OnDemoCyclerate()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(mc.rps);    
+}
+
+
+// Adjust speech attention window timing
 
 void CMensEtDoc::OnDemoTiming()
 {
@@ -864,9 +880,9 @@ return;
 
   // possibly check for video
   if ((cam > 0) && (ChkStream() > 0))
-    (mc.body).BindVideo(&v);
+    mc.BindVideo(&v);
   else
-    (mc.body).BindVideo(NULL);
+    mc.BindVideo(NULL);
 
   // reset all required components
   system("cls");
@@ -938,8 +954,9 @@ void CMensEtDoc::OnDemoFilelocal()
   jhcString sel, test;
   CFileDialog dlg(TRUE);
   HWND me = GetForegroundWindow();
-  FILE *f;
   char in[200] = "";
+  FILE *f;
+  const jhcImg *pic;
 
   // select file to read 
   sprintf_s(test.ch, "%s\\test\\trial.tst", cwd);
@@ -954,9 +971,9 @@ void CMensEtDoc::OnDemoFilelocal()
 
   // possibly check for video
   if ((cam > 0) && (ChkStream() > 0))
-    (mc.body).BindVideo(&v);
+    mc.BindVideo(&v);
   else
-    (mc.body).BindVideo(NULL);
+    mc.BindVideo(NULL);
 
   // reset all required components
   system("cls");
@@ -970,7 +987,6 @@ void CMensEtDoc::OnDemoFilelocal()
   // announce start and input mode
   d.Clear(1, "File input (ESC to quit) ...");
   d.ResetGrid(0, 640, 360);
-  d.StringGrid(0, 0, ">>> NO IMAGES <<<");
 
   // keep taking sentences until ESC
   try
@@ -987,9 +1003,11 @@ void CMensEtDoc::OnDemoFilelocal()
         break;
 
       // show interaction
-      if ((mc.body).NewFrame())
-        d.ShowGrid((mc.body).View(), 0, 0, 0, "Robot view");
-      (mc.stat).Memory(&d, 0, 1);
+      if ((pic = mc.View()) != NULL)
+        d.ShowGrid(pic, 0, 0, 0, "%s - Robot view            %s", mc.RunTime(), (mc.disp).MoodTxt());
+      else
+        d.StringGrid(0, 0, ">>> NO IMAGES - %s <<<", mc.RunTime());
+      (mc.disp).Memory(d);
       chat.Post(mc.NewInput(), 1);
       chat.Post(mc.NewOutput());
     }
@@ -1043,12 +1061,13 @@ void CMensEtDoc::OnDemoInteract()
 {
   HWND me = GetForegroundWindow();
   char in[200];
+  const jhcImg *pic;
 
   // possibly check for video 
   if ((cam > 0) && (ChkStream() > 0))
-    (mc.body).BindVideo(&v);
+    mc.BindVideo(&v);
   else
-    (mc.body).BindVideo(NULL);
+    mc.BindVideo(NULL);
 
   // reset all required components
   system("cls");
@@ -1063,7 +1082,6 @@ void CMensEtDoc::OnDemoInteract()
   else
     d.Clear(1, "Text input (ESC to quit) ...");
   d.ResetGrid(0, 640, 360);
-  d.StringGrid(0, 0, ">>> NO IMAGES <<<");
   SetForegroundWindow(chat);
 
   // keep taking sentences until ESC
@@ -1079,9 +1097,11 @@ void CMensEtDoc::OnDemoInteract()
         break;
 
       // show interaction
-      if ((mc.body).NewFrame())
-        d.ShowGrid((mc.body).View(), 0, 0, 0, "Robot view");
-      (mc.stat).Memory(&d, 0, 1);
+      if ((pic = mc.View()) != NULL)
+        d.ShowGrid(pic, 0, 0, 0, "%s - Robot view            %s", mc.RunTime(), (mc.disp).MoodTxt());
+      else
+        d.StringGrid(0, 0, ">>> NO IMAGES - %s <<<", mc.RunTime());
+      (mc.disp).Memory(d);
       chat.Post(mc.NewInput(), 1);
       chat.Post(mc.NewOutput());
     }
@@ -1206,7 +1226,7 @@ void CMensEtDoc::OnCameraparamsDewarp()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1244,7 +1264,7 @@ void CMensEtDoc::OnProcessingCleanup()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1300,7 +1320,7 @@ void CMensEtDoc::OnVisionColordiffs()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1351,7 +1371,7 @@ void CMensEtDoc::OnVisionSimilarregions()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1425,7 +1445,7 @@ void CMensEtDoc::OnProcessingGroundplane()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1497,7 +1517,7 @@ void CMensEtDoc::OnVisionObjects()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1572,7 +1592,7 @@ void CMensEtDoc::OnVisionStackgrow()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1700,7 +1720,7 @@ void CMensEtDoc::OnVisionFeatures()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1824,7 +1844,7 @@ void CMensEtDoc::OnVisionBoundary()
   // make sure video exists
   if (ChkStream() <= 0)
     return;
-  (mc.body).BindVideo(&v);
+  mc.BindVideo(&v);
   (mc.body).Reset(0, NULL, 0);
   (mc.body).SetSize(v.XDim(), v.YDim());
 
@@ -1927,7 +1947,7 @@ void CMensEtDoc::OnReflexesInitpose()
 {
   int rc;
 
-  (mc.body).BindVideo(NULL);
+  mc.BindVideo(NULL);
   rc = (mc.body).Reset(1, "config", tid);
   Tell((rc > 0) ? "Done" : "FAILED");
 }
@@ -2210,7 +2230,7 @@ void CMensEtDoc::OnUtilitiesTestgraphizer()
     } 
 
     // reset all required components
-    (mc.body).BindVideo(NULL);
+    mc.BindVideo(NULL);
     mc.Reset(0);
 
     // go through all file inputs and save conversions to cfile
@@ -2287,4 +2307,5 @@ void CMensEtDoc::OnUtilitiesTest()
 { 
 
 }
+
 

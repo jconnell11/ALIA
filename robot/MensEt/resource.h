@@ -116,6 +116,7 @@
 #define ID_UTILITIES_TESTVOCAB          32844
 #define ID_UTILITIES_TESTGRAPHIZER      32845
 #define ID_DEMO_BASICMSGS               32846
+#define ID_DEMO_CYCLERATE               32847
 
 // Next default values for new objects
 // 
@@ -123,7 +124,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        136
-#define _APS_NEXT_COMMAND_VALUE         32847
+#define _APS_NEXT_COMMAND_VALUE         32848
 #define _APS_NEXT_CONTROL_VALUE         1009
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

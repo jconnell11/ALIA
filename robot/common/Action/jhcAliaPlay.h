@@ -29,6 +29,7 @@
 #include "jhcGlobal.h"
 
 #include "Parse/jhcTxtLine.h"          // common audio
+#include "Semantic/jhcNetNode.h"
 #include "Semantic/jhcNodePool.h"
 
 #include "Action/jhcAliaChain.h"       // common robot
@@ -36,9 +37,9 @@
 
 //= Play contains group of coordinated FSMs in ALIA system.
 //   main = things to accomplish before continuing (all must succeed)
-//   guard = things to do while working on main activities (success irrelevant)
+//   guard = background things to do while working on main activities 
+//           if any terminates (success or fail) whole play fails
 // runs all activities in guard list and main list on every cycle
-//   if any activity (main or guard) fails, then whole play fails
 //   order of lists reflects priorities of activities but
 //   all guard activities are higher priority than any main activity
 // a CHK directive expanded as a play does a logical AND of main activities
@@ -47,7 +48,7 @@
 //     check if it moves and has fur       <-- first NO returns NO from play
 //     while being careful of its teeth 
 // </pre> 
-// this is a second-class structure, an adjunct to graph structure of jhcAliaChain
+// this is a second-class control structure, an adjunct to jumps in jhcAliaChain
 
 class jhcAliaPlay
 {
@@ -74,6 +75,11 @@ public:
   void MarkSeeds ();
   int MaxDepth (int cyc =1);
   int NumGoals (int leaf =0, int cyc =1);
+  int Overall () const {return verdict;}
+  int ReqStatus (int i) const
+    {return(((i >= 0) && (i < na)) ? status[i] : -1);}
+  int SimulStatus (int i) const
+    {return(((i >= 0) && (i < ng)) ? gstat[i] : -1);}
 
   // read only variables
   int NumReq () const   {return na;} 
@@ -84,10 +90,15 @@ public:
     {return(((n >= 0) && (n < ng)) ? guard[n] : NULL);}
 
   // main functions
-  int Start (jhcAliaCore *all, int lvl);
+  int Start (class jhcAliaCore *all, int lvl);
   int Status ();
   int Stop (int ans =-1);
-  int FindActive (const jhcGraphlet& desc, int halt);
+
+  // execution tracing
+  int HaltActive (const jhcGraphlet& desc, const class jhcAliaDir *skip =NULL, int halt =1);
+  void FindCall (const class jhcAliaDir **act, const class jhcAliaDir **src, class jhcBindings *d2a, 
+                 const jhcGraphlet& desc, UL32& start, int done =1, const class jhcAliaDir *prev =NULL, int cyc =1);
+  jhcAliaChain **StepEntry (const jhcNetNode *act, jhcAliaChain **from, int cyc =0);
 
   // file functions
   int Load (jhcNodePool& pool, jhcTxtLine& in); 

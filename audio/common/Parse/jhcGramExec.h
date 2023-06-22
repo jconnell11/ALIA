@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +62,7 @@
 //     ? = 0 or 1 word (same as "(#)")
 //     + = at least 1 word but more allowed
 //     * = 0 or more words (same as "(+)")
+//     @ = numeric value (signed integer or double)
 //   These should not be used anywhere else (in terminals or non-terminals).
 // 
 //   Comments can be added either with "//" or with ";" to disregard the 
@@ -135,6 +136,8 @@ private:
   int nnode[10];             /** Parse nodes in each tree.        */
   int ndict[10];             /** Dictation items in each tree.    */
   int nwild[10];             /** Wildcards in each tree.          */
+  int nspec[10];             /** Special nodes in each tree.      */
+  char bonus[40];            /** Special desired non-terminal.    */
 
   // result inspection
   jhcGramRule *stack[50];    /** List of previous parse elements.  */
@@ -166,6 +169,7 @@ public:
   int NumStates () const {return snum;}
   const jhcGramRule *Expansions () const {return gram;}
   const char *NoContract () const {return full;}
+  void SetBonus (const char *nterm) {strcpy_s(bonus, nterm);}
 
   // grammar set up (let some fcns be overridden later)
   void ClearGrammar (int keep =1);
@@ -187,6 +191,7 @@ public:
   int WildCards (int n) const;
   int DictItems (int n) const;
   int Nodes (int n) const;
+  int BonusNodes (int n) const;
   int PickTree (int n);
   void ClrTree ();
 
@@ -205,7 +210,7 @@ public:
 
   // debugging
   void PrintTree (int top =1);
-  int SaveCats (const char *fname, int lvl =1, const class jhcMorphFcns *mf =NULL) const;
+  int SaveCats (const char *fname, int lvl, const class jhcMorphFcns& mf) const;
 
 
 // PUBLIC MEMBER FUNCTIONS (low level sp_parse)
@@ -252,6 +257,7 @@ private:
   int wild_cnt (const jhcGramRule *s) const;
   int dict_cnt (const jhcGramRule *s) const;
   int node_cnt (const jhcGramRule *s) const;
+  int bonus_cnt (const jhcGramRule *s) const;
 
   // association list
   int tree_major (char *ans, int ssz);
@@ -262,9 +268,9 @@ private:
   // debugging
   void print_focus (int indent, int start, int end);
   int list_cat (FILE *out, const char *non, int lvl) const;
-  void noun_vars (FILE *out, int lvl, const class jhcMorphFcns *mf) const;
-  void adj_vars (FILE *out, int lvl, const class jhcMorphFcns *mf) const;
-  void verb_vars (FILE *out, int lvl, const class jhcMorphFcns *mf) const;
+  void noun_vars (FILE *out, int lvl, const class jhcMorphFcns& mf) const;
+  void adj_vars (FILE *out, int lvl, const class jhcMorphFcns& mf) const;
+  void verb_vars (FILE *out, int lvl, const class jhcMorphFcns& mf) const;
 
 
 // PRIVATE MEMBER FUNCTIONS (low level sp_parse)

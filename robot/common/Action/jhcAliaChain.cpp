@@ -26,9 +26,11 @@
 
 #include "Interface/jms_x.h"           // common video
 
+#include "Reasoning/jhcAliaOp.h"       // common audio - since only spec'd as class in header
+
 #include "Action/jhcAliaCore.h"        // common robot - since only spec'd as class in header    
-#include "Action/jhcAliaDir.h"         
-#include "Action/jhcAliaPlay.h"
+#include "Action/jhcAliaDir.h"         // since only spec'd as class in header    
+#include "Action/jhcAliaPlay.h"        // since only spec'd as class in header    
 
 #include "Action/jhcAliaChain.h"
 
@@ -166,7 +168,7 @@ bool jhcAliaChain::StepDir (int kind) const
 
 
 //= Add main node of each valid directive to arguments of source node.
-// only used by jhcNetBuild with init = 1 
+// Note: was used by jhcNetBuild for speech act but not anymore
 
 void jhcAliaChain::RefSteps (jhcNetNode *src, const char *slot, jhcNodePool& pool, int init)
 {
@@ -207,6 +209,30 @@ void jhcAliaChain::RefSteps (jhcNetNode *src, const char *slot, jhcNodePool& poo
     fail->RefSteps(src, slot, pool, 0);
 }
 
+
+//= Add some sequence of actions to the play contained in this step.
+// mode: 0 = main activity, 1 = guard activity, 2 = looping guard activity
+// returns 1 if successful, 0 for problem
+
+int jhcAliaChain::PlayAct (jhcAliaChain *act, int mode)
+{
+  jhcAliaChain *last;
+
+  // sanity check and simple cases
+  if ((p == NULL) || (act == NULL))
+    return 0;
+  if (mode <= 0)
+    return p->AddReq(act);
+  if (mode == 1)
+    return p->AddSimul(act);
+
+  // modify activity to force repeat (does not work for loops)
+  last = act->Last();
+  if (last->cont == NULL)
+    last->cont = last;
+  return p->AddSimul(act);
+}
+ 
 
 //= Go to the (N-1)th normal continuation in chain.
 // does not necessarily go to the label N since a play only counts as 1 step
@@ -571,7 +597,7 @@ void jhcAliaChain::Enumerate ()
   if (fail != NULL)
     fail->Enumerate();
 }
- 
+
 
 ///////////////////////////////////////////////////////////////////////////
 //                            Main Functions                             //
@@ -616,7 +642,7 @@ int jhcAliaChain::Start (jhcAliaChain *prior)
 
     // possibly set a new backtracking point if coming from a FIND/BIND
     d0 = prior->GetDir();
-    if ((d0 != NULL) && d0->IsFind())
+    if ((d0 != NULL) && d0->IsFind() && !d0->UserSelf())
       backstop = prior;
     else
       backstop = prior->backstop;
@@ -645,12 +671,15 @@ int jhcAliaChain::start_payload (int lvl)
 
 int jhcAliaChain::Status ()
 {
-//  jhcAliaChain *bulk2;
   jhcAliaDir *d0;
   int first = ((prev == 0) ? 1 : 0);
 
   // remember current state for next call
   prev = done;
+
+  // EDIT directive is end of line: follow-ons are essentially quoted
+  if ((done != 0) && (d != NULL) && (d->Kind() == JDIR_EDIT))
+    return done;
 
   // see if activation should be passed to next step 
   if ((done == 1) && (cont != NULL))
@@ -678,7 +707,7 @@ int jhcAliaChain::Status ()
     {
       if ((core != NULL) && ((d0 = backstop->d) != NULL))
       {
-        jprintf(1, core->noisy, "\n%*s@@@ unwind and retry %s[ %s ]\n", level, "", d0->KindTag(), d0->KeyTag());
+        jprintf(1, core->noisy, "\n%*s@@@ unwind and initiate retry of %s[ %s ]\n", level, "", d0->KindTag(), d0->KeyTag());
         d0->HideAssume();             // prevent proliferation of imagined items
       }
       return backstop->Start(NULL);
@@ -689,21 +718,10 @@ int jhcAliaChain::Status ()
       if ((done == 1) && (spew >= 2))
       {
         if (core != NULL)
-          jprintf(1, core->noisy, "\n%*s@@@ generate variants FIND[ %s ]\n", level, "", d->KeyTag());
+          jprintf(1, core->noisy, "\n%*s@@@ resume generating variants with FIND[ %s ]\n", level, "", d->KeyTag());
         return Start(NULL);
       }
-/*
-    // if method for top level TRY fails then reinterpret input sentence (e.g. ACT-2 vs ACT)
-    if ((done == -2) && (d != NULL) && (d->kind == JDIR_TRY) && (level == 0))
-      if ((jms_elapsed(mt0) <= core->Dither()) && (++parse < 3))
-        if ((bulk2 = core->Reinterpret()) != NULL)    
-        {
-          delete d->meth;
-          d->meth = bulk2;
-          mt0 = jms_now();
-          return Start(NULL);
-        }
-*/
+
     // see if control will be transferred next cycle
     if (((done ==  1) && (cont != NULL)) ||
         ((done ==  2) && (alt  != NULL)) ||
@@ -746,29 +764,103 @@ void jhcAliaChain::Stop ()
 }
 
 
+///////////////////////////////////////////////////////////////////////////
+//                           Execution Tracing                           //
+///////////////////////////////////////////////////////////////////////////
+
 //= Look for all in-progress activities matching graph and possibly stop them.
 // returns 1 if found (and stopped) all, 0 if nothing matching found
 // NOTE: ignores loops for now
 
-int jhcAliaChain::FindActive (const jhcGraphlet& desc, int halt)
+int jhcAliaChain::HaltActive (const jhcGraphlet& desc, const jhcAliaDir *skip, int halt)
 {
   // check payload (if this step active)
   if (done == 0)
   {
-    if (d != NULL)
-      return d->FindActive(desc, halt);
+    if (d != NULL) 
+      return d->HaltActive(desc, skip, halt);
     if (p != NULL)
-      return p->FindActive(desc, halt);
+      return p->HaltActive(desc, skip, halt);
   }
 
   // try continuations (depending on which branch chosen)
   if ((done == 1) && (cont != NULL))
-    return cont->FindActive(desc, halt);
+    return cont->HaltActive(desc, skip, halt);
   if ((done == 2) && (alt != NULL))
-    return alt->FindActive(desc, halt);
+    return alt->HaltActive(desc, skip, halt);
   if ((done == -2) && (fail != NULL))
-    return fail->FindActive(desc, halt);
+    return fail->HaltActive(desc, skip, halt);
   return 0;
+}
+
+
+//= Find the call pattern for the most recently started activity compatible with the description.
+// cyc is unique request number for tracing graphs with loops, prev is most recent caller
+// binds best match directive and its caller, done: 0 = ongoing only, 1 = any non-failure
+
+void jhcAliaChain::FindCall (const jhcAliaDir **act, const jhcAliaDir **src, jhcBindings *d2a, 
+                             const jhcGraphlet& desc, UL32& start, int done, const jhcAliaDir *prev, int cyc)
+{
+  // see if chain step already enumerated (for loops)
+  if (req == cyc)
+    return;
+  req = cyc;
+
+  // examine payload 
+  if (d != NULL)
+    d->FindCall(act, src, d2a, desc, start, done, prev, cyc);
+  if (p != NULL)
+    p->FindCall(act, src, d2a, desc, start, done, prev, cyc);
+
+  // examine all possible subsequent steps
+  if (cont != NULL)
+    cont->FindCall(act, src, d2a, desc, start, done, prev, cyc);
+  if (alt != NULL)
+    alt->FindCall(act, src, d2a, desc, start, done, prev, cyc);
+  if (fail != NULL)
+    fail->FindCall(act, src, d2a, desc, start, done, prev, cyc);
+}
+
+
+//= Find transition pointer to step containing a DO directive with the given main action.
+// call with cyc = 0 to assign a top-level requisition number
+
+jhcAliaChain **jhcAliaChain::StepEntry (const jhcNetNode *act, jhcAliaChain **from, int cyc)
+{
+  jhcAliaChain **entry;
+  int c = cyc;
+
+  // sanity check
+  if (act == NULL) 
+    return NULL;
+
+  // see if chain step already enumerated (for loops)
+  if (c <= 0)
+    c = ++req;               // assign if top level
+  else if (req == c)
+    return 0;
+  else
+    req = c;
+
+  // examine payload (particularly directives for match)
+  if (d != NULL)
+    if ((d->Kind() == JDIR_DO) && (d->KeyAct() == act))
+      return from;                                         
+  if (p != NULL)
+    if ((entry = p->StepEntry(act, from, c)) != NULL)
+      return entry;
+
+  // examine all possible subsequent steps
+  if (cont != NULL)
+    if ((entry = cont->StepEntry(act, &cont, c)) != NULL)
+      return entry;
+  if (alt != NULL)
+    if ((entry = alt->StepEntry(act, &alt, c)) != NULL)
+      return entry;
+  if (fail != NULL)
+    if ((entry = fail->StepEntry(act, &fail, c)) != NULL)
+      return entry;
+  return NULL;
 }
 
 

@@ -27,9 +27,10 @@
 
 #include "jhcGlobal.h"
 
-#include "Eli/jhcEliGrok.h"            // common robot   
+#include "Geometry/jhcMatrix.h"        // common robot
+#include "RWI/jhcEliGrok.h"              
 
-#include "Action/jhcStdKern.h"         
+#include "Kernel/jhcStdKern.h"         
 
 
 //= Interface to ELI visual behavior kernel for ALIA system.
@@ -141,6 +142,9 @@ private:
   static const char * const rng[], * const rng0[], * const rng1[];
   static const char * const col[], * const loc[],  * const sloc[];
 
+  // instance control variables
+  jhcMatrix *cpos, *cdir; 
+
   // link to hardware 
   jhcEliGrok *rwi;           // likely shared
   jhcSurfObjs *sobj;
@@ -154,27 +158,26 @@ private:
   jhcImg bin;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // control of diagnostic messages
-  int dbg;            
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // distance category parameters
-  jhcParam rps;
-  double dist0, dist1, dist2, dist3, dvar;
+  double dist0, dist1, dist2, dist3, dvar, drop, xbd, ybd;
 
   // object shape categories
-  jhcParam sps;
   double len0, len1, len2, len3, thk0, thk1, thk2, thk3;
 
   // object dimension categories
-  jhcParam dps;
   double sz1, sz2, wid1, wid2, ht1, ht2;
 
   // comparison and location parameters
-  jhcParam cps;
   double rdom, cdom, tween, sdev, buddy, hood, flr;
   int cmax;
+
+
+// PUBLIC MEMBER VARIABLES
+public:  
+  int dbg;                   // control of diagnostic messages
+  jhcParam rps, sps, dps, cps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -182,7 +185,6 @@ public:
   // creation and initialization
   ~jhcSceneVis ();
   jhcSceneVis ();
-  void Platform (jhcEliGrok *io);
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -198,19 +200,23 @@ private:
   int comp_params (const char *fname);  
 
   // overridden virtuals
-  void local_reset (jhcAliaNote *top);
+  void local_platform (void *soma);
+  void local_reset (jhcAliaNote& top);
   void local_volunteer ();
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
   // event functions
+  void update_objs ();
+  int in_view (int t) const;
+  void mark_gone (int id);
   void alert_any ();
   void alert_close ();
   void mark_attn ();
-  void lost_tracks ();
                
   // gaze control
-  JCMD_DEF(vis_gaze);
+  JCMD_DEF(vis_look);
+  JCMD_DEF(vis_orient);
   int chk_stuck (int i, double err);
 
   // value ranges
@@ -287,10 +293,11 @@ private:
 
   // semantic messages
   int err_neck ();
-  int err_gone (jhcAliaDesc *obj);
+  int err_miss (jhcAliaDesc *obj);
 
   // debugging
   const char *cat2txt (int cat) const;
+  void prop_vect (int *props) const;
 
 
 };

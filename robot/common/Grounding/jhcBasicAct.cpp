@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,20 +44,11 @@ jhcBasicAct::~jhcBasicAct ()
 
 jhcBasicAct::jhcBasicAct ()
 {
-  ver = 2.20;
   strcpy_s(tag, "BasicAct");
-  Platform(NULL);
+  rwi = NULL;
   rpt = NULL;
   warn = 0;
   Defaults();
-}
-
-
-//= Attach physical enhanced body and make pointers to some pieces.
-
-void jhcBasicAct::Platform (jhcManusRWI *robot) 
-{
-  rwi = robot;
 }
 
 
@@ -184,11 +175,19 @@ int jhcBasicAct::SaveVals (const char *fname) const
 //                          Overridden Functions                         //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Attach physical enhanced body and make pointers to some pieces.
+
+void jhcBasicAct::local_platform (void *soma) 
+{
+  rwi = (jhcManusRWI *) soma;
+}
+
+
 //= Set up for new run of system.
 
-void jhcBasicAct::local_reset (jhcAliaNote *top)
+void jhcBasicAct::local_reset (jhcAliaNote& top)
 {
-  rpt = top;
+  rpt = &top;
   warn = 0;
   hold = 0;
   dbg = 0;
@@ -208,7 +207,7 @@ void jhcBasicAct::local_volunteer ()
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if successful, -1 for problem, -2 if function unknown
 
-int jhcBasicAct::local_start (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::local_start (const jhcAliaDesc& desc, int i)
 {
   JCMD_SET(base_stop);
   JCMD_SET(base_drive);
@@ -223,7 +222,7 @@ int jhcBasicAct::local_start (const jhcAliaDesc *desc, int i)
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if done, 0 if still working, -1 if failed, -2 if function unknown
 
-int jhcBasicAct::local_status (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::local_status (const jhcAliaDesc& desc, int i)
 {
   JCMD_CHK(base_stop);
   JCMD_CHK(base_drive);
@@ -266,7 +265,7 @@ void jhcBasicAct::dist_close ()
   if (rpt == NULL)
     return;
   rpt->StartNote();
-  n = rpt->NewNode("obj");
+  n = rpt->NewObj("obj");
   n2 = rpt->NewProp(n, "hq", "close");
   rpt->NewProp(n2, "deg", "very");
   rpt->FinishNote();
@@ -281,7 +280,7 @@ void jhcBasicAct::dist_close ()
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_stop0 (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_stop0 (const jhcAliaDesc& desc, int i)
 {
   ct0[i] += ROUND(1000.0 * ftime);
   return 1;
@@ -292,7 +291,7 @@ int jhcBasicAct::base_stop0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_stop (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_stop (const jhcAliaDesc& desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -318,14 +317,14 @@ int jhcBasicAct::base_stop (const jhcAliaDesc *desc, int i)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_drive0 (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_drive0 (const jhcAliaDesc& desc, int i)
 {
   double off = 0.0;
 
   // get basic speed and distance
-  if (get_vel(csp[i], desc->Val("arg")) <= 0)
+  if (get_vel(csp[i], desc.Val("arg")) <= 0)
     return -1;
-  if (get_dist(camt[i], desc->Val("arg")) <= 0)
+  if (get_dist(camt[i], desc.Val("arg")) <= 0)
     return -1;
 
   // figure out stop time (fudge for trapezoidal)
@@ -340,7 +339,7 @@ int jhcBasicAct::base_drive0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_drive (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_drive (const jhcAliaDesc& desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -408,21 +407,28 @@ int jhcBasicAct::get_vel (double& speed, const jhcAliaDesc *act) const
 
 int jhcBasicAct::get_dist (double& dist, const jhcAliaDesc *act) const
 {
+  const jhcAliaDesc *fcn;
+
   // sanity check
-  if (act == NULL)
+  if (act == NULL) 
+    return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
     return -1;
 
   // set distance based on main verb
-  if (act->LexMatch("step"))
+  if (fcn->LexMatch("step"))
     dist = step;
-  else if (act->LexMatch("move"))
+  else if (fcn->LexMatch("move"))
     dist = move;
-  else if (act->LexMatch("drive"))
+  else if (fcn->LexMatch("drive"))
     dist = drive;
-  else if (act->LexMatch("cruise"))
+  else if (fcn->LexMatch("cruise"))
     dist = 30.0 * drive;               // nearly continuous (60 sec @ 8 ips)
   else
     return -1;
+  
+  // possibly change based on explicit request
+  set_inches(dist, act->Fact("amt"), 36.0);
   return 1;
 }
 
@@ -435,14 +441,14 @@ int jhcBasicAct::get_dist (double& dist, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_turn0 (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_turn0 (const jhcAliaDesc& desc, int i)
 {
   double f = radj;
 
   // get basic speed and angle
-  if (get_spin(csp[i], desc->Val("arg")) <= 0)
+  if (get_spin(csp[i], desc.Val("arg")) <= 0)
     return -1;
-  if (get_ang(camt[i], desc->Val("arg")) <= 0)
+  if (get_ang(camt[i], desc.Val("arg")) <= 0)
     return -1;
 
   // figure out stop time (fudge for trapezoidal)
@@ -457,7 +463,7 @@ int jhcBasicAct::base_turn0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_turn (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_turn (const jhcAliaDesc& desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -525,17 +531,25 @@ int jhcBasicAct::get_spin (double& speed, const jhcAliaDesc *act) const
 
 int jhcBasicAct::get_ang (double& ang, const jhcAliaDesc *act) const
 {
+  const jhcAliaDesc *fcn;
+
   // sanity check
   if (act == NULL)
     return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return -1;
   ang = turn;
 
-  // get angle based on main verb
-  if (act->LexMatch("spin"))
+  // get angle based on main verb or explicit request
+  if (fcn->LexMatch("spin"))
     ang = spin;
-  else if (act->LexMatch("rotate"))
-    ang = rot;
-  else if (!act->LexMatch("turn"))
+  else if (fcn->LexIn("rotate", "turn"))
+  {
+    if (fcn->LexMatch("rotate"))
+      ang = rot;
+    set_degs(ang, act->Fact("amt"));   // no limit
+  }
+  else
     return -1;
   return 1;
 }
@@ -549,9 +563,9 @@ int jhcBasicAct::get_ang (double& ang, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_lift0 (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_lift0 (const jhcAliaDesc& desc, int i)
 {
-  if (get_vert(csp[i], desc->Val("arg")) <= 0)
+  if (get_vert(csp[i], desc.Val("arg")) <= 0)
     return -1;
   ct0[i] += ROUND(500.0 * sqrt(lift / fabs(csp[i])));
   return 1;
@@ -562,7 +576,7 @@ int jhcBasicAct::base_lift0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_lift (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_lift (const jhcAliaDesc& desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -593,18 +607,20 @@ int jhcBasicAct::base_lift (const jhcAliaDesc *desc, int i)
 
 int jhcBasicAct::get_vert (double& speed, const jhcAliaDesc *act) const
 {
-  const jhcAliaDesc *rate;
+  const jhcAliaDesc *fcn, *rate;
   int w = 0;
 
   // sanity check
   if (act == NULL)
     return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return -1;
 
   // get direction based on verb
   speed = zps;
-  if (act->LexMatch("lower"))
+  if (fcn->LexMatch("lower"))
     speed = -speed;
-  else if (!act->LexMatch("raise"))
+  else if (!fcn->LexMatch("raise"))
     return -1;
 
   // look for speed modifier(s)
@@ -627,9 +643,9 @@ int jhcBasicAct::get_vert (double& speed, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBasicAct::base_grip0 (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_grip0 (const jhcAliaDesc& desc, int i)
 {
-  if (get_hand(csp[i], desc->Val("arg")) <= 0)
+  if (get_hand(csp[i], desc.Val("arg")) <= 0)
     return -1;
   ct0[i] += ROUND(1000.0 * gtime);
   return 1;
@@ -640,7 +656,7 @@ int jhcBasicAct::base_grip0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBasicAct::base_grip (const jhcAliaDesc *desc, int i)
+int jhcBasicAct::base_grip (const jhcAliaDesc& desc, int i)
 {
   // check for timeout then lock to sensor cycle 
   if ((rwi == NULL) || (rwi->body == NULL))
@@ -677,16 +693,74 @@ int jhcBasicAct::base_grip (const jhcAliaDesc *desc, int i)
 
 int jhcBasicAct::get_hand (double &grab, const jhcAliaDesc *act) const
 {
+  const jhcAliaDesc *fcn;
+
   // sanity check
   if (act == NULL)
+    return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
     return -1;
   grab = 1.0;
 
   // get hold status based on main verb
-  if (act->LexMatch("open"))
+  if (fcn->LexMatch("open"))
     grab = -1.0;
-  else if (!act->LexMatch("close"))
+  else if (!fcn->LexMatch("close"))
     return -1;
   return 1;
 }
 
+
+///////////////////////////////////////////////////////////////////////////
+//                               Utilities                               //
+///////////////////////////////////////////////////////////////////////////
+
+//= Digest an explicit positive angle into a number of degrees.
+// returns 1 if set "ang", 0 if value unchanged
+
+int jhcBasicAct::set_degs (double& ang, const jhcAliaDesc *amt) const
+{
+  const jhcAliaDesc *cnt;
+
+  if (amt == NULL)
+    return 0;
+  if (!amt->LexMatch("degree"))
+    return 0;
+  if ((cnt = amt->Fact("cnt")) == NULL)
+    return 0;
+  ang = atoi(cnt->Lex());
+  return 1;
+} 
+
+
+//= Digest an explicit positive distance into a number of inches.
+// can also limit max value if clip > 0.0
+// returns 1 if set "dist", 0 if value unchanged
+
+int jhcBasicAct::set_inches (double& dist, const jhcAliaDesc *amt, double clip) const 
+{
+  const jhcAliaDesc *cnt;
+
+  // sanity check
+  if (amt == NULL)
+    return 0;
+  if (!amt->LexIn("inch", "foot", "centimeter", "meter"))
+    return 0;
+ 
+  // find units of distance
+  if (amt->LexMatch("foot"))
+    dist = 12.0;
+  else if (amt->LexMatch("centimeter"))
+    dist = 0.3937;
+  else if (amt->LexMatch("meter"))
+    dist = 39.37;
+  else
+    dist = 1.0;
+
+  // multiply by count (if any) but limit value
+  if ((cnt = amt->Fact("cnt")) != NULL)
+    dist *= atoi(cnt->Lex());
+  if (clip > 0.0)
+    dist = __min(dist, clip);      
+  return 1;     
+}

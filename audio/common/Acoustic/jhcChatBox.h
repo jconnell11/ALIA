@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,6 +72,8 @@ public:
 // helper functions
 private:
   void grab_text ();
+  void recall_text ();
+  void clear_text ();
 
 
 // Dialog Data 
@@ -79,6 +81,7 @@ private:
   double scene;                                // separator gap (sec)
   FILE *log;                                   // log file (if any)
   char entry[200];                             // last unseen user input
+  char prior[200];                             // previous transferred input
   UL32 last;                                   // time of last post
   int disable;                                 // ignore user input
   int quit;                                    // escape key seen

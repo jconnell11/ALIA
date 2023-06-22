@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,6 +99,7 @@ void jhcArr::init_arr ()
   sz = 0;
   i0 = 0;
   i1 = 0;
+  fn = 0;
   arr = NULL;
 }
 
@@ -211,6 +212,7 @@ void jhcArr::MaxLims ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Fill all entries in array with some value.
+// also rewinds scrolling data index for convenience
 
 void jhcArr::Fill (int def)
 {
@@ -218,6 +220,7 @@ void jhcArr::Fill (int def)
 
   for (i = 0; i < sz; i++)
     arr[i] = def;
+  fn = 0;
 }
 
 
@@ -288,6 +291,7 @@ void jhcArr::Copy (const int vals[], int n)
 
 
 //= Add new value at highest index, move all others down.
+// ripple takes some time - consider Scroll instead
 
 void jhcArr::Push (int val)
 {
@@ -299,21 +303,8 @@ void jhcArr::Push (int val)
 }
 
 
-//= Write value to next open location, pushing data to left if needed.
-
-void jhcArr::Scroll (int fill, int val)
-{
-  int i = __max(0, fill);
-
-  if (i < sz)
-    arr[i] = val;
-  else
-    Push(val);
-}
-
-
 //= Remove value at highest index, move all others up.
-// fill lowest bin with value given
+// fill lowest bin with value given - ripple takes some time
 
 int jhcArr::Pop (int fill)
 {

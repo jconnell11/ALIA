@@ -91,10 +91,12 @@
   backwards
   clockwise
   counterclockwise
-  right 
-  left
+  (to the) right 
+  (to the) left
   up 
+  upwards
   down
+  downwards
   level
   straight
   vertical
@@ -227,27 +229,30 @@
 // degree for an adjective (generally an adverb)
 
 =[DEG]
+  all the way
   extremely
   very very
   very
+  far
+  way
   fairly
   moderately
   partly
   somewhat
-  a little (bit)
   slightly
+  a little (bit)
 
 
 // amount as a modifier for a verb
 
 =[AMT]
+  high
   a lot
-  far
+  medium
   a little (bit)
-  slightly
-  way
-  all the way
-  no
+  a long way
+  low
+//  no
 
 
 // -----------------------------------------
@@ -380,6 +385,7 @@
   so
   thus
   therefore
+  but
 
 
 // conditions

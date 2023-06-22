@@ -9,6 +9,11 @@
   neck
   body
   base
+  inch
+  foot
+  centimeter
+  meter
+  degree
 
 
 // adjective
@@ -44,6 +49,8 @@
   point
   twist
   look
+  scan
+  gaze
 
 
 // imperative verbs requiring object and location or direction
@@ -56,6 +63,7 @@
 =[MOD]
   quickly
   slowly
+  visually
 
 
 // ================================================
@@ -63,6 +71,7 @@
 // irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
 
 =[XXX-morph]
+  foot * npl = feet
   open * vprog = opening
   open * vpast = opened
   spin * vpast = spun

@@ -20,7 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include "Interface/jhcDisplay.h"      // common video - since only spec'd as class in header
+#include "Action/jhcAliaCore.h"        // common robot - since only spec'd as class in header
 
 #include "Action/jhcAliaStats.h"
 
@@ -33,7 +33,6 @@
 
 jhcAliaStats::~jhcAliaStats ()
 {
-
 }
 
 
@@ -41,7 +40,6 @@ jhcAliaStats::~jhcAliaStats ()
 
 jhcAliaStats::jhcAliaStats (int n)
 {
-  ht = 100;
   SetSize(n);
   Reset();
 }
@@ -56,6 +54,17 @@ void jhcAliaStats::SetSize (int n)
   wmem.SetSize(n);
   hmem.SetSize(n);
 
+  // reconfigure speech data
+  spch.SetSize(n);
+  talk.SetSize(n);
+  attn.SetSize(n);
+
+  // reconfigure motion data
+  busy.SetSize(n);
+  walk.SetSize(n);
+  wave.SetSize(n);
+  emit.SetSize(n);
+  
   // reconfigure base data
   mcmd.SetSize(n);
   mips.SetSize(n);
@@ -70,12 +79,11 @@ void jhcAliaStats::SetSize (int n)
 
   // record new size
   sz = n;
-  fill = 0;
 }
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                              Main Functions                           //
+//                             Data Collection                           //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Clear all accumulated data.
@@ -86,6 +94,17 @@ void jhcAliaStats::Reset ()
   goal.Fill(0);
   wmem.Fill(0);
   hmem.Fill(0);
+
+  // clear speech data
+  spch.Fill(0);
+  talk.Fill(0);
+  attn.Fill(0);
+
+  // clear motion data
+  busy.Fill(0);
+  walk.Fill(0);
+  wave.Fill(0);
+  emit.Fill(0);
 
   // clear base data
   mcmd.Fill(0);
@@ -98,147 +117,81 @@ void jhcAliaStats::Reset ()
   pdeg.Fill(0);
   tcmd.Fill(0);
   tdeg.Fill(0);
-
-  // reset state
-  w0 = sz;
-  h0 = ht;
-  fill = 0;
 }
 
 
 //= Add new data points to graphs based on current operation of ALIA core.
-// need to call Shift once all data from this cycle are entered
-// display with Memory 
+// display with jhcAliaChart::Memory() and jhcAliaChart::Mood()
 
-void jhcAliaStats::Thought (jhcActionTree& atree)
+void jhcAliaStats::Thought (jhcAliaCore *core)
 {
-  int w = atree.WmemSize();
+  jhcActionTree *atree = &(core->atree);
+  int w = atree->WmemSize();
+  
+  // action tree data
+  goal.Scroll(100 * atree->NumGoals());
+  wmem.Scroll(100 * w);
+  hmem.Scroll(100 * (w + atree->HaloSize()));
 
-  goal.Scroll(fill, 100 * atree.NumGoals());
-  wmem.Scroll(fill, 100 * w);
-  hmem.Scroll(fill, 100 * (w + atree.HaloSize()));
+  // core thresholds
+  cred = 1.0 - atree->MinBlf();
+  opt  = 1.0 - atree->MinPref();
+}
+
+
+//= Add new data point for speech state.
+// sprc: 0 = silent, 1 = speech heard, 2 = full recognition
+// display with jhcAliaChart::Audio()
+
+void jhcAliaStats::Speech (int sprc, int tts, int gate)
+{
+  spch.Scroll(10 * sprc);
+  talk.Scroll((tts > 0) ? 10 : 0);
+  attn.Scroll(10 * gate);
+}
+
+
+//= Add new data for overall body motion (overall, base, finger, mouth).
+// display with jhcAliaChart::Physical() and jhcAliaChart::Mood()
+
+void jhcAliaStats::Motion (const jhcAliaMood& mood)
+{
+  double bsp, fsp, msp;
+
+  // cache values and thresholds
+  mood.BodyData(bsp, fsp, msp);
+  fidget = mood.Active();
+  active = mood.ActiveLvl();
+  bored = mood.BoredLvl();
+
+  // add graph data
+  busy.Scroll(ROUND(100.0 * fidget));
+  walk.Scroll(ROUND(10.0 * bsp));
+  wave.Scroll(ROUND(10.0 * fsp));
+  emit.Scroll(ROUND(10.0 * msp));
 }
 
 
 //= Add new data points for base commands and actual speeds.
-// need to call Shift once all data from this cycle are entered
-// display with Wheels
+// depends on RWI platform - display with jhcAliaChart::Wheels() 
 
 void jhcAliaStats::Drive (double m, double mest, double r, double rest)
 {
-  mcmd.Scroll(fill, ROUND(100.0 * m));
-  mips.Scroll(fill, ROUND(100.0 * mest));
-  rcmd.Scroll(fill, ROUND(100.0 * r));
-  rdps.Scroll(fill, ROUND(100.0 * rest));
+  mcmd.Scroll(ROUND(100.0 * m));
+  mips.Scroll(ROUND(100.0 * mest));
+  rcmd.Scroll(ROUND(100.0 * r));
+  rdps.Scroll(ROUND(100.0 * rest));
 }
 
 
 //= Add new data points for neck commands and actual positions.
-// need to call Shift once all data from this cycle are entered
-// display with Neck
+// depends on RWI platform - display with jhcAliaChart::Neck() 
 
 void jhcAliaStats::Gaze (double p, double pest, double t, double test)
 {
-  pcmd.Scroll(fill, ROUND(100.0 * p));
-  pdeg.Scroll(fill, ROUND(100.0 * pest));
-  tcmd.Scroll(fill, ROUND(100.0 * t));
-  tdeg.Scroll(fill, ROUND(100.0 * test));
-}
-
-
-///////////////////////////////////////////////////////////////////////////
-//                           Graphical Display                           //
-///////////////////////////////////////////////////////////////////////////
-
-//= Display memory-related statistics on the screen at some grid position.
-// needs data from Thought function
-
-void jhcAliaStats::Memory (jhcDisplay *d, int i, int j, double hz) 
-{
-  double pk = 1.1;
-  int x, y, g = goal.MaxVal(), m = hmem.MaxVal(), top = __max(1, ROUND(pk * m));
-
-  if (corner(x, y, i, j, d) <= 0)
-    return;
-  d->Graph(hmem, x, y, top, 2, "Total goals (%d max) and total memory (%d max) over %3.1f secs", g / 100, m / 100, sz / hz);
-  d->GraphOver(wmem, top, 4);
-  d->GraphOver(goal, __max(1, ROUND(pk * g)), 8);
-  restore(d);
-}
-
-
-//= Display base motion servo performance on the screen at some grid position.
-// needs data from Drive function
-
-void jhcAliaStats::Wheels (jhcDisplay *d, int i, int j) 
-{
-  int mc = mcmd.MaxAbs(), mv = mips.MaxAbs(), rc = rcmd.MaxAbs(), rv = rdps.MaxAbs();
-  int x, y, mpk = __max(mc, mv), rpk = __max(rc, rv);
-
-  // driving speed
-  if (corner(x, y, i, j, d) <= 0)
-    return;
-  d->Graph0(x, y, "Move speed (%3.1f ips max)", 0.01 * mpk);
-  d->GraphVal(0, -mpk, 2);
-  d->GraphOver(mcmd, -mpk, 8);
-  d->GraphOver(mips, -mpk, 4);
-
-  // turning speed
-  d->Graph0(d->BelowX(), d->BelowY(), "Turn speed (%3.1f dps max)", 0.01 * rpk);
-  d->GraphVal(0, -rpk, 2);
-  d->GraphOver(rcmd, -rpk, 8); 
-  d->GraphOver(rdps, -rpk, 1); 
-  restore(d);
-}
-
-
-//= Display neck motion servo tracking on the screen at some grid position.
-// needs data from Gazee function
-
-void jhcAliaStats::Neck (jhcDisplay *d, int i, int j) 
-{
-  int pc = pcmd.MaxAbs(), pv = pdeg.MaxAbs(), tc = tcmd.MaxAbs(), tv = tdeg.MaxAbs();
-  int x, y, ppk = __max(1000, __max(pc, pv)), tpk = __max(1000, __max(tc, tv));
-
-  // panning speed
-  if (corner(x, y, i, j, d) <= 0)
-    return;
-  d->Graph0(x, y, "Pan (+/- %1.0f deg max)", 0.01 * ppk);
-  d->GraphVal(0, -ppk, 2);
-  d->GraphOver(pcmd, -ppk, 8);
-  d->GraphOver(pdeg, -ppk, 4);
-
-  // tilting speed
-  d->Graph0(d->BelowX(), d->BelowY(), "Tilt (+/- %1.0f deg max)", 0.01 * tpk);
-  d->GraphVal(0, -tpk, 2);
-  d->GraphOver(tcmd, -tpk, 8);
-  d->GraphOver(tdeg, -tpk, 1); 
-  restore(d);
-}
-
-
-//= Get a screen position based on grid or just use below if bad grid.
-// use negative i for adjacent, negative j for below
-// returns 1 if okay, 0 for problem
-
-int jhcAliaStats::corner (int& x, int& y, int i, int j, jhcDisplay *d) 
-{
-  if (d == NULL)
-    return 0;
-  w0 = d->gwid;
-  h0 = d->ght;
-  d->gwid = sz;
-  d->ght  = ht;
-  d->ScreenPos(x, y, i, j);
-  return 1;
-}
-
-
-//= Change display back to normal graph size.
-
-void jhcAliaStats::restore (jhcDisplay *d) const
-{
-  d->gwid = w0;
-  d->ght  = h0;
+  pcmd.Scroll(ROUND(100.0 * p));
+  pdeg.Scroll(ROUND(100.0 * pest));
+  tcmd.Scroll(ROUND(100.0 * t));
+  tdeg.Scroll(ROUND(100.0 * test));
 }
 

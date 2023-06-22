@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,21 +51,29 @@ jhcEchoFcn::jhcEchoFcn ()
 
 //= Tack another pool of functions onto tail of list.
 
-void jhcEchoFcn::AddFcns (jhcAliaKernel *pool)
+void jhcEchoFcn::AddFcns (jhcAliaKernel& pool)
 {
-  if (pool == NULL)
-    return;
   if (next != NULL)
     next->AddFcns(pool);
   else
-    next = pool;
+    next = &pool;
 }
 
 
-//= Kill all instance of all functions.
+//= Bind all function pools to a real-world interface for a body.
 // automatically chains to "next" pool
 
-void jhcEchoFcn::Reset (jhcAliaNote *attn)  
+void jhcEchoFcn::Platform (void *soma)  
+{
+  if (next != NULL) 
+    next->Platform(soma);
+}
+
+
+//= Reset all function pools for start of new run.
+// automatically chains to "next" pool
+
+void jhcEchoFcn::Reset (jhcAliaNote& attn)  
 {
   if (next != NULL) 
     next->Reset(attn);
@@ -89,7 +97,7 @@ void jhcEchoFcn::Volunteer ()
 //= Start a function using given importance bid.
 // returns new instance number (>= 0) if success, -1 for problem, -2 for unknown
 
-int jhcEchoFcn::Start (const jhcAliaDesc *desc, int bid)
+int jhcEchoFcn::Start (const jhcAliaDesc& desc, int bid)
 {
   int rc = -2;
 
@@ -102,7 +110,7 @@ int jhcEchoFcn::Start (const jhcAliaDesc *desc, int bid)
   // mark start of non-grounded function
   if (noisy >= 1)
   {
-    jprintf("ECHO: ");
+    jprintf(">>> GND: ");
     fcn_args(desc);
     jprintf(" start ignored\n");
   }
@@ -113,7 +121,7 @@ int jhcEchoFcn::Start (const jhcAliaDesc *desc, int bid)
 //= Check whether a function instance has completed yet.
 // returns positive for done, 0 for still running, -1 for failure, -2 if unknown
 
-int jhcEchoFcn::Status (const jhcAliaDesc *desc, int inst)
+int jhcEchoFcn::Status (const jhcAliaDesc& desc, int inst)
 {
   int rc = -2;
 
@@ -126,7 +134,7 @@ int jhcEchoFcn::Status (const jhcAliaDesc *desc, int inst)
   // mark status check of non-grounded function
   if (noisy >= 1)
   {
-    jprintf("ECHO: ");
+    jprintf(">>> GND: ");
     fcn_args(desc);
     jprintf(" status ignored\n");
   }
@@ -138,7 +146,7 @@ int jhcEchoFcn::Status (const jhcAliaDesc *desc, int inst)
 // calling with NULL description causes all instances of everything to stop
 // returns positive for convenience, -2 if unknown (courtesy call - should never wait)
 
-int jhcEchoFcn::Stop (const jhcAliaDesc *desc, int inst)
+int jhcEchoFcn::Stop (const jhcAliaDesc& desc, int inst)
 {
   int rc = -2;
 
@@ -151,7 +159,7 @@ int jhcEchoFcn::Stop (const jhcAliaDesc *desc, int inst)
   // mark stop of non-grounded function
   if (noisy >= 1)
   {
-    jprintf("ECHO: ");
+    jprintf(">>> GND: ");
     fcn_args(desc);
     jprintf(" stop ignored\n\n");
   }
@@ -162,12 +170,12 @@ int jhcEchoFcn::Stop (const jhcAliaDesc *desc, int inst)
 
 //= Write out description of function and its arguments.
 
-void jhcEchoFcn::fcn_args (const jhcAliaDesc *desc)
+void jhcEchoFcn::fcn_args (const jhcAliaDesc& desc)
 {
   const jhcNetNode *n;
   int i, na;
 
-  if ((n = dynamic_cast<const jhcNetNode *>(desc)) == NULL)
+  if ((n = dynamic_cast<const jhcNetNode *>(&desc)) == NULL)
     return;
   jprintf("\"%s(", n->Lex());
   na = n->NumArgs();

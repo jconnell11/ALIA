@@ -1,216 +1,390 @@
 // basic commands for manipulating visible objects
 // ================================================
 
-OP 1 - "To grab a thing ..."
+OP 1 - "To hold onto a thing ..."
   trig:   
-    DO[ act-1 -lex-  grab 
-              -obj-> obj-1 ]
+    DO[ fcn-1 -lex-   hold
+              -fcn--> act-1
+        act-1 -dest-> loc-1 
+        loc-1 -lex-   onto
+              -ref--> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  man_grab 
-              -arg-> obj-1 ]
+   GND[ call-1 -lex-  man_wrap 
+               -arg-> obj-1 ]
 
 
-OP 2 - "To lift a thing ..."
+OP 2 - "To clutch a thing ..."
   trig:   
-    DO[ act-1 -lex-  lift
-              -obj-> obj-1 ]
+    DO[ fcn-1 -lex-  clutch
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  man_lift 
-              -arg-> obj-1 ]
+   GND[ call-1 -lex-  man_lift 
+               -arg-> obj-1 ]
 
 
-OP 3 - "To take a thing ..."
+OP 3 - "To put a thing down, find a surface, look at it, then ..."
   trig:   
-    DO[ act-1 -lex-  take
-              -obj-> obj-1 ]
+    DO[ fcn-1 -lex-  put
+              -fcn-> act-1
+        act-1 -obj-> obj-1
+        dir-1 -lex-  down
+              -dir-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  man_take 
-              -arg-> obj-1 ]
+  FIND[ obj-2 
+        ako-2 -lex-  surface
+              -ako-> obj-2 ]
+    DO[ fcn-2 -lex-  look
+              -fcn-> act-2
+        loc-1 -lex-  at
+              -loc-> act-2
+              -ref-> obj-2 ]
+   GND[ call-1 -lex-   man_trans
+               -arg--> obj-1 
+               -arg2-> dir-1 ]
 
 
-OP 4 - "To move a thing somehere ..."
-  trig:   
-    DO[ act-1 -lex-   move
-              -obj--> obj-1
-              -dest-> loc-1 ]
----------------
-   FCN[ fcn-1 -lex-   man_move
-              -arg--> obj-1
-              -arg2-> loc-1 ]
-
-
-OP 5 - "To put a thing down ..."
-  trig:   
-    DO[ act-1 -lex-   put
-              -obj--> obj-1
-        dir-1 -lex-   down
-              -dir->  act-1 ]
----------------
-   FCN[ fcn-1 -lex-   man_move
-              -arg--> obj-1 
-              -arg2-> dir-1 ]
-
-
-OP 6 - "To tuck the arm ..."
+OP 4 - "To tuck the arm ..."
   trig:
-    DO[ act-1 -lex-  tuck
-              -obj-> obj-1 
+    DO[ fcn-1 -lex-  tuck
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
         ako-1 -lex-  arm
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  man_tuck
-              -arg-> obj-1 ]
+   GND[ call-1 -lex-  man_tuck
+               -arg-> obj-1 ]
 
 
-OP 7 - "To tuck in the arm ..."
+OP 5 - "To point to something ..."
+  trig:   
+    DO[ fcn-1 -lex-   point
+              -fcn--> act-1
+        act-1 -dest-> obj-1 ]
+---------------
+   GND[ call-1 -lex-  man_point
+               -arg-> obj-1 ]
+
+
+// --------------------------------------
+
+OP 6 - "To move a thing somewhere make sure you are holding it then ..."
+  trig:   
+    DO[ fcn-1 -lex-   move
+              -fcn--> act-1
+        act-1 -obj--> obj-1
+              -dest-> loc-1 ]
+---------------
+   ACH[ fcn-2 -lex-  hold
+              -fcn-> act-2
+        act-2 -agt-> agt-1
+              -obj-> obj-1 
+        agt-1 -lex-  me ] 
+   GND[ call-1 -lex-   man_trans
+               -arg--> obj-1
+               -arg2-> loc-1 ]
+
+
+OP 7 - "To take a thing make sure you are holding it then tuck the arm"
+  trig:   
+    DO[ fcn-1 -lex-  take
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
+---------------
+   ACH[ fcn-2 -lex-  hold
+              -fcn-> act-2
+        act-2 -agt-> agt-1
+              -obj-> obj-1 
+        agt-1 -lex-  me ] 
+    DO[ fcn-3 -lex-  tuck
+              -fcn-> act-3
+        act-3 -obj-> obj-2 
+        ako-1 -lex-  arm
+              -ako-> obj-2 ]
+
+
+// ======================================
+
+OP 8 - "Before holding onto something if you are holding something else put that down."
+  trig:   
+  ANTE[ fcn-1 -lex-   hold
+              -fcn--> act-1
+        act-1 -dest-> loc-1
+        loc-1 -lex-   onto
+              -ref--> obj-1
+        fcn-2 -lex-   hold
+              -fcn--> act-2
+        act-2 -agt--> agt-1
+              -obj--> obj-2 
+        agt-1 -lex-   me ] 
+---------------
+    DO[ fcn-3 -lex-  put
+              -fcn-> act-3
+        act-3 -obj-> obj-2 
+        dir-1 -lex-  down
+              -dir-> act-3 ]
+
+
+OP 9 - "Before acquiring something if you are holding something else put that down."
+  trig:   
+  ANTE[ fcn-1 -lex-  clutch
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
+        fcn-2 -lex-  hold
+              -fcn-> act-2
+        act-2 -agt-> agt-1
+              -obj-> obj-2 
+        agt-1 -lex-  me ] 
+---------------
+    DO[ fcn-3 -lex-  put
+              -fcn-> act-3
+        act-3 -obj-> obj-2 
+        dir-1 -lex-  down
+              -dir-> act-3 ]
+
+
+// --------------------------------------
+
+OP 10 - "Before lifting something make sure you are holding it"
+  trig:   
+  ANTE[ fcn-1 -lex-  lift
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
+---------------
+   ACH[ fcn-2 -lex-  hold
+              -fcn-> act-2
+        act-2 -agt-> agt-1
+              -obj-> obj-1 
+        agt-1 -lex-  me ] 
+
+
+OP 11 - "Before moving something somewhere make sure you are holding it"
+  trig:   
+  ANTE[ fcn-1 -lex-   move
+              -fcn--> act-1
+        act-1 -obj--> obj-1 
+              -dest-> loc-1 ]
+---------------
+   ACH[ fcn-2 -lex-  hold
+              -fcn-> act-2
+        act-2 -agt-> agt-1
+              -obj-> obj-1 
+        agt-1 -lex-  me ] 
+
+
+OP 12 - "Before taking something make sure you are holding it"
+  trig:   
+  ANTE[ fcn-1 -lex-  take
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
+---------------
+   ACH[ fcn-2 -lex-  hold
+              -fcn-> act-2
+        act-2 -agt-> agt-1
+              -obj-> obj-1 
+        agt-1 -lex-  me ] 
+
+
+OP 13 - "To make sure you are holding something clutch it"
   trig:
-    DO[ act-1 -lex-   tuck
-              -dest-> loc-1 
-        loc-1 -lex-   in
-              -ref--> obj-1 
-        ako-1 -lex-   arm
-              -ako--> obj-1 ]
+   ACH[ fcn-1 -lex-  hold
+              -fcn-> act-1
+        act-1 -agt-> agt-1 
+              -obj-> obj-1 
+        agt-1 -lex-  me ]
 ---------------
-   FCN[ fcn-1 -lex-  man_tuck
-              -arg-> obj-1 ]
-
-
-OP 8 - "To point at something ..."
-  trig:   
-    DO[ act-1 -lex-  point
-        loc-1 -lex-  at
-              -loc-> act-1
-              -ref-> obj-1 ]
----------------
-   FCN[ fcn-1 -lex-  man_point
-              -arg-> obj-1 ]
-
-
-OP 9 - "To point to something ..."
-  trig:   
-    DO[ act-1 -lex-   point
-              -dest-> obj-1 ]
----------------
-   FCN[ fcn-1 -lex-  man_point
-              -arg-> obj-1 ]
+    DO[ fcn-2 -lex-  clutch
+              -fcn-> act-2
+        act-2 -obj-> obj-1 ]
 
 
 // --------------------------------------
 
-OP 10 - "Before grabbing something if you are holding something else put it down."
+OP 14 - "To lift a thing clutch it"
   trig:   
-  ANTE[  act-1 -lex-  grab
-               -obj-> obj-1 
-         act-2 -lex-  hold
-               -agt-> self-1
-               -obj-> obj-2 
-        self-1 -lex-  me ] 
+    DO[ fcn-1 -lex-  lift
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
 ---------------
-    DO[ act-3 -lex-  put
-              -obj-> obj-2 
-        dir-1 -lex-  down
-              -dir-> act-3 ]
+    DO[ fcn-2 -lex-  clutch
+              -fcn-> act-2
+        act-2 -obj-> obj-1 ]
 
 
-OP 11 - "Before lifting something if you are holding something else put it down."
+OP 15 - "To grab a thing lift it"
   trig:   
-  ANTE[  act-1 -lex-  lift
-               -obj-> obj-1 
-         act-2 -lex-  hold
-               -agt-> self-1
-               -obj-> obj-2 
-        self-1 -lex-  me ] 
+    DO[ fcn-1 -lex-  grab
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
 ---------------
-    DO[ act-3 -lex-  put
-              -obj-> obj-2 
-        dir-1 -lex-  down
-              -dir-> act-3 ]
+    DO[ fcn-2 -lex-  lift
+              -fcn-> act-2
+        act-2 -obj-> obj-1 ]
 
 
-OP 12 - "Before taking something if you are holding something else put it down."
+OP 16 - "To put a thing to somewhere move it there"
   trig:   
-  ANTE[  act-1 -lex-  take
-               -obj-> obj-1 
-         act-2 -lex-  hold
-               -agt-> self-1
-               -obj-> obj-2 
-        self-1 -lex-  me ] 
----------------
-    DO[ act-3 -lex-  put
-              -obj-> obj-2 
-        dir-1 -lex-  down
-              -dir-> act-3 ]
-
-
-OP 13 - "Before moving something somewhere if you are holding something else put it down."
-  trig:   
-  ANTE[  act-1 -lex-   move
-               -obj--> obj-1
-               -dest-> loc-1 
-         act-2 -lex-   hold
-               -agt--> self-1
-               -obj--> obj-2 
-        self-1 -lex-   me ] 
----------------
-    DO[ act-3 -lex-  put
-              -obj-> obj-2 
-        dir-1 -lex-  down
-              -dir-> act-3 ]
-
-
-// --------------------------------------
-
-OP 14 - "To put something somewhere move it there"
-  trig: 
-    DO[ act-1 -lex-   put
-              -obj--> obj-1
+    DO[ fcn-1 -lex-   put
+              -fcn--> act-1
+        act-1 -obj--> obj-1
               -dest-> loc-1 ]
 ---------------
-    DO[ act-2 -lex-  move
-              -obj--> obj-1
+    DO[ fcn-2 -lex-   move
+              -fcn--> act-2
+        act-2 -obj--> obj-1
               -dest-> loc-1 ]
 
 
-OP 15 - "To deposit something put it down"
-  trig: 
-    DO[ act-1 -lex-  deposit
-              -obj-> obj-1 ]
+OP 17 - "To put a thing somewhere relative to something move it there"
+  trig:   
+    DO[ fcn-1 -lex-  put
+              -fcn-> act-1
+        act-1 -obj-> obj-1
+        loc-1 -loc-> act-1
+              -ref-> obj-2 ]
 ---------------
-    DO[ act-2 -lex-  put
-              -obj-> obj-1
+    DO[ fcn-2 -lex-   move
+              -fcn--> act-2
+        act-2 -obj--> obj-1
+              -dest-> loc-1 ]
+
+
+OP 18 - "To put a thing somewhere relative to something and something else move it there"
+  trig:   
+    DO[ fcn-1 -lex-   put
+              -fcn--> act-1
+        act-1 -obj--> obj-1
+        loc-1 -loc--> act-1
+              -ref--> obj-2 
+              -ref2-> obj-3 ]
+---------------
+    DO[ fcn-2 -lex-   move
+              -fcn--> act-2
+        act-2 -obj--> obj-1
+              -dest-> loc-1 ]
+
+
+OP 19 - "To deposit something put it down"
+  trig: 
+    DO[ fcn-1 -lex-  deposit
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
+---------------
+    DO[ fcn-2 -lex-  put
+              -fcn-> act-2
+        act-2 -obj-> obj-1
         dir-1 -lex-  down
               -loc-> act-2 ]
 
 
-OP 16 - "To point to something point at it"
-  trig: 
-    DO[ act-1 -lex-   point
-              -dest-> obj-1 ]
+OP 20 - "To snatch something take it"
+  trig:   
+    DO[ fcn-1 -lex-  snatch
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
 ---------------
-    DO[ act-2 -lex-  point
+    DO[ fcn-2 -lex-  take
+              -fcn-> act-2
+        act-2 -obj-> obj-1 ]
+
+
+OP 21 - "To tuck in the arm tuck the arm"
+  trig:
+    DO[ fcn-1 -lex-  tuck
+              -fcn-> act-1
+        loc-1 -lex-  in
+              -loc-> act-1
+              -ref-> obj-1 
+        ako-1 -lex-  arm
+              -ako-> obj-1 ]
+---------------
+    DO[ fcn-2 -lex-  tuck
+              -fcn-> act-2
+        act-2 -obj-> obj-1 ]
+
+
+OP 22 - "To point at something point to it"
+  trig:   
+    DO[ fcn-1 -lex-  point
+              -fcn-> act-1
         loc-1 -lex-  at
-              -loc-> act-2
+              -loc-> act-1
               -ref-> obj-1 ]
+---------------
+    DO[ fcn-2 -lex-   point
+              -fcn--> act-2
+        act-2 -dest-> obj-1 ]
 
 
 // --------------------------------------
 
-OP 17 - "To tell someone that something is somewhere point at it, say here, then tuck the arm"
+OP 23 - "To tell someone that something is somewhere point at it, say here, then tuck the arm"
   trig:
-    DO[ act-1 -lex-   tell
-              -dest-> dude-1
+    DO[ fcn-1 -lex-   tell
+              -fcn--> act-1
+        act-1 -dest-> dude-1
               -obj--> loc-1
         loc-1 -loc--> obj-1
               -ref--> obj-2 ]
 ---------------
-    DO[ act-2 -lex-  point
+    DO[ fcn-2 -lex-  point
+              -fcn-> act-2
         loc-2 -lex-  at
               -loc-> act-2 
               -ref-> obj-1 ]
-    DO[ act-3 -lex-  say
-              -obj-> txt-1
+    DO[ fcn-3 -lex-  say
+              -fcn-> act-3
+        act-3 -obj-> txt-1
         txt-1 -str-  here ]
-    DO[ act-4 -lex-  tuck
-              -obj-> obj-3
+    DO[ fcn-4 -lex-  tuck
+              -fcn-> act-4
+        act-4 -obj-> obj-3
         ako-3 -lex-  arm
               -ako-> obj-3 ] 
+
+
+OP 24 - "If you dropped something say oops, I dropped it"
+  trig:
+  NOTE[ fcn-1 -lex-  drop
+              -fcn-> act-1
+        act-1 -ach-  1
+              -obj-> obj-1
+              -agt-> agt-1
+        agt-1 -lex-  me ]
+---------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  oops, I dropped it ]
+
+
+OP 25 - "If you dropped something say darn, it got away"
+  trig:
+  NOTE[ fcn-1 -lex-  drop
+              -fcn-> act-1
+        act-1 -ach-  1
+              -obj-> obj-1
+              -agt-> agt-1
+        agt-1 -lex-  me ]
+---------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  darn, it got away ]
+
+
+OP 26 - "If you dropped something say uh oh, I lost it"
+  trig:
+  NOTE[ fcn-1 -lex-  drop
+              -fcn-> act-1
+        act-1 -ach-  1
+              -obj-> obj-1
+              -agt-> agt-1
+        agt-1 -lex-  me ]
+---------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  uh oh, I lost it ]
+
+

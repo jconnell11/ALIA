@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,9 +48,13 @@ jhcEliBody::jhcEliBody ()
 {
   // shared Dynamixel serial port exists but is not open yet
   mok = -1;
-  arm.Bind(&dyn);
-  neck.Bind(&dyn);
-  acc.Bind(&dyn);
+  arm.Bind(dyn);
+  neck.Bind(dyn);
+  acc.Bind(dyn);
+
+  // default battery status
+  volts = 13.8;
+  vsamp = 0;
 
   // starting values
   iw = 640;
@@ -63,10 +67,6 @@ jhcEliBody::jhcEliBody ()
   bnum = -1;
   tfill = 0;
 
-  // default battery status
-  volts = 13.8;
-  vsamp = 0;
-
   // default robot name
   *rname = '\0';
   *vname = '\0';
@@ -77,22 +77,6 @@ jhcEliBody::jhcEliBody ()
   LoadCfg();
   Defaults();
   mic.SetGeom(0.0, 0.9, 44.5);         // position of mic (wrt wheel centers)
-}
-
-
-//= Tell remaining battery charge using last voltage reading acquired while runnning.
-
-void jhcEliBody::ReportCharge ()
-{
-  int pct = Charge(volts, 0);
-
-  jprintf("Battery @ %3.1f volts [%d pct]", volts, pct);
-  if (pct <= 20)
-  {
-    jprintf(" - CONSIDER RECHARGING");
-    Beep();
-  }
-  jprintf("\n\n");
 }
 
 
@@ -224,7 +208,7 @@ int jhcEliBody::LoadCfg (const char *fname)
   ok &= acc.LoadCfg(fname);
 
   // record presumed battery capacity in case it changes
-  vmax0 = base.vmax;
+  vmax0 = base.MaxVolt();
   return ok;
 }
 
@@ -249,7 +233,7 @@ int jhcEliBody::SaveVals (const char *fname) const
   ok &= acc.SaveVals(fname);
 
   // adjust configuration if max battery voltage changed
-  if ((base.vmax != vmax0) && (*cfile != '\0'))
+  if ((base.MaxVolt() != vmax0) && (*cfile != '\0'))
     ok &= (base.gps).SaveVals(cfile);
   return ok;
 }
@@ -280,6 +264,117 @@ int jhcEliBody::SaveCfg (const char *fname) const
   ok &= mic.SaveCfg(fname);
   ok &= acc.SaveCfg(fname);
   return ok;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                              Power Level                              //
+///////////////////////////////////////////////////////////////////////////
+
+//= Take in current estimate of battery voltage for smoothing.
+
+void jhcEliBody::Sample (double v)
+{
+  double vmax = base.MaxVolt(), mix = 0.2, mem = 0.5;
+
+  // possibly update fully charged voltage
+  if (v > vmax)
+  {
+    if (vmax <= 0.0)          
+      vmax = v; 
+    else 
+      vmax += mix * (v - vmax);
+    base.ResetBat(vmax);
+  }
+
+  // keep IIR filtered version in member variable
+  if (vsamp++ <= 0)
+    volts = v;
+  else   
+    volts += mem * (v - volts);          
+}
+
+
+//= Rough indication of battery charge state when under minimal load.
+// measured at 2.9A with robot on and program running  = C/15 roughly (44 AH)
+// eventually lead-acid drops to about 70% of capacity = C/10 instead (31 AH)
+// uses max recharge to figure out likely capacity of battery
+
+int jhcEliBody::Charge (double v) const
+{
+  double curve[5][11] = {{10.75, 11.05, 11.30, 11.50, 11.70, 11.85, 12.00, 12.10, 12.20, 12.25, 12.30},    // C/7.5
+                         {10.90, 11.15, 11.40, 11.60, 11.75, 11.90, 12.10, 12.15, 12.20, 12.30, 12.40},    // ELI?
+                         {11.00, 11.25, 11.50, 11.70, 11.85, 12.00, 12.20, 12.25, 12.30, 12.40, 12.50},    // C/10
+                         {11.25, 11.50, 11.75, 11.90, 12.05, 12.15, 12.25, 12.35, 12.45, 12.55, 12.60},    // C/15
+                         {11.45, 11.70, 11.90, 12.10, 12.20, 12.30, 12.40, 12.50, 12.55, 12.57, 12.65}};   // C/20
+  double diff, frac, vmax = base.MaxVolt(), best = -1.0;
+  int i, cap, p;
+
+  // lookup remaining capacity based on measurement
+  if (v < 0.0)
+    return -1;
+  for (i = 0; i < 5; i++)
+  {
+    diff = fabs(vmax - curve[i][10]);
+    if ((best < 0.0) || (diff < best))
+    {
+      cap = i;
+      best = diff;
+    }
+  }
+
+  // find relevant voltage interval and interpolate to get percentage
+  for (i = 10; i >= 0; i--)
+    if (v >= curve[cap][i])
+      break;
+  if (i >= 10)
+    p = 100;
+  else if (i < 0)
+    p = 0;
+  else 
+  {
+    frac = (v - curve[cap][i]) / (curve[cap][i + 1] - curve[cap][i]);
+    p = ROUND(10.0 * (i + frac));
+  }
+  return p;                          
+}
+
+
+//= Determine battery capacity versus nominal based on max charged voltage.
+// returns percentage (e.g 70 means 0.7 * 44 WH = 30.8 WH true capacity)
+
+int jhcEliBody::Capacity () const
+{
+  double top[5] = { 11.75, 12.10, 12.30, 12.50, 12.60 };   // C/3 C/5 C/7.5 C/10 C/15
+  double cap[5] = {  0.20,  0.33,  0.50,  0.67,  1.00 };
+  double frac, vmax = base.MaxVolt();
+  int i;
+
+  if (vmax >= top[4])
+    return 100;
+  if (vmax <= top[0])
+    return 20;
+  for (i = 3; i >= 1; i--)
+    if (vmax >= top[i])
+      break; 
+  frac = (vmax - top[i]) / (top[i + 1] - top[i]);
+  return ROUND(100.0 * (cap[i] + frac * (cap[i + 1] - cap[i])));
+}
+
+
+//= Tell remaining battery charge using last voltage reading acquired while runnning.
+
+void jhcEliBody::ReportCharge () const
+{
+  int pct = Charge(volts);
+
+  jprintf("Battery @ %3.1f volts [%d pct]", volts, pct);
+  if (pct <= 20)
+  {
+    jprintf(" - CONSIDER RECHARGING");
+    Beep();
+  }
+  jprintf("\n\n");
 }
 
 
@@ -344,7 +439,7 @@ int jhcEliBody::Reset (int rpt, int full)
   jprintf(1, rpt, "BODY reset ...\n");
   if ((full > 0) || (CommOK(0) <= 0))
   {
-    // connect to proper serial port (if needed) 
+    // connect to proper serial port if needed (does not unwedge) 
     if (mok < 0)
     {
       if (dyn.SetSource(dport, dbaud, 256) <= 0)
@@ -373,11 +468,9 @@ int jhcEliBody::Reset (int rpt, int full)
     neck.Reset(rpt, 1);
     base.Reset(rpt, 1);
     lift.Reset(rpt, 1);
-    mic.mport = 8;                 // serial port for sound direction
+    mic.SetPort(8);                    // serial port for sound direction
     mic.Reset(rpt);
   }
-  else
-    arm.Stow();                    
   
   // finished with actuators
   if (rpt > 0)
@@ -567,105 +660,6 @@ const char *jhcEliBody::Problems ()
     }
   return errors;
 }  
-
-
-//= Rough indication of battery charge state when under minimal load.
-// measured at 2.9A with robot on and program running  = C/15 roughly (44 AH)
-// eventually lead-acid drops to about 70% of capacity = C/10 instead (31 AH)
-// uses max recharge to figure out likely capacity of battery
-
-int jhcEliBody::Charge (double v, int running)
-{
-  double curve[5][11] = {{10.75, 11.05, 11.30, 11.50, 11.70, 11.85, 12.00, 12.10, 12.20, 12.25, 12.30},    // C/7.5
-                         {10.90, 11.15, 11.40, 11.60, 11.75, 11.90, 12.10, 12.15, 12.20, 12.30, 12.40},    // ELI?
-                         {11.00, 11.25, 11.50, 11.70, 11.85, 12.00, 12.20, 12.25, 12.30, 12.40, 12.50},    // C/10
-                         {11.25, 11.50, 11.75, 11.90, 12.05, 12.15, 12.25, 12.35, 12.45, 12.55, 12.60},    // C/15
-                         {11.45, 11.70, 11.90, 12.10, 12.20, 12.30, 12.40, 12.50, 12.55, 12.57, 12.65}};   // C/20
-  double diff, frac, mix = 0.2, mem = 0.5, best = -1.0;
-  int i, cap, p;
-
-
-  // analyze raw voltage reading
-  if (v < 0.0)
-    return -1;
-  if (running > 0)
-  {
-    // possibly update fully charged voltage
-    if (v > base.vmax)
-    {
-      if (base.vmax <= 0.0)          
-        base.vmax = v; 
-      else 
-        base.vmax += mix * (v - base.vmax);
-    }
-
-    // keep IIR filtered version in member variable
-    if (vsamp++ <= 0)
-      volts = v;
-    else   
-      volts += mem * (v - volts);          
-  }
-
-  // lookup remaining capacity based on measurement
-  for (i = 0; i < 5; i++)
-  {
-    diff = fabs(base.vmax - curve[i][10]);
-    if ((best < 0.0) || (diff < best))
-    {
-      cap = i;
-      best = diff;
-    }
-  }
-
-  // find relevant voltage interval and interpolate to get percentage
-  for (i = 10; i >= 0; i--)
-    if (v >= curve[cap][i])
-      break;
-  if (i >= 10)
-    p = 100;
-  else if (i < 0)
-    p = 0;
-  else 
-  {
-    frac = (v - curve[cap][i]) / (curve[cap][i + 1] - curve[cap][i]);
-    p = ROUND(10.0 * (i + frac));
-  }
-  return p;                          
-}
-
-
-//= Determine battery capacity versus nominal based on max charged voltage.
-// returns percentage (e.g 70 means 0.7 * 44 WH = 30.8 WH true capacity)
-
-int jhcEliBody::Capacity () const
-{
-  double top[5] = { 11.75, 12.10, 12.30, 12.50, 12.60 };   // C/3 C/5 C/7.5 C/10 C/15
-  double cap[5] = {  0.20,  0.33,  0.50,  0.67,  1.00 };
-  double frac;
-  int i;
-
-  if (base.vmax >= top[4])
-    return 100;
-  if (base.vmax <= top[0])
-    return 20;
-  for (i = 3; i >= 1; i--)
-    if (base.vmax >= top[i])
-      break; 
-  frac = (base.vmax - top[i]) / (top[i + 1] - top[i]);
-  return ROUND(100.0 * (cap[i] + frac * (cap[i + 1] - cap[i])));
-}
-
-
-//= Set up to recalibrate maximum battery voltage after full charge.
-// top value will be set on next robot boot
-// could auto-reset if vnow - vlast > 0.3 volts (assumes fully charged)
-
-int jhcEliBody::ResetVmax ()
-{
-  if (bnum > 0)
-    base.vmax = 0.0;
-  return bnum;
-}
 
 
 //= Tell what percentage of mega-update packets failed.
@@ -918,14 +912,6 @@ int jhcEliBody::Issue (double lead)
 //                          Ballistic Functions                          //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Make the robot beep (blocks).
-
-void jhcEliBody::Beep () const
-{
-  ::Beep(300, 300);
-}
-
-
 //= Assume the standard ready pose and optionally set arm height (blocks).
 // retract arm and close hand, set lift to desired height, look straight ahead 
 
@@ -936,9 +922,9 @@ int jhcEliBody::InitPose (double ht)
   if (arm.Stow() <= 0)
     ok = -2;
   if (ht >= 0.0)                                           // skip if negative
-    if (lift.SetLift((ht > 0.0) ? ht : lift.ht0) <= 0)
+    if (lift.SetLift((ht > 0.0) ? ht : lift.Default()) <= 0)
       ok = -1;
-  if (neck.SetNeck(0.0, neck.gaze0) <= 0)
+  if (neck.SetNeck(0.0, neck.Default()) <= 0)
     ok = 0;
   return ok;
 } 

@@ -110,8 +110,8 @@
 =[nmod]
   (<NEG>) (<DEG>) <HQ>
   <HQ-EST>
-  <ACT-G>
   <AKO>
+  <%fact-g>
 
 
 // complementing term (usually PP)
@@ -140,21 +140,21 @@
 // copula verb phrase ("be" optional for yn-questions)
 
 =[$add]
-  (<cop>) (<NEG>) <NAME>
+  <cop> <%obj>
+  (<cop>) <NAME>
   (<cop>) <desc> 
   (<cop>) <comp>
   (<cop>) <%obj-i>
   (<cop>) <%obj-s>
   (<cop>) <desc-p>
-  <cop> <%obj>
   (<cop>) a <%n-super>
 
 
 // copula core
  
 =[cop]
-  <be> (<BLF>) 
-  <BLF> <be>
+  <be> (<BLF>) (<NEG>)
+  <BLF> <be> (<NEG>)
 
 
 

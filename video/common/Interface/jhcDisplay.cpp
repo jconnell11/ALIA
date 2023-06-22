@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -772,7 +772,6 @@ int jhcDisplay::Graph (const jhcArr& h, int x, int y, int maxval,
   va_list args;
   char msg[200];
   int i, px, py, ysw = y + ght, n = h.Size();
-  const int *hist = h.Vals();
   double vsc = 1.0, hsc = gwid / (double)(n - 1);
   int bot = __min(0, h.MinVal(1)), top = __max(0, h.MaxVal(1));
   CDC *cdc = win->GetDC();
@@ -803,7 +802,7 @@ int jhcDisplay::Graph (const jhcArr& h, int x, int y, int maxval,
   for (i = 0; i < n; i++)
   {
     px = ROUND(hsc * i);
-    py = ROUND(vsc * (hist[i] - bot));
+    py = ROUND(vsc * (h.RollRef(i) - bot));      // for scrolling
     px = __max(0, __min(px, gwid));
     py = __max(0, __min(py, ght));
     graph[i].x = x + px;
@@ -854,7 +853,6 @@ int jhcDisplay::GraphV (const jhcArr& h, int x, int y, int maxval,
   va_list args;
   char msg[200];
   int i, px, py, ysw = y + ght, n = h.Size();
-  const int *hist = h.Vals();
   double hsc = 1.0, vsc = ght / (double)(n - 1);
   int lf = __min(0, h.MinVal(1)), rt = __max(0, h.MaxVal(1));
   CDC *cdc = win->GetDC();
@@ -884,7 +882,7 @@ int jhcDisplay::GraphV (const jhcArr& h, int x, int y, int maxval,
   LPPOINT graph = new POINT[n];
   for (i = 0; i < n; i++)
   {
-    px = ROUND(hsc * (hist[i] - lf));
+    px = ROUND(hsc * (h.RollRef(i) - lf));       // for scrolling
     py = ROUND(vsc * i);
     px = __max(0, __min(px, gwid));
     py = __max(0, __min(py, ght));
@@ -1092,9 +1090,9 @@ int jhcDisplay::GraphBelow (const jhcArr& h, int maxval,
 // if ht < 0.0 then makes symmetric around middle
 // should also work with images
 
-int jhcDisplay::GraphMark (double bin, int col, double ht)
+int jhcDisplay::GraphMark (double bin, int col, double ht, int dash)
 {
-  CPen new_pen(PS_SOLID, 1, color_n(col));
+  CPen new_pen(((dash > 0) ? PS_DOT : PS_SOLID), 1, color_n(col));
   CPen *old_pen;
   CDC *cdc;
   int x, y0, y1, dy = 0;
@@ -1131,9 +1129,9 @@ int jhcDisplay::GraphMark (double bin, int col, double ht)
 // if ht < 0.0 then makes symmetric around middle
 // should also work with images
 
-int jhcDisplay::GraphMarkV (double bin, int col, double ht)
+int jhcDisplay::GraphMarkV (double bin, int col, double ht, int dash)
 {
-  CPen new_pen(PS_SOLID, 1, color_n(col));
+  CPen new_pen(((dash > 0) ? PS_DOT : PS_SOLID), 1, color_n(col));
   CPen *old_pen;
   CDC *cdc;
   int y, x0, x1, dx = 0;
@@ -1169,9 +1167,9 @@ int jhcDisplay::GraphMarkV (double bin, int col, double ht)
 //= Draw a horizontal line at some value given range(s) of last graph.
 // negative maxval signals a graph that is symmetric around zero
 
-int jhcDisplay::GraphVal (int lvl, int maxval, int col)
+int jhcDisplay::GraphVal (int lvl, int maxval, int col, int dash)
 {
-  CPen new_pen(PS_SOLID, 1, color_n(col));
+  CPen new_pen(((dash > 0) ? PS_DOT : PS_SOLID), 1, color_n(col));
   CPen *old_pen;
   CDC *cdc;
   double ht;
@@ -1204,9 +1202,9 @@ int jhcDisplay::GraphVal (int lvl, int maxval, int col)
 //= Draw a vertical line at some value given range(s) of last graph.
 // negative maxval signals a graph that is symmetric around zero
 
-int jhcDisplay::GraphValV (int lvl, int maxval, int col)
+int jhcDisplay::GraphValV (int lvl, int maxval, int col, int dash)
 {
-  CPen new_pen(PS_SOLID, 1, color_n(col));
+  CPen new_pen(((dash > 0) ? PS_DOT : PS_SOLID), 1, color_n(col));
   CPen *old_pen;
   CDC *cdc;
   double ht;
@@ -1403,7 +1401,7 @@ int jhcDisplay::label (int x, int y, int w, const char *msg)
   RECT rect;
   CDC *cdc = win->GetDC();
   jhcString lab(msg);
-  int hfont = 22;
+  int hfont = 22, tab = 10;
 
   if (cdc == NULL)
     return -1;
@@ -1414,7 +1412,7 @@ int jhcDisplay::label (int x, int y, int w, const char *msg)
   // write new message, possibly with tabs or constrained to some size
   cdc->SetBkMode(TRANSPARENT);
   if (strchr(msg, '\t') != NULL)
-    cdc->TabbedTextOut(x, y - hfont, lab.Txt(), lab.Len(), 0, NULL, x);  // does not trim to size!
+    cdc->TabbedTextOut(x, y - hfont, lab.Txt(), lab.Len(), 1, &tab, x);  // does not trim to size!
   else if (w <= 0)
     cdc->TextOut(x, y, lab.Txt(), lab.Len());
   else

@@ -1,7 +1,53 @@
 // standard interpretation of semantic network constructs
-// ================================================
+// =======================================================
 
-RULE 1 - "If a thing is between something and something else then it is between the something else and the something."
+RULE 1 - "If something is more somehow than something else then the something else is not more somehow than it"
+    if: hq-1 -lex-  ***-1
+             -hq--> obj-1
+             -alt-> obj-2
+  then: hq-2 -lex-  ***-1
+             -neg-  1
+             -hq--> obj-2
+             -alt-> obj-1
+
+
+RULE 2 - "If a thing is someone's something then it is also a something."
+    if: ako-1 -lex-  ***-1
+              -ako-> obj-1
+              -wrt-> agt-1
+  then: ako-2 -lex-  ***-1
+              -ako-> obj-1
+
+
+RULE 3 - "If a thing is someone's something then the someone has the something."
+    if: ako-1 -ako-> obj-1
+              -wrt-> agt-1
+  then: fcn-1 -lex-  have
+              -fcn-> act-1
+        act-1 -agt-> agt-1
+              -obj-> obj-1
+        
+
+RULE 4 - "If something has some kind of property then that thing's property is it" 
+    if: ako-1 -lex-  ***-1
+              -ako-> hq-1  
+         hq-1 -hq--> obj-1
+  then: ako-2 -lex-  ***-1
+              -ako-> hq-1
+              -wrt-> obj-1
+
+
+RULE 5 - "If something is some kind which is a kind of something else the the thing is also a kind of something."
+    if: ako-1 -ako-> obj-1
+        ako-2 -lex-  ***-1
+              -ako-> ako-1
+  then: ako-3 -lex-  ***-1
+              -ako-> obj-1
+          
+
+// --------------------------------------
+
+RULE 6 - "If a thing is between something and something else then it is between the something else and the something."
     if: loc-1 -lex-   between
               -loc--> obj-1
               -ref--> obj-2
@@ -12,37 +58,29 @@ RULE 1 - "If a thing is between something and something else then it is between 
               -ref2-> obj-2 
 
 
-RULE 2 - "If something is more somehow than something else then the something else is not more somehow than it"
-    if: hq-1 -lex-  ***-1
-             -hq--> obj-1
-             -alt-> obj-2
-  then: hq-2 -lex-  ***-1
-             -neg-  1
-             -hq--> obj-2
-             -alt-> obj-1
+RULE 7 - "To the left means left"
+    if: dir-1 -lex-  to the left
+              -dir-> act-2
+  then: dir-3 -lex-  left
+              -dir-> act-2
 
 
-RULE 3 - "If a thing is someone's something then it is also a something."
-    if: ako-1 -lex-  ***-1
-              -ako-> obj-1
-              -wrt-> agt-1
-  then: ako-2 -lex-  ***-1
-              -ako-> obj-1
+RULE 8 - "To the right means right"
+    if: dir-1 -lex-  to the right
+              -dir-> act-2
+  then: dir-3 -lex-  right
+              -dir-> act-2
 
 
-RULE 4 - "If a thing is someone's something then the someone has the something."
-    if: ako-1 -ako-> obj-1
-              -wrt-> agt-1
-  then: act-1 -lex-  have
-              -agt-> agt-1
-              -obj-> obj-1
+RULE 9 - "Upwards means up"
+    if: dir-1 -lex-  upwards
+              -dir-> act-2
+  then: dir-3 -lex-  up
+              -dir-> act-2
 
 
-RULE 5 - "If something has some kind of property then that thing's property is it" 
-    if: ako-1 -lex-  ***-1
-              -ako-> hq-1  
-         hq-1 -hq--> obj-1
-  then: ako-2 -lex-  ***-1
-              -ako-> hq-1
-              -wrt-> obj-1
-
+RULE 10 - "Downwards means down"
+    if: dir-1 -lex-  downwards
+              -dir-> act-2
+  then: dir-3 -lex-  down
+              -dir-> act-2

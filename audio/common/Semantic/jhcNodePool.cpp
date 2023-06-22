@@ -145,6 +145,23 @@ int jhcNodePool::BinCnt (int bin) const
 }
 
 
+//= Figure out which bin a particular node label belongs in. 
+// assigns to one of 26 * 25 + 25 + 1 = 676 buckets 
+
+int jhcNodePool::LexHash (const char *wd) const
+{
+  int v0, v1;
+
+  if ((wd == NULL) || (wd[0] == '\0'))
+    return 0; 
+  v0 = (int)(tolower(wd[0]) - 'a');
+  v0 = __max(0, __min(v0, 25));
+  v1 = (int)(tolower(wd[1]) - 'a');    // including '\0'
+  v1 = __max(0, __min(v1, 25));
+  return((26 * v0) + v1 + 1);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                             List Functions                            //
 ///////////////////////////////////////////////////////////////////////////
@@ -301,6 +318,8 @@ int jhcNodePool::Assert (const jhcGraphlet& pat, jhcBindings& b, double conf, in
       arg->GenMax(ver);                          // re-check fluents
       if (!mate->HasVal(focus->Slot(j), arg))
         mate->AddArg(focus->Slot(j), arg); 
+      if ((acc != NULL) && !pat.InList(probe))
+        acc->RemItem(arg);                       // important for ACH
     }
   }
   return 1;
@@ -494,10 +513,112 @@ jhcNetNode *jhcNodePool::CloneNode (const jhcNetNode& n, int bset)
 }
 
 
+//= Add a basic action frame (no arguments) with given verb name. 
+// calls arranged so verb label generally comes first in any graphlet 
+
+jhcNetNode *jhcNodePool::MakeAct (const char *word, int neg, double def, int done)
+{
+  jhcNetNode *act, *fcn = NULL;
+
+  if ((word != NULL) && (*word != '\0'))
+    fcn = MakeNode("fcn", word);                 // always neg = 0, def = 1.0
+  act = MakeNode("act", NULL, neg, def, done);
+  if (fcn != NULL)
+    fcn->AddArg("fcn", act);
+  return act;
+}
+
+
+//= Make a duplicate of a command along with any modifiers like speed or position.
+// returned node is always positive imperative and agent-less (i.e. omits -agt-> "me")
+// Note: only used by jhcIntrospect::why_run
+
+jhcNetNode *jhcNodePool::CloneAct (const jhcNetNode *act, int neg)
+{
+  const jhcNetNode *fcn;
+  jhcNetNode *act2;
+  int i = 0;
+
+  // find action verb (limit to original query)
+  while ((fcn = act->Fact("fcn", i++)) != NULL)
+    if (!fcn->Halo() && fcn->Hyp())
+      break;
+
+  // make a duplicate action using this verb
+  if (fcn == NULL)
+    act2 = MakeAct(NULL);
+  else
+    act2 = MakeAct(fcn->Lex());
+  act2->AddArg("obj", act->Val("obj"));
+  act2->AddArg("dest", act->Val("dest"));
+
+  // add selected adverbs
+  copy_mods(act2, act);
+  return act2;
+}
+
+
+//= Hierarchically copy all properties of src node (an action) to destination node.
+// skips "fcn" (verb) since already copied and "arg" since part of grounding call
+
+void jhcNodePool::copy_mods (jhcNetNode *dest, const jhcNetNode *src) 
+{
+  const jhcNetNode *p;
+  jhcNetNode *p2, *a;
+  int i, j, na, np = src->NumProps();
+
+  // sanity check
+  if ((dest == NULL) || (src == NULL))
+    return;
+
+  // look for adverbial properties (incl. locations)
+  np = src->NumProps();
+  for (i = 0; i < np; i++)
+    if (src->RoleIn(i, "mod", "dir", "amt", "deg", "cnt") ||
+        src->RoleIn(i, "loc", "src"))
+    {
+      p = src->Prop(i);
+      if (!p->Halo() && p->Hyp())                // limit to original query
+      {
+        // copy basic property node
+        p2 = MakeNode(p->Kind(), p->Lex(), p->Neg(), 1.0, p->Done());
+
+        // copy original arguments (mostly)
+        na = p->NumArgs();
+        for (j = 0; j < na; j++) 
+        {
+          a = p->Arg(j);
+          p2->AddArg(p->Slot(j), ((a == src) ? dest : a));
+        }
+
+        // copy any higher-level modifiers (e.g. "very")
+        copy_mods(p2, p);
+      }
+    }
+}
+
+
+//= Make up suitable fact about some owner possessing some object.
+// convenience function primarily for jhcGraphizer
+
+jhcNetNode *jhcNodePool::MakePoss (jhcNetNode *owner, jhcNetNode *obj, int neg, double def, int done)
+{
+  jhcNetNode *fact;
+
+  if ((owner == NULL) || (obj == NULL))
+    return NULL;
+  fact = MakeNode("has", NULL, neg, def, done);
+  AddProp(fact, "fcn", "have");
+  fact->AddArg("agt", owner);
+  fact->AddArg("obj", obj);
+  return fact;
+}
+
+
 //= Create a new node to represent a property of this node.
 // initial belief is generally zero, call Actualize to get value set here
 // but if "def" is negative, then "blf" is immediately set also
-// if "chk" > 0 then skips if property already exists (does not check its properties)
+// if "chk" > 0 then skips if property already exists (does not check its modifiers)
 // "args" is number of distinct slot names the predicate will eventually have
 // returns a pointer to the appropriate property node or NULL if error
 
@@ -606,26 +727,15 @@ void jhcNodePool::SetLex (jhcNetNode *head, const char *txt)
 
 void jhcNodePool::update_lex (jhcNetNode *n, const char *wd, int rev)
 {
-  int v0, v1, h, h0 = __max(0, __min(n->Code(), 675));
+  int h, h0 = __max(0, __min(n->Code(), 675));
 
   // copy word if different than before
   if (strcmp(wd, n->LexStr()) == 0)
     return;
   n->SetWord(wd);
 
-  // assign to one of 26 * 25 + 25 + 1 = 676 buckets 
-  if (wd[0] == '\0')
-    h = 0;
-  else
-  {
-    v0 = (int)(tolower(wd[0]) - 'a');
-    v0 = __max(0, __min(v0, 25));
-    v1 = (int)(tolower(wd[1]) - 'a');    // including '\0'
-    v1 = __max(0, __min(v1, 25));
-    h = (26 * v0) + v1 + 1;
-  }
-
   // record hash (always) and exit if not hashed
+  h = LexHash(wd);
   n->SetHash(h);
   if ((h == h0) || (nbins <= 1))
     return;
@@ -697,57 +807,8 @@ int jhcNodePool::rem_from_list (int h0, jhcNetNode *n)
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                               Searching                               //
+//                               Utilities                               //
 ///////////////////////////////////////////////////////////////////////////
-
-//= Find a node associated with the particular person's name.
-// checks first for full name then for just first name (part before space)
-// return most recent matching node, NULL if none
-
-jhcNetNode *jhcNodePool::FindName (const char *full) const
-{
-  char first[80];
-  jhcNetNode *n, *p;
-  char *sep;
-  int i;
-
-  // sanity check
-  if ((full == NULL) || (*full == '\0'))
-    return NULL;
-
-  // search for full name (most recent at HEAD of list)
-  for (i = 0; i < nbins; i++)
-  {
-    n = bucket[i];
-    while (n != NULL)
-    {
-      if ((n->Neg() <= 0) && n->LexMatch(full))
-        if ((p = n->Val("name")) != NULL)
-          return p;
-      n = n->NodeTail();
-    }
-  }
-
-  // get just first name
-  strcpy_s(first, full);
-  if ((sep = strchr(first, ' ')) == NULL)
-    return NULL;
-
-  // search for first name (most recent at end of list)
-  for (i = 0; i < nbins; i++)
-  {
-    n = bucket[i];
-    while (n != NULL)
-    {
-      if ((n->Neg() <= 0) && n->LexMatch(first))
-        if ((p = n->Val("name")) != NULL)
-          return p;
-      n = n->NodeTail();
-    }
-  }
-  return NULL;
-}
-
 
 //= Find a node with the given nickname in pool.
 // can optionally create a new node if nothing found
@@ -943,7 +1004,7 @@ int jhcNodePool::sort_nodes (FILE *out, int lvl, int imin, int hyp) const
             win = n;
             best = i;
           }
- 
+
     // possibly print it then search again
     if (win == NULL)
       break;
@@ -1345,6 +1406,7 @@ jhcNetNode *jhcNodePool::find_trans (const char *name, int tru)
   n = create_node(kind, ++label, 1, omit, 1);    // node at end of list
   if (tru > 0)
     n->SetBelief(1.0);
+
   
   // add pair to translation table
   trans[nt] = n;
@@ -1358,7 +1420,7 @@ jhcNetNode *jhcNodePool::find_trans (const char *name, int tru)
 // can optionally set default belief to 1.0 if "tru" > 0
 // returns number of nodes added, -1 = format problem, -2 = file problem
 
-int jhcNodePool::LoadGraph (jhcGraphlet *g, jhcTxtLine& in, int tru)
+int jhcNodePool::LoadGraph (jhcGraphlet& g, jhcTxtLine& in, int tru)
 {
   int ans;
 

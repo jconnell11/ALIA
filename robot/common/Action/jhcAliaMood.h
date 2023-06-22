@@ -30,22 +30,30 @@
 #include "Data/jhcArr.h"               // common video
 #include "Data/jhcParam.h"
 
-#include "Reasoning/jhcAliaNote.h"     // common audio
+#include "API/jhcAliaNote.h"           // common audio
 
 
 //= Maintains slow changing state variables for ALIA system.
 // collects data about many activities (but some ignored)
+// drives affect externally through events linked to operators
+// unlike jhcActionTree which servos MinBlf and MinPref internally
 
 class jhcAliaMood
 {
 // PRIVATE MEMBER VARIABLES
 private:
+  // for new NOTEs and MinBlf and MinPref
+  class jhcActionTree *rpt; 
+
   // raw data collection
   UL32 now;
   int win, lose;
 
   // rule changes
   double surp;
+
+  // collected body data 
+  double bspeed, fspeed, mspeed, pct;
 
   // mental level
   double busy;
@@ -65,31 +73,32 @@ private:
   int power;
   UL32 moan;
   int delay;
+
+
+// PRIVATE MEMBER PARAMETERS
+private:
+  // belief adjustment parameters
+  double right, wrong, fyes, fno, bfade;
+
+  // preference adjustment parameters
+  double miss, dud, fgood, fbad, pfade;
+
+  // activity parameters
+  double frantic, engaged, idle, active, bored, nag, btime, ftime;
+
+  // social parameters
+  double attn, sat, prod, ramp, needy, fade;
+  int bereft;
+
+  // power parameters
+  double repeat, urgent, calm;
+  int fresh, tired, slug, psamp;
  
 
 // PUBLIC MEMBER VARIABLES
 public:
-  // activity parameters
-  jhcParam bps;
-  int very;
-  double frantic, engaged, idle, active, bored, nag, tc;
-
-  // social parameters
-  jhcParam sps;
-  int bereft;
-  double attn, sat, prod, ramp, needy, fade, ch2ips;
-
-  // power parameters
-  jhcParam tps;
-  int fresh, tired, slug, psamp;
-  double repeat, urgent, calm;
-
-// should move to jhcStats
-jhcArr bhist;
-int sz, fill;
-
-  // debugging messages
-  int noisy;
+  int noisy;                 // debugging messages
+  jhcParam bps, pps, aps, sps, tps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -97,54 +106,78 @@ public:
   // creation and initialization
   ~jhcAliaMood ();
   jhcAliaMood ();
+  void Bind (class jhcActionTree& t) {rpt = &t;}
+  double ActiveLvl () const {return active;}
+  double BoredLvl () const  {return bored;}
+
+  // processing parameter bundles 
+  int LoadCfg (const char *fname =NULL);
+  int SaveCfg (const char *fname) const;
+
+  // basic mood variables
   double Busy () const     {return busy;}
-  double Motion () const   {return fidget;}
+  double Active () const   {return fidget;}
   double Interact () const {return input;}
   double Energy () const   {return power;}
   double Surprise () const {return surp;}
-//  int NumVars () const {return 0;}
-//  void Levels (double now[]) const;
-
-  // processing parameter bundles 
-  int Defaults (const char *fname =NULL);
-  int SaveVals (const char *fname) const;
+  double BodyData (double& bsp, double& fsp, double& msp) const
+    {bsp = bspeed; fsp = fspeed; msp = mspeed; return pct;}
 
   // main functions
   void Reset ();
-  void Update (jhcAliaNote& rpt, int nag =1);
-//  double Preference (const double chg[]) const;
-//  void Adjust (double chg[], const double start[]);
+  void Update (int nag =1);
 
-  // data collection
+  // global threshold adjustment
+  void UserMinBlf (int correct =1); 
+  void BumpMinBlf (int hit, int miss);
+  void UserMinPref (int good =1);   
+  void BumpMinPref (int inc); 
+
+  // operator invocation 
   void Launch ();
   void Win ();
   void Lose ();
+
+  // internal threshold servoing
+  void Believe (double adj =0.1);
+/*
+  void Prefer (double adj =0.1);
+  void Predict (double chg =0.1);      
+  void Behave (double chg =0.1);       
+  void Confirm (double chg =0.0);   
+  void Endorse (double chg =0.0);   
+*/
+  // user communication recording
   void Speak (int len =1);
   void Hear (int len =1);
   void Infer (int cnt =1);
   void React (int cnt =1);
-  void Believe (double miss =0.5);
-  void Prefer (double adj =0.1);
-//  void Praise (double deg =0.5);
-//  void Rebuke (double deg =0.5);
-  void Energy (int pct =100);
-  void Walk (double ips =1.0);
-  void Wave (double ips =0.5);
+
+  // body activity recording
+  void Body (double bips, double fips, int pct);
+  void Emit (int out);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // processing parameters
+  int blf_params (const char *fname);
+  int pref_params (const char *fname);
   int bored_params (const char *fname);
   int lonely_params (const char *fname);
   int tired_params (const char *fname);
 
   // main functions
-  void clr_data ();
-  int chk_busy (jhcAliaNote& rpt);
-  int chk_antsy (jhcAliaNote& rpt);
-  int chk_lonely (jhcAliaNote& rpt);
-  int chk_tired (jhcAliaNote& rpt);
+  void clr_evts ();
+  int chk_busy ();
+  int chk_antsy ();
+  int chk_lonely ();
+  int chk_tired ();
+
+  // global threshold adjustment
+  void adj_blf (double s);
+  void adj_pref (double p);
+
 
 };
 

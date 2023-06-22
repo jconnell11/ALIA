@@ -174,7 +174,7 @@ int jhcSpeechWeb::Update (int tts)
     if (hear == 2)
     {
       strcpy_s(raw, reco_heard());               
-      fix_up(utt, 200, raw);
+      fix_up(utt, 500, raw);
       rcv = utt;                                 // for single shot
     }
     else if ((hear == 1) && (dbg > 0))
@@ -199,7 +199,7 @@ int jhcSpeechWeb::Update (int tts)
 
 void jhcSpeechWeb::fix_up (char *fix, int ssz, const char *orig) const
 {
-  char tail[200];
+  char tail[500];
   const jhcTxtAssoc *k = canon.NextKey();        // first always blank
   const jhcTxtList *v;
   const char *subst, *term;

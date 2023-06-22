@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,6 @@
 #include <stdio.h>
 
 #include "Interface/jprintf.h"         // common video
-
-#include "Action/jhcAliaCore.h"        // common robot - since only spec'd as class in header
 
 #include "Parse/jhcTxtLine.h"          // common audio
 
@@ -92,17 +90,17 @@ int jhcAssocMem::AddRule (jhcAliaRule *r, int ann, int usr)
     return 0;
   if ((r->result).Empty())
   {
-    jprintf(1, ann, "  ... new rule rejected because result is empty\n");
+    jprintf(1, ann, "  ... REJECT: new rule result is empty\n");
     return -1;
   }
   if (r->Tautology())
   {
-    jprintf(1, ann, "  ... new rule rejected as a tautology\n");
+    jprintf(1, ann, "  ... REJECT: new rule is a tautology\n");
     return -2;
   }
   if (r->Bipartite())
   {
-    jprintf(1, ann, "  ... new rule rejected as disconnected\n");
+    jprintf(1, ann, "  ... REJECT: new rule is disconnected\n");
     return -3;
   }
   while ((prev = NextRule(prev)) != NULL)
@@ -111,13 +109,19 @@ int jhcAssocMem::AddRule (jhcAliaRule *r, int ann, int usr)
       if (usr > 0)
       {
         // possibly revise old rule instead of adding
-        jprintf(1, ann, "  ... old rule %d confidence updated from %4.2f to %4.2f\n", 
-                prev->RuleNum(), prev->conf, r->conf);
+        jprintf(1, ann, "  ... KNOWN: set old rule %d confidence = %4.2f\n", 
+                prev->RuleNum(), r->conf);
         prev->conf = r->conf;
+        if ((ann >= 2) && (noisy >= 1))
+        {
+          jprintf("\n.................................\n");
+          prev->Print();
+          jprintf(".................................\n\n");
+        }
         delete r;                      // clean up since not saved
         return 1;
       }
-      jprintf(1, ann, "  ... new rule rejected as identical to rule %d\n", prev->RuleNum());
+      jprintf(1, ann, "  ... DUPLICATE: identical to old rule %d\n", prev->RuleNum());
       return -4;
     }
 
@@ -223,7 +227,7 @@ jtimer(14, "RefreshHalo");
   }
 
   // report result
-  jprintf(1, dbg, "  %d + %d rule invocations\n\n", cnt, cnt2);
+  jprintf(1, dbg, "  %d + %d rule invocations\n", cnt, cnt2);
 jtimer_x(14);
 //wmem.PrintHalo();
   return cnt;
@@ -338,7 +342,7 @@ int jhcAssocMem::Load (const char *base, int add, int rpt, int level)
   }
   if (!in.Open(fname))
   {
-    jprintf("  >>> Could not read rule file: %s !\n", fname);
+//    jprintf("  >>> Could not read rule file: %s !\n", fname);
     return -1;
   }
 
@@ -506,7 +510,7 @@ int jhcAssocMem::Overrides (const char *base)
   }
   if (!in.Open(fname))
   {
-    jprintf("  >>> Could not read confidence file: %s !\n", fname);
+//    jprintf("  >>> Could not read confidence file: %s !\n", fname);
     return -1;
   }
 

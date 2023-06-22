@@ -53,26 +53,39 @@ private:
   jhcMatrix dhm, fwd;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  char name[80], group[20];
-  int jnum;
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // servo parameters
-  jhcParam sps;
-  int id, id2;
   double stiff, step, zero, amin, amax;
+  int id, id2;
 
   // geometry parameters
-  jhcParam gps;
   double dhd, dhr, dht, dha, cal; 
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  jhcParam sps, gps;
+  char name[80], group[20];
+  int jnum;
 
 
 // PUBLIC MEMBER FUNCTIONS
 public:
-  // creation and configuration
+  // creation and initialization
   jhcJoint ();
-  void Bind (jhcDynamixel *ctrl) {dyn = ctrl;}
+  void Bind (jhcDynamixel& ctrl) {dyn = &ctrl;}
+  double NextZ () const   {return dhd;}
+  double Calib () const   {return cal;}
+  void SetCal (double c)  {cal = c;}
+  void IncCal (double dc) {cal += dc;}
+  double MaxAng () const  {return amax;}
+  double MinAng () const  {return amin;}
+  double Ang0 () const    {return zero;}
+  void SetRange (double top, double def, double bot)
+    {amax = top; zero = def; amin = bot;}
+
+  // configuration
   void InitGeom ();
   int Boot (int chk =1);
   int Reset ();

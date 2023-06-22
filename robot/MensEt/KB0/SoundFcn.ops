@@ -1,141 +1,158 @@
 // basic commands understood by sound effects class
-// ================================================
+// =================================================
 
 OP 1 - "Pause..."
   trig:   
-    DO[ act-1 -lex-  pause ] 
+    DO[ fcn-1 -lex-  pause 
+              -fcn-> act-1 ] 
  --------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 // --------------------------------------
 
 OP 2 - "Bleep ..."
   trig:   
-    DO[ act-1 -lex-  bleep ] 
+    DO[ fcn-1 -lex-  bleep 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 3 - "Bloop ..."
   trig:   
-    DO[ act-1 -lex-  bloop ] 
+    DO[ fcn-1 -lex-  bloop 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd 
+               -arg-> fcn-1 ]
 
 
 OP 4 - "Ching ..."
   trig:   
-    DO[ act-1 -lex-  ching ] 
+    DO[ fcn-1 -lex-  ching 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 5 - "Chong ..."
   trig:   
-    DO[ act-1 -lex-  chong ] 
+    DO[ fcn-1 -lex-  chong 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd 
-                -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd 
+                 -arg-> fcn-1 ]
 
 
 OP 6 - "Bing ..."
   trig:   
-    DO[ act-1 -lex-  bing ] 
+    DO[ fcn-1 -lex-  bing 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 7 - "Bong ..."
   trig:   
-    DO[ act-1 -lex-  bong ] 
+    DO[ fcn-1 -lex-  bong  
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd 
+               -arg-> fcn-1 ]
 
 
 OP 8 - "Plink ..."
   trig:   
-    DO[ act-1 -lex-  plink ] 
+    DO[ fcn-1 -lex-  plink 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 9 - "Plunk ..."
   trig:   
-    DO[ act-1 -lex-  plunk ] 
+    DO[ fcn-1 -lex-  plunk 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd 
+               -arg-> fcn-1 ]
 
 
 // --------------------------------------
 
 OP 10 - "Toot ..."
   trig:   
-    DO[ act-1 -lex-  toot ] 
+    DO[ fcn-1 -lex-  toot 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 11 - "Honk ..."
   trig:   
-    DO[ act-1 -lex-  honk ] 
+    DO[ fcn-1 -lex-  honk 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 12 - "Tweet ..."
   trig:   
-    DO[ act-1 -lex-  tweet ] 
+    DO[ fcn-1 -lex-  tweet 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 13 - "Squawk ..."
   trig:   
-    DO[ act-1 -lex-  squawk ] 
+    DO[ fcn-1 -lex-  squawk 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 14 - "Warble ..."
   trig:   
-    DO[ act-1 -lex-  warble ] 
+    DO[ fcn-1 -lex-  warble 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 15 - "Chirp ..."
   trig:   
-    DO[ act-1 -lex-  chirp ] 
+    DO[ fcn-1 -lex-  chirp 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 16 - "Crash ..."
   trig:   
-    DO[ act-1 -lex-  crash ] 
+    DO[ fcn-1 -lex-  crash 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]
 
 
 OP 17 - "Thump ..."
   trig:   
-    DO[ act-1 -lex-  thump ] 
+    DO[ fcn-1 -lex-  thump  
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  play_snd
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  play_snd
+               -arg-> fcn-1 ]

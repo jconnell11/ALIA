@@ -163,9 +163,10 @@ BEGIN
     POPUP "&Demo"
     BEGIN
         MENUITEM "Demo &Options",               ID_DEMO_OPTIONS
-        MENUITEM SEPARATOR
         MENUITEM "Print &Details",              ID_DEMO_BASICMSGS
-        MENUITEM "&Attn + Time",                ID_DEMO_TIMING
+        MENUITEM SEPARATOR
+        MENUITEM "&Cycle Rate",                 ID_DEMO_CYCLERATE
+        MENUITEM "&Attn Window",                ID_DEMO_TIMING
         MENUITEM "&Remote Params",              ID_PARAMETERS_REMOTEPARAMS
         MENUITEM SEPARATOR
         MENUITEM "&Remote Brain",               ID_DEMO_REMOTE
@@ -222,7 +223,7 @@ CAPTION "About MensEt"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "MensEt Version 5.00",IDC_STATIC,48,11,119,8,SS_NOPREFIX
+    LTEXT           "MensEt Version 5.10",IDC_STATIC,48,11,119,8,SS_NOPREFIX
     LTEXT           "Copyright (C) 2018-2023, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
@@ -312,8 +313,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 5,0,0,1
- PRODUCTVERSION 5,0,0,1
+ FILEVERSION 5,10,0,1
+ PRODUCTVERSION 5,10,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -329,12 +330,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "MensEt Robot Reasoner"
-            VALUE "FileVersion", "5.0.0.1"
+            VALUE "FileVersion", "5.10.0.1"
             VALUE "InternalName", "MensEt"
             VALUE "LegalCopyright", "Copyright (C) 2023 Etaoin Systems"
             VALUE "OriginalFilename", "MensEt.exe"
             VALUE "ProductName", "MensEt"
-            VALUE "ProductVersion", "5.0.0.1"
+            VALUE "ProductVersion", "5.10.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -607,12 +608,13 @@ BEGIN
     ID_MOTION_ROTATION      "Parameters for interpreting rotation commands"
     ID_MOTION_LIFT          "Parameters for interpreting gripper height commands"
     ID_REFLEXES_INITPOSE    "Connect to robot and establish default configuration"
-    ID_DEMO_TIMING          "Adjust attention timing and thought rate"
+    ID_DEMO_TIMING          "Adjust speech attention window timing"
     ID_UTILITIES_EXTVOCAB   "Get preliminary grammar terms from operators and rules"
     ID_UTILITIES_TESTVOCAB  "Refine grammar terms for consistent morphology"
     ID_UTILITIES_TESTGRAPHIZER 
                             "Check for correct semantic networks from standard input forms"
     ID_DEMO_BASICMSGS       "Control what basic info gets printed to console window"
+    ID_DEMO_CYCLERATE       "Adjust thinking speed and default body update rate"
 END
 
 #endif    // English (United States) resources

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@
 
 #include "Interface/jhcString.h"       // common video
 
-#include "Action/jhcStdKern.h"         // common robot
+#include "Kernel/jhcStdKern.h"   
 
 
 //= Sound effect output for ALIA system.
@@ -55,8 +55,8 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // overridden virtuals
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
   // on-demand functions
   JCMD_DEF(play_snd);

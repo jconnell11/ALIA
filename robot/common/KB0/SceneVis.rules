@@ -370,13 +370,15 @@ RULE 58 - "Middle is a measurement"
 RULE 59 - "If something is visible then you see it"
     if:  hq-2 -lex-  visible
               -hq--> obj-1
-  then: act-3 -lex-  see
-              -tag-  vimp
+  then: fcn-3 -lex-  see
+              -fcn-> act-3
+        act-3 -tag-  vimp
               -obj-> obj-1
 
 RULE 60 - "If you see something then it is visible"
-    if: act-1 -lex-  see
-              -tag-  vimp
+    if: fcn-1 -lex-  see
+              -fcn-> act-1
+        act-1 -tag-  vimp
               -obj-> obj-2
   then:  hq-3 -lex-  visible
               -hq--> obj-2

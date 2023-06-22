@@ -40,7 +40,7 @@ class jhcSpeechWeb
 // PRIVATE MEMBER VARIABLES
 private:
   // recognition results and status
-  char utt0[200], raw[200], utt[200];
+  char utt0[500], raw[500], utt[500];
   const char *rcv;
   int hear, mute, txtin, quit, dbg;
 

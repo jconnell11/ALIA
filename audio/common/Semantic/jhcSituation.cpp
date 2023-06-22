@@ -48,9 +48,9 @@ jhcSituation::jhcSituation ()
 
 
 //= Initialize condition to be a copy of graphlet with external nodes.
-// useful for jhcAliaDir::HaltAction
+// useful for jhcAliaDir::HaltAction and FindCall
 
-void jhcSituation::Init (const jhcGraphlet& desc)
+void jhcSituation::InitCond (const jhcGraphlet& desc)
 {
   cond.Copy(desc);
   nu = 0;
@@ -385,11 +385,11 @@ int jhcSituation::consistent (const jhcNetNode *mate, const jhcNetNode *focus, c
   // sense of predicate should be the same and belief must be high enough (or hypothetical) 
   if (!focus->ObjNode())  
   {
-    if ((chkmode <= 0) && (mate->Neg() != focus->Neg()))             // ignore "neg" for CHK 
+    if ((chkmode <= 0) && (mate->Neg() != focus->Neg()))       // ignore "neg" for CHK 
       return -8;
     if (!mate->Sure(th))
       return -7;
-    if (focus->Arity() != mate->Arity())                             // was mate->Arity(0) for ako2 matching
+    if (focus->Arity() != mate->Arity())                       // was mate->Arity(0) for ako2 matching
       return -6;
     if (mate->Done() != focus->Done())
       return -5;

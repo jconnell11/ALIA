@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -127,8 +127,30 @@ private:
   int parked;
 
 
+// PRIVATE MEMBER PARAMETERS
+private:
+  // trajectory generation
+  double zf, zlim;
+
+  // inverse kinematics solver
+  double step, dstep, shrink, osc, close, align;
+  int tries, loops;
+
+  // arm and finger force interpretation
+  double fmix, fmix2, fadj, fnone, fhold;
+
+  // residual geometric calibration
+  double ax0, ay0, az0, fc, fp, ft, dpad;
+ 
+
 // PUBLIC MEMBER VARIABLES
 public:
+  jhcParam tps, ips, fps, gps;
+
+  // arm stowing position
+  jhcParam sps;
+  double retx, rety, retz, rdir, rtip, rgap, rets, rete;
+
   // individual arm and hand joints
   jhcJoint jt[7];  
 
@@ -138,37 +160,23 @@ public:
   // trajectory debugging information
   jhcMatrix stop, dstop;
 
-  // trajectory generation
-  jhcParam tps;
-  double zf, zlim;
-
-  // inverse kinematics solver
-  jhcParam ips;
-  int tries, loops;
-  double step, dstep, shrink, osc, close, align;
-
-  // arm and finger force interpretation
-  jhcParam fps;
-  double fmix, fmix2, fadj, fnone, fhold;
-
-  // arm stowing position
-  jhcParam sps;
-  double retx, rety, retz, rdir, rtip, rgap, rets, rete;
-
-  // residual geometric calibration
-  jhcParam gps;
-  double ax0, ay0, az0, fc, fp, ft, dpad;
- 
 
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and initialization
   jhcEliArm ();
+  double AngTol () const {return align;}
+  double X0 () const {return ax0;}
+  double Y0 () const {return ay0;}
+  double Z0 () const {return az0;}
+  void SetX0 (double v) {ax0 = v;}
+  void SetY0 (double v) {ay0 = v;}
+  void SetZ0 (double v) {az0 = v;}
   int CommOK (int bad =0) const {return aok;}
   double FingerIPS () const {return __max(iarm, igrip);}
 
   // configuration
-  void Bind (jhcDynamixel *ctrl);
+  void Bind (jhcDynamixel& ctrl);
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
   double Voltage ();

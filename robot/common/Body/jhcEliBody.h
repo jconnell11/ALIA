@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,13 +88,31 @@ private:
   jhcImg col, rng, col2;                   // images from Kinect sensor
   DWORD tcmd[10];
   char cfile[80];
-  double vmax0, volts;
+  double vmax0;
   UL32 ntime, ltime, atime, gtime, ttime, mtime;
-  int bnum, cw, ch, iw, ih, kin, mok, tstep, tfill, vsamp;
+  int bnum, cw, ch, iw, ih, kin, mok, tstep, tfill;
+
+  // battery data
+  double volts;
+  int vsamp;
+
+
+// PRIVATE MEMBER PARAMETERS
+private:
+  // AX-12 communication parameters
+  int dport, dbaud, mega, id0, idn;
+
+  // idle count thresholds
+  int nbid, lbid, abid, gbid, tbid, mbid;
+
+  // static pose parameters
+  double pdef, tdef, hdef;
 
 
 // PUBLIC MEMBER VARIABLES
 public:
+  jhcParam bps, ips, sps;
+
   // default robot name and TTS voice
   char rname[80], vname[80], errors[200];
   int loud;
@@ -114,34 +132,29 @@ public:
   jhcDirMic mic;
   int enh;
 
-  // AX-12 communication parameters
-  jhcParam bps;
-  int dport, dbaud, mega, id0, idn;
-
-  // idle count thresholds
-  jhcParam ips;
-  int nbid, lbid, abid, gbid, tbid, mbid;
-
-  // static pose parameters
-  jhcParam sps;
-  double pdef, tdef, hdef;
-
 
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and initialization
   ~jhcEliBody ();
   jhcEliBody ();
-  double Voltage () const {return volts;}
-  void ReportCharge (); 
   double BodyIPS () const 
-    {return __max(base.MoveIPS(), lift.LiftIPS());}
+    {return __max(base.MoveIPS(1), lift.LiftIPS());}
+  void SetTilt0 (double ang) {tdef = ang;}
 
   // processing parameter manipulation 
   int Defaults (const char *fname =NULL);
   int LoadCfg (const char *fname =NULL);
   int SaveVals (const char *fname) const;
   int SaveCfg (const char *fname) const;
+
+  // power level
+  void Sample (double v);
+  double Voltage () const {return volts;}
+  int Percent () const {return Charge(volts);}
+  int Charge (double v) const;
+  int Capacity () const;
+  void ReportCharge () const; 
 
   // configuration
   void BindVideo (jhcVideoSrc *v);
@@ -153,11 +166,6 @@ public:
   int CommOK (int rpt =1, int bad =0) const;
   int VideoOK () const {if ((vid == NULL) || !vid->Valid()) return 0; return 1;}
   const char *Problems ();
-  int Charge (double v, int running =0);
-  int Charge (int running =0) 
-    {return Charge(neck.Voltage(), running);}
-  int Capacity () const;
-  int ResetVmax ();
   double MegaReport ();
   void StaticPose () 
     {neck.Inject(pdef, tdef); lift.Inject(hdef);}
@@ -203,8 +211,8 @@ public:
   double FrameTime () const {return(0.001 * tstep);}
 
   // access to Kinect images
-  const jhcImg& Color () const {return col;}  /** Returns native resolution RGB image. */
-  const jhcImg& Range () const {return rng;}  /** Returns native (8 or 16) depth map.  */
+  const jhcImg& Color () const {return col;}     /** Returns native resolution RGB image. */
+  const jhcImg& Range () const {return rng;}     /** Returns native (8 or 16) depth map.  */
   int ImgSmall (jhcImg& dest);
   int ImgBig (jhcImg& dest); 
   int Depth8 (jhcImg& dest) const; 
@@ -221,12 +229,15 @@ public:
   // main functions
   int UpdateImgs ();
   int Update (int voice =0, int imgs =1, int bad =0);
+  void UpdateBat () {Sample(neck.Voltage());}
   void CamPose (double& pan, double& tilt, double& ht);
   int Issue (double lead =3.0);
 
   // ballistic functions
-  void Beep () const;
   int InitPose (double ht =0.0); 
+
+  // extra actions
+  void Beep () const {::Beep(300, 300);}
 
 
 // PRIVATE MEMBER FUNCTIONS

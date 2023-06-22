@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,8 +138,9 @@ double jms_elapsed (UL32 tref)
 
 
 //= Gives string with elapsed time in hrs:min:sec.ms from base time.
+// can optionally drop the milliseconds if dot <= 0
 
-char *jms_offset (char *dest, UL32 tref, int ssz)
+char *jms_offset (char *dest, UL32 tref, int dot, int ssz)
 {
   int h, m, s, ms = jms_diff(jms_now(), tref);
 
@@ -149,7 +150,10 @@ char *jms_offset (char *dest, UL32 tref, int ssz)
   ms -= m * 60000;
   s = ms / 1000;
   ms -= s * 1000;
-  sprintf_s(dest, ssz, "%d:%02d:%02d.%03d", h, m, s, ms);
+  if (dot > 0)
+    sprintf_s(dest, ssz, "%d:%02d:%02d.%03d", h, m, s, ms);
+  else
+    sprintf_s(dest, ssz, "%d:%02d:%02d", h, m, s);
   return dest;
 }
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ jhcSpRecoMS::jhcSpRecoMS ()
   e = NULL;	  
   c = NULL;   
   a = NULL;
+  *select   = '\0';
   *mic      = '\0';
   *sfile    = '\0';
   *partial  = '\0';
@@ -131,7 +132,7 @@ int jhcSpRecoMS::BindParse (const char *fname, const char *cfg, int start)
 const char *jhcSpRecoMS::reco_version (char *spec, int ssz) const 
 {
   if (spec != NULL)
-    strcpy_s(spec, ssz, "1.75 Microsoft");  // change in parse_version also !!!
+    strcpy_s(spec, ssz, "1.80 Microsoft");  // change in parse_version also !!!
   return spec;
 }
 
@@ -629,6 +630,7 @@ int jhcSpRecoMS::reco_add_user (const char *name, int force)
     return 0;      
 
   // do changeover (possibly in background thread)
+  strcpy_s(select, text);
   m = (void *) prof;
   if (force > 0)
   {
@@ -659,7 +661,7 @@ void jhcSpRecoMS::reco_clr_users ()
 }
 
 
-//= Give the ID strings associate with the current users (acoustic models).
+//= Give the ID strings associated with the current users (acoustic models).
 // elements are separated with newline characters
 // returns the count of elements in the string (separator = new line)
 
@@ -1126,7 +1128,7 @@ int jhcSpRecoMS::reco_speaker (char *name, int ssz) const
 const char *jhcSpRecoMS::parse_version (char *spec, int ssz) const
 {
   if (spec != NULL)
-    strcpy_s(spec, ssz, "1.75 Microsoft");
+    strcpy_s(spec, ssz, "1.80 Microsoft");
   return spec;
 }
 
@@ -1320,6 +1322,10 @@ int jhcSpRecoMS::parse_extend (const char *rule, const char *option, int file)
   SPSTATEHANDLE top;
   WCHAR wide[200];
   char parts[200];
+
+  // ignore anything with a straight numeric wildcard
+  if (strchr(option, '@') != NULL)
+    return 0;
 
   // look for named rule (used to require pre-existing)
   ctx->Pause(0);
@@ -1702,7 +1708,8 @@ int jhcSpRecoMS::load_jhc (const char *fname, int flush)
       // cannot make directly recursive expansions
       if (strstr(start, rpat) != NULL)
         jprintf(">>> Direct self reference in %s from %s !\n", rpat, fname);
-      build_phrase(start, &top, 0);
+      if (strchr(start, '@') == NULL)
+        build_phrase(start, &top, 0);
     }
 
   // close file

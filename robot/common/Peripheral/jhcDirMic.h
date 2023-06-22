@@ -50,9 +50,23 @@ private:
   double bavg, favg, bvar, fvar, bwt, fwt, talk;
   int skip, fgnd, spcnt;
 
+  // interpretation parameters
+  double mix, msc, oth, ath, dth;
+  int box;
+
+  // Gaussian mixture parameters
+  double zone, blend, istd, dlim; 
+  int gcnt;
+
+  // geometric calibration
+  double mcal, x0, y0, z0, pan, tilt;
+  int mport, light;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
+  jhcParam aps, mps, gps;
+
   // serial port (robot needs plain jhcSerial)
   jhcSerial mcom;
   int unit;
@@ -64,21 +78,6 @@ public:
   jhcArr raw, snd;
   int cnt, pk, pk2;
 
-  // interpretation parameters
-  jhcParam aps;
-  double mix, msc, oth, ath, dth;
-  int box;
-
-  // Gaussian mixture parameters
-  jhcParam mps;
-  double zone, blend, istd, dlim; 
-  int gcnt;
-
-  // geometric calibration
-  jhcParam gps;
-  double mcal, x0, y0, z0, pan, tilt;
-  int mport, light;
-
 
 // PUBLIC MEMBER FUNCTIONS
 public:
@@ -86,6 +85,11 @@ public:
   jhcDirMic ();
   ~jhcDirMic ();
   int CommOK (int bad =0) const {return mok;}
+  int LED () const     {return light;}
+  double Pan () const  {return pan;}
+  double Tilt () const {return tilt;}
+  int Port () const    {return mport;}
+  void SetPort (int n) {mport = n;}
   int Reset (int rpt =0);
 
   // parameter utilities

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -566,10 +566,11 @@ const char *jhcSlotVal::FragNextPair (const char *alist, char *pair, int ssz) co
 
 
 //= See if fragment has given slot as part of top level structure.
+// copies filler for slot into "val" string (if given)
 // stays within current fragment, skipping over intervening embedded fragments
-// note that HasSlot function will quit at start of first sub-fragment
+// returns remainder of alist if successful (NULL if not found)
 
-bool jhcSlotVal::FragHasSlot (const char *alist, const char *slot) const
+const char *jhcSlotVal::FragFindSlot (const char *alist, const char *slot, char *val, int ssz) const
 {
   char pair[200];
   char *sep;
@@ -580,10 +581,15 @@ bool jhcSlotVal::FragHasSlot (const char *alist, const char *slot) const
     sep = strchr(pair, '=');
     *sep = '\0';
     if (strcmp(pair, slot) == 0)
-       return true;
+    {
+      if (val != NULL)
+        strcpy_s(val, ssz, sep + 1);
+      return tail;
+    }
   }
-  return false;
+  return NULL;
 }
+
 
 
 //= Advance to start of next fragment but do not consume any of it.

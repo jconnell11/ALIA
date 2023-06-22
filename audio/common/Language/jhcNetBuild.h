@@ -46,6 +46,7 @@ private:
   int nn, na, nt, nv, nm, nd;
 
   // last ADD directive assembled
+  char trim[500];
   jhcAliaDir *add;
 
 
@@ -68,15 +69,21 @@ public:
 
 // PRIVATE MEMBER FUNCTIONS
 private:
+  // main functions
+  void intro_name (const char *alist) const;
+  jhcAliaChain *feedback (int spact, const char *alist) const;
+
   // speech acts
   int huh_tag () const;
   int hail_tag () const;
   int greet_tag () const;
   int farewell_tag () const;
   int unk_tag (const char *unk) const;
-  int add_tag (int rule, const char *alist, const char *sent);
+  int add_tag (int spact, const char *alist, const char *sent);
+  int rev_tag (int spact, const char *alist) const;
   int attn_tag (int spact, const char *alist) const;
-  jhcAliaChain *build_tag (jhcNetNode **node, const char *alist) const;
+  const char *no_fluff (const char *sent, const char *alist);
+  jhcAliaChain *build_tag (jhcNetNode **node, const char *fcn, const char *alist, int dest) const;
   jhcAliaChain *guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const;
   jhcAliaChain *exp_fail (jhcNetNode *plan) const;
 

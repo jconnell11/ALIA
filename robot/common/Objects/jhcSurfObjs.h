@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -134,6 +134,7 @@ public:
   void ViewPels (int& ix, int& iy, double wx, double wy) const;
   double ViewAngle (double wdir) const;
   double ViewOrient (double wdir) const;
+  void CamPels (int& ix, int &iy, const jhcMatrix& wpt, int ydim =480) const;
 
   // debugging graphics
   int AttnCam (jhcImg& dest, int pick =2, int known =3, int all =5);

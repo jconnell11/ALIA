@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,20 +66,23 @@ private:
   int tsel;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // surface preferences
-  double dpref, hpref, xpref, ypref;
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // height finding parameters
-  jhcParam hps;
   double margin, over, flip, under, dp, dt;
   int hsm, ppel;
 
   // surface candidate parameters
-  jhcParam cps;
   double ztol, pmix, pn, hn;
   int wsc, wth, wmin;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  jhcParam hps, cps;
+
+  // surface preferences
+  double dpref, hpref, xpref, ypref;
 
 
 // PUBLIC MEMBER FUNCTIONS

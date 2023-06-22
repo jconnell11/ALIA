@@ -3,79 +3,86 @@
 
 OP 1 - "To orient toward the speaker ..."
   trig:   
-    DO[ act-1 -lex-   orient
-              -dest-> loc-1
+    DO[ fcn-1 -lex-   orient
+              -fcn--> act-1
+        act-1 -dest-> loc-1
         loc-1 -lex-   toward
               -ref--> agt-1 
         ako-1 -lex-   speaker
               -ako--> agt-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  soc_talk ]
+   GND[ call-1 -lex- soc_talk ]
 
 
 OP 2 - "To wander ..."
   trig:   
-    DO[ act-1 -lex- wander ]
+    DO[ fcn-1 -lex-  wander 
+              -fcn-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex- soc_explore ]
+   GND[ call-1 -lex- soc_explore ]
 
 
 // --------------------------------------
 
 OP 3 - "To look at a person ..."
   trig:   
-    DO[ act-1 -lex-   look
-              -dest-> loc-1
-        loc-1 -lex-   at
-              -ref--> dude-1 
-        ako-1 -lex-   person 
-              -ako--> dude-1 ]
+    DO[ fcn-1 -lex-  look
+              -fcn-> act-1
+        loc-1 -lex-  at
+              -loc-> act-1 
+              -ref-> dude-1 
+        ako-1 -lex-  person 
+              -ako-> dude-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  soc_look
-              -arg-> dude-1 ]
+   GND[ call-1 -lex-  soc_look
+               -arg-> dude-1 ]
 
 
 OP 4 - "To turn toward a person ..."
   trig:   
-    DO[ act-1 -lex-   turn
-              -dest-> loc-1
+    DO[ fcn-1 -lex-   turn
+              -fcn--> act-1
+        act-1 -dest-> loc-1
         loc-1 -lex-   toward
               -ref--> dude-1 
         ako-1 -lex-   person 
               -ako--> dude-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  soc_look
-              -arg-> dude-1 ]
+   GND[ call-1 -lex-  soc_look
+               -arg-> dude-1 ]
 
 
 OP 5 - "To approach a person ..."
   trig:   
     DO[ act-1 -lex-  approach
-              -obj-> dude-1 
+              -fcn-> act-1
+        act-1 -obj-> dude-1 
         ako-1 -lex-  person 
               -ako-> dude-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  soc_approach
-              -arg-> dude-1 ]
+   GND[ call-1 -lex-  soc_approach
+               -arg-> dude-1 ]
 
 
 OP 6 - "To follow a person ..."
   trig:   
-    DO[ act-1 -lex-  follow
-              -obj-> dude-1 
+    DO[ fcn-1 -lex-  follow
+              -fcn-> act-1
+        act-1 -obj-> dude-1 
         ako-1 -lex-  person 
               -ako-> dude-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  soc_follow
-              -arg-> dude-1 ]
+   GND[ call-1 -lex-  soc_follow
+               -arg-> dude-1 ]
 
 
-// --------------------------------------
+// ======================================
 
 OP 7 - "Before looking at a person make sure they are visible"
   trig:   
-  ANTE[ act-1 -lex-   look
-              -dest-> loc-1
+  ANTE[ fcn-1 -lex-   look
+              -fcn--> act-1
+        act-1 -dest-> loc-1
         loc-1 -lex-   at
               -ref--> dude-1 
         ako-1 -lex-   person 
@@ -87,7 +94,8 @@ OP 7 - "Before looking at a person make sure they are visible"
 
 OP 8 - "Before turning toward a person make sure they are visible"
   trig:   
-  ANTE[ act-1 -lex-  turn
+  ANTE[ fcn-1 -lex-  turn
+              -fcn-> act-1
         loc-1 -lex-  toward
               -loc-> act-1
               -wrt-> dude-1 
@@ -100,8 +108,9 @@ OP 8 - "Before turning toward a person make sure they are visible"
 
 OP 9 - "Before approaching a person make sure they are visible"
   trig:   
-  ANTE[ act-1 -lex-  approach
-              -obj-> dude-1 
+  ANTE[ fcn-1 -lex-  approach
+              -fcn-> act-1
+        act-1 -obj-> dude-1 
         ako-1 -lex-  person 
               -ako-> dude-1 ]
 ---------------
@@ -111,8 +120,9 @@ OP 9 - "Before approaching a person make sure they are visible"
 
 OP 10 - "Before following a person make sure they are visible"
   trig:   
-  ANTE[ act-1 -lex-  follow
-              -obj-> dude-1 
+  ANTE[ fcn-1 -lex-  follow
+              -fcn-> act-1
+        act-1 -obj-> dude-1 
         ako-1 -lex-  person 
               -ako-> dude-1 ]
 ---------------
@@ -122,12 +132,45 @@ OP 10 - "Before following a person make sure they are visible"
 
 // --------------------------------------
 
-OP 11 - "To make sure something is visible look around"
+OP 11 - "To make sure something is visible search visually downwards"
   trig: 
    ACH[ hq-1 -lex- visible
              -hq-> obj-1 ]
 ---------------
-    DO[ act-1 -lex-  look
-        dir-1 -lex-  around
+    DO[ fcn-1 -lex-  search
+              -fcn-> act-1
+        mod-1 -lex-  visually
+              -mod-> act-1
+        dir-1 -lex-  downwards
               -dir-> act-1 ]
+
+
+OP 12 - "To find a person visually search downwards"
+  trig: 
+  FIND[ agt-1
+        ako-1 -lex-  person
+              -ako-> agt-1 ]
+---------------
+    DO[ fcn-1 -lex-  search
+              -fcn-> act-1
+        mod-1 -lex-  visually
+              -mod-> act-1
+        dir-1 -lex-  downwards
+              -dir-> act-1 ]
+
+
+// --------------------------------------
+
+OP 13 - "If a person is visible look at them"
+  trig:
+  NOTE[  hq-1 -lex-  visible
+              -hq--> dude-1
+        ako-1 -lex-  person
+              -ako-> dude-1 ]
+----------
+    DO[ fcn-1 -lex-  look
+              -fcn-> act-1
+        loc-1 -lex-  at
+              -loc-> act-1
+              -ref-> dude-1 ]
   

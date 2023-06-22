@@ -145,7 +145,7 @@ int jhcVocab::Add (const char *word)
   // sanity check then get bin index
   if ((word == NULL) || (*word == '\0') || (strcmp(word, "#") == 0))
     return 0;
-  if (lookup(word) != NULL)
+  if (known(word))
     return 0;
   i0 = (int) strlen(word);
   i = __min(i0, nbins) - 1;
@@ -161,7 +161,21 @@ int jhcVocab::Add (const char *word)
 }
 
 
-//= Lookup word in list to see if known.
+//= Just check to see if word is known.
+// allows registered text string and valid numeric forms
+
+bool jhcVocab::known (const char *word) const
+{
+  char extra[nchar];
+  double val;
+
+  if (sscanf_s(word, "%lf%s", &val, &extra, nchar) == 1) 
+    return true;
+  return(lookup(word) != NULL);
+}
+
+
+//= Lookup word in list to get standardized version.
 // returns canonical form if known, NULL if unknown
 
 const char *jhcVocab::lookup (const char *word) const
@@ -271,7 +285,7 @@ const char *jhcVocab::FixTypos (const char *txt)
     d = clean + strlen(clean);
 
     // try a variety of fixes if word is unknown
-    if (lookup(word) == NULL)
+    if (!known(word))
     {
       fixed++;
       if (try_fadd(d, prev, word) <= 0)
@@ -320,13 +334,13 @@ int jhcVocab::try_fadd (char *d, const char *prev, char *word) const
   strcpy_s(w2, prev);
   n = (int) strlen(prev);
   w2[n - 1] = '\0';
-  if (lookup(w2) == NULL)
+  if (!known(w2))
     return 0;
 
   // see if extra character helps unknown word
   w2[0] = back[0];
   strcpy_s(w2 + 1, nchar - 1, word);  
-  if (lookup(w2) == NULL)
+  if (!known(w2))
     return 0;
 
   // remove borrowed character from destination and keep augmented word 
@@ -357,12 +371,12 @@ int jhcVocab::try_frem (char *d, const char *prev, char *word) const
   n = (int) strlen(prev);
   w2[n] = word[0];
   w2[n + 1] = '\0';
-  if (lookup(w2) == NULL)
+  if (!known(w2))
     return 0;
 
   // see if stripping character off front helps unknown word
   strcpy_s(w2, word + 1);
-  if (lookup(w2) == NULL)
+  if (!known(w2))
     return 0;
 
   // push extra character onto destination string and keep trimmed word 
@@ -397,12 +411,12 @@ int jhcVocab::try_badd (char *word, char *next, const char **after) const
   n = (int) strlen(word);
   w2[n] = s[1];
   w2[n + 1] = '\0';
-  if (lookup(w2) == NULL)
+  if (!known(w2))
     return 0;
 
   // see if next word can loan first character
   s2 = next_word(w2, s + 2);
-  if (lookup(w2) == NULL)
+  if (!known(w2))
     return 0;
 
   // record re-assorted word pair and advance input read pointer
@@ -436,14 +450,14 @@ int jhcVocab::try_brem (char *word, char *next, const char **after) const
   strcpy_s(w2, word);
   n = (int) strlen(word);
   w2[n - 1] = '\0';
-  if (lookup(w2) == NULL)
+  if (!known(w2))
     return 0;
 
   // see if next word can accept last character
   w2[0] = word[n - 1];
   if ((s2 = next_word(w2 + 1, s + 1)) == NULL)
     return 0;
-  if (lookup(w2) == NULL)
+  if (!known(w2))
     return 0;
 
   // record re-assorted word pair and advance input read pointer
@@ -467,7 +481,7 @@ int jhcVocab::try_split (char *word) const
   for (i = n - 1; i > 0; i--)
   {
     word[i] = '\0';
-    if (lookup(word) != NULL)
+    if (known(word))
       if (lookup(orig + i) != NULL)
       {
         strcat_s(word, nchar, " ");
@@ -496,10 +510,11 @@ int jhcVocab::try_swap (char *word) const
     c = word[i];
     word[i] = word[i - 1];
     word[i - 1] = c;
-    if (lookup(word) != NULL)
+    if (known(word))
       return 1;
     strcpy_s(word, nchar, orig);
   }
+  strcpy_s(word, nchar, orig);
   return 0;
 }
 
@@ -689,11 +704,14 @@ int jhcVocab::gram_fcn (char *word) const
   char xpi[20][15] = {"and", "but", "I", "me", "you", "he", "she", "him", "her", "it", "they", "them",
                       "here", "there", "that", "this", "something", "anything", "someone", "anyone"};
   const char *norm;
+  double val;
   int i;
 
   // check for end of sentence or unknown
   if (*word == '\0')
     return 1;                          
+  if (sscanf_s(word, "%lf", &val) == 1)
+    return 4;
   if ((norm = lookup(word)) == NULL)
     return -1;                         
   strcpy_s(word, nchar, norm);
@@ -765,6 +783,8 @@ int jhcVocab::guess_word ()
       return name_ctx(item[2], 0);
     if (strcmp(item[5], "property") == 0)        // [. ? "is" x "property"]
       return adj_ctx(item[2]);
+    if (strcmp(item[5], "action") == 0)          // [. ? "is" x "action"]
+      return verb_ctx(item[2]);
     if (strcmp(item[5], "manner") == 0)          // [. ? "is" x "manner"]
     {
       strcpy_s(unk, item[2]);                    // no -ly suffix needed

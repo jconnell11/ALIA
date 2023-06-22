@@ -7,45 +7,52 @@ OP 1 - "If you are awake then announce that"
               -hq--> obj-1
         obj-1 -lex-  me ]
 -----------------
-      DO[ act-1 -lex-  announce
-                -obj-> hq-1 ]
+      DO[ fcn-1 -lex-  announce
+                -fcn-> act-1
+          act-1 -obj-> hq-1 ]
 
 
 OP 2 - "To announce that you are awake say ready to go"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> hq-1 
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
          hq-1 -lex-  awake
               -hq--> obj-1
         obj-1 -lex-  me ]
 -----------------
-    DO[ act-2 -lex-  say
-              -obj-> txt-1
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
         txt-1 -str-  ready to go ]
 
 
 OP 3 - "To announce that you are awake say time to rise and shine"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> hq-1 
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
          hq-1 -lex-  awake
               -hq--> obj-1
         obj-1 -lex-  me ]
 -----------------
-    DO[ act-2 -lex-  say
-              -obj-> txt-1
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
         txt-1 -str-  time to rise and shine ]
 
 
 OP 4 - "To announce that you are awake say that was a nice nap, but now I'm wide awake"
   trig:
-    DO[ act-1 -lex-  announce
-              -obj-> hq-1 
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
          hq-1 -lex-  awake
               -hq--> obj-1
         obj-1 -lex-  me ]
 -----------------
-    DO[ act-2 -lex-  say
-              -obj-> txt-1
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
         txt-1 -str-  that was a nice nap, but now I'm wide awake ]
 

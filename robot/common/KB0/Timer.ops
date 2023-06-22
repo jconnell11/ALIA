@@ -1,0 +1,42 @@
+// basic commands for timing functions in ALIA system
+// ===================================================
+
+OP 1 - "To wait ..."
+  trig:
+    DO[ fcn-1 -lex-  wait 
+              -fcn-> act-1 ]
+---------------
+   GND[ call-1 -lex- time_delay ]
+
+
+OP 2 - "To wait some time ..."
+  trig:
+    DO[ fcn-1 -lex-  wait 
+              -fcn-> act-1
+        act-1 -obj-> amt-1 ]
+---------------
+   GND[ call-1 -lex-  time_delay 
+               -arg-> amt-1 ]
+
+
+OP 3 - "To wait some amount ..."
+  trig:
+    DO[ fcn-1 -lex-  wait
+              -fcn-> act-1 
+        amt-1 -amt-> act-1 ]
+---------------
+   GND[ call-1 -lex-  time_delay 
+               -arg-> amt-1 ]
+
+ 
+// --------------------------------------
+
+OP 4 - "To pause wait a little bit "
+  trig:
+    DO[ fcn-1 -lex-  pause 
+              -fcn-> act-1 ]
+---------------
+    DO[ fcn-2 -lex-  wait
+              -fcn-> act-2
+        amt-1 -lex-  a little bit
+              -amt-> act-2 ]

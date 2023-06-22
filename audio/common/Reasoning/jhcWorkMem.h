@@ -51,12 +51,12 @@ private:
   jhcNetNode *self;          // fixed node representing the robot
   jhcNetNode *user;          // node for current person communicating
 
-  // mood variables
-  double skep;               // global condition belief threshold (skepticism)
-
   // external linkages
   jhcNetNode *nref[emax];
   int ext[emax], cat[emax];
+
+  // global condition belief threshold (skepticism)
+  double skep;               
 
 
 // PROTECTED MEMBER VARIABLES
@@ -84,13 +84,15 @@ public:
 
   // belief threshold
   double MinBlf () const {return skep;}
-  void InitSkep (double v) {skep = v;}
+  void SetMinBlf (double s) {skep = __max(0.1, __min(1.0, s));}
 
   // conversation participants
   jhcNetNode *Robot () const {return self;}
   jhcNetNode *Human () const {return user;}
-  jhcNetNode *ShiftUser (const char *name =NULL);
   jhcNetNode *SetUser (jhcNetNode *n);
+  void AddName (jhcNetNode *n, const char *name, int neg =0);
+  jhcNetNode *FindName (const char *full) const;
+  bool NameClash (const jhcNetNode *n, const char *name, int neg =0) const;
 
   // list access (overrides virtual)
   jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const;
@@ -99,6 +101,10 @@ public:
   int SameBin (const jhcNetNode& focus, const jhcBindings *b) const;
   int NumBands () const {return(mode + 1);}
   bool InBand (const jhcNetNode *n, int part) const;
+  bool InList (const jhcNetNode *n) const 
+    {return(jhcNodePool::InList(n) || halo.InList(n));}
+  bool InMain (const jhcNetNode *n) const
+    {return jhcNodePool::InList(n);}
 
   // halo functions
   void ClearHalo () {halo.PurgeAll();}
@@ -125,10 +131,8 @@ public:
     {MaxBand(0); return jhcNodePool::Print(lvl, hyp);}
 
   // debugging
-  void PrintMain (int hyp =0)  
-    {jprintf("\nWMEM (%d nodes) =", WmemSize(hyp)); Print(2, hyp); jprintf("\n");}
-  void PrintHalo (int hyp =0) const 
-    {jprintf("\nHALO (%d nodes) =", HaloSize(hyp)); halo.Print(2, hyp); jprintf("\n");}
+  void PrintMain (int hyp =0);  
+  void PrintHalo (int hyp =0) const; 
   int PrintRaw (int hyp =0) const;
 
 
@@ -148,6 +152,9 @@ protected:
 private:
   // creation and initialization
   void clr_ext ();
+
+  // conversation participants
+  bool incompatible (const char *node, int nn, const char *full, const char *first, int fn) const;
 
   // garbage collection
   void keep_party (jhcNetNode *anchor) const;

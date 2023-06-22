@@ -40,7 +40,7 @@
 
 #include "Body/jhcTaisRemote.h"        // common robot
 
-#include "jhcMensCoord.h"              // class encapsulating base functionality
+#include "RWI/jhcMensCoord.h"          // class encapsulating base functionality
 
 
 class CMensEtDoc : public CDocument, private jhcTools
@@ -183,6 +183,7 @@ public:
   afx_msg void OnUtilitiesTestvocab();
   afx_msg void OnUtilitiesTestgraphizer();
   afx_msg void OnDemoBasicmsgs();
+  afx_msg void OnDemoCyclerate();
 };
 
 /////////////////////////////////////////////////////////////////////////////

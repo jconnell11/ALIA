@@ -50,7 +50,7 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  jhcAliaOp probe;             // for jhcAliaDir::FindActive
+  jhcAliaOp probe;             // for jhcAliaDir::HaltActive
   int noisy;                   // controls general diagnostic messages
   int detail;                  // show detailed for some operator
 
@@ -65,10 +65,12 @@ public:
 
   // list functions
   int AddOperator (jhcAliaOp *p, int ann =0);
+  int AddVariant (const jhcAliaOp& op0, const jhcNetNode& main, const jhcBindings& s2o, 
+                  jhcAliaChain *seq =NULL, int ann =0);
   void Remove (const jhcAliaOp *rem);
 
   // main functions
-  int FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth) const;
+  int FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth);
 
   // file functions
   int Load (const char *base, int add =0, int rpt =0, int level =1);
@@ -82,6 +84,10 @@ public:
 private:
   // creation and initialization
   int clear ();
+
+  // list functions
+  jhcAliaOp *op_copy (jhcBindings& b, const jhcAliaOp& op0) const;
+  jhcAliaChain *disconnect (jhcAliaChain& step) const;
 
   // file functions
   int save_ops (FILE *out, int level) const;

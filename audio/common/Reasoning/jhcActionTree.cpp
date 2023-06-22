@@ -25,9 +25,11 @@
 #include "Interface/jms_x.h"
 
 #include "Parse/jhcTxtLine.h"          // common audio
+#include "Reasoning/jhcAliaOp.h"       // since only spec'd as class in header
 #include "Reasoning/jhcAliaRule.h"
 
-#include "Action/jhcAliaDir.h"         // common robot - since only spec'd as class in header
+#include "Action/jhcAliaDir.h"         // common robot
+#include "Action/jhcAliaPlay.h"
 
 #include "Reasoning/jhcActionTree.h"
 
@@ -41,7 +43,7 @@
 
 jhcActionTree::~jhcActionTree ()
 {
-  ClrFoci(0);
+  ClrFoci();
 }
 
 
@@ -50,19 +52,6 @@ jhcActionTree::~jhcActionTree ()
 jhcActionTree::jhcActionTree ()
 {
   int i;
-
-  // surprise parameters
-  drill = 1.3;         // threshold for explict surprise NOTE
-  dwell = 5.0;         // obsession with contradiction (sec)
-  calm = 1.0;          // standard surprise decay (sec)
-
-  // rule adjustment parameters
-  binc = 0.1;          
-  bdec = 0.1;
-
-  // operator adjustment parameters
-  pinc = 0.1;          
-  pdec = 0.1;
 
   // parallel action status
   for (i = 0; i < imax; i++)
@@ -74,6 +63,16 @@ jhcActionTree::jhcActionTree ()
 
   // goal count requisition number
   req = 0;
+
+  // surprise parameters
+  drill = 1.3;         // threshold for explict surprise NOTE
+  dwell = 5.0;         // obsession with contradiction (sec)
+  calm  = 1.0;         // standard surprise decay (sec)
+
+  // thresholds and adjustment parameters
+  pess = 0.5;
+  wild = 0.5;
+  LoadCfg();
 }
 
 
@@ -119,6 +118,125 @@ int jhcActionTree::NumGoals (int leaf)
 
 
 ///////////////////////////////////////////////////////////////////////////
+//                         Processing Parameters                         //
+///////////////////////////////////////////////////////////////////////////
+
+//= Parameters used for adjusting rule confidence and operator preference.
+// NOTE: these parameters affect personality
+
+int jhcActionTree::adj_params (const char *fname)
+{
+  jhcParam *ps = &aps;
+  int ok;
+
+  ps->SetTag("tree_adj", 0);
+  ps->NextSpecF( &bth0,   0.5, "Min belief threshold default");
+  ps->NextSpecF( &cinc,   0.1, "Correct rule confidence up");
+  ps->NextSpecF( &cdec,   0.1, "Wrong rule confidence down");
+  ps->NextSpecF( &pth0,   0.5, "Min preference thresh default");
+  ps->NextSpecF( &pinc,   0.1, "Marginal op preference up");
+  ps->NextSpecF( &pdec,   0.1, "Failed op preference down");
+
+  ps->NextSpecF( &fresh, 30.0, "Action lookback limit (sec)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                           Parameter Bundles                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Read just deployment specific values from a file.e.
+
+int jhcActionTree::LoadCfg (const char *fname)
+{
+  int ok = 1;
+
+  ok &= adj_params(fname);
+  return ok;
+}
+
+
+//= Write current deployment specific values to a file.
+
+int jhcActionTree::SaveCfg (const char *fname) const
+{
+  int ok = 1;
+
+  ok &= aps.SaveVals(fname);
+  return ok;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                     Rule and Operator Adjustment                      //
+///////////////////////////////////////////////////////////////////////////
+
+//= Increase rule confidence given the halo belief vs a newly asserted version.
+// conf0 = result halo fact belief (never changed) which is original rule confidence
+// returns signed amount by which confidence was changed 
+
+double jhcActionTree::inc_conf (jhcAliaRule *r, double conf0) const 
+{
+  double c = conf0 + cinc;             // max boost wrt original conf
+
+  if (conf0 >= MinBlf())                 
+    return 0.0;
+  return AdjRuleConf(r, __min(c, 1.2)); 
+}
+
+
+//= Decrease rule confidence given halo belief vs newly asserted contradiction.
+// conf0 = result halo fact belief (never changed) which is original rule confidence
+// returns signed amount by which confidence was changed 
+
+double jhcActionTree::dec_conf (jhcAliaRule *r, double conf0) const
+{
+  double c = conf0 - cinc;             // max ding wrt original conf
+
+  if (conf0 < MinBlf())                
+    return 0.0;
+  return AdjRuleConf(r, __max(0.1, c));   
+}
+
+
+//= Set the confidence of the given rule's result to be some new value.
+// returns signed amount by which confidence was changed 
+
+double jhcActionTree::AdjRuleConf (jhcAliaRule *r, double cf) const
+{
+  double chg;
+  
+  if (r == NULL)
+    return 0.0;
+  chg = r->SetConf(cf);                // might already be cf
+  if ((noisy >= 1) && (chg != 0.0))
+    jprintf("  ADJUST: rule %d --> %s conf to %4.2f\n", 
+            r->RuleNum(), ((chg > 0.0) ? "raise" : "lower"), r->Conf());
+  return chg;                    
+}
+
+
+//= Alter the preference of the given operator to be either higher or lower.
+// returns signed amount by which preference was changed 
+
+double jhcActionTree::AdjOpPref (jhcAliaOp *op, int up) const
+{
+  double chg;
+
+  if (op == NULL) 
+    return 0.0;
+  chg = op->SetPref(op->Pref() + ((up > 0) ? pinc : -pdec));
+  if ((noisy >= 1) && (chg != 0.0))
+    jprintf("  ADJUST: operator %d --> %s pref to %4.2f\n", 
+            op->OpNum(), ((chg > 0.0) ? "raise" : "lower"), op->Pref());
+  return chg;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
 //                          List Manipulation                            //
 ///////////////////////////////////////////////////////////////////////////
 
@@ -150,15 +268,6 @@ jhcAliaChain *jhcActionTree::FocusN (int n) const
   if ((n < 0) || (n >= fill))
     return NULL;
   return focus[n];
-}
-
-
-//= Clear any error message associated with the current focus.
-
-void jhcActionTree::ClearErr ()
-{
-  if ((svc >= 0) && (svc < fill))
-    err[svc].Clear();
 }
 
 
@@ -231,11 +340,30 @@ int jhcActionTree::ServiceWt (double pref)
 //                             List Modification                         //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Removes all items from attention list.
-// can optionally clear memory and make new "self" and "user" nodes
-// always returns 1 for convenience
+//= Clear all actions and reset state for the beginning of a sequence.
+// also clears memory and makes new "self" and "user" nodes
 
-int jhcActionTree::ClrFoci (int init, const char *rname)
+void jhcActionTree::ResetFoci (const char *rname)
+{
+  // get rid of all pending actions
+  ClrFoci();
+
+  // clear halo and working memory
+  nkey.Clear();
+  BuildIn(NULL);
+  Reset();
+  InitPeople(rname);
+ 
+  // reset current time stamp and thresholds
+  now = 0;
+  SetMinBlf(bth0);
+  SetMinPref(pth0);
+}
+
+
+//= Removes all items from attention list.
+
+void jhcActionTree::ClrFoci ()
 {
   int i;
 
@@ -253,15 +381,6 @@ int jhcActionTree::ClrFoci (int init, const char *rname)
   chock = 0;
   blame = 1;                 // record specific failure reasons
   svc = -1;
-
-  // clear halo and working memory
-  if (init <= 0)
-    return 1;
-  nkey.Clear();
-  BuildIn(NULL);
-  Reset();
-  InitPeople(rname);
-  return 1;
 }
 
 
@@ -347,12 +466,9 @@ int jhcActionTree::drop_oldest ()
 
 void jhcActionTree::NoteSolo (jhcNetNode *n)
 {
-  jhcAliaChain *ch = new jhcAliaChain;
-  jhcAliaDir *dir = new jhcAliaDir;
-
-  (dir->key).AddItem(n);
-  ch->BindDir(dir);
-  AddFocus(ch);  
+  StartNote();
+  nkey.AddItem(n);
+  FinishNote();
 }
 
 
@@ -369,7 +485,7 @@ int jhcActionTree::Update (int gc)
 {
   int i;
 
-  // find current elapsed time
+  // record current time
   now = jms_now();
 
   // clean up old foci and old nodes in main memory
@@ -473,89 +589,103 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
 {
   jhcAliaDesc *evt;
   const jhcNetNode *mate;
-  jhcNetNode *focus, *fact;
+  jhcNetNode *focus;
   jhcAliaRule *r;
-  const jhcBindings *b;
-  double s, blf, blf2, blf3, lo, hi = 0.0;
-  int i, ni = key.NumItems();
+  double s, blf, halo, chg, lo, hi = 0.0;
+  int i, ni = key.NumItems(), hit = 0, miss = 0;
 
-  // examine each element of the situation 
+  // examine each non-object element of the situation 
   for (i = 0; i < ni; i++)
   {
     // compare against ALL matching predictions in halo
     focus = key.Item(i);
+    if (focus->ObjNode())
+      continue;
     blf = focus->Belief();
     mate = NULL;
     lo = -1.0;
     while ((mate = halo_equiv(focus, mate)) != NULL)
     {
-      // possibly tune relevant rule's output belief for this prediction
-      blf2 = mate->Belief();
-      if (((r = mate->hrule) != NULL) && ((b = mate->hbind) != NULL))
-      {
-        // when new fact added to main memory
-        //   if belief in halo < current threshold and correct then increment 
-        //   if belief in halo > current threshold and wrong then decrement 
-        fact = r->Wash(b->FindKey(mate));
-        if ((blf2 >= MinBlf()) && (mate->Neg() != focus->Neg()))
-          fact->SetBelief(blf2 - bdec);
-        else if ((blf2 < MinBlf()) && (mate->Neg() == focus->Neg()))
-          fact->SetBelief(blf2 + binc);
-        if ((blf3 = fact->Belief()) != blf2)
-        {
-          r->SetConf(blf3);
-          mood.Believe(blf3 - blf2);
-          jprintf(1, noisy, "  ADJUST: rule %d --> %s conf to %4.2f\n", r->RuleNum(), 
-                  ((blf3 > blf2) ? "raise" : "lower"), blf3);
-        }
-      }
-
-      // calculate change of belief relative to selected halo prediction
+      // calculate surprise relative to selected halo prediction
+      halo = mate->Belief();
       if (focus->Neg() == mate->Neg())
-        s = fabs(blf - blf2);                        // expected to some degree
+        s = fabs(blf - halo);                    // expected to some degree
       else
-        s = blf + blf2;                              // contradiction
+        s = blf + halo;                          // full contradiction
       if (lo < 0.0)
         lo = s;
       else
-        lo = __min(s, lo);                           // unexpectedness of element
+        lo = __min(s, lo);                       // unexpectedness of element
+
+      // check if halo rule's prediction was correct or wrong (1-step or 2-step)
+      r = mate->hrule;
+      if (halo >= MinBlf())
+      {
+        jprintf(3, noisy, "%s (%4.2f) from RULE %d [%d] %s %s (%4.2f)\n", 
+                mate->Nick(), halo, r->RuleNum(), ((InBand(mate, 2)) ? 2 : 3),  
+                ((mate->Neg() == focus->Neg()) ? "agrees with" : "opposes"), focus->Nick(), blf);
+        if (mate->Neg() == focus->Neg())
+          hit++;
+        else
+          miss++;
+      }
+
+      // for 1-step inferences (result in band 2) credit assignment is clear
+      //   if correct and halo belief < current threshold then increment rule conf
+      //   if wrong and halo belief >= current threshold then decrement rule conf
+      // any given rule will only be adjusted in one direction (based on original conf)
+      if (InBand(mate, 2))
+      {
+        if (mate->Neg() == focus->Neg()) 
+          chg = inc_conf(r, halo);               // tests halo against skep
+        else  
+          chg = dec_conf(r, halo);               // tests halo against skep
+        mood.Believe(chg);
+        if ((chg != 0.0) && (noisy >= 1))
+          jprintf("  ADJUST: rule %d --> %s conf to %4.2f\n", r->RuleNum(), 
+                  ((chg > 0.0) ? "raise" : "lower"), r->Conf());
+      }
     }
 
     // possibly generate a NOTE about this fact if highly unexpected
     if (lo > drill)
     {
       StartNote();
-      evt = NewNode("act", "surprise", 0, 1.0);      // not "done"
+      evt = NewAct("surprise");                  // done = 0 -> "surprising"
       AddArg(evt, "agt", focus);
       AddArg(evt, "obj", Self());
       FinishNote();
     }
-    hi = __max(lo, hi);                              // combine across whole key
+    hi = __max(lo, hi);                          // combine across whole key
   }
+
+  // feedback to main belief threshold if it could have been used
+  mood.BumpMinBlf(hit, miss);
   return hi;
 }
 
 
-//= Look through halo to find some node with similar arguments.
+//= Look through halo to find some node with similar arguments (ignores negation).
 // only looks at nodes with belief > 0 so ignores inferences based on hypotheticals
 
 const jhcNetNode *jhcActionTree::halo_equiv (const jhcNetNode *n, const jhcNetNode *h0) const
 {
   const jhcNetNode *h = h0;
-  int i, na = n->NumArgs();
+  int i, na = n->NumArgs(), bin = n->Code();
 
-  // look for superficially similar node in halo portion
-  while ((h = halo.Next(h)) != NULL)
-    if ((h->Belief() > 0.0) && (h->Done() == n->Done()) && 
-        (h->NumArgs() == na) && h->LexMatch(n))
-    {
-      // check that all arguments match exactly
-      for (i = 0; i < na; i++)
-        if (!h->HasVal(n->Slot(i), n->Arg(i)))
-          break;
-      if (i >= na)
-        return h;
-    }
+  // look for superficially similar node in halo portion (not ghost fact)
+  while ((h = halo.Next(h, bin)) != NULL)
+    if (!InBand(h, 1))
+      if ((h->Belief() > 0.0) && (h->Done() == n->Done()) && 
+          (h->NumArgs() == na) && h->LexMatch(n))
+      {
+        // check that all arguments match exactly
+        for (i = 0; i < na; i++)
+          if (!h->HasVal(n->Slot(i), n->Arg(i)))
+            break;
+        if (i >= na)
+          return h;
+      }
   return NULL;
 }
 
@@ -631,7 +761,7 @@ jhcNetNode *jhcActionTree::pick_non_wmem (int& step, const jhcBindings& b, const
   {
     // check that substitution is not in working memory
     sub = b.GetSub(i);
-    if (InList(sub))
+    if (InMain(sub))
       continue;
 
     // check if source rule itself (if any) used any halo facts to trigger 
@@ -687,7 +817,7 @@ void jhcActionTree::promote_all (jhcBindings& h2m, const jhcBindings& b)
     {
       // if points to halo node, replace with new main node
       n2 = n0->ArgSurf(j);
-      if (!InList(n2))
+      if (!InMain(n2))
         n2 = h2m.LookUp(n2);         // should never fail
       n->AddArg(n0->Slot(j), n2);
     } 
@@ -703,7 +833,7 @@ int jhcActionTree::promote (jhcBindings& h2m, jhcNetNode *n)
   jhcNetNode *n2, *deep = n->Deep();
 
   // make sure not already in working memory (ensures halo or LTM)
-  if (InList(n) || h2m.InKeys(n))
+  if (InMain(n) || h2m.InKeys(n))
     return 0;
 
   // make new main memory node and remember correspondence
@@ -726,7 +856,217 @@ int jhcActionTree::promote (jhcBindings& h2m, jhcNetNode *n)
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                             External Interface                        //
+//                           Execution Tracing                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Look for ALL in-progress activities matching graph and cause them to terminate.
+// return 1 if all stopped (or no matches), -2 if cannot stop some
+
+int jhcActionTree::HaltActive (const jhcGraphlet& desc, const jhcAliaDir *skip, int bid)
+{
+  jhcNetNode *act = desc.MainAct();
+  jhcAliaChain *ch;
+  int i, n = NumFoci(), ans = 1;
+
+  // make sure pattern to match is not negated
+  if (act == NULL)
+    return 0;
+  act->SetNeg(0);
+
+  // scan through each focus (but ignore calling directive)
+  for (i = 0; i < n; i++)
+    if ((ch = FocusN(i)) != NULL)
+    {
+      // stop if current focus has high enough priority (else mark problem)
+      if (bid >= BaseBid(i))
+        ch->HaltActive(desc, skip, 1);
+      else if (ch->HaltActive(desc, skip, 0) > 0)    
+        ans = -2;                     
+    }
+
+  // restore description negation
+  act->SetNeg(1);
+//  main->SetBelief(1.0);
+  return ans;
+}
+
+
+//= Determine operator which initiated action matching description.
+// binds mapping from description to operator variables and corresponding operator action node 
+// returns operator responsible (if any)
+// Note: generally inadvisable to directly expose src directive or call tree details
+
+jhcAliaOp *jhcActionTree::Motive (const jhcGraphlet& desc, const jhcNetNode **main, jhcBindings *d2o)
+{
+  jhcBindings d2a;
+  jhcAliaOp *op;
+  const jhcAliaDir *act, *src;
+  const jhcBindings *o2m, *m2a;
+  const jhcNetNode *a, *m, *co;
+  int i, nb;
+
+  // set defaults 
+  if (d2o != NULL)
+    d2o->Clear();
+  if (main != NULL)
+    *main = NULL;
+
+  // look for match to recent action and get caller
+  act = find_call(&src, &d2a, desc, 1);
+  if (src == NULL)
+    return NULL;
+  op = src->LastOp();
+  o2m = src->LastVars();
+  m2a = (act->step)->Scope();
+  nb = d2a.NumPairs();
+
+  // create mapping from description vars to operator vars
+  if (d2o != NULL)
+    for (i = 0; i < nb; i++)  
+    {
+      a = d2a.GetSub(i);
+      if ((m = m2a->FindKey(a)) == NULL)         // undo any FIND guess
+        m = a;
+      co = o2m->FindKey(m);
+      d2o->Bind(d2a.GetKey(i), op->Wash(co));
+    }
+
+  // look up equivalent operator node for action found 
+  if (main != NULL)
+    *main = o2m->FindKey(act->KeyAct());         // never from FIND
+  return op;
+} 
+
+
+//= Find the call pattern for the most recently started activity compatible with the description.
+// returns best match directive and binds its caller (if any), done: 0 = ongoing only, 1 = any non-failure
+// Note: provides on-demand definite verb phrase anaphora resolution
+
+const jhcAliaDir *jhcActionTree::find_call (const jhcAliaDir **src, jhcBindings *d2a, const jhcGraphlet& desc, int done) 
+{
+  jhcNetNode *main = desc.MainAct();
+  const jhcAliaDir *act = NULL;
+  jhcAliaChain *ch;
+  UL32 start = 0;
+  int i, neg, cyc, n = NumFoci();
+
+  // no match found yet
+  if (src != NULL)
+    *src = NULL;
+  if (d2a != NULL)
+    d2a->Clear();
+
+  // make sure pattern to match is not negated 
+  if (main == NULL)
+    return NULL;
+  if ((neg = main->Neg()) > 0)
+    main->SetNeg(0);
+  if (fresh > 0.0)
+    start = jms_now() - ROUND(1000.0 * fresh);
+
+  // look through all foci for most recently started match
+  cyc = ++req;
+  for (i = 0; i < n; i++)
+    if ((ch = FocusN(i)) != NULL)
+      ch->FindCall(&act, src, d2a, desc, start, done, NULL, cyc);
+
+  // restore any description negation 
+  if (neg > 0)                         
+    main->SetNeg(1);
+  return act;
+}
+
+
+//= Find directive responsible for failure of current focus.
+
+const jhcAliaDir *jhcActionTree::FindFail () const
+{
+  const jhcAliaChain *step = Current();
+  const jhcAliaPlay *ward = NULL;
+
+  // find relevant main play - assumes top level with only continuations
+  while ((step = step->cont) != NULL)
+    if ((ward = step->GetPlay()) != NULL)
+      if (ward->Overall() < 0)
+        break;
+
+  // find directive within failed main play
+  if (step != NULL)
+    return play_prob(ward);
+  return NULL;
+}
+
+
+//= Find first failing activity within a play.
+
+const jhcAliaDir *jhcActionTree::play_prob (const jhcAliaPlay *play) const
+{
+  jhcAliaChain *seq;
+  const jhcAliaDir *dir;
+  int i, n = play->NumReq();
+
+  // look for failures in main activities
+  for (i = 0; i < n; i++)
+    if (play->ReqStatus(i) < 0)
+      return failed_dir(play->ReqN(i));
+
+  // look for first finished guard activity
+  n = play->NumSimul();
+  for (i = 0; i < n; i++)
+    if (play->SimulStatus(i) != 0)     
+    {
+      // prefer a failed step
+      seq = play->SimulN(i);
+      if ((dir = failed_dir(seq)) != NULL)
+        return dir;
+
+      // otherwise blame last thing done
+      while (seq != NULL)
+      {
+        seq = seq->Last();
+        if ((dir = seq->GetDir()) != NULL)
+          return dir;
+        seq = (seq->GetPlay())->ReqN(0);
+      }
+    }
+  return NULL;    
+}
+
+
+//= Find first failing directive in given sequence.
+
+const jhcAliaDir *jhcActionTree::failed_dir (jhcAliaChain *start) const
+{
+  jhcAliaChain *step = start;
+  const jhcAliaDir *dir;
+  int v, cyc = start->LastReq() + 1;
+
+  // follow actual execution path based on saved verdicts
+  while (step != NULL)
+  {
+    if (step->LastReq() == cyc)                  // detect looping
+      return NULL;
+    step->SetReq(cyc);
+    if ((v = step->Verdict()) < 0)            
+    {
+      // if BIND/FIND retry fails, advance to following action
+      if ((step->cont == NULL) || ((step->cont)->Verdict() == 0))
+      {
+        if ((dir = step->GetDir()) != NULL)
+          return dir;
+        return play_prob(step->GetPlay());
+      }
+    }
+    else if (v == 0)                             // step still running
+      return NULL;
+    step = ((v == 2) ? step->alt : step->cont);
+  }
+  return NULL;
+} 
+
+
+///////////////////////////////////////////////////////////////////////////
+//                           External Interface                          //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Open up a potential top level focus NOTE directive for construction.
@@ -735,7 +1075,7 @@ int jhcActionTree::promote (jhcBindings& h2m, jhcNetNode *n)
 void jhcActionTree::StartNote ()
 {
   nkey.Clear();
-  BuildIn(&nkey);
+  BuildIn(nkey);
 }
 
 
@@ -784,14 +1124,17 @@ int jhcActionTree::FinishNote (jhcAliaDesc *fail)
   // make sure something was started then rearrange if needed (could add)
   if (nkey.Empty())
     return ans;
-  if (fail != NULL)
-    nkey.SetMain(dynamic_cast<jhcNetNode *>(fail));
+//  if (fail != NULL)
+//    nkey.SetMain(dynamic_cast<jhcNetNode *>(fail));
   nkey.MainProp();           
   
   // possibly set failure message for top level focus
   if ((fail != NULL) && (svc >= 0) && (svc < fill))
     if (blame > 0)
+    {
+      jprintf(1, noisy, "Recording main task failure reason:\n");
       err[svc].Copy(nkey);
+    }
 
   // add NOTE as new attentional focus
   ch0 = new jhcAliaChain;
@@ -823,7 +1166,7 @@ int jhcActionTree::LoadFoci (const char *fname, int app)
 
   // possibly clear old stuff then try to open file
   if (app <= 0)
-    ClrFoci(0);
+    ClrFoci();
   if (!in.Open(fname))
     return -1;
   ClrTrans();

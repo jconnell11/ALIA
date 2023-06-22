@@ -23,10 +23,12 @@
 
 #include <ctype.h>
 
-#include "Action/jhcAliaCore.h"        // common robot - only spec'd as class in header
+#include "Action/jhcAliaChain.h"       // common robot 
+#include "Action/jhcAliaCore.h"        // since only spec'd as class in header
 #include "Action/jhcAliaPlay.h"
 
 #include "Parse/jhcTxtLine.h"          // common audio
+#include "Reasoning/jhcActionTree.h"   // since only spec'd as class in header
 
 #include "Language/jhcNetBuild.h"
 
@@ -38,9 +40,11 @@
 //= See if attention (to speech) should be renewed based on association list.
 // basically looks for the presense of the ATTN non-terminal category
 // mode: 0 = always, 1 = ATTN anywhere, 2 = ATTN at start, 3 = ATTN only (hail)
+// NOTE: better rejection of initial yes/no (if parsable) than jhcGramExec version 
 
 int jhcNetBuild::NameSaid (const char *alist, int mode) const
 {
+  char slot[40];
   const char *tail;
 
   // ignore wake-up for text input
@@ -53,8 +57,13 @@ int jhcNetBuild::NameSaid (const char *alist, int mode) const
   if (mode == 1)
     return 1;
 
-  // must have vocative at beginning
-  if ((tail = NextMatches(alist, "ATTN", 4)) == NULL)
+  // must have vocative at beginning (leading "yes" or "no" allowed)
+  tail = NextSlot(alist, slot, NULL, 1, 40, 0);
+  if (match_any(slot, "YES", "NO", "HQ"))
+    NextSlot(tail, slot, NULL, 1, 40, 0);
+  if (strcmp(slot, "AKO") == 0)                  // for "idiot" or "good boy"
+    NextSlot(tail, slot, NULL, 1, 40, 0);
+  if (strcmp(slot, "ATTN") != 0)
     return 0;
   if (mode == 2)
     return 1;
@@ -68,18 +77,21 @@ int jhcNetBuild::NameSaid (const char *alist, int mode) const
 
 //= Build an appropriate structure based on given association list.
 // also save input utterance for new rules or operators
-// return: 9 = vocabulary, 8 = farewell, 7 = greet, 6 = hail, 
-//         5 = op, 4 = rule, 3 = question, 2 = command, 1 = fact, 
+// return: 10 = vocabulary, 9 = farewell, 8 = greet, 7 = hail, 
+//         6 = op, 5 = rule, 4 = revision, 3 = question, 2 = command, 1 = fact, 
 //         0 = nothing, negative for error
 
 int jhcNetBuild::Convert (const char *alist, const char *sent)
 {
+  jhcActionTree *atree;
+  jhcAliaChain *ch;
   const char *unk;
   int spact;
 
   // sanity check then cleanup any rejected suggestions
   if (core == NULL) 
     return -1;
+  atree = &(core->atree);
   add = NULL;                                // deleted elsewhere
   ClearLast();
   unk = (core->vc).Confused();
@@ -90,12 +102,28 @@ int jhcNetBuild::Convert (const char *alist, const char *sent)
     return huh_tag();                        // misheard utterance
   }
 
+  // handle user introduction by name (always believes user)
+  if (HasFrag(alist, "$intro"))
+  {
+    intro_name(alist);                       // assign user name
+    return greet_tag();
+  }
+
   // generate core interpretation then add speech act
   spact = Assemble(alist);
   if ((spact >= 1) && (spact <= 3))
     return attn_tag(spact, alist);           // fact or command
-  if ((spact >= 4) && (spact <= 5))
+  if (spact == 4)
+    return rev_tag(spact, alist);            // operator revision
+  if ((spact >= 5) && (spact <= 6))
     return add_tag(spact, alist, sent);      // new rule or operator
+
+  // look for naked kudo phrases (always believes user)
+  if ((ch = feedback(spact, alist)) != NULL)
+  {
+    atree->AddFocus(ch);
+    return 1;
+  }
 
   // handle superficial speech acts
   if (HasSlot(alist, "HELLO"))               // simple greeting
@@ -105,6 +133,77 @@ int jhcNetBuild::Convert (const char *alist, const char *sent)
   if (HasSlot(alist, "ATTN"))                // calling robot name
     return hail_tag();
   return huh_tag();                          // no network created
+}
+
+
+//= Possibly change to new user node given name or restriction on name.
+
+void jhcNetBuild::intro_name (const char *alist) const
+{
+  char name[80];
+  jhcActionTree *atree = &(core->atree);
+  jhcNetNode *user = atree->Human();
+  int neg = 0;
+
+  // get name and whether asserted or denied
+  if (FindSlot(alist, "NAME", name) == NULL)
+    return; 
+  if (HasSlot(alist, "NEG"))
+    neg = 1;
+
+  // possibly change user node 
+  if (atree->NameClash(user, name, neg))
+    user = atree->SetUser((neg <= 0) ? atree->FindName(name) : NULL);
+
+  // add name and person facts to network
+  atree->StartNote();
+  atree->AddName(user, name, neg);
+  atree->AddProp(user, "ako", "person", 0, 1.0, 1);
+  atree->FinishNote();
+}
+
+
+//= Generate a NOTE directive expressing user opinion of current performance.
+// looks for standalone kudos: HQ, HQ AKO, and AKO
+// as well as possibly embedded kudos: ACC, REJ, YES, and NO
+
+jhcAliaChain *jhcNetBuild::feedback (int spact, const char *alist) const
+{
+  char first[40], val[40], prop[40] = "hq", term[40] = "";
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *ch;
+  jhcAliaDir *dir;
+  int neg = 0;    
+
+  // get feedback type and sign (likely from revision)
+  if (AnySlot(alist, "ACC REJ"))
+    strcpy_s(term, "good");
+  else if (AnySlot(alist, "YES NO"))
+    strcpy_s(term, "correct");        
+  if (AnySlot(alist, "REJ NO"))
+    neg = 1;
+
+  // look for explicit kudo at front ("clever girl" or "idiot")    
+  NextSlot(alist, first, val, 1);
+  if (match_any(first, "HQ", "AKO"))
+  {
+    strcpy_s(term, val);                         // use actual word
+    if (strcmp(first, "AKO") == 0)          
+      strcpy_s(prop, "ako");
+  }
+  else if (match_any(first, "YES", "NO") && 
+           ((spact == 2) || (spact == 6)))
+    strcpy_s(term, "good");                      // change default             
+  else if (*term == '\0')
+    return NULL;
+
+  // build NOTE directive with info and encapsulate in a step
+  dir = new jhcAliaDir;
+  ch = new jhcAliaChain;
+  atree->BuildIn(dir->key);
+  atree->AddProp(atree->Robot(), prop, term, neg);
+  ch->BindDir(dir);
+  return ch;
 }
 
 
@@ -127,17 +226,17 @@ void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) con
     fprintf(log, "*** %d parses ***\n\n", nt);
 
   // record interpretation result
-  if (spact == 8)
+  if (spact == 9)
     fprintf(log, "-- farewell --\n\n");
-  else if (spact == 7)
+  else if (spact == 8)
     fprintf(log, "-- greeting --\n\n");
-  else if (spact == 6)
+  else if (spact == 7)
     fprintf(log, "-- hail --\n\n");
-  else if ((spact == 5) && (add != NULL) && (add->new_oper != NULL))
+  else if ((spact == 6) && (add != NULL) && (add->new_oper != NULL))
     (add->new_oper)->Save(log);
-  else if ((spact == 4) && (add != NULL) && (add->new_rule != NULL))
+  else if ((spact == 5) && (add != NULL) && (add->new_rule != NULL))
     (add->new_rule)->Save(log);
-  else if ((spact <= 3) && (spact >= 1) && (bulk != NULL))
+  else if ((spact <= 4) && (spact >= 1) && (bulk != NULL))
   {
     bulk->Save(log, 2);
     fprintf(log, "\n");
@@ -164,12 +263,12 @@ int jhcNetBuild::huh_tag () const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = new jhcAliaChain;
-  jhcAliaDir *dir = new jhcAliaDir();
+  jhcAliaDir *dir = new jhcAliaDir;
   jhcNetNode *n;
  
   // fill in details of the speech act
-  atree->BuildIn(&(dir->key));
-  n = atree->MakeNode("meta", "understand", 1);
+  atree->BuildIn(dir->key);
+  n = atree->MakeAct("understand", 1);
   n->AddArg("agt", atree->Robot());               // in WMEM since NOTE
   n->AddArg("obj", atree->Human());               // in WMEM since NOTE
 
@@ -186,17 +285,11 @@ int jhcNetBuild::huh_tag () const
 int jhcNetBuild::hail_tag () const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch;
-  jhcNetNode *input; 
+  jhcAliaChain *ch = build_tag(NULL, "hail", NULL, 1);
 
-  // make a new NOTE directive
-  ch = build_tag(&input, NULL);
-  atree->SetLex(input, "hail");
-
-  // add completed structure to attention buffer
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 6;
+  return 7;
 }
 
 
@@ -205,17 +298,11 @@ int jhcNetBuild::hail_tag () const
 int jhcNetBuild::greet_tag () const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch;
-  jhcNetNode *input; 
+  jhcAliaChain *ch = build_tag(NULL, "greet", NULL, 1);
 
-  // make a new NOTE directive
-  ch = build_tag(&input, NULL);
-  atree->SetLex(input, "greet");
-
-  // add completed structure to attention buffer
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 7;
+  return 8;
 }
 
 
@@ -224,17 +311,11 @@ int jhcNetBuild::greet_tag () const
 int jhcNetBuild::farewell_tag () const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch;
-  jhcNetNode *input; 
+  jhcAliaChain *ch = build_tag(NULL, "dismiss", NULL, 1);
 
-  // make a new NOTE directive
-  ch = build_tag(&input, NULL);
-  atree->SetLex(input, "dismiss");
-
-  // add completed structure to attention buffer
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 8;
+  return 9;
 }
 
 
@@ -248,18 +329,18 @@ int jhcNetBuild::farewell_tag () const
 //           ako-1 -lex-  word
 //                 -ako-> txt-1]
 // </pre>
-// always returns 9 for convenience
+// always returns 10 for convenience
 
 int jhcNetBuild::unk_tag (const char *word) const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = new jhcAliaChain;
-  jhcAliaDir *dir = new jhcAliaDir();
+  jhcAliaDir *dir = new jhcAliaDir;
   jhcNetNode *n, *w;
  
   // fill in details of the speech act
-  atree->BuildIn(&(dir->key));
-  n = atree->MakeNode("meta", "know", 1);
+  atree->BuildIn(dir->key);
+  n = atree->MakeAct("know", 1);
   n->AddArg("agt", atree->Robot());               // in WMEM since NOTE
   w = atree->MakeNode("txt");
   w->SetString(word);
@@ -270,26 +351,31 @@ int jhcNetBuild::unk_tag (const char *word) const
   ch->BindDir(dir);
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 9;
+  return 10;
 }
 
 
 //= Generate speech act followed by a request to add rule or operator.
 // save core of ADD directive in "add" for convenience
-// returns 4 for rule, 5 for operator (echoes input "kind")
+// returns 5 for rule, 6 for operator (echoes input "kind")
 
 int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent) 
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch, *steps;
+  jhcAliaChain *ch, *steps, *tail;
   jhcNetNode *input, *item;
  
   // make a new NOTE directive for speech act
-  ch = build_tag(&input, alist);
-  atree->SetLex(input, "give");
-  item = atree->MakeNode((spact == 4) ? "rule" : "op");
+  ch = build_tag(&input, "give", alist, 1);
+  item = atree->MakeNode((spact == 5) ? "rule" : "op");
   input->AddArg("obj", item);
-  atree->AddProp(item, "ako", ((spact == 4) ? "rule" : "operator"));
+  atree->AddProp(item, "ako", ((spact == 5) ? "rule" : "operator"));
+
+  // possibly tack on user feedback ("yes" or "no") after speech act
+  if ((tail = feedback(spact, alist)) != NULL)
+    ch->cont = tail;
+  else
+    tail = ch;
 
   // make a new ADD directive to add rule or operator
   steps = new jhcAliaChain;
@@ -299,24 +385,55 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
   steps->fail = exp_fail(item);        // failed for some reasone
 
   // move newly create rule or operator into directive (in case slow)
-  if (spact == 4)
+  if (spact == 5)
   {
-    rule->SetGist(sent);
+    rule->SetGist(no_fluff(sent, alist));
     add->new_rule = rule;
   }
   else
   {
-    oper->SetGist(sent);
+    oper->SetGist(no_fluff(sent, alist));
     add->new_oper = oper;
   }
   rule = NULL;                         // prevent deletion by jhcGraphizer
   oper = NULL;
 
-  // then add completed structure to attention buffer
-  ch->cont = steps;
+  // combine with preamble and transfer structure to attention buffer
+  tail->cont = steps;
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
   return spact;
+}
+
+
+//= Insert NOTE directive about source of command or fact before actual statement.
+// gives the opportunity to PUNT and disbelieve fact or reject command
+// returns 4 for valid revision, 0 for problem
+
+int jhcNetBuild::rev_tag (int spact, const char *alist) const
+{
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *ch, *tail;
+  jhcNetNode *input, *item;
+
+  // make a new NOTE directive for speech act
+  ch = build_tag(&input, "revise", alist, 0);
+  item = atree->MakeNode("op");
+  input->AddArg("obj", item);
+  atree->AddProp(item, "ako", "operator");
+
+  // possibly tack on user feedback ("yes" or "no") after speech act
+  if ((tail = feedback(spact, alist)) != NULL)
+    ch->cont = tail;
+  else
+    tail = ch;
+
+  // tack on a play encapsulating the bulk sequence
+  // then add completed structure to attention buffer
+  tail->cont = guard_plan(bulk, item);
+  atree->AddFocus(ch);
+  atree->BuildIn(NULL);
+  return 4;
 }
 
 
@@ -327,19 +444,24 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
 int jhcNetBuild::attn_tag (int spact, const char *alist) const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch;
+  jhcAliaChain *ch, *tail;
   jhcNetNode *input, *item;
 
   // make a new NOTE directive for speech act
   // question "ask act", command "tell act", fact "tell obj"
-  ch = build_tag(&input, alist);
-  atree->SetLex(input, ((spact >= 3) ? "ask" : "tell"));
+  ch = build_tag(&input, ((spact >= 3) ? "ask" : "tell"), alist, 1);
   item = atree->MakeNode("plan");
   input->AddArg(((spact >= 2) ? "act" : "obj"), item);
 
-  // tack on a TRAP directive encapsulating the bulk sequence
+  // possibly tack on user feedback ("yes" or "no") after speech act
+  if ((tail = feedback(spact, alist)) != NULL)
+    ch->cont = tail;
+  else
+    tail = ch;
+
+  // tack on a play encapsulating the bulk sequence
   // then add completed structure to attention buffer
-  ch->cont = guard_plan(bulk, item);
+  tail->cont = guard_plan(bulk, item);
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
   return spact;
@@ -350,18 +472,19 @@ int jhcNetBuild::attn_tag (int spact, const char *alist) const
 // also returns pointer to main assertion in directive
 // leaves jhcGraphlet accumulator of WMEM assigned to this directive
 
-jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *alist) const
+jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *fcn, const char *alist, int dest) const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = new jhcAliaChain;
-  jhcAliaDir *dir = new jhcAliaDir();
+  jhcAliaDir *dir = new jhcAliaDir;
   jhcNetNode *n;
  
   // fill in details of the speech act
-  atree->BuildIn(&(dir->key));
-  n = atree->MakeNode("meta");
+  atree->BuildIn(dir->key);
+  n = atree->MakeAct(fcn);
   n->AddArg("agt", atree->Human());                 // in WMEM since NOTE
-  n->AddArg("dest", atree->Robot());                // in WMEM since NOTE
+  if (dest > 0)
+    n->AddArg("dest", atree->Robot());              // in WMEM since NOTE
   if ((alist != NULL) && HasSlot(alist, "POLITE"))
     atree->AddProp(n, "mod", "polite");
 
@@ -373,17 +496,73 @@ jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *alist) cons
 }
 
 
+//= Strip off any preamble and leading or trailing attention words.
+
+const char *jhcNetBuild::no_fluff (const char *sent, const char *alist)
+{
+  char slot[40];
+  const char *tail, *start = sent;
+  int i;
+
+  // look at initial non-terminals in association list
+  tail = NextSlot(alist, slot, NULL, 1, 40, 0);
+  if (match_any(slot, "YES", "NO", "HQ"))
+  {
+    // skip over first word in sentence
+    start = strchr(sent, ' ');
+    while (*start++ != '\0')
+      if (*start != ' ')
+        break;
+    tail = NextSlot(tail, slot, NULL, 1, 40, 0);
+  }
+  if (strcmp(slot, "ATTN") == 0)
+  {
+    // skip over next word in sentence
+    start = strchr(start, ' ');
+    while (*start++ != '\0')
+      if (*start != ' ')
+        break;
+  }
+
+  // find final non-terminal in association list
+  *slot = '\0';
+  while (tail != NULL)
+    tail = NextSlot(tail, slot, NULL, 0, 40, 0);
+  if (strcmp(slot, "ATTN") != 0)
+    return start;
+
+  // strip off last word from sentence
+  strcpy_s(trim, start);
+  i = (int) strlen(trim);
+  while (--i > 0)
+    if (trim[i] == ' ')
+      break;
+  while (--i > 0)
+    if (trim[i] != ' ')
+      break;
+  trim[i + 1] = '\0';
+  return trim;
+}
+
+
 //= Generate a TRAP directive encapsulating payload (symbolic node "ref").
 // returns chain step with its overall fail branch being an explanation
 
 jhcAliaChain *jhcNetBuild::guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const
 {
-  jhcAliaChain *ch = new jhcAliaChain;
-  jhcAliaDir *seq = new jhcAliaDir(JDIR_TRY);
+  jhcAliaChain *ch = steps;
+  jhcAliaPlay *pod;
 
-  (seq->key).AddItem(plan);          // dummy node
-  seq->SetMethod(steps);                        
-  ch->BindDir(seq);
+  // encapsulate plan in a play unless just a single activity play
+  if ((steps->GetPlay() == NULL) || (steps->cont != NULL))
+  {
+    ch = new jhcAliaChain;
+    pod = new jhcAliaPlay;
+    ch->BindPlay(pod);
+    pod->AddReq(steps);
+  }
+
+  // request explanation on failure of anything in pod
   ch->fail = exp_fail(plan);
   return ch;
 }
@@ -398,9 +577,9 @@ jhcAliaChain *jhcNetBuild::exp_fail (jhcNetNode *plan) const
   jhcAliaDir *cry = new jhcAliaDir(JDIR_DO);
   jhcNetNode *exp, *prob;
 
-  atree->BuildIn(&(cry->key));
-  exp  = atree->MakeNode("act", "explain");
-  prob = atree->MakeNode("fail", "fail");
+  atree->BuildIn(cry->key);
+  exp = atree->MakeAct("explain");
+  prob = atree->MakeAct("fail");
   prob->AddArg("act", plan);
   exp->AddArg("obj", prob);
   atree->BuildIn(NULL);
@@ -480,8 +659,8 @@ int jhcNetBuild::AutoVals (const char *kern)
       // save category name and range limits (if any)
       strcpy_s(cat, txt.Token(1) + 1);
       txt.Token();                               // delimiter ignored
-      txt.Token(lo, 1);
-      txt.Token(hi, 1);
+      txt.Token(lo, 1);                          
+      txt.Token(hi, 1);                          
       nc++;
 
       // insert delimiters between categories in basic rules
@@ -794,9 +973,9 @@ int jhcNetBuild::scan_lex (const char *fname)
           save_word(noun, nn, term);
         else if (strncmp(node, "hq", 2) == 0)
           save_word(adj, na, term);
-        else if (strncmp(node, "agt", 3) == 0)
+        else if (strncmp(node, "name", 4) == 0)
           save_word(tag, nt, term);
-        else if (strncmp(node, "act", 3) == 0)
+        else if (strncmp(node, "fcn", 3) == 0)
           save_word(verb, nv, term);
         else if (strncmp(node, "mod", 3) == 0)
           save_word(mod, nm, term);

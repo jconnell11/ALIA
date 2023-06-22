@@ -1,0 +1,68 @@
+// integer.sgm : integers 0-99 for local MS speech recognition
+
+// ========================================================
+
+// valid integer formations (@ matches strings like 3.14)
+
+=[^INT]
+  @
+  <num-zero>
+  <num-d2>
+
+
+// various forms of zero
+
+=[num-zero]
+  zero
+  oh
+  ought
+
+
+// up to 2 digit sequence (e.g. 1, 13, 42)
+
+=[num-d2]
+  <num-d1>
+  <num-teen>
+  <num-x10> (<num-d1>) 
+
+
+// single digits 1-9 
+
+=[num-d1]
+  one
+  two
+  three
+  four
+  five
+  six
+  seven
+  eight
+  nine
+
+
+// numbers from 10-19
+
+=[num-teen]
+  ten
+  eleven
+  twelve
+  thirteen
+  fourteen
+  fifteen
+  sixteen
+  seventeen
+  eighteen
+  nineteen
+
+
+// multiples of 10
+
+=[num-x10]
+  twenty
+  thirty
+  forty 
+  fifty
+  sixty
+  seventy
+  eighty
+  ninety

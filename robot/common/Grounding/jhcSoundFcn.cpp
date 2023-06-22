@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@
 
 jhcSoundFcn::~jhcSoundFcn ()
 {
-
 }
 
 
@@ -46,7 +45,6 @@ jhcSoundFcn::~jhcSoundFcn ()
 
 jhcSoundFcn::jhcSoundFcn ()
 {
-  ver = 1.00;
   strcpy_s(tag, "SoundFcn");
   strcpy_s(sdir, "sfx/");
   bg = NULL;
@@ -62,7 +60,7 @@ jhcSoundFcn::jhcSoundFcn ()
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if successful, -1 for problem, -2 if function unknown
 
-int jhcSoundFcn::local_start (const jhcAliaDesc *desc, int i)
+int jhcSoundFcn::local_start (const jhcAliaDesc& desc, int i)
 {
   JCMD_SET(play_snd);
   return -2;
@@ -73,7 +71,7 @@ int jhcSoundFcn::local_start (const jhcAliaDesc *desc, int i)
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if done, 0 if still working, -1 if failed, -2 if function unknown
 
-int jhcSoundFcn::local_status (const jhcAliaDesc *desc, int i)
+int jhcSoundFcn::local_status (const jhcAliaDesc& desc, int i)
 {
   JCMD_CHK(play_snd);
   return -2;
@@ -88,9 +86,9 @@ int jhcSoundFcn::local_status (const jhcAliaDesc *desc, int i)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSoundFcn::play_snd0 (const jhcAliaDesc *desc, int i)
+int jhcSoundFcn::play_snd0 (const jhcAliaDesc& desc, int i)
 {
-  return find_file(fname.ch, desc->Val("arg"), 200);
+  return find_file(fname.ch, desc.Val("arg"), 200);
 }
 
 
@@ -98,7 +96,7 @@ int jhcSoundFcn::play_snd0 (const jhcAliaDesc *desc, int i)
 // plays sound synchronously in a background thread
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSoundFcn::play_snd (const jhcAliaDesc *desc, int i)
+int jhcSoundFcn::play_snd (const jhcAliaDesc& desc, int i)
 {
   // request sound or wait for completion
   if (cst[i] <= 0)
@@ -112,7 +110,7 @@ int jhcSoundFcn::play_snd (const jhcAliaDesc *desc, int i)
     else
     {
       // get file name for sound and start playing in background thread
-      find_file(fname.ch, desc->Val("arg"), 200);
+      find_file(fname.ch, desc.Val("arg"), 200);
       fname.C2W();
       bg = (void *) _beginthreadex(NULL, 0, snd_backg, this, 0, NULL);
       cst[i] = 1;

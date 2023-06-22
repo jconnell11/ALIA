@@ -65,7 +65,7 @@ jhcAliaOp::jhcAliaOp (JDIR_KIND k)
   pnum = 0;
   pref0 = 1.0;
 
-  // run-time status
+  // action to take
   meth = NULL;
 }
 
@@ -73,6 +73,18 @@ jhcAliaOp::jhcAliaOp (JDIR_KIND k)
 ///////////////////////////////////////////////////////////////////////////
 //                            Simple Functions                           //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Change preference for operator selection.
+// returns actual change that occurred after limiting and quantizing
+
+double jhcAliaOp::SetPref (double v) 
+{
+  double p0 = pref, p = __max(0.1, __min(v, 1.2)); 
+  
+  pref = 0.01 * ROUND(100.0 * p); 
+  return(pref - p0);
+}
+
 
 //= Remember human readable utterance that generated this operator.
 
@@ -95,17 +107,18 @@ void jhcAliaOp::SetGist (const char *sent)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Find all variable bindings that cause this operator to match.
-// needs belief threshold "mth" for match, and "tol" number of missing items allowed
+// needs belief threshold "mth" for match (assumed non-negative)
+// can try variations on main action verb for DO if "fcn" > 0
 // count of bindings and actual sets stored in given directive
 // assumes initial directive "bcnt" member variable has been initialized 
-// returns total number of bindings filled, negative for problem
+// returns total number of bindings filled, negative for problem (unusual)
 
-int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth) 
+int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth, int fcn) 
 {
   const jhcNetNode *item, *focus = cond.Main();
-  jhcNetNode *mate = NULL;
+  jhcNetNode *act = dir.KeyAct(), *mate = NULL;
   JDIR_KIND k = dir.kind;
-  int i, occ, bin, found, nc = cond.NumItems(), best = 0, cnt = 0;
+  int i, occ, bin, found, nc = cond.NumItems(), w = 0, best = 0, cnt = 0;
 
   // main node of NOTE not special, so pick most constrained instead
   jprintf(2, dbg, "Operator %d matching (%4.2f) ...\n", id, mth);
@@ -132,8 +145,9 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth)
   if ((k == JDIR_BIND) || (k == JDIR_EACH) || (k == JDIR_ANY))
     k = JDIR_FIND;
   bth = (((k == JDIR_CHK) || (k == JDIR_FIND)) ? -mth : mth);
+  d = &dir;
 
-  // generally require main nodes (i.e. verb) of directives to match
+  // generally require main nodes (i.e. naked action node) of directives to match
   if (k == JDIR_CHK)
     while ((mate = (dir.key).NextNode(mate)) != NULL)
     {
@@ -144,20 +158,25 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth)
       cnt += found;
     }
   else if (k == JDIR_NOTE)
-{
-jprintf(3, dbg, "search for NOTE focal mate (bands %d, bin %d) ...\n", f.NumBands(), bin);
     while ((mate = f.NextNode(mate, bin)) != NULL)
     {
-jprintf(3, dbg, "candidate focal mate = %s\n", mate->Nick());
       // NOTE triggers match anything in memory (including halo)
       // checks for relatedness at end (i.e. tval in match_found)
       if ((found = try_mate(focus, mate, dir, f)) < 0)
         return found;
       cnt += found;
     }
-}
+  else if (((k == JDIR_ANTE) || (k == JDIR_GATE) || ((fcn > 0) && (k == JDIR_DO))) && (act != NULL))
+    while ((mate = act->Fact("fcn", w++)) != NULL)
+    {
+      // GATE checks all superclasses of given verb (snarf -> grab)
+      if ((found = try_mate(focus, mate, dir, f)) < 0)
+        return found;
+      cnt += found;
+    }
   else                       // most directives (DO, FIND, ...)
     cnt = try_mate(focus, dir.KeyMain(), dir, f);    
+  d = NULL;
   return cnt;
 }
 
@@ -167,7 +186,6 @@ jprintf(3, dbg, "candidate focal mate = %s\n", mate->Nick());
  
 int jhcAliaOp::try_mate (const jhcNetNode *focus, jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f) 
 {
-  const jhcGraphlet *trig = &(dir.key);
   jhcBindings *m = dir.match;
   int i, n = cond.NumItems();
 
@@ -200,7 +218,7 @@ int jhcAliaOp::try_mate (const jhcNetNode *focus, jhcNetNode *mate, jhcAliaDir& 
   // start core matcher as a one step process if NOTE, else two step
   if (dir.Kind() == JDIR_NOTE)
     return MatchGraph(m, dir.mc, cond, f, NULL);
-  return MatchGraph(m, dir.mc, cond, *trig, &f);
+  return MatchGraph(m, dir.mc, cond, dir.key, &f);
 }
 
 
@@ -232,6 +250,7 @@ int jhcAliaOp::match_found (jhcBindings *m, int& mc)
 
   // make sure proposed action not already in list ("first" set in try_match)
   // since this is within an operator, all pref's will be the same
+  d->anyops = 1;
   for (i = mc; i < first; i++)
     if (SameEffect(*b, m[i]))
       return jprintf(3, dbg, "%*s reject - same effect as a bindings[%d]\n", 2 * nb + 1, "", i);
@@ -344,7 +363,7 @@ int jhcAliaOp::load_pattern (jhcTxtLine& in)
   while (in.Begins("unless:"))
   {
     in.Skip("unless:");
-    if ((ans = LoadGraph(&(unless[nu]), in)) <= 0)
+    if ((ans = LoadGraph(unless[nu], in)) <= 0)
       return ans;
     if (nu++ >= umax)
     {

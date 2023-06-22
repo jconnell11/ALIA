@@ -6,6 +6,11 @@
 =[AKO]
   gripper
   hand
+  inch
+  foot
+  centimeter
+  meter
+  degree
 
 
 // adjective

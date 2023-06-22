@@ -247,7 +247,7 @@ int jhcStare3D::TrackIndex (int id, int trk) const
   int i, n = PersonLim(trk);
 
   if (id < 0)
-    return NULL;
+    return -1;
   for (i = 0; i < n; i++)
     if (item[i].id == id)
       return i;

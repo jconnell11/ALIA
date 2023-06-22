@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -134,7 +134,9 @@ public:
   const char *PeekFrag (char *head, const char *alist, int ssz) const {return NextFrag(alist, head, ssz);}
   const char *FragNextFrag (const char *alist, char *frag, int ssz) const;
   const char *FragNextPair (const char *alist, char *pair, int ssz) const;
-  bool FragHasSlot (const char *alist, const char *slot) const;
+  const char *FragFindSlot (const char *alist, const char *slot, char *val, int ssz) const;
+  bool FragHasSlot (const char *alist, const char *slot) const
+    {return(FragFindSlot(alist, slot, NULL, 0) != NULL);}
   const char *FragStart (const char *alist) const;
   const char *FragClose (const char *alist, int skip =1) const;
 
@@ -151,6 +153,9 @@ public:
   template <size_t ssz>
     const char *FragNextPair (const char *alist, char (&pair)[ssz]) const
       {return FragNextPair(alist, pair, ssz);}
+  template <size_t ssz>
+    const char *FragFindSlot (const char *alist, const char *slot, char (&val)[ssz]) const
+      {return FragFindSlot(alist, slot, val, ssz);}
 
   // fragment parsing
   const char *ExtractFrag (char *frag, const char *alist, int fsz) const

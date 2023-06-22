@@ -178,7 +178,7 @@ const char *jhcDegrapher::pred_ref (char *txt, int ssz, jhcNetNode *n, int inf)
 
 const char *jhcDegrapher::full_pred (char *txt, int ssz, const jhcNetNode *n, int inf) 
 {
-  const jhcNetNode *multi;
+  const jhcNetNode *multi, *fcn;
   jhcNetNode *targ;
 
   // sanity check
@@ -190,7 +190,7 @@ const char *jhcDegrapher::full_pred (char *txt, int ssz, const jhcNetNode *n, in
   if ((multi = n->Fact("conj")) != NULL)
     list_conj(txt, ssz, multi);
   else if (inf > 0)                              // infinitive
-    sprintf_s(txt, ssz, "to %s", n->Lex());
+    inf_verb(txt, ssz, n);
   else if ((n->Val("obj") != NULL) || (n->Val("agt") != NULL) || 
            (n->Val("how") != NULL) || (n->Done() > 0))
     agt_verb(txt, ssz, n);
@@ -199,6 +199,8 @@ const char *jhcDegrapher::full_pred (char *txt, int ssz, const jhcNetNode *n, in
     copula(txt, ssz, targ, n);
   else if (n->Lex() != NULL)
     strcpy_s(txt, ssz, n->Lex());                // e.g. "three" for cnt
+  else if ((fcn = n->Fact("fcn")) != NULL)
+    strcpy_s(txt, ssz, fcn->Lex());
   else
     strcpy_s(txt, ssz, "it");
   return txt;
@@ -233,49 +235,65 @@ void jhcDegrapher::list_conj (char *txt, int ssz, const jhcNetNode *multi) const
 }
 
 
+//= Generate infinitive form of verb associated with action node.
+
+void jhcDegrapher::inf_verb (char *txt, int ssz, const jhcNetNode *n) const
+{
+  const jhcNetNode *fcn = n->Fact("fcn");
+
+  if (fcn == NULL)
+    strcpy_s(txt, ssz, "to do something");
+  else
+    sprintf_s(txt, ssz, "to %s", fcn->Lex());
+}
+
+
 //= Generate verb frame including performing agent (but no objects).
 // example: "the big bird" + "is not grabbing" ...
 
 void jhcDegrapher::agt_verb (char *txt, int ssz, const jhcNetNode *n) 
 {
   char ing[40];  
-  jhcNetNode *agt = n->Val("agt");
+  jhcNetNode *fcn = n->Fact("fcn"), *agt = n->Val("agt");
 
-  jprintf(1, noisy, "    agt_verb: %s\n", n->Nick());
+  jprintf(1, noisy, "    agt_verb: %s (%s)\n", n->Nick(), ((fcn == NULL) ? "" : fcn->Lex()));
 
-  if ((agt != NULL) && (agt != wmem->Robot()))
+  if (fcn == NULL)
+    strcpy_s(txt, ssz, "that");
+  else if ((agt != NULL) && (agt != wmem->Robot()))
   {
     // action by agent other than the robot 
     obj_ref(txt, ssz, agt, 1, NULL);
     if (n->Neg() > 0)
     {
       if (n->Done() > 0)  
-        strcatf_s(txt, ssz, " did not %s", n->Lex());
+        strcatf_s(txt, ssz, " did not %s", fcn->Lex());
       else
-        strcatf_s(txt, ssz, " is not %s", mf->SurfWord(ing, n->Lex(), JTAG_VPROG));
+        strcatf_s(txt, ssz, " is not %s", mf->SurfWord(ing, fcn->Lex(), JTAG_VPROG));
     }
     else
-      strcatf_s(txt, ssz, " is %s",  mf->SurfWord(ing, n->Lex(), JTAG_VPROG));
+      strcatf_s(txt, ssz, " is %s",  mf->SurfWord(ing, fcn->Lex(), JTAG_VPROG));
   }
   else if (n->Neg() > 0)
   {
     // failed action with robot as agent 
     if (n->Done() > 0)
-      sprintf_s(txt, ssz, "I couldn't %s", n->Lex());
-    else if (n->LexMatch("know"))
+      sprintf_s(txt, ssz, "I couldn't %s", fcn->Lex());
+    else if (fcn->LexMatch("know"))
       strcpy_s(txt, ssz, "I do not know");
     else
-      sprintf_s(txt, ssz, "I don't %s", n->Lex());         // not progressive
+      sprintf_s(txt, ssz, "I am not %s", mf->SurfWord(ing, fcn->Lex(), JTAG_VPROG));             
+//      sprintf_s(txt, ssz, "I don't %s", fcn->Lex());         // not progressive
   }
   else
   {
     // normal action with robot as agent
     if (n->Done() > 0)
-      sprintf_s(txt, ssz, "I %s", mf->SurfWord(ing, n->Lex(), JTAG_VPAST));
-    else if (n->LexMatch("know"))
+      sprintf_s(txt, ssz, "I %s", mf->SurfWord(ing, fcn->Lex(), JTAG_VPAST));
+    else if (fcn->LexMatch("know"))
       strcpy_s(txt, ssz, "I know");
     else
-      sprintf_s(txt, ssz, "I am %s", mf->SurfWord(ing, n->Lex(), JTAG_VPROG));
+      sprintf_s(txt, ssz, "I am %s", mf->SurfWord(ing, fcn->Lex(), JTAG_VPROG));
   }
 }
 
@@ -336,7 +354,7 @@ const char *jhcDegrapher::obj_ref (char *txt, int ssz, jhcNetNode *n, int nom, c
 
   // search memory using single names and types
   ClrCond();
-  MakeNode("obj");
+  MakeNode("item");
   wmem->MaxBand(3);
   if ((ref = name_ref(n)) != NULL)
   {
@@ -526,7 +544,7 @@ const char *jhcDegrapher::add_kind (char *txt, int ssz, const jhcNetNode *n, con
   {
     // reconstruct possessive specification
     ref = kind->Val("wrt");
-    own = MakeNode("agt", ref->Lex());
+    own = MakeNode("obj", ref->Lex());
     ako->AddArg("wrt", own);
     if (det == 2)
       sprintf_s(txt, ssz, "my %s", kind->Lex());
@@ -615,6 +633,14 @@ const char *jhcDegrapher::hyp_ref (char *txt, int ssz, const jhcNetNode *n, cons
 
   jprintf(1, noisy, "hyp_ref: %s (avoid %s)\n", n->Nick(), avoid);
 
+  // if action is referenced then use progressive (e.g. for GATE)
+  if (!n->ObjNode())
+    if ((p = n->Fact("fcn")) != NULL)
+    {
+      strcpy_s(txt, ssz, mf->SurfWord(ref, p->LexStr(), JTAG_VPROG));
+      return txt;
+    }
+
   // if object has a name then ignore all other attributes
   for (i = np - 1; i >= 0; i--)      
     if ((p = n->PropMatch(i, "name")) != NULL)
@@ -637,7 +663,7 @@ const char *jhcDegrapher::hyp_ref (char *txt, int ssz, const jhcNetNode *n, cons
       if (wmem->VisMem(p, 0) && !p->LexMatch(avoid))
         break;
   if (i >= 0)
-    strcat_s(txt, ssz, p->Lex());
+    strcat_s(txt, ssz, p->Lex());      // p non-NULL since break occurred
   else
     strcat_s(txt, ssz, "thing");
 

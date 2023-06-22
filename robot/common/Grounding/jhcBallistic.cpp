@@ -26,8 +26,6 @@
 
 #include "Interface/jms_x.h"           // common video
 
-#include "Body/jhcEliBody.h"           // common robot (only spec'd as class in hdr)
-
 #include "Grounding/jhcBallistic.h"
 
 
@@ -39,6 +37,8 @@
 
 jhcBallistic::~jhcBallistic ()
 {
+  delete [] cdir;
+  delete [] cpos;
 }
 
 
@@ -46,25 +46,27 @@ jhcBallistic::~jhcBallistic ()
 
 jhcBallistic::jhcBallistic ()
 {
-  ver = 1.65;
+  int i, n = MaxInst();
+
+  // pool identification
   strcpy_s(tag, "Ballistic");
-  Platform(NULL);
+
+  // create instance control variables
+  cpos = new jhcMatrix [n];
+  for (i = 0; i < n; i++)
+    cpos[i].SetSize(4);    
+  cdir = new jhcMatrix [n];
+  for (i = 0; i < n; i++)
+    cdir[i].SetSize(4);    
+
+  // body and mind connection 
+  rwi = NULL;
   rpt = NULL;
-  voltage = 0.0;
-  pcnt = 0;
-  power = 0;
-  hold = 0;
+
+  // processing parameters
   Defaults();
   dbg = 1;
 //dbg = 3;                   // progress messages
-}
-
-
-//= Attach physical enhanced body and make pointers to some pieces.
-
-void jhcBallistic::Platform (jhcEliGrok *robot) 
-{
-  rwi = robot;
 }
 
 
@@ -275,8 +277,8 @@ int jhcBallistic::neck_params (const char *fname)
   ps->NextSpecF( &ndone,   3.0, "Orientation achieved (deg)");
   ps->NextSpecF( &nprog,   1.0, "Rotation progress (deg)");
 
-  ps->NextSpec4( &nstart, 10,   "Neck start cycles");
-  ps->NextSpec4( &nmid,    5,   "Neck stall cycles");
+  ps->NextSpec4( &nstart, 20,   "Neck start cycles");
+  ps->NextSpec4( &nmid,   10,   "Neck stall cycles");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -331,16 +333,19 @@ int jhcBallistic::SaveVals (const char *fname) const
 //                          Overridden Functions                         //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Attach physical enhanced body and make pointers to some pieces.
+
+void jhcBallistic::local_platform (void *soma) 
+{
+  rwi = (jhcEliGrok *) soma;
+}
+
+
 //= Set up for new run of system.
 
-void jhcBallistic::local_reset (jhcAliaNote *top)
+void jhcBallistic::local_reset (jhcAliaNote& top)
 {
-  // initialize state variables
-  rpt = top;
-  pcnt = 0;
-  power = 0;
-  kvetch = 0;
-  hold = 0;
+  rpt = &top;
 }
 
 
@@ -349,7 +354,7 @@ void jhcBallistic::local_reset (jhcAliaNote *top)
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if successful, -1 for problem, -2 if function unknown
 
-int jhcBallistic::local_start (const jhcAliaDesc *desc, int i)
+int jhcBallistic::local_start (const jhcAliaDesc& desc, int i)
 {
   JCMD_SET(ball_stop);
   JCMD_SET(ball_drive);
@@ -367,7 +372,7 @@ int jhcBallistic::local_start (const jhcAliaDesc *desc, int i)
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if done, 0 if still working, -1 if failed, -2 if function unknown
 
-int jhcBallistic::local_status (const jhcAliaDesc *desc, int i)
+int jhcBallistic::local_status (const jhcAliaDesc& desc, int i)
 {
   JCMD_CHK(ball_stop);
   JCMD_CHK(ball_drive);
@@ -389,7 +394,7 @@ int jhcBallistic::local_status (const jhcAliaDesc *desc, int i)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBallistic::ball_stop0 (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_stop0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -402,16 +407,18 @@ int jhcBallistic::ball_stop0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBallistic::ball_stop (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_stop (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix pos(4), dir(4);
   jhcEliBase *b = rwi->base;
   jhcEliArm *a = rwi->arm;
 
   // lock to sensor cycle 
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (b->CommOK() <= 0) || (a->CommOK() <= 0))
+  if ((b->CommOK() <= 0) || (a->CommOK() <= 0))
     return err_hw("body");
 
   // check for timeout
@@ -435,9 +442,9 @@ int jhcBallistic::ball_stop (const jhcAliaDesc *desc, int i)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBallistic::ball_drive0 (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_drive0 (const jhcAliaDesc& desc, int i)
 {
-  jhcAliaDesc *act = desc->Val("arg");
+  const jhcAliaDesc *act = desc.Val("arg");
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -453,15 +460,17 @@ int jhcBallistic::ball_drive0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBallistic::ball_drive (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_drive (const jhcAliaDesc& desc, int i)
 {
   jhcEliBase *b = rwi->base;
   double err;
 
   // lock to sensor cycle
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (b->CommOK() <= 0))
+  if (b->CommOK() <= 0)
     return err_hw("base");
 
   if (cst[i] <= 0)
@@ -476,11 +485,11 @@ int jhcBallistic::ball_drive (const jhcAliaDesc *desc, int i)
     // check if finished or stuck
     err = b->MoveErr(camt[i]);
     jprintf(3, dbg, "move: %3.1f, err = %3.1f, stuck = %d\n", b->Travel(), err, ct0[i]);
-    if (err < (1.5 * b->mdead))
+    if (err < (1.5 * b->MoveTol()))
       return 1;
     if (stuck(i, err, mprog, mstart, mmid))
     {
-      jprintf(1, dbg, " { ball_drive: stuck at offset %4.2f [%4.2f] }\n", err, 1.5 * b->mdead); 
+      jprintf(1, dbg, " { ball_drive: stuck at offset %4.2f [%4.2f] }\n", err, 1.5 * b->MoveTol()); 
       return -1;
     }
   }
@@ -493,37 +502,41 @@ int jhcBallistic::ball_drive (const jhcAliaDesc *desc, int i)
 
 
 //= Read semantic network parts to determine amount of travel.
-// step = 4", move = 8", drive = 16"
+// step = 4", move = 8", drive = 16"  as defaults
 // returns 1 if proper values, -1 for problem
 
 int jhcBallistic::get_dist (double& dist, const jhcAliaDesc *act) const
 {
-  const jhcAliaDesc *dir;
+  const jhcAliaDesc *fcn, *dir;
 
   // sanity check
   if (act == NULL)
     return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return -1;
 
-  // set distance based on main verb
-  if (act->LexMatch("step"))
+  // set default distance based on main verb
+  if (fcn->LexMatch("step"))
     dist = step;
-  else if (act->LexMatch("move"))
+  else if (fcn->LexMatch("move"))
     dist = move;
-  else if (act->LexMatch("drive"))
+  else if (fcn->LexMatch("drive"))
     dist = drive;
   else
     return -1;
 
+  // override with explicit distance (if any)
+  set_inches(dist, act->Fact("amt"), 240.0);
+
   // get directional modifier of main verb 
   if ((dir = act->Fact("dir")) != NULL)
-    if (dir->Visible())
-    {
-      // see if some standard direction term (checks halo also)
-      if (dir->LexIn("backward", "backwards"))
-        dist = -dist;
-      else if (!dir->LexIn("forward", "forwards"))
-        return -1;
-    }
+  {
+    // see if some standard direction term (checks halo also)
+    if (dir->LexIn("backward", "backwards"))
+      dist = -dist;
+    else if (!dir->LexIn("forward", "forwards"))
+      return -1;
+  }
   return 1;
 }
 
@@ -550,16 +563,15 @@ int jhcBallistic::get_vel (double& speed, const jhcAliaDesc *act) const
   if (act == NULL)
     return -1;
 
-  // look for speed modifier(s)
+  // look for speed modifier (can cascade from outer levels)
   speed = 1.0;
   while ((rate = act->Fact("mod", w++)) != NULL)
-    if (rate->Visible())
-    {
-      if (rate->LexMatch("slowly"))
-        speed *= stf;
-      else if (rate->LexMatch("quickly"))
-        speed *= qtf;
-    }
+  {
+    if (rate->LexMatch("slowly"))
+      speed *= stf;
+    else if (rate->LexMatch("quickly"))
+      speed *= qtf;
+  }
   return 1;
 }
 
@@ -572,9 +584,9 @@ int jhcBallistic::get_vel (double& speed, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBallistic::ball_turn0 (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_turn0 (const jhcAliaDesc& desc, int i)
 {
-  jhcAliaDesc *act = desc->Val("arg");
+  const jhcAliaDesc *act = desc.Val("arg");
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -589,15 +601,17 @@ int jhcBallistic::ball_turn0 (const jhcAliaDesc *desc, int i)
 //= Check whether turn command is done yet.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBallistic::ball_turn (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_turn (const jhcAliaDesc& desc, int i)
 {
   jhcEliBase *b = rwi->base;
   double err;
 
   // lock to sensor cycle
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (b->CommOK() <= 0))
+  if (b->CommOK() <= 0)
     return err_hw("base");
 
   if (cst[i] <= 0)
@@ -612,11 +626,11 @@ int jhcBallistic::ball_turn (const jhcAliaDesc *desc, int i)
     // check if finished or stuck
     err = b->TurnErr(camt[i]);
     jprintf(3, dbg, "turn: %3.1f, err = %4.2f, stuck = %d\n", b->WindUp(), err, ct0[i]);
-    if (err < (1.5 * b->tdead))
+    if (err < (1.5 * b->TurnTol()))
       return 1;
     if (stuck(i, err, tprog, tstart, tmid))
     {
-      jprintf(1, dbg, " { ball_turn: stuck at offset %4.2f [%4.2f] }\n", err, 1.5 * b->tdead); 
+      jprintf(1, dbg, " { ball_turn: stuck at offset %4.2f [%4.2f] }\n", err, 1.5 * b->TurnTol()); 
       return -1;
     }
   }
@@ -634,39 +648,43 @@ int jhcBallistic::ball_turn (const jhcAliaDesc *desc, int i)
 
 int jhcBallistic::get_ang (double& ang, const jhcAliaDesc *act) const
 {
-  const jhcAliaDesc *dir;
-  int w = 0;
+  const jhcAliaDesc *fcn, *amt, *deg, *dir;
 
   // sanity check
   if (act == NULL)
     return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return -1;
   ang = turn;
 
   // get angle based on main verb
-  if (act->LexMatch("spin"))
+  if (fcn->LexMatch("spin"))
     ang = spin;
-  else if (act->LexMatch("rotate"))
-    ang = -rot;
-  else if (act->LexMatch("turn"))
+  else if (fcn->LexIn("turn", "rotate"))
   {
-    while ((dir = act->Fact("amt", w++)) != NULL)
-      if (dir->Visible())
-        if (dir->LexIn("slightly", "a little", "a little bit"))
-          ang = 0.5 * turn;
+    // possibly substitute explicit angle 
+    if ((amt = act->Fact("amt")) != NULL)
+      set_degs(ang, amt);                        // no limit
+    else if (fcn->LexMatch("rotate"))
+      ang = -rot;                                // further than "turn"
   }
   else
     return -1;
 
   // get directional modifier of main verb 
   if ((dir = act->Fact("dir")) != NULL)
-    if (dir->Visible())
-    {
-      // see if some standard direction term (checks halo also)
-      if (dir->LexIn("clockwise", "right"))
-        ang = -fabs(ang);
-      else if (dir->LexIn("counterclockwise", "left"))
-        ang = fabs(ang);
-    }
+  {
+    // see if some standard direction term (checks halo also)
+    if (dir->LexIn("clockwise", "right"))
+      ang = -fabs(ang);
+    else if (dir->LexIn("counterclockwise", "left"))
+      ang = fabs(ang);
+
+    // check for qualitative modifier
+    if ((deg = dir->Fact("deg")) != NULL)
+      if (deg->LexIn("slightly", "a little", "a little bit"))
+        ang *= 0.5;
+  }
   return 1;
 }
 
@@ -693,16 +711,15 @@ int jhcBallistic::get_spin (double& speed, const jhcAliaDesc *act) const
   if (act == NULL)
     return -1;
 
-  // look for speed modifier(s)
+  // look for speed modifier (can cascade from outer levels)
   speed = 1.0;
   while ((rate = act->Fact("mod", w++)) != NULL)
-    if (rate->Visible())
-    {
-      if (rate->LexMatch("slowly"))
-        speed *= srf;                         
-      else if (rate->LexMatch("quickly"))
-        speed *= qrf;
-    }
+  {
+    if (rate->LexMatch("slowly"))
+      speed *= srf;                         
+    else if (rate->LexMatch("quickly"))
+      speed *= qrf;
+  }
   return 1;
 }
 
@@ -715,9 +732,9 @@ int jhcBallistic::get_spin (double& speed, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBallistic::ball_lift0 (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_lift0 (const jhcAliaDesc& desc, int i)
 {
-  jhcAliaDesc *act = desc->Val("arg");
+  const jhcAliaDesc *act = desc.Val("arg");
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -733,15 +750,17 @@ int jhcBallistic::ball_lift0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBallistic::ball_lift (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_lift (const jhcAliaDesc& desc, int i)
 {
   jhcEliLift *f = rwi->lift;
   double err;
 
   // lock to sensor cycle
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (f->CommOK() <= 0))
+  if (f->CommOK() <= 0)
     return err_hw("body");
 
   if (cst[i] <= 0)
@@ -756,11 +775,11 @@ int jhcBallistic::ball_lift (const jhcAliaDesc *desc, int i)
     // check if finished or stuck
     err = f->LiftErr(camt[i]);
     jprintf(3, dbg, "lift: %3.1f, err = %3.1f, stuck = %d\n", f->Height(), err, ct0[i]);
-    if (err < f->ldone)
+    if (err < f->LiftTol())
       return 1;
     if (stuck(i, err, lprog, lstart, lmid))
     {
-      jprintf(1, dbg, " { ball_lift: stuck at offset %4.2f [%4.2f] }\n", err, f->ldone); 
+      jprintf(1, dbg, " { ball_lift: stuck at offset %4.2f [%4.2f] }\n", err, f->LiftTol()); 
       return -1;
     }
   }
@@ -777,22 +796,28 @@ int jhcBallistic::ball_lift (const jhcAliaDesc *desc, int i)
 
 int jhcBallistic::get_up (double& dist, const jhcAliaDesc *act) const
 {
-  jhcAliaDesc *amt;
+  const jhcAliaDesc *fcn, *amt;
 
   // sanity check
   if (act == NULL)
     return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return -1;
   dist = lift;
 
-  // possibly go to some extreme
+  // possibly go to some extreme or a definite amount
   if ((amt = act->Fact("amt")) != NULL)
-    if (amt->Visible() && amt->LexMatch("all the way"))
-       dist = 50.0;
+  {
+    if (amt->LexMatch("all the way"))
+      dist = 50.0;
+    else
+      set_inches(dist, amt, 50.0);
+  }
 
   // get direction based on verb
-  if (act->LexMatch("lower"))
+  if (fcn->LexMatch("lower"))
     dist = -dist;
-  else if (!act->LexMatch("raise"))
+  else if (!fcn->LexMatch("raise"))
     return -1;
   return 1;
 }
@@ -821,16 +846,15 @@ int jhcBallistic::get_vsp (double& speed, const jhcAliaDesc *act) const
   if (act == NULL)
     return -1;
 
-  // look for speed modifier(s)
+  // look for speed modifier (can cascade from outer levels)
   speed = 1.0;
   while ((rate = act->Fact("mod", w++)) != NULL)
-    if (rate->Visible())
-    {
-      if (rate->LexMatch("slowly"))
-        speed *= slf;            
-      else if (rate->LexMatch("quickly"))
-        speed *= qlf;
-    }
+  {
+    if (rate->LexMatch("slowly"))
+      speed *= slf;            
+    else if (rate->LexMatch("quickly"))
+      speed *= qlf;
+  }
   return 1;
 }
 
@@ -843,11 +867,11 @@ int jhcBallistic::get_vsp (double& speed, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBallistic::ball_grip0 (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_grip0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (get_hand(camt[i], desc->Val("arg")) <= 0)
+  if (get_hand(camt[i], desc.Val("arg")) <= 0)
     return -1;
   return 1;
 }
@@ -858,16 +882,18 @@ int jhcBallistic::ball_grip0 (const jhcAliaDesc *desc, int i)
 // release state (csp < 0): 0 save pose, 1 width mode start, 2 width mode mid
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBallistic::ball_grip (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
 {
   jhcEliArm *a = rwi->arm;
   const char *act = ((camt[i] < 0.0) ? "hold" : ((camt[i] > 2.0) ? "open" : "close"));
   double err, stop = __max(0.0, camt[i]);
 
   // lock to sensor cycle
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
-    return 0;
-  if (rwi->Ghost() || (a->CommOK() <= 0)) 
+    return 0;  
+  if (a->CommOK() <= 0)
     return err_hw("hand");
 
   if (cst[i] <= 0)
@@ -942,17 +968,21 @@ int jhcBallistic::ball_grip (const jhcAliaDesc *desc, int i)
 
 int jhcBallistic::get_hand (double &width, const jhcAliaDesc *act) const
 {
+  const jhcAliaDesc *fcn;
+
   // sanity check
   if (act == NULL) 
+    return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
     return -1;
   width = 0.1;
 
   // get hold status based on main verb
-  if (act->LexIn("open", "release"))
+  if (fcn->LexIn("open", "release"))
     width = (rwi->arm)->MaxWidth();
-  else if (act->LexMatch("hold"))
+  else if (fcn->LexMatch("hold"))
     width = -0.5;
-  else if (!act->LexMatch("close"))
+  else if (!fcn->LexMatch("close"))
     return -1;
   return 1;
 }
@@ -966,11 +996,11 @@ int jhcBallistic::get_hand (double &width, const jhcAliaDesc *act) const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBallistic::ball_arm0 (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_arm0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((cst[i] = get_pos(i, desc->Val("arg"))) < 0)
+  if ((cst[i] = get_pos(i, desc.Val("arg"))) < 0)
     return -1;
   cerr[i] = cpos[i].LenVec3();       // not accurate for absolute position
   return 1;
@@ -981,7 +1011,7 @@ int jhcBallistic::ball_arm0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBallistic::ball_arm (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_arm (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix now(4);
   char txt[40];
@@ -989,9 +1019,11 @@ int jhcBallistic::ball_arm (const jhcAliaDesc *desc, int i)
   double err, zerr;
 
   // lock to sensor cycle
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (a->CommOK() <= 0))
+  if (a->CommOK() <= 0)
     return err_hw("arm");
 
   if (cst[i] <= 0)
@@ -1035,50 +1067,57 @@ int jhcBallistic::ball_arm (const jhcAliaDesc *desc, int i)
 int jhcBallistic::get_pos (int i, const jhcAliaDesc *act) 
 {
   jhcEliArm *a = rwi->arm;
-  jhcAliaDesc *dir;
+  const jhcAliaDesc *fcn, *dir;
+  double h = dxy, v = dz, dist = 0.0;
   int w = 0;
 
   // sanity check
   if (act == NULL) 
     return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return -1;
 
   // absolute position based on main verb
-  if (act->LexMatch("retract"))
+  if (fcn->LexMatch("retract"))
   {
     cpos[i].SetVec3(a->retx, a->rety, a->retz);        
     cdir[i].SetVec3(a->rdir, a->rtip, 0.0, -1.0);    // forced closed
     return 1;
   }
-  if (act->LexMatch("extend"))
+  else if (fcn->LexMatch("extend"))
   {
     cpos[i].SetVec3(extx, exty, extz);  
     cdir[i].SetVec3(edir, etip, 0.0, 0.0);           // width unspecified
     return 1;
   }
+  else if (set_inches(dist, act->Fact("amt"), 12.0) > 0)
+  {
+    h = dist;
+    v = dist;
+  }
 
-  // find direction based on modifier(s)
+  // find direction based on modifier (can be several)
   cpos[i].Zero(1.0);
   while ((dir = act->Fact("dir", w++)) != NULL)
-    if (dir->Visible())
-    {
-      // get pointing offset (assume hand is along x axis)
-      if (dir->LexIn("forward", "forwards"))
-        cpos[i].SetX(dxy);
-      else if (dir->LexIn("backward", "backwards"))
-        cpos[i].SetX(-dxy);
+  {
+    // get pointing offset (assume hand is along x axis)
+    if (dir->LexIn("forward", "forwards"))
+      cpos[i].SetX(h);
+    else if (dir->LexIn("backward", "backwards"))
+      cpos[i].SetX(-h);
 
-      // get lateral offset
-      if (dir->LexMatch("left"))
-        cpos[i].SetY(dxy);
-      else if (dir->LexMatch("right"))
-        cpos[i].SetY(-dxy);
+    // get lateral offset
+    if (dir->LexMatch("left"))
+      cpos[i].SetY(h);
+    else if (dir->LexMatch("right"))
+      cpos[i].SetY(-h);
 
-      // get vertical offset
-      if (dir->LexMatch("up"))
-        cpos[i].SetZ(dz);
-      else if (dir->LexMatch("down"))
-        cpos[i].SetZ(-dz);
-    }
+    // get vertical offset
+    if (dir->LexMatch("up"))
+      cpos[i].SetZ(v);
+    else if (dir->LexMatch("down"))
+      cpos[i].SetZ(-v);
+  }
 
   // make sure some valid direction was specified (e.g. not CCW)
   if (cpos[i].LenVec3() == 0.0)
@@ -1095,11 +1134,11 @@ int jhcBallistic::get_pos (int i, const jhcAliaDesc *act)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBallistic::ball_wrist0 (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_wrist0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((cst[i] = get_dir(i, desc->Val("arg"))) < 0)
+  if ((cst[i] = get_dir(i, desc.Val("arg"))) < 0)
     return -1;
   cerr[i] = cdir[i].MaxAbs3();
   return 1;
@@ -1110,7 +1149,7 @@ int jhcBallistic::ball_wrist0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBallistic::ball_wrist (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_wrist (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix now(4);
   char txt[40];
@@ -1118,9 +1157,11 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc *desc, int i)
   double err;
 
   // lock to sensor cycle
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (a->CommOK() <= 0))
+  if (a->CommOK() <= 0)
     return err_hw("arm");
 
   if (cst[i] <= 0)
@@ -1166,32 +1207,41 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc *desc, int i)
 
 int jhcBallistic::get_dir (int i, const jhcAliaDesc *act) 
 {
-  jhcAliaDesc *dir;
+  const jhcAliaDesc *fcn, *dir;
+  double ang, p = wpan, t = wtilt, r = wroll;
   int w = 0;
 
   // sanity check
   if (act == NULL)
     return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return -1;
   cdir[i].Zero();
 
   // absolute position based on main verb 
-  if (act->LexMatch("reset"))
+  if (fcn->LexMatch("reset"))
   {
     cdir[i].SetT(etip);         
     return 1;                // partial absolute
   }
 
+  // possibly use an explicit angle instead of defaults
+  if (set_degs(ang, act->Fact("amt")) > 0)
+  {
+    p = ang;
+    t = ang;
+    r = ang;
+  }
+
   // possibly roll some specified direction ("twist")
-  if (act->LexMatch("twist"))
+  if (fcn->LexMatch("twist"))
   {
     if ((dir = act->Fact("dir")) == NULL)
       return -1;
-    if (!dir->Visible())
-      return -1;
     if (dir->LexIn("counterclockwise", "left"))
-      cdir[i].SetR(-wroll);
+      cdir[i].SetR(-r);
     else if (dir->LexIn("clockwise", "right"))
-      cdir[i].SetR(wroll);
+      cdir[i].SetR(r);
     else
       return -1;
     return 0;                // relative
@@ -1199,8 +1249,6 @@ int jhcBallistic::get_dir (int i, const jhcAliaDesc *act)
 
   // possibly get absolute pose for "point"
   if ((dir = act->Fact("dir")) == NULL)
-    return -1;
-  if (!dir->Visible())
     return -1;
   if (dir->LexMatch("vertical"))
   {
@@ -1218,22 +1266,21 @@ int jhcBallistic::get_dir (int i, const jhcAliaDesc *act)
     return 1;                // partial absolute (hence -0.1)
   }
 
-  // find direction based on modifier(s)
+  // find direction based on modifier (can be multiple)
   while ((dir = act->Fact("dir", w++)) != NULL)
-    if (dir->Visible())
-    {
-      // get incremental pan offset
-      if (dir->LexMatch("left"))
-        cdir[i].SetP(wpan);
-      else if (dir->LexMatch("right"))
-        cdir[i].SetP(-wpan);
+  {
+    // get incremental pan offset
+    if (dir->LexMatch("left"))
+      cdir[i].SetP(p);
+    else if (dir->LexMatch("right"))
+      cdir[i].SetP(-p);
 
-      // get incremental tilt offset
-      if (dir->LexMatch("up"))
-        cdir[i].SetT(wtilt);
-      else if (dir->LexMatch("down"))
-        cdir[i].SetT(-wtilt);
-    }
+    // get incremental tilt offset
+    if (dir->LexMatch("up"))
+      cdir[i].SetT(t);
+    else if (dir->LexMatch("down"))
+      cdir[i].SetT(-t);
+  }
 
   // make sure some valid rotation was specified (e.g. not CW)
   if (cdir[i].LenVec3() == 0.0)
@@ -1250,9 +1297,9 @@ int jhcBallistic::get_dir (int i, const jhcAliaDesc *act)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcBallistic::ball_neck0 (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_neck0 (const jhcAliaDesc& desc, int i)
 {
-  jhcAliaDesc *act = desc->Val("arg");
+  const jhcAliaDesc *act = desc.Val("arg");
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
@@ -1268,15 +1315,17 @@ int jhcBallistic::ball_neck0 (const jhcAliaDesc *desc, int i)
 // sets up continuing request to body if not finished
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcBallistic::ball_neck (const jhcAliaDesc *desc, int i)
+int jhcBallistic::ball_neck (const jhcAliaDesc& desc, int i)
 {
   jhcEliNeck *n = rwi->neck;
   double err = 0.0;
 
   // lock to sensor cycle
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if (rwi->Ghost() || (n->CommOK() <= 0))
+  if (n->CommOK() <= 0)
     return err_hw("neck");
 
   // determine current error (lock to sensor cycle)
@@ -1320,57 +1369,73 @@ int jhcBallistic::ball_neck (const jhcAliaDesc *desc, int i)
 
 int jhcBallistic::get_gaze (int i, const jhcAliaDesc *act) 
 {
-  jhcAliaDesc *dir;
-  double amt = 1.0, ntdef = -15.0;
+  const jhcAliaDesc *fcn, *amt, *dir, *deg;
+  double mag, ang = 0.0, p = npan, t = ntilt, ntdef = -15.0;
   int w = 0;
 
   // sanity check
   if (act == NULL)
     return -1;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return -1;
   cdir[i].Zero();
 
   // absolute position based on main verb else find direction
-  if (act->LexMatch("reset"))
+  if (fcn->LexMatch("reset"))
   {
     cdir[i].SetT(ntdef);
     return 1;      
   }
 
-  // possibly increase or reduce motion based on amount
-  while ((dir = act->Fact("amt", w++)) != NULL)
-    if (dir->Visible())
+  // get an explicit angle 
+  while ((amt = act->Fact("amt", w++)) != NULL)
+    if (set_degs(ang, amt) > 0)
     {
-      if (dir->LexIn("slightly", "a little", "a little bit"))
-        amt = 0.5;
-      else if (dir->LexIn("way", "all the way", "far", "a lot"))
-        amt = 1.5;
+      p = ang;
+      t = ang;
     }
 
-  // find direction based on modifier(s)
+  // find direction based on modifier (can be multiple)
   w = 0;
   while ((dir = act->Fact("dir", w++)) != NULL)
-    if (dir->Visible())
-    {
-      // get incremental pan offset
-      if (dir->LexMatch("left"))
-        cdir[i].IncP(amt * npan);
-      else if (dir->LexMatch("right"))
-        cdir[i].IncP(-amt * npan);
-      else if (dir->LexMatch("straight"))
-        cdir[i].SetP(0.1);
+  {
+    // get magnitude multiplier (ignore if actual angle given)
+    mag = 1.0;
+    if (ang == 0.0) 
+      if ((deg = dir->Fact("deg")) != NULL)
+      {
+        if (deg->LexIn("far", "way", "all the way"))
+          mag = 1.5;
+        else if (deg->LexIn("slightly", "a little", "a little bit"))
+          mag = 0.5;
+      }
 
-      // get incremental tilt offset
-      if (dir->LexMatch("up"))
-        cdir[i].IncT(amt * ntilt);
-      else if (dir->LexMatch("down"))
-        cdir[i].IncT(-amt * ntilt);
-      else if (dir->LexMatch("level"))
-        cdir[i].SetT(-0.1);
-    }
+    // get incremental pan offset
+    if (dir->LexMatch("left"))
+      cdir[i].IncP(mag * p);
+    else if (dir->LexMatch("right"))
+      cdir[i].IncP(-mag * p);
+    else if (dir->LexMatch("straight"))
+      cdir[i].SetP(0.1);
 
-  // make sure some valid rotation was specified (e.g. not forward)
+    // get incremental tilt offset
+    if (dir->LexMatch("up"))
+      cdir[i].IncT(mag * t);
+    else if (dir->LexMatch("down"))
+      cdir[i].IncT(-mag * t);
+    else if (dir->LexMatch("level"))
+      cdir[i].SetT(-0.1);
+  }
+
+  // make sure rotation was specified then clamp magnitude
   if (cdir[i].LenVec3() == 0.0)
     return -1;
+  ang = 1.5 * npan;
+  p = cdir[i].P();
+  cdir[i].SetP(__max(-ang, __min(p, ang)));
+  ang = 1.5 * ntilt;
+  t = cdir[i].T();
+  cdir[i].SetT(__max(-ang, __min(t, ang)));
   return 0;        
 }
 
@@ -1388,34 +1453,32 @@ int jhcBallistic::get_gsp (double& speed, const jhcAliaDesc *act) const
   if (act == NULL)
     return -1;
 
-  // look for speed modifier(s)
+  // look for speed modifier (can cascade from outer levels)
   speed = 1.0;
   while ((rate = act->Fact("mod", m++)) != NULL)
-    if (rate->Visible())
-    {
-      // see if adverb some valid speed
-      if (rate->LexMatch("slowly"))
-        mult = sgz;            
-      else if (rate->LexMatch("quickly"))
-        mult = qgz;
-      else
-        continue;
+  {
+    // see if adverb some valid speed
+    if (rate->LexMatch("slowly"))
+      mult = sgz;            
+    else if (rate->LexMatch("quickly"))
+      mult = qgz;
+    else
+      continue;
 
-      // see if it has an intensifier
-      d = 0;
-      while ((deg = rate->Fact("deg", d++)) != NULL)
-        if (deg->Visible())
-          if (deg->LexMatch("very"))
-          {
-            if (mult > 1.0)
-              mult *= 1.5;
-            else
-              mult *= 0.5;
-          }
+    // see if it has an intensifier (might be several)
+    d = 0;
+    while ((deg = rate->Fact("deg", d++)) != NULL)
+      if (deg->LexMatch("very"))
+      {
+        if (mult > 1.0)
+          mult *= 1.5;
+        else
+          mult *= 0.5;
+      }
 
-      // adjust speed using this term
-      speed *= mult;
-    }
+    // adjust speed using this term
+    speed *= mult;
+  }
   return 1;
 }
 
@@ -1423,6 +1486,57 @@ int jhcBallistic::get_gsp (double& speed, const jhcAliaDesc *act) const
 ///////////////////////////////////////////////////////////////////////////
 //                               Utilities                               //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Digest an explicit positive angle into a number of degrees.
+// returns 1 if set "ang", 0 if value unchanged
+
+int jhcBallistic::set_degs (double& ang, const jhcAliaDesc *amt) const
+{
+  const jhcAliaDesc *cnt;
+
+  if (amt == NULL)
+    return 0;
+  if (!amt->LexMatch("degree"))
+    return 0;
+  if ((cnt = amt->Fact("cnt")) == NULL)
+    return 0;
+  ang = atoi(cnt->Lex());
+  return 1;
+} 
+
+
+//= Digest an explicit positive distance into a number of inches.
+// can also limit max value if clip > 0.0
+// returns 1 if set "dist", 0 if value unchanged
+
+int jhcBallistic::set_inches (double& dist, const jhcAliaDesc *amt, double clip) const 
+{
+  const jhcAliaDesc *cnt;
+
+  // sanity check
+  if (amt == NULL)
+    return 0;
+  if (!amt->LexIn("inch", "foot", "centimeter", "meter"))
+    return 0;
+ 
+  // find units of distance
+  if (amt->LexMatch("foot"))
+    dist = 12.0;
+  else if (amt->LexMatch("centimeter"))
+    dist = 0.3937;
+  else if (amt->LexMatch("meter"))
+    dist = 39.37;
+  else
+    dist = 1.0;
+
+  // multiply by count (if any) but limit value
+  if ((cnt = amt->Fact("cnt")) != NULL)
+    dist *= atoi(cnt->Lex());
+  if (clip > 0.0)
+    dist = __min(dist, clip);      
+  return 1;     
+}
+
 
 //= Tests if command is making suitable progress given current target error.
 // reads and updates member variables associated with instance
@@ -1461,11 +1575,11 @@ int jhcBallistic::err_hw (const char *sys)
   jhcAliaDesc *part, *own, *arm, *fail;
 
   rpt->StartNote();
-  part = rpt->NewNode("obj");
+  part = rpt->NewObj("sys");
   own = rpt->NewProp(part, "ako", sys);
   rpt->AddArg(own, "wrt", rpt->Self());
   arm = rpt->Resolve(part);                      // find or make part
-  fail = rpt->NewNode("act", "work", 1);
+  fail = rpt->NewAct("work", 1);
   rpt->AddArg(fail, "agt", arm);                 // mark as not working
   rpt->FinishNote(fail);
   return -1;

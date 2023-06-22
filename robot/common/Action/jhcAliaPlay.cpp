@@ -23,6 +23,8 @@
 
 #include <string.h>
 
+#include "Reasoning/jhcAliaOp.h"       // common audio - since only spec'd as class in header
+
 #include "Action/jhcAliaCore.h"        // common robot - since only spec'd as class in header
 
 #include "Action/jhcAliaPlay.h"
@@ -179,7 +181,7 @@ int jhcAliaPlay::Start (jhcAliaCore *all, int lvl)
 {
   int i, level = abs(lvl);
 
-  // start all concurrent activities (if any)
+  // start any concurrent (looping) activities 
   for (i = 0; i < ng; i++)
     if ((gstat[i] = guard[i]->Start(all, level)) < 0)
       return fail();
@@ -203,13 +205,12 @@ int jhcAliaPlay::Status ()
 {
   int i;
 
-  // run all concurrent activities (if any)
+  // run any concurrent activities (barf when finished)
   for (i = 0; i < ng; i++)
-    if (gstat[i] == 0)
-      if ((gstat[i] = guard[i]->Status()) < 0)
-        return fail();
+    if ((gstat[i] = guard[i]->Status()) != 0)
+      return fail();
 
-  // run all main activities (if any)
+  // run all main activities that have not finished
   for (i = 0; i < na; i++)
     if (status[i] == 0) 
       if ((status[i] = main[i]->Status()) < 0)
@@ -229,7 +230,7 @@ int jhcAliaPlay::Status ()
 //= Some activity failed so whole play fails.
 // always returns -2 for convenience
 
-int jhcAliaPlay:: fail ()
+int jhcAliaPlay::fail ()
 {
   Stop();
   verdict = -2;
@@ -249,7 +250,7 @@ int jhcAliaPlay::Stop (int ans)
   if (verdict != 0)
     return verdict;
 
-  // notify all parallel activities
+  // notify all parallel activities 
   for (i = 0; i < ng; i++)
     if (gstat[i] == 0)
       guard[i]->Stop();
@@ -265,10 +266,14 @@ int jhcAliaPlay::Stop (int ans)
 }
 
 
+///////////////////////////////////////////////////////////////////////////
+//                           Execution Tracing                           //
+///////////////////////////////////////////////////////////////////////////
+
 //= Look for all in-progress activities matching graph and possibly stop them.
 // returns 1 if found (and stopped) all, 0 if nothing matching found
 
-int jhcAliaPlay::FindActive (const jhcGraphlet& desc, int halt)
+int jhcAliaPlay::HaltActive (const jhcGraphlet& desc, const class jhcAliaDir *skip, int halt)
 {
   int i, ans = 0;
 
@@ -276,18 +281,52 @@ int jhcAliaPlay::FindActive (const jhcGraphlet& desc, int halt)
   if (verdict != 0)
     return 0;
 
-  // search all required activities
+  // search all required activities that are still running
   for (i = 0; i < na; i++)
     if (status[i] == 0)
-      if (main[i]->FindActive(desc, halt) > 0)
+      if (main[i]->HaltActive(desc, skip, halt) > 0)
         ans = 1;
 
-  // search all parallel activities
+  // search all parallel activities (any stop causes barf)
   for (i = 0; i < ng; i++)
     if (gstat[i] == 0)
-      if (guard[i]->FindActive(desc, halt) > 0)
-        ans = 1;
+      if (guard[i]->HaltActive(desc, skip, halt) > 0)
+         ans = 1;
   return ans;
+}
+
+
+//= Find the call pattern for the most recently started activity compatible with the description.
+// cyc is unique request number for tracing graphs with loops, prev is most recent caller
+// binds best match directive and its caller, done: 0 = ongoing only, 1 = any non-failure
+
+void jhcAliaPlay::FindCall (const jhcAliaDir **act, const jhcAliaDir **src, jhcBindings *d2a, 
+                            const jhcGraphlet& desc, UL32& start, int done, const jhcAliaDir *prev, int cyc)
+{
+  int i;
+
+  for (i = 0; i < na; i++)
+    main[i]->FindCall(act, src, d2a, desc, start, done, prev, cyc);
+  for (i = 0; i < ng; i++)
+    guard[i]->FindCall(act, src, d2a, desc, start, done, prev, cyc);
+}
+
+
+//= Find transition pointer to step containing a DO directive with the given main action.
+// cyc is unique request number for tracing graphs with loops
+
+jhcAliaChain **jhcAliaPlay::StepEntry (const jhcNetNode *act, jhcAliaChain **from, int cyc)
+{
+  jhcAliaChain **entry;
+  int i;
+
+  for (i = 0; i < na; i++)
+    if ((entry = main[i]->StepEntry(act, &(main[i]), cyc)) != NULL)
+      return entry;
+  for (i = 0; i < ng; i++)
+    if ((entry = guard[i]->StepEntry(act, &(guard[i]), cyc)) != NULL)
+      return entry;
+  return NULL;
 }
 
 
@@ -367,7 +406,7 @@ int jhcAliaPlay::Save (FILE *out, int lvl, int *step) const
       return ans;
   }
 
-  // list all guard activities prefaced by +++
+  // list all guard activities prefaced and separated by ===
   for (i = 0; i < ng; i++)
   {
     jfprintf(out, "%*s ===\n", lvl, ""); 

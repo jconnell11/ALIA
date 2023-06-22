@@ -4,29 +4,32 @@ OP 1 - "If you are bored approach a person"
               -hq--> obj-1
         obj-1 -lex-  me ]
 -----------------
-  BIND[  obj-4
-        kind-5 -lex-  person
-               -ako-> obj-4 ]
-    DO[ act-3 -lex-  approach
-              -obj-> obj-4 ]
+  BIND[ obj-4
+        ako-5 -lex-  person
+              -ako-> obj-4 ]
+    DO[ fcn-3 -lex-  approach
+              -fcn-> act-3
+        act-3 -obj-> obj-4 ]
 
 
 OP 2 - "Before you approach a person make sure he is visible"
   trig:
-  ANTE[  act-1 -lex-  approach
-               -obj-> obj-2
-        kind-3 -lex-  person
-               -ako-> obj-2 ]
+  ANTE[ fcn-1 -lex-  approach
+              -fcn-> act-1
+        act-1 -obj-> obj-2
+        ako-3 -lex-  person
+              -ako-> obj-2 ]
 -----------------
-   ACH[  hq-4 -lex-  visible
-              -hq--> obj-2 ]
+   ACH[ hq-4 -lex-  visible
+             -hq--> obj-2 ]
 
 
 OP 3 - "To make sure something is visible scan around"
   trig:
-   ACH[  hq-2 -lex-  visible
-              -hq--> obj-1 ]
+   ACH[ hq-2 -lex-  visible
+             -hq--> obj-1 ]
 -----------------
-    DO[ act-3 -lex-  scan
+    DO[ fcn-3 -lex-  scan
+              -fcn-> act-3
         dir-4 -lex-  around
               -dir-> act-3 ]

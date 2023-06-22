@@ -38,7 +38,7 @@
 
 #include "Acoustic/jhcChatBox.h"       // common audio
 
-#include "jhcEliCoord.h"               // class encapsulating base functionality
+#include "RWI/jhcEliCoord.h"           // class encapsulating base functionality
 
 
 class CBanzaiDoc : public CDocument, public jhcTools
@@ -246,6 +246,11 @@ public:
   afx_msg void OnGrabSurfevents();
   afx_msg void OnGrabSurftracking();
   afx_msg void OnMoodLtmmatch();
+  afx_msg void OnMoodConfadjust();
+  afx_msg void OnMoodPrefadjust();
+  afx_msg void OnMoodRuleopadj();
+  afx_msg void OnDemoCyclerate();
+  afx_msg void OnGrabSurfmotion();
 };
 
 /////////////////////////////////////////////////////////////////////////////

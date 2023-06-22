@@ -1,0 +1,43 @@
+// basic commands for user feedback to ALIA system
+// ==================================================
+
+OP 1 - "If you are correct then ..."
+  trig:
+  NOTE[   hq-1 -lex-  correct
+               -hq--> self-1
+        self-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex-  kudo_conf
+               -arg-> hq-1 ] 
+              
+
+OP 2 - "If you are not correct then ..."
+  trig:
+  NOTE[   hq-1 -lex-  correct
+               -neg-  1
+               -hq--> self-1
+        self-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex-  kudo_conf
+               -arg-> hq-1 ] 
+              
+
+OP 3 - "If you are good then ..."
+  trig:
+  NOTE[   hq-1 -lex-  good
+               -hq--> self-1
+        self-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex-  kudo_pref
+               -arg-> hq-1 ] 
+              
+
+OP 4 - "If you are not good then ..."
+  trig:
+  NOTE[   hq-1 -lex-  good
+               -neg-  1
+               -hq--> self-1
+        self-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex-  kudo_pref
+               -arg-> hq-1 ] 

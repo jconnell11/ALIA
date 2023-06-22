@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,6 +64,19 @@ jhcAliaRule::jhcAliaRule ()
 ///////////////////////////////////////////////////////////////////////////
 //                            Simple Functions                           //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Change confidence in rule result.
+// returns actual change that occurred after limiting and quantizing
+
+double jhcAliaRule::SetConf (double v) 
+{
+  double c0 = conf, c = __max(0.1, __min(v, 1.2)); 
+  
+  conf = 0.01 * ROUND(100.0 * c); 
+  result.ForceBelief(conf);
+  return(conf - c0);
+}
+
 
 //= Remember human readable utterance that generated this rule.
 
@@ -147,14 +160,14 @@ int jhcAliaRule::match_found (jhcBindings *m, int& mc)
   {
     for (i = 0; i < nb; i++)
       m[dup].SetSub(i, b->LookUp(m[dup].GetKey(i)));       // in case order is different
-    init_result(&(m[dup]), tval, ver, h);
+    init_result(m[dup], tval, ver, h);
     return jprintf(2, dbg, "%*s substitute - same effect as bindings[%d]\n", 2 * nb + 2, "", dup);
   }
 
   // otherwise create new result nodes in halo 
   jprintf(2, dbg, "%*s ... FULL MATCH = new bindings[%d]\n", 2 * nb + 1, "", mc - 1);
   wmem->AssertHalo(result, *b);
-  init_result(b, tval, ver, h);
+  init_result(*b, tval, ver, h);
 
   // possibly show accepted rule result 
   if (show > 0) 
@@ -228,7 +241,7 @@ bool jhcAliaRule::result_uses (const jhcNetNode *key) const
 
 //= Update top marker and generation number, set initial belief, and record provenance.
 
-void jhcAliaRule::init_result (jhcBindings *b, int tval, int ver, int zero) 
+void jhcAliaRule::init_result (jhcBindings& b, int tval, int ver, int zero) 
 {
   const jhcNetNode *pn;
   jhcNetNode *n;
@@ -249,7 +262,7 @@ void jhcAliaRule::init_result (jhcBindings *b, int tval, int ver, int zero)
   for (i = 0; i < nr; i++)
   {
     pn = result.Item(i);
-    if ((n = b->LookUp(pn)) != NULL)
+    if ((n = b.LookUp(pn)) != NULL)
       if (n->Halo() && !cond.InDesc(n))
       {
         wmem->SetGen(n, ver);                    // inferred result recency
@@ -257,7 +270,7 @@ void jhcAliaRule::init_result (jhcBindings *b, int tval, int ver, int zero)
         n->SetDefault(pn->Default());
         n->TmpBelief((zero > 0) ? 0.0 : n->Default());
         n->hrule = this;
-        n->hbind = b;
+        n->hbind = &b;
         n->ltm = dep;                            // mark if dependent on LTM
       }
   }
@@ -580,7 +593,7 @@ int jhcAliaRule::load_clauses (jhcTxtLine& in)
   if (!in.Begins("if:"))
     return 0;
   in.Skip("if:");
-  if ((ans = LoadGraph(&cond, in)) <= 0)
+  if ((ans = LoadGraph(cond, in)) <= 0)
     return ans;
 
   // caveats
@@ -588,7 +601,7 @@ int jhcAliaRule::load_clauses (jhcTxtLine& in)
   while (in.Begins("unless:"))
   {
     in.Skip("unless:");
-    if ((ans = LoadGraph(&(unless[nu]), in)) <= 0)
+    if ((ans = LoadGraph(unless[nu], in)) <= 0)
       return ans;
     if (nu++ >= umax)
     {
@@ -612,7 +625,7 @@ int jhcAliaRule::load_clauses (jhcTxtLine& in)
   if (!in.Begins("then:"))
     return 0;
   in.Skip("then:");
-  if ((ans = LoadGraph(&result, in, 1)) <= 0)
+  if ((ans = LoadGraph(result, in, 1)) <= 0)
     return ans;
   result.ForceBelief(conf);
   result.ActualizeAll(0);              // needed for match_found

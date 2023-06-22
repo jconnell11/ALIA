@@ -33,6 +33,7 @@
 
 jhcSupport::~jhcSupport ()
 {
+  delete [] cpos;
 }
 
 
@@ -40,18 +41,22 @@ jhcSupport::~jhcSupport ()
 
 jhcSupport::jhcSupport ()
 {
-  int i;
+  int i, n = MaxInst();
 
-  // instance identification
-  ver = 1.65;
+  // pool identification
   strcpy_s(tag, "Support");
+
+  // create instance control variables
+  cpos = new jhcMatrix [n];
+  for (i = 0; i < n; i++)
+    cpos[i].SetSize(4);    
 
   // set size of stored positions
   for (i = 0; i < smax; i++)
     saved[i].SetSize(4);
 
-  // set up state
-  Platform(NULL);
+  // body and mind connection 
+  rwi = NULL;
   rpt = NULL;
 
   // processing parameters
@@ -59,26 +64,52 @@ jhcSupport::jhcSupport ()
 }
 
 
-//= Attach physical enhanced body and make pointers to some pieces.
-
-void jhcSupport::Platform (jhcEliGrok *io) 
-{
-  rwi = io;
-  tab = NULL;
-  neck = NULL;
-  lift = NULL;
-  if (rwi != NULL)
-  {
-    tab  = &(rwi->tab);
-    neck = rwi->neck;
-    lift = rwi->lift;
-  }
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //                         Processing Parameters                         //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Parameters used for signaling new and close tables.
+
+int jhcSupport::event_params (const char *fname)
+{
+  jhcParam *ps = &eps;
+  int ok;
+
+  ps->SetTag("sup_evt", 0);
+  ps->NextSpecF( &d1,     50.0, "Volunteer drop out range (in)");
+  ps->NextSpecF( &d0,     48.0, "Volunteer notice range (in)");
+  ps->NextSpecF( &dhys,   26.0, "Table no longer close (in)");
+  ps->NextSpecF( &dnear,  24.0, "Table close range (in)");
+  ps->NextSpec4( &tnew,    5,   "Detections before event");
+  ps->Skip();
+
+  ps->NextSpecF( &h1,     36.0, "Max height for table (in)");
+  ps->NextSpecF( &h0,     12.0, "Min height for table (in)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters used for tracking and approaching surface patches.
+
+int jhcSupport::motion_params (const char *fname)
+{
+  jhcParam *ps = &mps;
+  int ok;
+
+  ps->SetTag("sup_move", 0);
+  ps->NextSpecF( &ptol,  20.0, "Final pan for orient (deg)");
+  ps->NextSpecF( &ttol,  15.0, "Final tilt for orient (deg)");
+  ps->NextSpecF( &atol,   3.0, "Final offset for look (deg)");
+  ps->Skip();
+  ps->NextSpecF( &acc,   28.0, "Adequate approach dist (in)");
+  ps->NextSpecF( &app,   22.0, "Desired approach dist (in)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
 
 //= Parameters used for quantizing height and distance.
 
@@ -96,7 +127,6 @@ int jhcSupport::height_params (const char *fname)
   ps->NextSpecF( &lavg, 16.0, "Low avg height (in)");
 
   ps->NextSpecF( &flr,   4.0, "Floor threshold (in)");
-  ps->NextSpecF( &dh,    1.0, "Match height error (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -111,38 +141,12 @@ int jhcSupport::location_params (const char *fname)
   int ok;
 
   ps->SetTag("sup_loc", 0);
-  ps->NextSpecF( &dfar,  96.0, "Far-mid threshold (in)");
-  ps->NextSpecF( &dmid,  48.0, "Mid-close threshold (in)");
-  ps->NextSpecF( &band,  24.0, "Distance band width (in)");
-  ps->NextSpecF( &dxy,    6.0, "Match position error (in)");
-  ps->NextSpecF( &hfov,  50.0, "Horizontal view span (deg)");
-  ps->NextSpecF( &vfov,  40.0, "Vertical view span (deg)");
-
-  ps->NextSpecF( &atol,   3.0, "Gaze done limit (deg)");
-  ps->NextSpecF( &drop, 144.0, "Abandon patch distance (in)");
-  ok = ps->LoadDefs(fname);
-  ps->RevertAll();
-  return ok;
-}
-
-
-//= Parameters used for signaling new and close tables.
-
-int jhcSupport::event_params (const char *fname)
-{
-  jhcParam *ps = &eps;
-  int ok;
-
-  ps->SetTag("sup_evt", 0);
-  ps->NextSpecF( &d1,    50.0, "Detection drop out range (in)");
-  ps->NextSpecF( &d0,    48.0, "Detection notice range (in)");
-  ps->NextSpecF( &dhys,  26.0, "Table no longer near (in)");
-  ps->NextSpecF( &dnear, 24.0, "Table near range (in)");
+  ps->NextSpecF( &dfar, 96.0, "Far-mid threshold (in)");
+  ps->NextSpecF( &dmid, 48.0, "Mid-close threshold (in)");
+  ps->NextSpecF( &band, 24.0, "Distance band width (in)");
+  ps->NextSpecF( &dxy,   6.0, "Match position error (in)");
   ps->Skip();
-  ps->NextSpec4( &tnew,   5,   "Detections before event");
-
-  ps->NextSpecF( &h1,    36.0, "Max height for table (in)");
-  ps->NextSpecF( &h0,    12.0, "Min height for table (in)");
+  ps->NextSpecF( &hfov, 50.0, "Horizontal view span (deg)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -157,15 +161,14 @@ int jhcSupport::track_params (const char *fname)
   int ok;
 
   ps->SetTag("sup_trk", 0);
-  ps->NextSpecF( &ztol,   3.0, "Height offset for match (in)");
-  ps->NextSpecF( &xytol,  8.0, "Center offset for match (in)");
-  ps->NextSpecF( &mix,    0.1, "Blending of new detection");
-  ps->NextSpecF( &inset,  6.0, "Inset of gaze from edge (in)");
-  ps->NextSpecF( &gtol,   5.0, "Current gaze tolerance (deg)");
-  ps->NextSpecF( &gacc,  10.0, "Adequate gaze offset (deg)");
+  ps->NextSpecF( &ztol,    3.0, "Height offset for match (in)");
+  ps->NextSpecF( &xytol,  12.0, "Center offset for match (in)");  // was 8
+  ps->NextSpecF( &mix,     0.1, "Blending of new detection");
+  ps->Skip();
+  ps->NextSpecF( &inset,   6.0, "Inset of gaze from edge (in)");
+  ps->NextSpecF( &gtol,    5.0, "Gaze match tolerance (deg)");
 
-  ps->NextSpecF( &app,   22.0, "Desired approach dist (in)");
-  ps->NextSpecF( &acc,   28.0, "Adequate approach dist (in)");
+  ps->NextSpecF( &drop,  144.0, "Abandon patch distance (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -182,9 +185,10 @@ int jhcSupport::Defaults (const char *fname)
 {
   int ok = 1;
 
+  ok &= event_params(fname);
+  ok &= motion_params(fname);
   ok &= height_params(fname);
   ok &= location_params(fname);
-  ok &= event_params(fname);
   ok &= track_params(fname);
   return ok;
 }
@@ -196,9 +200,10 @@ int jhcSupport::SaveVals (const char *fname) const
 {
   int ok = 1;
 
+  ok &= eps.SaveVals(fname);
+  ok &= mps.SaveVals(fname);
   ok &= hps.SaveVals(fname);
   ok &= lps.SaveVals(fname);
-  ok &= eps.SaveVals(fname);
   ok &= tps.SaveVals(fname);
   return ok;
 }
@@ -208,14 +213,28 @@ int jhcSupport::SaveVals (const char *fname) const
 //                          Overridden Functions                         //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Attach physical enhanced body and make pointers to some pieces.
+
+void jhcSupport::local_platform (void *soma) 
+{
+  rwi = (jhcEliGrok *) soma;
+  tab = NULL;
+  neck = NULL;
+  lift = NULL;
+  tab  = &(rwi->tab);
+  neck = rwi->neck;
+  lift = rwi->lift;
+}
+
+
 //= Set up for new run of system.
 
-void jhcSupport::local_reset (jhcAliaNote *top)
+void jhcSupport::local_reset (jhcAliaNote& top)
 {
   int i;
 
   // noisy messages
-  rpt = top;
+  rpt = &top;
   dbg = 1;
 
   // no surfaces nearby yet
@@ -227,7 +246,6 @@ void jhcSupport::local_reset (jhcAliaNote *top)
   for (i = 0; i < smax; i++)
     sid[i] = 0;
   last_id = 0;
-//  current = -1;
 }
 
 
@@ -246,10 +264,11 @@ void jhcSupport::local_volunteer ()
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if successful, -1 for problem, -2 if function unknown
 
-int jhcSupport::local_start (const jhcAliaDesc *desc, int i)
+int jhcSupport::local_start (const jhcAliaDesc& desc, int i)
 {
   JCMD_SET(surf_enum);
   JCMD_SET(surf_on_ok);
+  JCMD_SET(surf_orient);
   JCMD_SET(surf_look);
   JCMD_SET(surf_goto);
   return -2;
@@ -260,10 +279,11 @@ int jhcSupport::local_start (const jhcAliaDesc *desc, int i)
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if done, 0 if still working, -1 if failed, -2 if function unknown
 
-int jhcSupport::local_status (const jhcAliaDesc *desc, int i)
+int jhcSupport::local_status (const jhcAliaDesc& desc, int i)
 {
   JCMD_CHK(surf_enum);
   JCMD_CHK(surf_on_ok);
+  JCMD_CHK(surf_orient);
   JCMD_CHK(surf_look);
   JCMD_CHK(surf_goto);
   return -2;
@@ -275,11 +295,12 @@ int jhcSupport::local_status (const jhcAliaDesc *desc, int i)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Alter saved surface locations using base motion and possibly discard.
+// makes sure node associations are accurate 
+// "visible" = currently tracked, not necessarily in field of view
 
 void jhcSupport::update_patches ()
 {
   jhcMatrix mid(4);
-  jhcAliaDesc *surf;
   int i;
 
   // erase any surface that no longer has a node (GC can happen at any time)
@@ -297,16 +318,11 @@ void jhcSupport::update_patches ()
     if (sid[i] > 0)
     {
       (rwi->base)->AdjustTarget(saved[i]);
-      if (saved[i].PlaneVec3() > drop)           // too far
+      if (saved[i].PlaneVec3() > drop)           // too far away
       {
-        if ((surf = rpt->NodeFor(sid[i], 2)) != NULL)
-        {
-          // revoke visible assertion if nodified
-          rpt->StartNote();
-          rpt->NewProp(surf, "hq", "visible", 1);
-          rpt->FinishNote();
-          rpt->VisAssoc(sid[i], NULL, 2);        // erase entry
-        }
+        // retract visibility and delink semantic node
+        msg_gone(rpt->NodeFor(sid[i], 2));
+        rpt->VisAssoc(sid[i], NULL, 2);       
         sid[i] = 0;                              
       }
     }
@@ -371,11 +387,9 @@ void jhcSupport::table_seen ()
   // generate event if suddenly appears or gets near enough
   if ((any >= tnew) && (prev < tnew))
   {
-    obj = current_vis(born);
+    born = current_vis(&obj);
     rpt->StartNote();
     std_props(obj, born);
-    if (born <= 0)
-      rpt->NewProp(obj, "hq", "visible");         // do not repeat
     rpt->FinishNote();
   }
 }
@@ -404,7 +418,7 @@ void jhcSupport::table_close ()
   // if surface just became near then generate event
   if ((prox >= tnew) && (prev < tnew))
   {
-    obj = current_vis(born);
+    born = current_vis(&obj);                    // should never be born
     rpt->StartNote();
     std_props(obj, born);
     rpt->NewProp(obj, "hq", "close");
@@ -414,26 +428,28 @@ void jhcSupport::table_close ()
 
 
 //= Find or make semantic node associated with current active surface.
-// sets "born" to 0 if already existing, 1 if new semantic node (needs HQ and AKO)
+// returns 0 if already existing, 1 if new semantic node (needs HQ and AKO)
 // NOTE: this is generally called before StartNote (to omit object itself)
 
-jhcAliaDesc *jhcSupport::current_vis (int& born)
+int jhcSupport::current_vis (jhcAliaDesc **obj)
 {
-  jhcAliaDesc *obj = NULL;
   int current = saved_detect();
 
+  // sanity check and default
+  if (obj == NULL)
+    return 0;
+  *obj = NULL;
+
   // find old node (if any)
-  born = 0;
   if (current >= 0)           
-    if ((obj = rpt->NodeFor(sid[current], 2)) != NULL)
-      return obj;
+    if ((*obj = rpt->NodeFor(sid[current], 2)) != NULL)
+      return 0;
 
   // create new node for current surface (and make eligible for FIND)
-  born = 1;
-  obj = rpt->NewNode("surf");
-  rpt->VisAssoc(save_patch(), obj, 2);
-  rpt->NewFound(obj);                      
-  return obj;
+  *obj = rpt->NewObj("surf");
+  rpt->VisAssoc(save_patch(), *obj, 2);          // sid = saved_detect
+  rpt->NewFound(*obj);  
+  return 1;
 }
 
 
@@ -447,60 +463,42 @@ jhcAliaDesc *jhcSupport::current_vis (int& born)
 // answers "Find a far high surface on the left" repeatedly
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSupport::surf_enum0 (const jhcAliaDesc *desc, int i)
+int jhcSupport::surf_enum0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *obj;
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((cobj[i] = desc->Val("arg")) == NULL)
+  if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
   obj = cobj[i];
   cpos[i].SetP(surf_azm(obj));
   cpos[i].SetY(surf_dist(obj));
   cpos[i].SetZ(surf_ht(obj));
   camt[i] = 0.0;                       // reset scan
+  ccnt[i] = 0;                         // how many reported so far
   return 1;
 }
 
 
 //= Basic call to surface detector returns one new object matching description each step.
-// assumes cpos[i] = (azm, dist, ht) as quantized ranges
-// cst[i] = 0 on first call only, camt[i] = distance of last candidate
+// generally returns only tables > 4" up (not floor)
+// assumes cpos[i] = (azm, dist, ht) as quantized ranges, camt[i] = distance of last candidate
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSupport::surf_enum (const jhcAliaDesc *desc, int i)
+int jhcSupport::surf_enum (const jhcAliaDesc& desc, int i)
 {
-  jhcAliaDesc *obj = desc->Val("arg");
+  jhcAliaDesc *obj = desc.Val("arg");
   double dmax = dfar + band;
   double dhi[4]  = {dmax, dmid, dfar, dmax};
   double zavg[5] = {mavg,  0.0, lavg, mavg, havg};
+  double sz = 0.0;
   int aqnt = (int) cpos[i].P(), dqnt = (int) cpos[i].X(), hqnt = (int) cpos[i].Z();
-  int current, id, born = 0;
+  int current, id, idx, born = 0;
 
   // lock to sensor cycle then figure out where to look for surfaces
   if (!rwi->Accepting())                         // should be READABLE if no motion???
     return 0;
-
-/*
-  double pan, head, tilt, err, vfov2 = 0.5 * vfov;
-
-  pan = ((aqnt <= 0) ? neck->Pan() : hfov * (aqnt - 2));
-  head = neck->HeadZ(lift->Height());
-  tilt = -R2D * atan2(head - zavg[hqnt], dhi[dqnt]) - vfov2;
-
-  // gaze toward likely patch center location
-  err = neck->GazeErr(pan, tilt);
-  if (err > atol)
-  {
-    if (chk_neck(i, err) > 0)                    // no progress
-      return -1;
-    tab->dpref = ((dqnt <= 0) ? 0.0 : dhi[dqnt] - 0.5 * band);
-    tab->hpref = zavg[hqnt];
-    neck->GazeTarget(pan, tilt, 1.0, 1.0, cbid[i]);  
-    return 0;
-  }
-*/
 
   // find next farthest candidate surface and save information
   if ((camt[i] = scan_suitable(dqnt, hqnt, camt[i])) < 0.0)
@@ -511,25 +509,26 @@ int jhcSupport::surf_enum (const jhcAliaDesc *desc, int i)
     id = save_patch();
   if (id <= 0)
     return -1;
-  cst[i] += 1;
 
-  // make semantic node for patch and copy description
+  // make semantic node for patch and associate with surface item
   if ((obj = rpt->NodeFor(id, 2)) == NULL)                 
   {
-    obj = rpt->NewNode("surf");
+    obj = rpt->NewObj("surf");
     rpt->NewFound(obj);                          // make eligible for FIND
     born = 1;
   }
+  rpt->VisAssoc(id, obj, 2);                 
+  if ((idx = saved_index(obj)) >= 0)
+    sz = saved[idx].Z();
+  jprintf(1, dbg, "surf_enum %d ==> %s (%3.1f\")\n", ++ccnt[i], obj->Nick(), sz);
+  
+  // report that surface with requested properties found
   rpt->StartNote();     
   std_props(obj, born);
   add_azm(obj, aqnt);
   add_dist(obj, dqnt);
   add_ht(obj, hqnt);     
-  jprintf(1, dbg, "surf_enum %d ==> %s\n", cst[i], obj->Nick());
   rpt->FinishNote();
-
-  // associate new node with surface position
-  rpt->VisAssoc(id, obj, 2);                 
   return 1;
 }
 
@@ -551,6 +550,8 @@ double jhcSupport::scan_suitable (int dqnt, int hqnt, double d0)
   tab->InitSurf();
   while ((rng = tab->NextSurf()) >= 0.0)
   {
+    if (tab->SurfHt() < mlth)                     // ignore floor
+      continue;
     if ((dqnt > 0) && (rng > dhi[dqnt]))
       break;                                      // too far
     if ((rng > d0) && (rng >= dlo[dqnt]))
@@ -564,13 +565,13 @@ double jhcSupport::scan_suitable (int dqnt, int hqnt, double d0)
 // tests if some object is on some surface
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSupport::surf_on_ok0 (const jhcAliaDesc *desc, int i)
+int jhcSupport::surf_on_ok0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((cobj[i] = desc->Val("arg")) == NULL)
+  if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
-  if ((cspot[i] = desc->Val("arg2")) == NULL)
+  if ((cspot[i] = desc.Val("arg2")) == NULL)
     return -1;
   return 1;
 }
@@ -579,7 +580,7 @@ int jhcSupport::surf_on_ok0 (const jhcAliaDesc *desc, int i)
 //= Basic call to surface object testing determines if object is on surface.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSupport::surf_on_ok (const jhcAliaDesc *desc, int i)
+int jhcSupport::surf_on_ok (const jhcAliaDesc& desc, int i)
 {
   jhcAliaDesc *loc;
   int current, id, t; 
@@ -591,7 +592,7 @@ int jhcSupport::surf_on_ok (const jhcAliaDesc *desc, int i)
     return err_vis(cspot[i]);
   if (id != sid[current])
     return 1;
-  if ((t = (rwi->sobj).ObjTrack(rpt->VisID(cobj[i]))) < 0)
+  if ((t = (rwi->sobj).ObjTrack(rpt->VisID(cobj[i], 0))) < 0)
     return err_vis(cobj[i]);
 
   // object is on current surface if it is currently tracked
@@ -607,42 +608,113 @@ int jhcSupport::surf_on_ok (const jhcAliaDesc *desc, int i)
 //                         Surface Interaction                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= First call to surface gaze director but not allowed to fail.
+//= First call to surface general gaze but not allowed to fail.
 // assumes object of verb is already linked to a saved position
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSupport::surf_look0 (const jhcAliaDesc *desc, int i)
+int jhcSupport::surf_orient0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((cobj[i] = desc->Val("arg")) == NULL)
+  if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
   ct0[0] = 0;                                    // reset timeout
   return 1;
 }
 
 
-//= Basic call to surface gaze director attempts to move head appropriately.
+//= Basic call to surface general gaze attempts to move head appropriately.
+// goal is to make sure surface is currently detected
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSupport::surf_look (const jhcAliaDesc *desc, int i)
+int jhcSupport::surf_orient (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix edge(4);
-  double ht, da;
-  int s;
+  double pan, tilt, dp, dt;
+  int idx;
 
   // check for known surface and working body
+  if ((idx = saved_index(cobj[i])) < 0)
+    return err_vis(cobj[i]);
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if ((s = saved_index(cobj[i])) < 0)
-    return err_vis(cobj[i]);
-  if (rwi->Ghost() || ((rwi->neck)->CommOK() <= 0)) 
+  if (neck->CommOK() <= 0)
     return err_hw("neck");
 
   // look slightly beyond edge of table
-  jprintf(2, dbg, "|- Support %d: gaze at target %s\n", cbid[i], cobj[i]->Nick()); 
+  if (cst[i] <= 0)
+  {
+    jprintf(2, dbg, "|- Support %d: orient to target %s\n", cbid[i], cobj[i]->Nick()); 
+    cst[i] = 1;
+  }
+
+  // look slightly beyond edge of table
+  tab->SurfEdge(edge, saved[idx], soff[idx] - inset);
+  neck->AimFor(pan, tilt, edge, lift->Height());
+  neck->GazeTarget(pan, tilt, 1.0, 1.0, cbid[i]);
+
+  // see if close enough yet
+  dp = neck->PanErr(pan);
+  dt = neck->TiltErr(tilt);
+  jprintf(3, dbg, "  dp = %3.1f, dt = %3.1f\n", dp, dt);
+  if ((dp > atol) || (dt > atol))
+  {
+    // if not making progress see if tolerably close
+    if (chk_neck(i, dp + dt) <= 0)
+      return 0;
+    jprintf(2, dbg, "    stuck: dp = %3.1f, dt = %3.1f\n", dp, dt);
+    return -1;
+  }
+  return 1;                                      // success
+}
+
+ 
+//= First call to surface direct gaze but not allowed to fail.
+// assumes object of verb is already linked to a saved position
+// returns 1 if okay, -1 for interpretation error
+
+int jhcSupport::surf_look0 (const jhcAliaDesc& desc, int i)
+{
+  if ((rwi == NULL) || (rpt == NULL))
+    return -1;
+  if ((cobj[i] = desc.Val("arg")) == NULL)
+    return -1;
+  ct0[0] = 0;                                    // reset timeout
+  return 1;
+}
+
+
+//= Basic call to surface direct gaze attempts to move head appropriately.
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcSupport::surf_look (const jhcAliaDesc& desc, int i)
+{
+  jhcMatrix edge(4);
+  double ht, da;
+  int idx;
+
+  // check for known surface and working body
+  if ((idx = saved_index(cobj[i])) < 0)
+    return err_vis(cobj[i]);
+  if (rwi->Ghost())
+    return 1;
+  if (!rwi->Accepting())
+    return 0;
+  if (neck->CommOK() <= 0)
+    return err_hw("neck");
+
+  // look slightly beyond edge of table
+  if (cst[i] <= 0)
+  {
+    jprintf(2, dbg, "|- Support %d: look at target %s\n", cbid[i], cobj[i]->Nick()); 
+    cst[i] = 1;
+  }
+
+  // look slightly beyond edge of table
   ht = lift->Height();
-  tab->SurfEdge(edge, saved[s], soff[s] - inset);
+  tab->SurfEdge(edge, saved[idx], soff[idx] - inset);
   neck->GazeAt(edge, ht, 1.0, cbid[i]);
 
   // see if close enough yet
@@ -654,8 +726,7 @@ int jhcSupport::surf_look (const jhcAliaDesc *desc, int i)
     if (chk_neck(i, da) <= 0)
       return 0;
     jprintf(2, dbg, "    stuck: da = %3.1f\n", da);
-    if (da > gacc)
-      return -1;
+    return -1;
   }
   return 1;                                      // success
 }
@@ -665,11 +736,11 @@ int jhcSupport::surf_look (const jhcAliaDesc *desc, int i)
 // assumes object of verb is already linked to a saved position
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSupport::surf_goto0 (const jhcAliaDesc *desc, int i)
+int jhcSupport::surf_goto0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((cobj[i] = desc->Val("arg")) == NULL)
+  if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
   ct0[i] = 0;                                    // reset timeout
   return 1;
@@ -679,23 +750,25 @@ int jhcSupport::surf_goto0 (const jhcAliaDesc *desc, int i)
 //= Basic call to surface approach routine attempts to move base appropriately.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSupport::surf_goto (const jhcAliaDesc *desc, int i)
+int jhcSupport::surf_goto (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix edge(4);
   double dist;
-  int s;
+  int idx;
 
   // check for known surface and working body
+  if ((idx = saved_index(cobj[i])) < 0)
+    return err_vis(cobj[i]);
+  if (rwi->Ghost())
+    return 1;
   if (!rwi->Accepting())
     return 0;
-  if ((s = saved_index(cobj[i])) < 0)
-    return err_vis(cobj[i]);
-  if (rwi->Ghost() || ((rwi->body)->CommOK() <= 0)) 
+  if ((rwi->body)->CommOK() <= 0)
     return err_hw("body");
 
   // determine location of closest edge of surface (and attempt to find again)
-  tab->SurfEdge(edge, saved[s], soff[s] - inset);   
-  tab->BiasSurf(saved[s]);                       
+  tab->SurfEdge(edge, saved[idx], soff[idx] - inset);   
+  tab->BiasSurf(saved[idx]);                       
 
   // look at surface edge and approach while allowing navigation saccades
   jprintf(2, dbg, "|- Support %d: approach target %s\n", cbid[i], cobj[i]->Nick()); 
@@ -950,11 +1023,10 @@ int jhcSupport::surf_ht (const jhcMatrix& patch) const
 
 void jhcSupport::std_props (jhcAliaDesc *obj, int born)
 { 
-  if (born > 0)
-  {
-    rpt->NewProp(obj, "ako", "surface");
-    rpt->NewProp(obj, "hq", "visible");
-  }
+  if (born <= 0)
+    return;
+  rpt->NewProp(obj, "ako", "surface");
+  rpt->NewProp(obj, "hq", "visible");
 }
 
 
@@ -1006,6 +1078,19 @@ void jhcSupport::add_ht (jhcAliaDesc *obj, int hqnt) const
 //                          Semantic Messages                            //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Possible generate a NOTE that surface is no longer visible.
+// intended for standalone use, does not repeat assertion if already known
+
+void jhcSupport::msg_gone (jhcAliaDesc *surf)
+{
+  if (surf == NULL)
+    return;
+  rpt->StartNote();
+  rpt->NewProp(surf, "hq", "visible", 1, 1.0, 1);
+  rpt->FinishNote();
+}
+
+
 //= Complain about some part of the body not working.
 // <pre>
 //   NOTE[ act-1 -lex-  work
@@ -1022,11 +1107,11 @@ int jhcSupport::err_hw (const char *sys)
   jhcAliaDesc *part, *own, *arm, *fail;
 
   rpt->StartNote();
-  part = rpt->NewNode("obj");
+  part = rpt->NewObj("sys");
   own = rpt->NewProp(part, "ako", sys);
   rpt->AddArg(own, "wrt", rpt->Self());
   arm = rpt->Resolve(part);                      // find or make part
-  fail = rpt->NewNode("act", "work", 1);
+  fail = rpt->NewAct("work", 1);
   rpt->AddArg(fail, "agt", arm);                 // mark as not working
   rpt->FinishNote(fail);
   return -1;
@@ -1049,9 +1134,10 @@ int jhcSupport::err_vis (jhcAliaDesc *item)
   if (item == NULL)
     return -1;
   rpt->StartNote();
-  fail = rpt->NewNode("act", "see", 1);
+  fail = rpt->NewAct("see", 1);
   rpt->AddArg(fail, "agt", rpt->Self());
   rpt->AddArg(fail, "obj", item);
   rpt->FinishNote(fail);
   return -1;
 }
+

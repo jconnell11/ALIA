@@ -57,10 +57,10 @@ public:
   // creation and initialization
   ~jhcDegrapher ();
   jhcDegrapher ();
-  void SetWords (const jhcMorphFcns *m) {mf = m;}
+  void SetWords (const jhcMorphFcns& m) {mf = &m;}
   void SetMem (jhcWorkMem *m) {wmem = m;}
-  void SetMem (jhcAliaNote *m) 
-    {SetMem(dynamic_cast<jhcWorkMem *>(m));}
+  void SetMem (jhcAliaNote& m) 
+    {SetMem(dynamic_cast<jhcWorkMem *>(&m));}
  
   // formatted output
   const char *NameRef (jhcNetNode *n) const;
@@ -83,6 +83,7 @@ private:
   const char *pred_ref (char *txt, int ssz, jhcNetNode *n, int inf);
   const char *full_pred (char *txt, int ssz, const jhcNetNode *n, int inf);
   void list_conj (char *txt, int ssz, const jhcNetNode *multi) const;
+  void inf_verb (char *txt, int ssz, const jhcNetNode *n) const;
   void agt_verb (char *txt, int ssz, const jhcNetNode *n);
   void copula (char *txt, int ssz, jhcNetNode *targ, const jhcNetNode *n);
 

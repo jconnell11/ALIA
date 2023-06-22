@@ -1,5 +1,5 @@
 // basic commands understood by the visual object characterization system
-// ================================================
+// =======================================================================
 
 OP 1 - "To find out what color something is ..."
   trig:
@@ -7,8 +7,8 @@ OP 1 - "To find out what color something is ..."
         ako-4 -lex-  color
               -ako-> hq-3  ]
 -----------------
-   FCN[ fcn-1 -lex-  class_color
-              -arg-> obj-1 ]
+   GND[ call-1 -lex-  class_color
+               -arg-> obj-1 ]
 
 
 OP 2 - "To find out what size something is ..."
@@ -17,8 +17,8 @@ OP 2 - "To find out what size something is ..."
         ako-4 -lex-  size
               -ako-> hq-3  ]
 -----------------
-   FCN[ fcn-1 -lex-  class_size
-              -arg-> obj-1 ]
+   GND[ call-1 -lex-  class_size
+               -arg-> obj-1 ]
 
 
 OP 3 - "To find out what width something is ..."
@@ -27,8 +27,8 @@ OP 3 - "To find out what width something is ..."
         ako-4 -lex-  width
               -ako-> hq-3  ]
 -----------------
-   FCN[ fcn-1 -lex-  class_width
-              -arg-> obj-1 ]
+   GND[ call-1 -lex-  class_width
+               -arg-> obj-1 ]
 
 
 OP 4 - "To check if something is striped ..."
@@ -36,5 +36,5 @@ OP 4 - "To check if something is striped ..."
    CHK[  hq-3 -lex-  striped
               -hq--> obj-1 ]
 -----------------
-   FCN[ fcn-1 -lex-  det_texture
-              -arg-> obj-1 ]
+   GND[ call-1 -lex-  det_texture
+               -arg-> obj-1 ]

@@ -3,288 +3,394 @@
 
 OP 1 - "To freeze ..."
   trig:   
-    DO[ act-1 -lex-  freeze ] 
+    DO[ fcn-1 -lex-  freeze 
+              -fcn-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  ball_stop 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_stop 
+               -arg-> act-1 ]
 
 
 // --------------------------------------
 
 OP 2 - "To step ..."
   trig:   
-    DO[ act-1 -lex-  step ]
+    DO[ fcn-1 -lex-  step 
+              -fcn-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_drive 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_drive 
+               -arg-> act-1 ]
 
 
 OP 3 - "To move ..."
   trig:   
-    DO[ act-1 -lex-  move ]
+    DO[ fcn-1 -lex-  move 
+              -fcn-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_drive 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_drive 
+               -arg-> act-1 ]
 
 
 OP 4 - "To drive ..."
   trig:   
-    DO[ act-1 -lex-  drive ]
+    DO[ fcn-1 -lex-  drive 
+              -fcn-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_drive 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_drive 
+               -arg-> act-1 ]
 
 
 // --------------------------------------
 
 OP 5 - "To turn ..."
   trig:   
-    DO[ act-1 -lex-  turn ]
+    DO[ fcn-1 -lex-  turn 
+              -fcn-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_turn 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_turn 
+               -arg-> act-1 ]
 
 
 OP 6 - "To rotate ..."
   trig:   
-    DO[ act-1 -lex-  rotate ]
+    DO[ fcn-1 -lex-  rotate 
+              -fcn-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_turn 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_turn 
+               -arg-> act-1 ]
 
 
 OP 7 - "To turn around rotate"
   trig:   
-    DO[ act-1 -lex-  turn 
+    DO[ fcn-1 -lex-  turn 
+              -fcn-> act-1
         dir-1 -lex-  around
               -dir-> act-1 ]
 ---------------
-    DO[ act-2 -lex-  rotate ]
+    DO[ fcn-2 -lex-  rotate
+              -fcn-> act-2 ]
 
 
 OP 8 - "To spin ..."
   trig:   
-    DO[ act-1 -lex-  spin ]
+    DO[ fcn-1 -lex-  spin 
+              -fcn-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_turn 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_turn 
+               -arg-> act-1 ]
 
 
 // --------------------------------------
 
 OP 9 - "To raise the arm ..."
   trig:
-    DO[ act-1 -lex-  raise
-              -obj-> obj-1
+    DO[ fcn-1 -lex-  raise
+              -fcn-> act-1
+        act-1 -obj-> obj-1
         ako-1 -lex-  arm
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_lift 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_lift 
+               -arg-> act-1 ]
 
 
 OP 10 - "To lower the arm ..."
   trig:
-    DO[ act-1 -lex-  lower
-              -obj-> obj-1
+    DO[ fcn-1 -lex-  lower
+              -fcn-> act-1
+        act-1 -obj-> obj-1
         ako-1 -lex-  arm
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_lift 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_lift 
+               -arg-> act-1 ]
 
 
 // --------------------------------------
 
 OP 11 - "To open the hand ..."
   trig:
-    DO[ act-1 -lex-  open
-              -obj-> obj-1 
+    DO[ fcn-1 -lex-  open
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
         ako-1 -lex-  hand
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_grip 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_grip 
+               -arg-> act-1 ]
 
 
 OP 12 - "To release something ..."
   trig:
-    DO[ act-1 -lex-  release
-              -obj-> obj-1 ]
+    DO[ fcn-1 -lex-  release
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_grip 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_grip 
+               -arg-> act-1 ]
 
 
 OP 13 - "To close the hand ..."
   trig:
-    DO[ act-1 -lex-  close
-              -obj-> obj-1 
+    DO[ fcn-1 -lex-  close
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
         ako-1 -lex-  hand
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_grip 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_grip 
+               -arg-> act-1 ]
 
 
 OP 14 - "To hold something ..."
   trig:
-    DO[ act-1 -lex-  hold
-              -obj-> obj-1 ]
+    DO[ fcn-1 -lex-  hold
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_grip 
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_grip 
+               -arg-> act-1 ]
 
 
 // --------------------------------------
 
 OP 15 - "To extend the arm ..."
   trig:
-    DO[ act-1 -lex-  extend
-              -obj-> obj-1 
+    DO[ fcn-1 -lex-  extend
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
         ako-1 -lex-  arm
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_arm
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_arm
+               -arg-> act-1 ]
 
 
 OP 16 - "To retract the arm ..."
   trig:
-    DO[ act-1 -lex-  retract
-              -obj-> obj-1 
+    DO[ fcn-1 -lex-  retract
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
         ako-1 -lex-  arm
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_arm
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_arm
+               -arg-> act-1 ]
 
 
 OP 17 - "To shift some direction ..."
   trig:
-    DO[ act-1 -lex-  shift
+    DO[ fcn-1 -lex-  shift
+              -fcn-> act-1
         dir-1 -dir-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_arm
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_arm
+               -arg-> act-1 ]
 
 
 // --------------------------------------
 
 OP 18 - "To reset the hand ..."
   trig:
-    DO[ act-1 -lex-  reset
-              -obj-> obj-1 
+    DO[ fcn-1 -lex-  reset
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
         ako-1 -lex-  hand
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_wrist
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_wrist
+               -arg-> act-1 ]
 
 
 OP 19 - "To point some direction ..."
   trig:
-    DO[ act-1 -lex-  point
+    DO[ fcn-1 -lex-  point
+              -fcn-> act-1
         dir-1 -dir-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_wrist
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_wrist
+               -arg-> act-1 ]
 
 
 OP 20 - "To twist some direction ..."
   trig:
-    DO[ act-1 -lex-  twist
+    DO[ fcn-1 -lex-  twist
+              -fcn-> act-1
         dir-1 -dir-> act-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_wrist
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_wrist
+               -arg-> act-1 ]
 
 
 // --------------------------------------
 
 OP 21 - "To reset the head ..."
   trig:
-    DO[ act-1 -lex-  reset
-              -obj-> obj-1 
+    DO[ fcn-1 -lex-  reset
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
         ako-1 -lex-  head
               -ako-> obj-1 ]
 ---------------
-   FCN[ fcn-1 -lex-  ball_neck
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_neck
+               -arg-> act-1 ]
 
 
 OP 22 - "To look some direction ..."
   trig:
-    DO[ act-1 -lex-  look
+    DO[ fcn-1 -lex-  look
+              -fcn-> act-1
         dir-1 -dir-> act-1 ] 
 ---------------
-   FCN[ fcn-1 -lex-  ball_neck
-              -arg-> act-1 ]
+   GND[ call-1 -lex-  ball_neck
+               -arg-> act-1 ]
 
 
-// ----------------------------------------
+// ========================================
 
-OP 23 - "To look around look right then ..."
+OP 23 - "To scan right look left then look right very slowly"
   trig:
-    DO[ act-1 -lex-  look 
-        dir-1 -lex-  around
+    DO[ fcn-1 -lex-  scan
+              -fcn-> act-1
+        dir-1 -lex-  right
               -dir-> act-1 ]
 -----------------
-    DO[ act-3 -lex-  look
-        dir-3 -lex-  right
-              -dir-> act-3 ]
-    DO[ act-4 -lex-  look
-        dir-4 -lex-  down
-              -dir-> act-4 ]           // full down for navigation
-    DO[ act-5 -lex-  look
-        dir-5 -lex-  left
-              -dir-> act-5 ]
-
-
-OP 24 - "Before looking around look left then look up slightly"
-  trig:
-  ANTE[ act-1 -lex-  look 
-        dir-1 -lex-  around
-              -dir-> act-1 ]
------------------
-    DO[ act-2 -lex-  look
+    DO[ fcn-2 -lex-  look
+              -fcn-> act-2
         dir-2 -lex-  left
               -dir-> act-2 ]
-    DO[ act-3 -lex-  look
-        dir-3 -lex-  up
+    DO[ fcn-3 -lex-  look
+              -fcn-> act-3
+        dir-3 -lex-  right
               -dir-> act-3 
-        amt-1 -lex-  slightly
-              -amt-> act-3 ]
+        mod-3 -lex-  slowly
+              -mod-> act-3 
+        deg-3 -lex-  very
+              -deg-> mod-3 ]
 
 
-OP 25 - "To scan around look level then look very slowly right ..."
+OP 24 - "To scan left look right then look left very slowly"
   trig:
-    DO[ act-1 -lex-  scan 
-        dir-1 -lex-  around
+    DO[ fcn-1 -lex-  scan
+              -fcn-> act-1
+        dir-1 -lex-  left
               -dir-> act-1 ]
 -----------------
-    DO[ act-2 -lex-  look
-        dir-2 -lex-  level
-              -dir-> act-2 
-        dir-3 -lex-  left
+    DO[ fcn-2 -lex-  look
+              -fcn-> act-2
+        dir-2 -lex-  right
               -dir-> act-2 ]
-    DO[ act-3 -lex-  look
-        dir-4 -lex-  right
+    DO[ fcn-3 -lex-  look
+              -fcn-> act-3
+        dir-3 -lex-  left
               -dir-> act-3 
-        mod-1 -lex-  slowly
+        mod-3 -lex-  slowly
               -mod-> act-3 
-        deg-1 -lex-  very
-              -deg-> mod-1 ]
-    DO[ act-4 -lex-  look
-        dir-5 -lex-  down
-              -dir-> act-4 
-        amt-1 -lex-  slightly
-              -amt-> act-4 ]
-    DO[ act-5 -lex-  look
+        deg-3 -lex-  very
+              -deg-> mod-3 ]
+
+
+OP 25 - "To visually search upwards scan left far down then scan down to the right then scan left slightly down"
+  trig:
+    DO[ fcn-1 -lex-  search
+              -fcn-> act-1
+        mod-1 -lex-  visually
+              -mod-> act-1
+        dir-1 -lex-  upwards
+              -dir-> act-1 ]
+-----------------
+    DO[ fcn-2 -lex-  scan
+              -fcn-> act-2
+        dir-2 -lex-  left
+              -dir-> act-2
+        dir-3 -lex-  down
+              -dir-> act-2 
+        deg-3 -lex-  far
+              -deg-> dir-3 ] 
+    DO[ fcn-3 -lex-  scan
+              -fcn-> act-3
+        dir-4 -lex-  down
+              -dir-> act-3
+        dir-5 -lex-  to the right
+              -dir-> act-3 ]
+    DO[ fcn-4 -lex-  scan
+              -fcn-> act-4
         dir-6 -lex-  left
-              -dir-> act-5 
-        mod-2 -lex-  slowly
-              -mod-> act-5 
-        deg-2 -lex-  very
-              -deg-> mod-2 ]
+              -dir-> act-4 
+        dir-7 -lex-  down
+              -dir-> act-4 
+        deg-4 -lex-  slightly
+              -deg-> dir-7 ] 
+
+
+OP 26 - "To visually search downwards scan slightly up to the left then scan level right then scan slightly down to the left"
+  trig:
+    DO[ fcn-1 -lex-  search
+              -fcn-> act-1
+        mod-1 -lex-  visually
+              -mod-> act-1
+        dir-1 -lex-  downwards
+              -dir-> act-1 ]
+-----------------
+    DO[ fcn-2 -lex-  scan
+              -fcn-> act-2
+        dir-2 -lex-  up
+              -dir-> act-2
+        deg-2 -lex-  slightly
+              -deg-> dir-2
+        dir-3 -lex-  to the left
+              -dir-> act-2 ]
+    DO[ fcn-3 -lex-  scan
+              -fcn-> act-3
+        dir-4 -lex-  level
+              -dir-> act-3
+        dir-5 -lex-  right
+              -dir-> act-3 ]
+    DO[ fcn-4 -lex-  scan
+              -fcn-> act-4
+        dir-6 -lex-  down
+              -dir-> act-4
+        deg-3 -lex-  slightly
+              -deg-> dir-6
+        dir-7 -lex-  to the left
+              -dir-> act-4 ]
+
+
+// -------------------------------------------
+
+OP 27 - "To gaze look"
+  trig:
+    DO[ fcn-1 -lex-  gaze 
+              -fcn-> act-1 ]
+-----------------
+    DO[ fcn-2 -lex-  look 
+              -fcn-> act-2 ]
+
+
+OP 28 - "To scan to the right scan right"
+  trig:
+    DO[ fcn-1 -lex-  scan
+              -fcn-> act-1
+        dir-1 -lex-  to the right
+              -dir-> act-1 ]
+-----------------
+    DO[ fcn-2 -lex-  scan
+              -fcn-> act-2
+        dir-2 -lex-  right
+              -dir-> act-2 ]
+
+
+OP 29 - "To scan to the left scan left"
+  trig:
+    DO[ fcn-1 -lex-  scan
+              -fcn-> act-1
+        dir-1 -lex-  to the left
+              -dir-> act-1 ]
+-----------------
+    DO[ fcn-2 -lex-  scan
+              -fcn-> act-2
+        dir-2 -lex-  left
+              -dir-> act-2 ]
+
+
+
 

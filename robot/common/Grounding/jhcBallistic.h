@@ -28,13 +28,15 @@
 
 #include "jhcGlobal.h"
 
-#include "Reasoning/jhcAliaNote.h"     // common audio
-#include "Semantic/jhcAliaDesc.h" 
+#include "API/jhcAliaDesc.h"           // common audio
+#include "API/jhcAliaNote.h"     
 
 #include "Data/jhcParam.h"             // common video
 
-#include "Action/jhcStdKern.h"         // common robot
-#include "Eli/jhcEliGrok.h"       
+#include "Geometry/jhcMatrix.h"        // common robot
+#include "RWI/jhcEliGrok.h"            
+
+#include "Kernel/jhcStdKern.h"         
 
 
 //= Interface to ELI motion kernel for ALIA system.
@@ -47,67 +49,60 @@ class jhcBallistic : public jhcStdKern
 {
 // PRIVATE MEMBER VARIABLES
 private:
+  // instance control variables
+  jhcMatrix *cpos, *cdir; 
+
   // link to hardware
   jhcEliGrok *rwi;
 
   // reported events
   jhcAliaNote *rpt;
-  UL32 kvetch;
-  double voltage;
-  int pcnt, power, hold;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // control of diagnostic messages
-  int dbg;                   
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // event parameters
-  jhcParam eps;
   double hmin;
   int hwait;
 
   // parameters for translation
-  jhcParam tps;
   double stf, qtf, step, move, drive, ftime;
 
   // parameters for rotation
-  jhcParam rps;
   double srf, qrf, turn, rot, spin;
 
   // motion progress
-  jhcParam pps;
   double mprog, tprog;
   int mstart, mmid, tstart, tmid;
 
   // parameters for lift stage
-  jhcParam lps;
   double slf, qlf, lift, lprog;
   int lstart, lmid;
 
   // parameters for grabbing
-  jhcParam gps;
   double wtol, gprog, fhold;
   int gstart, gmid, fask;
 
   // parameters for arm extension
-  jhcParam aps;
   double extx, exty, extz, edir, etip;
 
   // parameters for hand shift
-  jhcParam hps;
   double dxy, dz, hdone, zdone, hprog;
   int hstart, hmid;
 
   // parameters for wrist reorientation
-  jhcParam wps;
   double wpan, wtilt, wroll, wdone, wprog;
   int wstart, wmid;
 
   // parameters for neck reorientation
-  jhcParam nps;
   double npan, ntilt, sgz, qgz, ndone, nprog;
   int nstart, nmid;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  int dbg;                   // control of diagnostic messages
+  jhcParam eps, tps, rps, pps, lps, gps, aps, hps, wps, nps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -115,7 +110,6 @@ public:
   // creation and initialization
   ~jhcBallistic (); 
   jhcBallistic ();
-  void Platform (jhcEliGrok *robot);
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -137,9 +131,10 @@ private:
   int neck_params (const char *fname);
 
   // overridden virtuals
-  void local_reset (jhcAliaNote *top);
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  void local_platform (void *soma);
+  void local_reset (jhcAliaNote& top);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
   // overall poses
   JCMD_DEF(ball_stop);
@@ -177,6 +172,8 @@ private:
   int get_gsp (double& speed, const jhcAliaDesc *act) const;
 
   // utilities
+  int set_degs (double& ang, const jhcAliaDesc *amt) const;
+  int set_inches (double& dist, const jhcAliaDesc *amt, double clip) const;
   bool stuck (int i, double err, double prog, int start, int mid);
   int err_hw (const char *sys);
 

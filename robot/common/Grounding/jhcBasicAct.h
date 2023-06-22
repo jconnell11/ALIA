@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,14 +28,14 @@
 
 #include "jhcGlobal.h"
 
-#include "Reasoning/jhcAliaNote.h"     // common audio
-#include "Semantic/jhcAliaDesc.h" 
+#include "API/jhcAliaNote.h"           // common audio
+#include "API/jhcAliaDesc.h" 
 
 #include "Data/jhcParam.h"             // common video
 
-#include "Manus/jhcManusRWI.h"         // common robot
+#include "RWI/jhcManusRWI.h"           // common robot
 
-#include "Action/jhcStdKern.h"       
+#include "Kernel/jhcStdKern.h"       
 
 
 //= Interface to Manus motion kernel for ALIA system.
@@ -55,26 +55,25 @@ private:
   int warn;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // controls diagnostic messages
-  int dbg;                   
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // miscellaneous parameters
-  jhcParam mps;
   double dtrig, dtol, ftime, gtime;
 
   // parameters for translation
-  jhcParam tps;
   double ips, stf, qtf, step, move, drive, madj, dadj;
 
   // parameters for rotation
-  jhcParam rps;
   double dps, srf, qrf, turn, rot, spin, radj, sadj;
 
   // parameters for lift stage
-  jhcParam lps;
   double zps, slf, qlf, lift;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  int dbg;                   // controls diagnostic messages
+  jhcParam mps, tps, rps, lps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -82,7 +81,6 @@ public:
   // creation and initialization
   ~jhcBasicAct (); 
   jhcBasicAct ();
-  void Platform (jhcManusRWI *robot);
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -98,10 +96,11 @@ private:
   int misc_params (const char *fname);
 
   // overridden virtuals
-  void local_reset (jhcAliaNote *top);
+  void local_platform (void *soma);
+  void local_reset (jhcAliaNote& top);
   void local_volunteer ();
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
   // distance sensor
   void dist_close ();
@@ -126,6 +125,10 @@ private:
   // grip 
   JCMD_DEF(base_grip);
   int get_hand (double& grab, const jhcAliaDesc *act) const;
+
+  // utlities
+  int set_degs (double& ang, const jhcAliaDesc *amt) const;
+  int set_inches (double& dist, const jhcAliaDesc *amt, double clip) const;
 
 
 };

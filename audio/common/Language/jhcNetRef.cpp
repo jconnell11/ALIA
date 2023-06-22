@@ -45,7 +45,7 @@ jhcNetRef::jhcNetRef (jhcNodePool *u, double bmin)
 {
   univ = u; 
   bth = bmin;
-  BuildIn(&cond);
+  BuildIn(cond);
   focus = NULL;
   partial = NULL;
   refmode = 1;
@@ -118,7 +118,7 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
       // add a new FIND to chain instead of creating
       if ((var = append_find(n0, blf, skolem, find)) == NULL)
         return NULL;
-      jprintf(1, dbg, "  ==> %s from new %s\n", ((find > 0) ? "BIND" : "FIND"), var->Nick());
+      jprintf(1, dbg, "  ==> %s for new %s\n", ((find > 0) ? "BIND" : "FIND"), var->Nick());
       var->MarkConvo();                          // user speech
       return var;
     }
@@ -158,7 +158,7 @@ jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem, i
   dk = &(dir->key);
   shell = univ->BuildIn(dk);
   partial->CutTail(trim, n0);
-  univ->Assert(trim, mt, blf, 0, univ);      
+  univ->Assert(trim, mt, blf, 0, univ);      // copy tags?
   univ->BuildIn(shell);
 
   // remove any originally external nodes from skolem directive key
@@ -219,7 +219,7 @@ int jhcNetRef::match_found (jhcBindings *m, int& mc)
 //= Enforce any restrictions on naked node choice encoded by grammatical tags.
 // saves best mate for focus in "pron" member variable and sets "recent" > 0
 // returns 0 if rejected, 1 if best so far
-// NOTE: modified form of jhcAliaDir::filter_pron
+// NOTE: modified form of jhcAliaDir::filter_pron (which does not need tag check)
 
 int jhcNetRef::filter_pron (const jhcNetNode *mate)
 {
@@ -233,20 +233,20 @@ int jhcNetRef::filter_pron (const jhcNetNode *mate)
   }
   else if ((tags & JTAG_FEM) != 0)     // "she"
   {
-    if ((mate->FindProp("hq", "male", 0, bth) != NULL) ||
+    if ((mate->FindProp("hq", "male",   0, bth) != NULL) || ((mate->tags & JTAG_MASC) != 0) ||
         (mate->FindProp("hq", "female", 1, bth) != NULL))
       return jprintf(2, dbg, "MATCH - but reject %s as not female\n", mate->Nick());
   }
   else if ((tags & JTAG_MASC) != 0)    // "he"
   {
-    if ((mate->FindProp("hq", "female", 0, bth) != NULL) ||
-        (mate->FindProp("hq", "male", 1, bth) != NULL))
+    if ((mate->FindProp("hq", "female", 0, bth) != NULL) || ((mate->tags & JTAG_FEM) != 0) ||
+        (mate->FindProp("hq", "male",   1, bth) != NULL))
       return jprintf(2, dbg, "MATCH - but reject %s as not male\n", mate->Nick());
   }
   else if ((tags & JTAG_ITEM) != 0)    // "it"
   {
-    if ((mate->FindProp("hq", "male", 0, bth) != NULL) ||
-        (mate->FindProp("hq", "female", 0, bth) != NULL))
+    if ((mate->FindProp("hq", "male",   0, bth) != NULL) || ((mate->tags & JTAG_MASC) != 0) ||
+        (mate->FindProp("hq", "female", 0, bth) != NULL) || ((mate->tags & JTAG_FEM)  != 0))
       return jprintf(2, dbg, "MATCH - but reject %s as gendered\n", mate->Nick());
   }
   else if (tags == 0)                  // "them" has no args

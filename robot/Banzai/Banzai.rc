@@ -147,6 +147,10 @@ BEGIN
         MENUITEM "&Interact Level",             ID_MOOD_INTERACTIONLEVEL
         MENUITEM "&Energy Level",               ID_MOOD_ENERGYLEVEL
         MENUITEM SEPARATOR
+        MENUITEM "&Rule Op Adj",                ID_MOOD_RULEOPADJ
+        MENUITEM "&Belief Thresh",              ID_MOOD_CONFADJUST
+        MENUITEM "&Select Thresh",              ID_MOOD_PREFADJUST
+        MENUITEM SEPARATOR
         MENUITEM "&LTM Match",                  ID_MOOD_LTMMATCH
     END
     POPUP "&Social"
@@ -160,7 +164,16 @@ BEGIN
         MENUITEM "Enroll &Photo",               ID_ATTENTION_ENROLLPHOTO
         MENUITEM "&Enroll Live",                ID_ATTENTION_ENROLLLIVE
     END
-    POPUP "&Objects"
+    POPUP "Su&pport"
+    BEGIN
+        MENUITEM "Surf &Events",                ID_GRAB_SURFEVENTS
+        MENUITEM "Surf &Orient",                ID_GRAB_SURFMOTION
+        MENUITEM SEPARATOR
+        MENUITEM "&Surf Height",                ID_OBJECTS_SURFHEIGHT
+        MENUITEM "Surf &Location",              ID_OBJECTS_SURFLOCATION
+        MENUITEM "Sur&f Tracking",              ID_GRAB_SURFTRACKING
+    END
+    POPUP "S&cene"
     BEGIN
         MENUITEM "&Range Bins",                 ID_VISUAL_DIST
         MENUITEM "&Shape Bins",                 ID_OBJECTS_SHAPEBINS
@@ -171,13 +184,8 @@ BEGIN
         MENUITEM "&Hue Thresholds",             ID_VISUAL_HUETHRESHOLDS
         MENUITEM "&Primary Colors",             ID_VISUAL_PRIMARYCOLORS
     END
-    POPUP "&Grab"
+    POPUP "&Manip"
     BEGIN
-        MENUITEM "&Surf Height",                ID_OBJECTS_SURFHEIGHT
-        MENUITEM "Surf &Location",              ID_OBJECTS_SURFLOCATION
-        MENUITEM "Surf &Events",                ID_GRAB_SURFEVENTS
-        MENUITEM "Sur&f Tracking",              ID_GRAB_SURFTRACKING
-        MENUITEM SEPARATOR
         MENUITEM "&Grasp Point",                ID_OBJECTS_GRASPPOINT
         MENUITEM "&Empty Spot",                 ID_OBJECTS_EMPTYSPOT
         MENUITEM "&Trajectory Ctrl",            ID_OBJECTS_TRAJECTORYCTRL
@@ -225,7 +233,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Seek Loc",                   ID_ENVIRON_GOTO
     END
-    POPUP "&Manipulation"
+    POPUP "&Grabbing"
     BEGIN
         MENUITEM "Swing &Params",               ID_ARM_SWINGPARAMS
         MENUITEM "S&wing Joint",                ID_ARM_SWINGJOINT
@@ -253,10 +261,11 @@ BEGIN
     POPUP "De&mo"
     BEGIN
         MENUITEM "Demo &Options",               ID_DEMO_DEMOOPTIONS
-        MENUITEM SEPARATOR
         MENUITEM "Print &Details",              ID_DEMO_CONSOLEMSGS
         MENUITEM "&Kernel Debug",               ID_DEMO_KERNELDEBUG
-        MENUITEM "Attn + Time",                 ID_DEMO_ATTN
+        MENUITEM SEPARATOR
+        MENUITEM "&Cycle Rate",                 ID_DEMO_CYCLERATE
+        MENUITEM "&Attn Window",                ID_DEMO_ATTN
         MENUITEM "&Static Pose",                ID_DEMO_STATICPOSE
         MENUITEM SEPARATOR
         MENUITEM "&Reset Robot",                ID_DEMO_RESETROBOT
@@ -320,7 +329,7 @@ CAPTION "About Banzai"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "Banzai Version 5.00",IDC_STATIC,47,11,119,8,SS_NOPREFIX
+    LTEXT           "Banzai Version 5.10",IDC_STATIC,47,11,119,8,SS_NOPREFIX
     LTEXT           "Copyright (C) 2015-2023, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
@@ -410,8 +419,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 5,0,0,1
- PRODUCTVERSION 5,0,0,1
+ FILEVERSION 5,10,0,1
+ PRODUCTVERSION 5,10,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -427,12 +436,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "Banzai Robot Reasoner"
-            VALUE "FileVersion", "5.0.0.1"
+            VALUE "FileVersion", "5.10.0.1"
             VALUE "InternalName", "Banzai"
             VALUE "LegalCopyright", "Copyright (C) 2023 Etaoin Systems"
             VALUE "OriginalFilename", "Banzai.exe"
             VALUE "ProductName", "Banzai"
-            VALUE "ProductVersion", "5.0.0.1"
+            VALUE "ProductVersion", "5.10.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -732,7 +741,7 @@ BEGIN
     ID_ENVIRON_GOTO         "Pick fixed map location for robot to travel toward"
     ID_NAV_CONFIDENCE       "Parameters for synthetic sensors and obstacle avoidance"
     ID_PEOPLE_VISIBILITY    "Angular range where heads are likely to be detected"
-    ID_DEMO_ATTN            "Adjust attention timing and thought rate"
+    ID_DEMO_ATTN            "Adjust speech attention timing "
     ID_OBJECTS_TRACKOBJS    "Detect protrusions from a flat surface"
     ID_OBJECTS_SURFACEMAP   "Map size and resolution for detecting objects on surface"
     ID_OBJECTS_DETECT       "Parameters for finding objects protruding from surface"
@@ -818,8 +827,17 @@ BEGIN
     ID_DEMO_CONSOLEMSGS     "Control what basic info gets printed to console window"
     ID_DEMO_KERNELDEBUG     "Control debugging messages from action kernels"
     ID_GRAB_SURFEVENTS      "Parameters for signaling detected tables"
-    ID_GRAB_SURFTRACKING    "Parameters for tracking and approaching tables"
+    ID_GRAB_SURFTRACKING    "Parameters for tracking multiple tables"
     ID_MOOD_LTMMATCH        "Property weights and thresholds for long term memory recognition"
+    ID_MOOD_CONFADJUST      "Parameters for belief threshold servoing"
+    ID_MOOD_PREFADJUST      "Parameters for selection threshold servoing"
+END
+
+STRINGTABLE
+BEGIN
+    ID_MOOD_RULEOPADJ       "Parameters for updating rule confidence and operator preference"
+    ID_DEMO_CYCLERATE       "Adjust thinking speed and default body update rate"
+    ID_GRAB_SURFMOTION      "Paramters controlling motion relative to a surface"
 END
 
 #endif    // English (United States) resources

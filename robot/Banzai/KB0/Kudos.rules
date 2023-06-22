@@ -1,0 +1,22 @@
+// Category definitions and rules for Kudos kernel
+// ========================================================
+
+RULE 1 - "If something is right then it is correct"
+    if: hq-1 -lex- right
+             -hq-> agt-1
+  then: hq-2 -lex- correct
+             -hq-> agt-1
+
+RULE 2 - "If something is wrong then it is not correct"
+    if: hq-1 -lex- wrong
+             -hq-> agt-1
+  then: hq-2 -lex- correct
+             -neg- 1
+             -hq-> agt-1
+
+RULE 3 - "If something is bad then it is not good"
+    if: hq-1 -lex- bad
+             -hq-> agt-1
+  then: hq-2 -lex- good
+             -neg- 1
+             -hq-> agt-1

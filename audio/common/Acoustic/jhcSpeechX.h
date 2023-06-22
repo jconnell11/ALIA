@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -183,6 +183,8 @@ public:
   int SetUser (const char *name, int strict =0, int force =2);
   const char *UserName (int chk =1);
   int FirstName (char *name, int ssz);
+  const char *VoiceModel (int pend =1) const 
+    {return((pend > 0) ? select : model);}
   int PrintCfg ();
 
   // configuration - convenience
@@ -195,8 +197,10 @@ public:
 
   // top level convenience functions and status
   void Inject (const char *txt, int stop =0);
-  virtual int Update (int reco =1, int prolong =0);    // allow to be overridden
+  virtual int Update (int reco =1, int tts =1, int prolong =0);    
   void Issue ();
+  void Click (int val =2) {hear = val;}
+  void Blurt (int val =1) {talk = val;}
   int Hearing () const {return hear;}
   int Talking () const {return talk;}
   double Silence () const;

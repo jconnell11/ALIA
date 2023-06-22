@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
+// Copyright 2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include "Manus/jhcManusRWI.h"
+#include "RWI/jhcManusRWI.h"
 
 #include "Grounding/jhcLocalSeq.h"
 
@@ -40,19 +41,8 @@ jhcLocalSeq::~jhcLocalSeq ()
 
 jhcLocalSeq::jhcLocalSeq ()
 {
-  ver = 1.00;
   strcpy_s(tag, "LocalSeq");
-  Platform(NULL);
-}
-
-
-//= Attach physical enhanced body and make pointers to some pieces.
-
-void jhcLocalSeq::Platform (jhcManusRWI *io) 
-{
-  base = NULL;
-  if (io != NULL)
-    base = io->body;
+  rwi = NULL;
 }
 
 
@@ -60,9 +50,17 @@ void jhcLocalSeq::Platform (jhcManusRWI *io)
 //                          Overridden Functions                         //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Attach physical enhanced body and make pointers to some pieces.
+
+void jhcLocalSeq::local_platform (void *soma)
+{
+  rwi = (jhcManusRWI *) soma;
+}
+
+
 //= Set up for new run of system.
 
-void jhcLocalSeq::local_reset (jhcAliaNote *top)
+void jhcLocalSeq::local_reset (jhcAliaNote& top)
 {
   dbg = 1;
 }
@@ -80,7 +78,7 @@ void jhcLocalSeq::local_volunteer ()
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if successful, -1 for problem, -2 if function unknown
 
-int jhcLocalSeq::local_start (const jhcAliaDesc *desc, int i)
+int jhcLocalSeq::local_start (const jhcAliaDesc& desc, int i)
 {
   return -2;
 }
@@ -90,7 +88,7 @@ int jhcLocalSeq::local_start (const jhcAliaDesc *desc, int i)
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if done, 0 if still working, -1 if failed, -2 if function unknown
 
-int jhcLocalSeq::local_status (const jhcAliaDesc *desc, int i)
+int jhcLocalSeq::local_status (const jhcAliaDesc& desc, int i)
 {
   return -2;
 }

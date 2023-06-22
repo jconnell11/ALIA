@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,22 +28,28 @@
 
 #include "jhcGlobal.h"
 
-#include "Action/jhcAliaKernel.h"   
+#include "API/jhcAliaKernel.h"   
 
 
 //= Add procedural grounding functions from a DLL to ALIA.
 // DLL should contain these 6 functions:
 // <pre>
-//   void pool_bind (void *body)
-//   void pool_reset (jhcAliaNote *attn)
-//   void pool_volunteer ()
-//   int pool_start (const jhcAliaDesc *desc, int bid)
-//     returns new instance number (>= 0) if success, -1 for problem, -2 for unknown
-//   int pool_status (const jhcAliaDesc *desc, int i)
-//     returns positive for done, 0 for still running, -1 for failure, -2 if unknown
-//   int pool_stop (const jhcAliaDesc *desc, int i)
-//     returns positive for convenience, -2 if unknown (courtesy call - should never wait)
+//   const char *gnd_name ()
+//     returns tag associated with KB0 operator, rule, and word files
+//   void gnd_platform (void *soma)
+//     connects functions to a real-world interface for a body
+//   void gnd_reset (jhcAliaNote& attn)
+//     clears any state for start of a new run
+//   void gnd_volunteer ()
+//     monitor conditions and spontaneously generate events
+//   int gnd_start (const jhcAliaDesc& desc, int bid)
+//     start described function using given importance bid
+//   int gnd_status (const jhcAliaDesc& desc, int inst)
+//     check whether described function instance has completed yet
+//   int gnd_stop (const jhcAliaDesc& desc, int inst)
+//     stop described function instance (or all if instance negative)
 // </pre>
+// see Grounding/alia_gnd.x for example starter shell
 
 class jhcAliaDLL : public jhcAliaKernel
 {
@@ -51,18 +58,16 @@ private:
   // basic DLL handle
   void *lib;
 
-  // other pools of functions
-  jhcAliaKernel *next;
-
   // included configuration functions
-  void (*local_bind)(void *body);
-  void (*local_reset)(jhcAliaNote *attn);
+  const char * (*local_name)();
+  void (*local_platform)(void *soma);
+  void (*local_reset)(jhcAliaNote& attn);
 
   // included operational functions
   void (*local_volunteer)();
-  int (*local_start)(const jhcAliaDesc *desc, int bid);
-  int (*local_status)(const jhcAliaDesc *desc, int bid);
-  int (*local_stop)(const jhcAliaDesc *desc, int bid);
+  int (*local_start)(const jhcAliaDesc& desc, int bid);
+  int (*local_status)(const jhcAliaDesc& desc, int bid);
+  int (*local_stop)(const jhcAliaDesc& desc, int bid);
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -71,15 +76,15 @@ public:
   ~jhcAliaDLL ();
   jhcAliaDLL (const char *file =NULL);
   int Load (const char *file);
-  void AddFcns (jhcAliaKernel *pool);
-  void Bind (void *body);
-  void Reset (jhcAliaNote *attn);                    
+  void AddFcns (jhcAliaKernel& pool);
+  void Platform (void *soma);
+  void Reset (jhcAliaNote& attn);                    
 
   // main functions
   void Volunteer ();
-  int Start (const jhcAliaDesc *desc, int bid);
-  int Status (const jhcAliaDesc *desc, int inst);
-  int Stop (const jhcAliaDesc *desc, int inst);
+  int Start (const jhcAliaDesc& desc, int bid);
+  int Status (const jhcAliaDesc& desc, int inst);
+  int Stop (const jhcAliaDesc& desc, int inst);
 
 
 // PRIVATE MEMBER FUNCTIONS

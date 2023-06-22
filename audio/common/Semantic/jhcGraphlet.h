@@ -121,9 +121,14 @@ public:
   jhcNetNode *Item (int i) const
     {return(((i >= 0) && (i < ni)) ? desc[i] : NULL);}
   jhcNetNode *Main () const     {return Item(0);}
+  int MainNeg () const          {return((ni <= 0) ? 0 : Main()->Neg());}
   const char *MainNick () const {return((ni <= 0) ? blank : Main()->Nick());}
   const char *MainTag () const  {return((ni <= 0) ? blank : Main()->Tag());}
-  int MainNeg () const          {return((ni <= 0) ? 0 : Main()->Neg());}
+  jhcNetNode *MainAct () const  {return((ni <= 0) ? NULL : Main()->Val("fcn"));}
+  int ActNeg () const           
+    {const jhcNetNode *act = MainAct(); return((act == NULL) ? 0 : act->Neg());}
+  int ActDone () const
+    {const jhcNetNode *act = MainAct(); return((act == NULL) ? 0 : act->Done());}
     
   // list access (overrides virtual)
   jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const;
@@ -143,6 +148,7 @@ public:
   void TrimTo (int cnt) {ni = __max(0, cnt);}
   jhcNetNode *SetMain (jhcNetNode *main);
   int ReplaceMain (jhcNetNode *main);
+  int ReplaceAct (jhcNetNode *fcn);
   jhcNetNode *MainLast ();
   jhcNetNode *MainProp ();
   bool InDesc (const jhcNetNode *item) const;

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ class jhcArr
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  int sz, i0, i1;
+  int sz, i0, i1, fn;
   int *arr;
 
 
@@ -88,13 +88,22 @@ public:
   void Copy (const jhcArr& src);
   void Copy (const int vals[], int n);
   void Push (int val);
-  void Scroll (int fill, int val);
   int Pop (int fill =0);
   void Shift (int amt, int fill =0);
   int Tail () const {return arr[sz - 1];};
   int FlipAround (const jhcArr& src, int mid);
   void Zoom (const jhcArr& src, int mid, double factor); 
   void Magnify (const jhcArr& src, int bot, double factor); 
+
+  // scrolling
+  int ScrPt () const  {return fn;}
+  int Filled () const {return __min(fn, sz);}
+  bool Full () const  {return(fn >= sz);}
+  void Rewind () {fn = 0;}
+  void Scroll (int val) 
+    {ASet(fn % sz, val); fn++;}
+  int RollRef (int n) const
+    {return((fn <= sz) ? ARef(n) : ARef((fn + n) % sz));}
 
   // low-level accesss
   int ARefChk (int n, int def =-1) const;

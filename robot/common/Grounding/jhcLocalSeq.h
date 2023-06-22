@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
+// Copyright 2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +30,7 @@
 
 #include "Body/jhcManusX.h"            // common robot
 
-#include "Action/jhcStdKern.h"       
+#include "Kernel/jhcStdKern.h"       
 
 
 //= Interface to Manus sensor sequence kernel for ALIA system.
@@ -38,8 +39,8 @@ class jhcLocalSeq : public jhcStdKern
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  // link to hardware 
-  jhcManusX *base;
+  // link to hardware
+  jhcManusRWI *rwi;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -52,16 +53,16 @@ public:
   // creation and initialization
   ~jhcLocalSeq ();
   jhcLocalSeq ();
-  void Platform (class jhcManusRWI *io);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // overridden virtuals
-  void local_reset (jhcAliaNote *top);
+  void local_platform (void *soma);
+  void local_reset (jhcAliaNote& top);
   void local_volunteer ();
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
 
 };

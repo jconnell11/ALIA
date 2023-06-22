@@ -1,22 +1,45 @@
 // commands understood by text-to-speech pattern generator
-// ================================================
+// ========================================================
 
 OP 1 - "To say something ..."
   trig:
-    DO[ act-1 -lex-  say
-              -obj-> txt-1 ]
+    DO[ fcn-1 -lex-  say
+              -fcn-> act-1
+        act-1 -obj-> txt-1 ]
 -----------
-   FCN[ fcn-1 -lex-  echo_wds 
-              -pat-> txt-1 ]
+   GND[ call-1 -lex-  talk_echo
+               -pat-> txt-1 ]
 
 
 OP 2 - "To say something to someone ..."
   trig:
-    DO[ act-1 -lex-   say
-              -dest-> agt-1
+    DO[ fcn-1 -lex-   say
+              -fcn--> act-1
+        act-1 -dest-> agt-1
               -obj--> txt-1 ]
 -----------
-   FCN[ fcn-1 -lex-   echo_wds 
-              -dest-> agt-1
-              -pat--> txt-1 ]
+   GND[ call-1 -lex-   talk_echo
+               -dest-> agt-1
+               -pat--> txt-1 ]
 
+
+OP 3 - "To ask something ..."
+  trig:
+    DO[ fcn-1 -lex-  ask
+              -fcn-> act-1
+        act-1 -obj-> txt-1 ]
+-----------
+   GND[ call-1 -lex-  talk_wait 
+               -pat-> txt-1 ]
+
+
+OP 4 - "To ask someone something ..."
+  trig:
+    DO[ fcn-1 -lex-   ask
+              -fcn--> act-1
+        act-1 -dest-> agt-1
+              -obj--> txt-1 ]
+-----------
+   GND[ call-1 -lex-   talk_wait
+               -dest-> agt-1
+               -pat--> txt-1 ]

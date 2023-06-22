@@ -76,24 +76,24 @@ private:
   int nh, fill;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // controls diagnostic messages
-  int dbg;
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // ground mapping parameters
-  jhcParam eps;
   double dej, hat, fbump;
   int drop, hole;
 
   // robot size and map fading parameters 
-  jhcParam gps;
   double rside, rfwd, rback, pad, fade, temp;
 
   // sensors and avoidance parameters
-  jhcParam nps;
   double veer, lead, wmat, hmat, tmat, glide, orient;
   int free;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  int dbg;                   // controls diagnostic messages
+  jhcParam eps, gps, nps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -101,6 +101,8 @@ public:
   // creation and initialization
   ~jhcLocalOcc ();
   jhcLocalOcc ();
+  double Nose () const {return rfwd;}
+  double Hip () const  {return rside;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);

@@ -192,6 +192,11 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_GRAB_SURFEVENTS, &CBanzaiDoc::OnGrabSurfevents)
   ON_COMMAND(ID_GRAB_SURFTRACKING, &CBanzaiDoc::OnGrabSurftracking)
   ON_COMMAND(ID_MOOD_LTMMATCH, &CBanzaiDoc::OnMoodLtmmatch)
+  ON_COMMAND(ID_MOOD_CONFADJUST, &CBanzaiDoc::OnMoodConfadjust)
+  ON_COMMAND(ID_MOOD_PREFADJUST, &CBanzaiDoc::OnMoodPrefadjust)
+  ON_COMMAND(ID_MOOD_RULEOPADJ, &CBanzaiDoc::OnMoodRuleopadj)
+  ON_COMMAND(ID_DEMO_CYCLERATE, &CBanzaiDoc::OnDemoCyclerate)
+      ON_COMMAND(ID_GRAB_SURFMOTION, &CBanzaiDoc::OnGrabSurfmotion)
       END_MESSAGE_MAP()
 
 
@@ -272,7 +277,7 @@ BOOL CBanzaiDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = ec.Version();
-  LockAfter(5, 2023, 12, 2022);
+  LockAfter(11, 2023, 6, 2023);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -534,7 +539,7 @@ void CBanzaiDoc::set_tilt (const char *fname)
   {
     strncpy_s(tilt, sep + 2, ((sep[2] == '-') ? 4 : 3));
     if (sscanf_s(tilt, "%d", &deg10) == 1)
-      eb->tdef = -0.1 * deg10;
+      eb->SetTilt0(-0.1 * deg10);
   }
 }
 
@@ -1630,12 +1635,15 @@ void CBanzaiDoc::OnArmLimp()
 
 void CBanzaiDoc::OnUtilitiesBatteryfull()
 {
-  int n;
+  int n = (ec.body).BodyNum();
 
-  if ((n = (ec.body).ResetVmax()) > 0)
-    Tell("Robot %d battery capacity will be recalibrated on next run", n);
-  else
+  if (n <= 0)
     Complain("Robot body currently unknown");
+  else
+  {
+    ((ec.body).base).ResetBat(0.0);
+    Tell("Robot %d battery capacity will be recalibrated on next run", n);
+  }
 }
 
 
@@ -1709,7 +1717,7 @@ void CBanzaiDoc::OnMoodActivitylevel()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((ec.mood).bps); 
+  dlg.EditParams((ec.mood).aps); 
 }
 
 
@@ -1730,6 +1738,36 @@ void CBanzaiDoc::OnMoodEnergylevel()
 	jhcPickVals dlg;
 
   dlg.EditParams((ec.mood).tps); 
+}
+
+
+// Parameters for updating rule confidence and operator preference
+
+void CBanzaiDoc::OnMoodRuleopadj()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.atree).aps); 
+}
+
+
+// Parameters for belief threshold servoing
+
+void CBanzaiDoc::OnMoodConfadjust()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.mood).bps); 
+}
+
+
+// Parameters for selection threshold servoing
+
+void CBanzaiDoc::OnMoodPrefadjust()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.mood).pps); 
 }
 
 
@@ -1758,7 +1796,7 @@ int CBanzaiDoc::interact_params (const char *fname)
   ps->NextSpec4( &cam,        0, "Camera available");
   ps->NextSpec4( &rob,        0, "Body (none, yes, autorun)");
   ps->NextSpec4( &(ec.spin),  0, "Speech (none, local, web)");  
-  ps->NextSpec4( &(ec.amode), 2, "Attn (none, ends, front, only)");
+  ps->NextSpec4( &(ec.amode), 2, "Wake (on, ends, front, solo)");
   ps->NextSpec4( &(ec.tts),   0, "Vocalize output");
   ps->NextSpec4( &fsave,      0, "Face model update");
 
@@ -1777,16 +1815,6 @@ void CBanzaiDoc::OnDemoDemooptions()
 	jhcPickVals dlg;
 
   dlg.EditParams(ips); 
-}
-
-
-// Adjust attention timing and thought rate 
-
-void CBanzaiDoc::OnDemoAttn()
-{
-	jhcPickVals dlg;
-
-  dlg.EditParams(ec.tps); 
 }
 
 
@@ -1810,6 +1838,26 @@ void CBanzaiDoc::OnDemoKerneldebug()
 }
 
 
+// Adjust thinking speed and default body update rate
+
+void CBanzaiDoc::OnDemoCyclerate()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(ec.rps); 
+}
+
+
+// Adjust speech attention window timing 
+
+void CBanzaiDoc::OnDemoAttn()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(ec.tps); 
+}
+
+
 // Neck angles and lift height to use if no physical robot
 
 void CBanzaiDoc::OnDemoStaticpose()
@@ -1828,7 +1876,7 @@ void CBanzaiDoc::OnDemoTextfile()
   CFileDialog dlg(TRUE);
   HWND me = GetForegroundWindow();
   char in[200] = "";
-  const jhcImg *icam = NULL;
+  const jhcImg *pic = NULL;
   FILE *f;
   int sp0 = ec.spin;
 
@@ -1845,9 +1893,9 @@ void CBanzaiDoc::OnDemoTextfile()
 
   // possibly check for video
   if ((cam > 0) && (ChkStream() > 0))
-    (ec.body).BindVideo(&v);
+    ec.BindVideo(&v);
   else
-    (ec.body).BindVideo(NULL);
+    ec.BindVideo(NULL);
 
   // reset all required components
   system("cls");
@@ -1869,7 +1917,6 @@ jtimer_clr();
   // keep taking sentences until ESC
   d.Clear(1, "File input (ESC to quit) ...");
   d.ResetGrid(0, 640, 480);
-  d.StringGrid(0, 0, ">>> NO IMAGES <<<");
 #ifndef _DEBUG
   try
 #endif
@@ -1885,13 +1932,18 @@ jtimer_clr();
       if (ec.Respond() <= 0)
         break;
 
-      // show interaction
-      if ((ec.body).NewFrame())
-      {
-        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention (%3.1f\")", ((ec.rwi).tab).ztab);
-        d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  %s", (ec.rwi).NavGoal());
-      }
-      (ec.stat).Memory(&d, 0, 1, ec.Sensing());
+      // show robot sensing and action
+      if ((pic = ec.View(0)) != NULL)
+        d.ShowGrid(pic, 0, 0, 0, "Visual attention (surface %3.1f\")", ((ec.rwi).tab).ztab);
+      else
+        d.StringGrid(0, 0, ">>> NO IMAGES - %s <<<", ec.RunTime());
+      (ec.disp).Memory(d);
+      (ec.disp).Audio(d);
+      if ((pic = ec.View(1)) != NULL)
+        d.ShowGrid(pic, 1, 0, 2, "%s - Overhead navigation map  %s", ec.RunTime(), (ec.rwi).NavGoal());
+      (ec.disp).Mood(d);
+
+      // show any communication
       chat.Post(ec.NewInput(), 1);
       chat.Post(ec.NewOutput());
     }
@@ -1911,10 +1963,10 @@ jtimer_rpt();
   SetForegroundWindow(me);
 
   // result caching
-  icam = (ec.rwi).HeadView();
-  if ((icam != NULL) && icam->Valid())
+  pic = ec.View(0);
+  if ((pic != NULL) && pic->Valid())
   {
-    res.Clone(*icam);
+    res.Clone(*pic);
     sprintf_s(rname, "script_cam.bmp");
   }
 }
@@ -1956,14 +2008,14 @@ void CBanzaiDoc::OnDemoInteractive()
   HWND me = GetForegroundWindow();
   char in[200] = "";
   jhcImg col(640, 480, 3);
-  const jhcImg *inav = NULL;
+  const jhcImg *pic = NULL;
 
   // possibly check for video
-  (ec.body).BindVideo(NULL);
+  ec.BindVideo(NULL);
   if (cam > 0)
   { 
     if (ChkStream() > 0)
-      (ec.body).BindVideo(&v);
+      ec.BindVideo(&v);
     else if (cmd_line > 0)
     {
       ec.SpeakError("I can't see anything");
@@ -1995,7 +2047,6 @@ void CBanzaiDoc::OnDemoInteractive()
   else
     d.Clear(1, "Text input (ESC to quit) ...");
   d.ResetGrid(0, 640, 480);
-  d.StringGrid(0, 0, ">>> NO IMAGES <<<");
 
 jtimer_clr();
   // keep taking sentences until ESC
@@ -2010,13 +2061,18 @@ jtimer_clr();
       if (ec.Respond() <= 0)
         break;
 
-      // show robot sensing and action and any communication
-      if ((ec.body).NewFrame())
-      {
-        d.ShowGrid((ec.rwi).HeadView(), 0, 0, 0, "Visual attention (%3.1f\")", ((ec.rwi).tab).ztab);
-        d.ShowGrid((ec.rwi).MapView(),  1, 0, 2, "Overhead navigation map  %s", (ec.rwi).NavGoal());
-      }
-      (ec.stat).Memory(&d, 0, 1, ec.Sensing());
+      // show robot sensing and action
+      if ((pic = ec.View(0)) != NULL)
+        d.ShowGrid(pic, 0, 0, 0, "Visual attention (surface %3.1f\")", ((ec.rwi).tab).ztab);
+      else
+        d.StringGrid(0, 0, ">>> NO IMAGES - %s <<<", ec.RunTime());
+      (ec.disp).Memory(d);
+      (ec.disp).Physical(d);
+      if ((pic = ec.View(1)) != NULL)
+        d.ShowGrid(pic,  1, 0, 2, "%s - Overhead navigation map  %s", ec.RunTime(), (ec.rwi).NavGoal());
+      (ec.disp).Mood(d);
+
+      // show any communication
       chat.Post(ec.NewInput(), 1);
       chat.Post(ec.NewOutput());
     }
@@ -2034,10 +2090,10 @@ jtimer_rpt();
   SetForegroundWindow(me);
 
   // result caching
-  inav = (ec.rwi).MapView();
-  if ((inav != NULL) && inav->Valid())
+  pic = ec.View(1);
+  if ((pic != NULL) && pic->Valid())
   {
-    FalseClone(res, *inav);
+    FalseClone(res, *pic);
     sprintf_s(rname, "interact_nav.bmp");
   }
 }
@@ -2648,7 +2704,7 @@ void CBanzaiDoc::OnUtilitiesWeedgrammar()
 {
   int n;
 
-  (ec.body).BindVideo(NULL);
+  ec.BindVideo(NULL);
   ec.Reset(0);
   ec.SetPeople("VIPs.txt");
   n = (ec.vc).WeedGram((ec.gr).Expansions());
@@ -2713,8 +2769,8 @@ void CBanzaiDoc::OnRoomForkcalib()
   eb->BindVideo(NULL);
   if (eb->Reset(1, 1) <= 0)
     return;
-  pmax0 = lift->pmax;
-  pmin0 = lift->pmin;
+  pmax0 = lift->RawMax();
+  pmin0 = lift->RawMin();
 
   // go to lower height
   printf("Setting shelf to nomimal %3.1f inches ...", cmd0);
@@ -2765,16 +2821,16 @@ void CBanzaiDoc::OnRoomForkcalib()
   // do adjustment and gauge change
   eb->Limp();
   lift->AdjustRaw(ht0, v0, ht1, v1);
-  shift = abs(lift->pmin - pmin0);
-  span = abs((lift->pmax - lift->pmin) - (pmax0 - pmin0));
+  shift = abs(lift->RawMin() - pmin0);
+  span = abs((lift->RawMax() - lift->RawMin()) - (pmax0 - pmin0));
   printf("\n");
 
   // talk to user about what to do
   if ((shift > 5) || (span > 10))
   {
-    printf("Feedback range adjusted to [%d %d] vs old [%d %d]\n", lift->pmin, lift->pmax, pmin0, pmax0);
+    printf("Feedback range adjusted to [%d %d] vs old [%d %d]\n", lift->RawMax(), lift->RawMin(), pmin0, pmax0);
     if ((shift > 100) || (span > 200)) 
-      printf("  *** maybe potentiometer has come unglued? ***\n");
+      printf("  >>> maybe potentiometer has come unglued? <<<\n");
     if (Ask("Save new values to %s?", eb->LastCfg()))
     {
       lift->SaveCfg(eb->LastCfg());
@@ -2783,9 +2839,8 @@ void CBanzaiDoc::OnRoomForkcalib()
     }
   }
 
-  // otherwise revert to original values
-  lift->pmax = pmax0;
-  lift->pmin = pmin0;
+  // otherwise keep original values
+  lift->ResetRaw(pmax0, pmin0);
   printf("Values unchanged.\n");
 }
 
@@ -2881,13 +2936,13 @@ void CBanzaiDoc::OnNavCamcalib()
     // ask about individual changes
     if (fabs(dt) > tol)
       if (Ask("Adjust tilt by %+4.2f degrees?", dt)) 
-        ((eb->neck).jt[1]).cal += dt;
+        ((eb->neck).jt[1]).IncCal(dt);
     if (fabs(dr) > tol)
       if (Ask("Adjust roll by %+4.2f degrees?", dr)) 
-        (eb->neck).roll += dr;
+        (eb->neck).IncRoll(dr);
     if (fabs(dh) > htol)
       if (Ask("Adjust height by %+3.1f inches?", dh)) 
-        (eb->neck).nz0 += dh;
+        (eb->neck).IncZ(dh);
 
     // save values to file (some may not have changed)
     eb->CfgFile(fname, 1);
@@ -3229,7 +3284,7 @@ void CBanzaiDoc::OnEnvironGoto()
       }
       if (step == 20)
       {
-        strcpy_s(label, "*** CLICK ON TARGET LOCATION ***");
+        strcpy_s(label, ">>> CLICK ON TARGET LOCATION <<<");
         if (mbut > 0)
         {
           strcpy_s(label, "Moving toward target  -  %3.1f in away  %s");
@@ -3315,16 +3370,6 @@ void CBanzaiDoc::OnTableSurface()
 }
 
 
-// Parameters for qualitative height of surfaces 
-
-void CBanzaiDoc::OnObjectsSurfheight()
-{
-	jhcPickVals dlg;
-
-  dlg.EditParams((ec.sup).hps);    
-}
-
-
 // Parameters for signaling detected tables
 
 void CBanzaiDoc::OnGrabSurfevents()
@@ -3335,13 +3380,23 @@ void CBanzaiDoc::OnGrabSurfevents()
 }
 
 
-// Parameters for tracking and approaching tables
+// Paramters controlling motion relative to a surface
 
-void CBanzaiDoc::OnGrabSurftracking()
+void CBanzaiDoc::OnGrabSurfmotion()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((ec.sup).tps);    
+  dlg.EditParams((ec.sup).mps);    
+}
+
+
+// Parameters for qualitative height of surfaces 
+
+void CBanzaiDoc::OnObjectsSurfheight()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.sup).hps);    
 }
 
 
@@ -3352,6 +3407,16 @@ void CBanzaiDoc::OnObjectsSurflocation()
 	jhcPickVals dlg;
 
   dlg.EditParams((ec.sup).lps);    
+}
+
+
+// Parameters for tracking multiple tables
+
+void CBanzaiDoc::OnGrabSurftracking()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.sup).tps);    
 }
 
 
@@ -3514,7 +3579,7 @@ void CBanzaiDoc::OnSurfacePicktable()
   jhcTable *tab = &(rwi->tab);
   jhcImg surf, map2;
   jhcRoi box;
-  double hw = (rwi->nav).rside, g0 = (eb->neck).gaze0;
+  double hw = (rwi->nav).rside, g0 = (eb->neck).Default();
   double mx, hp0, x0, y0, cx, cy, dist, hpel;
   int rect, gh0 = d.ght;
 
@@ -3530,7 +3595,7 @@ void CBanzaiDoc::OnSurfacePicktable()
       d.StatusText("Failed.");
       return;
     }
-  (eb->neck).gaze0 = -45.0;
+  (eb->neck).SetDef(-45.0);
   rwi->Reset(rob, 0);
   eb->Limp();
 
@@ -3602,7 +3667,7 @@ void CBanzaiDoc::OnSurfacePicktable()
   v.Prefetch(0);
   rwi->Stop();
   d.ght = gh0;
-  (eb->neck).gaze0 = g0;
+  (eb->neck).SetDef(g0);
   d.StatusText("Stopped.");  
 
   // clean up
@@ -3621,7 +3686,7 @@ void CBanzaiDoc::OnDetectionGazesurface()
   jhcImg omap, surf;
   jhcRoi box;
   jhcMatrix head(4), edge(4);
-  double mx, x0, y0, cx, cy, g0 = (eb->neck).gaze0, pan = 0.0, tilt = -45.0;
+  double mx, x0, y0, cx, cy, g0 = (eb->neck).Default(), pan = 0.0, tilt = -45.0;
 
   // make sure video is working
   if (ChkStream() <= 0)
@@ -3635,7 +3700,7 @@ void CBanzaiDoc::OnDetectionGazesurface()
       d.StatusText("Failed.");
       return;
     }
-  (eb->neck).gaze0 = tilt;
+  (eb->neck).SetDef(tilt);
   rwi->Reset(rob, 0);
   eb->Limp();
 
@@ -3686,7 +3751,7 @@ void CBanzaiDoc::OnDetectionGazesurface()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   rwi->Stop();
-  (eb->neck).gaze0 = g0;
+  (eb->neck).SetDef(g0);
   d.StatusText("Stopped.");  
 
   // clean up
@@ -3970,7 +4035,7 @@ void CBanzaiDoc::OnObjectsGrasppoint()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((ec.man).gps);
+  dlg.EditParams((ec.man).hps);
 }
 
 
@@ -4034,13 +4099,13 @@ void CBanzaiDoc::OnMotionCalibarm()
   jhcEliArm *arm = &((ec.body).arm);
   const jhcMatrix *pos = arm->Position(), *dir = arm->Direction();
   double ax0, ay0, scal, ecal, lcal, z, a0, a1, tilt, tsm = 360.0;
-  double jx, jy, sx, sy, sz, ex, ey, lx, ly, wx, wy;
+  double jx, jy, sx, sy, sz, ex, ey, lx, ly, wx, wy, px, py;
   int mx, my, mbut = 0, gap = 0, step = 0, any = 0;
 
   // connect video source
   if (ChkStream() <= 0)
     return;
-  (ec.body).BindVideo(&v);
+  ec.BindVideo(&v);
 
   // local images
   v.SizeFor(mark);
@@ -4058,11 +4123,11 @@ void CBanzaiDoc::OnMotionCalibarm()
   (ec.rwi).Reset(1, 0);
 
   // remember original calibration values
-  ax0 = arm->ax0;
-  ay0 = arm->ay0;
-  scal = (arm->jt[0]).cal;
-  ecal = (arm->jt[1]).cal;
-  lcal = (arm->jt[2]).cal;
+  ax0 = arm->X0();
+  ay0 = arm->Y0();
+  scal = (arm->jt[0]).Calib();
+  ecal = (arm->jt[1]).Calib();
+  lcal = (arm->jt[2]).Calib();
 
   // start up background processing
   d.Clear(1, "Calibrating arm ...");
@@ -4110,7 +4175,9 @@ void CBanzaiDoc::OnMotionCalibarm()
         if (step == 0)                 
         {
           sz = (ec.rwi).ImgJt(sx, sy, 0);
-          ((ec.rwi).s3).WorldPt(arm->ax0, arm->ay0, z, mx, my, sz);  // move shoulder center 
+          ((ec.rwi).s3).WorldPt(px, py, z, mx, my, sz);              // move shoulder center 
+          arm->SetX0(px);
+          arm->SetY0(py);
         }
         else if (step == 1)            
         {
@@ -4118,14 +4185,14 @@ void CBanzaiDoc::OnMotionCalibarm()
           (ec.rwi).ImgJt(ex, ey, 1);
           a0 = R2D * atan2(ey - sy, ex - sx);
           a1 = R2D * atan2(my - sy, mx - sx);
-          (arm->jt[0]).cal -= a1 - a0;                               // adjust shoulder zero angle
+          (arm->jt[0]).IncCal(a0 - a1);                              // adjust shoulder zero angle
         }
         else if (step == 2)            
-          (arm->jt[1]).cal -= (ec.rwi).ImgVeer(mx, my, 3, 1);        // adjust elbow zero angle
+          (arm->jt[1]).IncCal(-(ec.rwi).ImgVeer(mx, my, 3, 1));      // adjust elbow zero angle
         else if (step == 3) 
         {
           if (tsm < 360.0)
-            (arm->jt[2]).cal -= (tsm + 45.0) - arm->JtAng(2);        // adjust lift zero angle
+            (arm->jt[2]).IncCal(arm->JtAng(2) - (tsm + 45.0));       // adjust lift zero angle
           else
           {
             Complain("Cannot compute forearm tilt");
@@ -4168,16 +4235,16 @@ void CBanzaiDoc::OnMotionCalibarm()
   {
     if ((step >= 4) && 
         AskNot("Adjust shoulder (%+3.1f %+3.1f) zero %+3.1f\nelbow zero %+3.1f, lift zero %+3.1f", 
-               arm->ax0 - ax0, arm->ay0 - ay0, (arm->jt[0]).cal - scal, (arm->jt[1]).cal - ecal, (arm->jt[2]).cal - lcal))
+               arm->X0() - ax0, arm->Y0() - ay0, (arm->jt[0]).Calib() - scal, (arm->jt[1]).Calib() - ecal, (arm->jt[2]).Calib() - lcal))
       arm->SaveCfg((ec.body).LastCfg());
     else
     {
       // revert to original values
-      arm->ax0 = ax0;
-      arm->ay0 = ay0;
-      (arm->jt[0]).cal = scal;
-      (arm->jt[1]).cal = ecal;
-      (arm->jt[2]).cal = lcal;
+      arm->SetX0(ax0);
+      arm->SetY0(ay0);
+      (arm->jt[0]).SetCal(scal);
+      (arm->jt[1]).SetCal(ecal);
+      (arm->jt[2]).SetCal(lcal);
     }
   }
   res.Clone(mark);
@@ -4205,7 +4272,7 @@ void CBanzaiDoc::OnMotionCalibwrist()
   d.StringGrid(0, 0, "Preparing hardware  --  please wait ...");
   if (ChkStream() <= 0)
     return;
-  (ec.body).BindVideo(&v);
+  ec.BindVideo(&v);
   v.SizeFor(mark);
   mid = 0.5 * mark.XDim();
 
@@ -4221,10 +4288,10 @@ void CBanzaiDoc::OnMotionCalibwrist()
   (ec.rwi).Reset(1, 0);
 
   // save original values
-  rcal = (arm->jt[3]).cal;
-  pcal = (arm->jt[4]).cal;
-  tcal = (arm->jt[5]).cal;
-  az0  = arm->az0;
+  rcal = (arm->jt[3]).Calib();
+  pcal = (arm->jt[4]).Calib();
+  tcal = (arm->jt[5]).Calib();
+  az0  = arm->Z0();
 
   // start up background processing
   d.Clear(1, "Calibrating wrist ...");
@@ -4269,13 +4336,13 @@ void CBanzaiDoc::OnMotionCalibwrist()
 
         // make some gradual adjustment
         if (adj <= 0)                            
-          (arm->jt[3]).cal += fix * dir->R();                            // flat gripper
+          (arm->jt[3]).IncCal(fix * dir->R());                          // flat gripper
         else if (adj == 1)                       
-          (arm->jt[4]).cal += fix * (veer - ipan);
+          (arm->jt[4]).IncCal(fix * (veer - ipan));
         else if (adj == 2)                       
-          (arm->jt[5]).cal += fix * dir->T();                            // flat gripper
+          (arm->jt[5]).IncCal(fix * dir->T());                          // flat gripper
         else if (adj == 3)                       
-          arm->az0 -= bump;
+          arm->SetZ0(arm->Z0() - bump);
         else if (adj >= 4)                       
           if ((pass++ > 5) || ((fabs(veer) <= atol) && (fabs(dir->T()) <= atol) && 
                                (fabs(dir->R()) <= atol) && (fabs(bump) <= htol)))
@@ -4332,15 +4399,15 @@ void CBanzaiDoc::OnMotionCalibwrist()
   // cleanup
   if ((step >= 4) &&
       AskNot("Adjust pan %+3.1f, tilt %+3.1f, roll %+3.1f, z %+3.1f", 
-             (arm->jt[4]).cal - pcal, (arm->jt[5]).cal - tcal, (arm->jt[3]).cal - rcal, arm->az0 - az0))
+             (arm->jt[4]).Calib() - pcal, (arm->jt[5]).Calib() - tcal, (arm->jt[3]).Calib() - rcal, arm->Z0() - az0))
     arm->SaveCfg((ec.body).LastCfg());
   else
   {
     // revert to original values
-    (arm->jt[3]).cal = rcal;
-    (arm->jt[4]).cal = pcal;
-    (arm->jt[5]).cal = tcal;
-    arm->az0 = az0;
+    (arm->jt[3]).SetCal(rcal);
+    (arm->jt[4]).SetCal(pcal);
+    (arm->jt[5]).SetCal(tcal);
+    arm->SetZ0(az0);
   }
   res.Clone(mark);
   strcpy_s(rname, "wrist_cal.bmp");
@@ -4353,7 +4420,7 @@ void CBanzaiDoc::OnManipulationAdjustz()
 {
   jhcEliLift *fork = &((ec.body).lift);
   double start = 30.0, tilt = -70.0, hover = -(ec.man).wz0;
-  double tz, shelf, hp0, g0 = (eb->neck).gaze0;
+  double tz, shelf, hp0, g0 = (eb->neck).Default();
   int gh0 = d.ght, step = 0;
 
   // make sure video is working
@@ -4370,7 +4437,7 @@ void CBanzaiDoc::OnManipulationAdjustz()
       d.StatusText("Failed.");
       return;
     }
-  (eb->neck).gaze0 = tilt;
+  (eb->neck).SetDef(tilt);
   (ec.rwi).Reset(rob, 0);
 
   // start up background processing
@@ -4427,7 +4494,7 @@ void CBanzaiDoc::OnManipulationAdjustz()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  (eb->neck).gaze0 = g0;
+  (eb->neck).SetDef(g0);
   d.ght = gh0;
   d.StatusText("Stopped.");  
 
@@ -4446,7 +4513,7 @@ void CBanzaiDoc::OnManipulationHandeye()
   jhcSurfObjs *sobj = &((ec.rwi).sobj);
   jhcEliArm *arm = &((ec.body).arm);
   const jhcMatrix *pos = arm->Position(), *dir = arm->Direction();
-  double ang, over, g0 = (eb->neck).gaze0, tilt = -70.0;
+  double ang, over, g0 = (eb->neck).Default(), tilt = -70.0;
   int mx, my, mbut = 0, item = -1;
 
   // make sure video is working
@@ -4466,7 +4533,7 @@ void CBanzaiDoc::OnManipulationHandeye()
     }
 
   // start vision routines
-  (eb->neck).gaze0 = tilt;
+  (eb->neck).SetDef(tilt);
   (ec.rwi).Reset(rob, 0);
   pat2.SetSize(sobj->pat);
 
@@ -4526,7 +4593,7 @@ void CBanzaiDoc::OnManipulationHandeye()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  (eb->neck).gaze0 = g0;
+  (eb->neck).SetDef(g0);
   d.StatusText("Stopped.");  
 
   // cleanup
@@ -4544,7 +4611,7 @@ void CBanzaiDoc::OnManipulationGotovia()
   jhcSurfObjs *sobj = &((ec.rwi).sobj);
   jhcEliArm *arm = &((ec.body).arm);
   const jhcMatrix *pos = arm->Position(), *dir = arm->Direction();
-  double ht, ang, diff, ix, iy, wid = 0.0, g0 = (eb->neck).gaze0, tilt = -70.0;
+  double ht, ang, diff, ix, iy, wid = 0.0, g0 = (eb->neck).Default(), tilt = -70.0;
   int mbut, mx, my, rc, item = -1, done = 0;
 
   // make sure video is working
@@ -4564,7 +4631,7 @@ void CBanzaiDoc::OnManipulationGotovia()
     }
 
   // start vision routines
-  (eb->neck).gaze0 = tilt;
+  (eb->neck).SetDef(tilt);
   (ec.rwi).Reset(rob, 0);
   pat2.SetSize(sobj->pat);
 
@@ -4657,7 +4724,7 @@ void CBanzaiDoc::OnManipulationGotovia()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  (eb->neck).gaze0 = g0;
+  (eb->neck).SetDef(g0);
   d.StatusText("Stopped.");  
 
   // cleanup
@@ -4679,12 +4746,12 @@ void CBanzaiDoc::OnManipulationMoveobj()
   jhcSurfObjs *sobj = &((ec.rwi).sobj);
   jhcManipulate *man = &(ec.man);
   const jhcMatrix *pos = (eb->arm).Position();
-  double g0 = (eb->neck).gaze0, tilt = -70.0;
+  double g0 = (eb->neck).Default(), tilt = -70.0;
   double zinc2, xinc = -0.5 * (man->wx0 + man->wx1), top = 10.0;
   double yinc = -0.5 * (man->wy0 + man->wy1 - top), zinc = 1.0;      // grip z wrt table
   double x, y, wx, wy, wz, sx, sy, gx, gy, dx, dy, off, gx0, gy0;
   int h0 = d.ght, w0 = d.gwid, rng = ROUND(1000.0 * top), trail = 400;
-  int fn = 0, nraw = 0, n = 0, gap = 0, item = -1, dest = 0, rc = 0, fat = 0;
+  int nraw = 0, n = 0, gap = 0, item = -1, dest = 0, rc = 0, fat = 0;
   int i, mbut, mx, my, id, n0, end, start;
 
   // clear graph data
@@ -4715,8 +4782,8 @@ void CBanzaiDoc::OnManipulationMoveobj()
 
 jprintf_open();
   // start vision routines
-  (eb->neck).gaze0 = tilt;
-  man->Reset(&(ec.atree));
+  (eb->neck).SetDef(tilt);
+  man->Reset(ec.atree);
   (ec.rwi).Reset(rob, 0);
   pat2.SetSize(sobj->pat);
 
@@ -4733,7 +4800,7 @@ jprintf_open();
       // shift marked positions and arm history if base moves
       (eb->base).AdjustXY(sx, sy);
       (eb->base).AdjustXY(wx, wy);
-      end = __min(fn, 400);
+      end = tx.Filled();
       for (i = 0; i < end; i++)
       {
         // commanded position
@@ -4753,14 +4820,14 @@ jprintf_open();
 
       // record new hand command and actual position
       (eb->arm).PosGoal(tpos);
-      tx.Scroll(fn, ROUND(1000.0 * (tpos.X() + xinc)));
-      ax.Scroll(fn, ROUND(1000.0 * (pos->X() + xinc)));
-      ty.Scroll(fn, ROUND(1000.0 * (tpos.Y() + yinc)));
-      ay.Scroll(fn, ROUND(1000.0 * (pos->Y() + yinc)));
+      tx.Scroll(ROUND(1000.0 * (tpos.X() + xinc)));
+      ax.Scroll(ROUND(1000.0 * (pos->X() + xinc)));
+      ty.Scroll(ROUND(1000.0 * (tpos.Y() + yinc)));
+      ay.Scroll(ROUND(1000.0 * (pos->Y() + yinc)));
       zinc2 = zinc + (eb->lift).Height() - ((ec.rwi).tab).ztab; 
-      tz.Scroll(fn, ROUND(1000.0 * (tpos.Z() + zinc2)));
-      az.Scroll(fn, ROUND(1000.0 * (pos->Z() + zinc2)));
-      if (++fn >= 400)
+      tz.Scroll(ROUND(1000.0 * (tpos.Z() + zinc2)));
+      az.Scroll(ROUND(1000.0 * (pos->Z() + zinc2)));
+      if (tx.Full())
         for (i = 0; i < 9; i++)
           div[i] -= 1;
     
@@ -4785,9 +4852,9 @@ jprintf_open();
      
           // record phase change markers for graphs
           if ((n > n0) || (rc < 0))
-            div[n0] = fn + 1;          
+            div[n0] = tx.ScrPt() + 1;          
           if (fat < 0)
-            div[n] = fn + 2;
+            div[n] = tx.ScrPt() + 2;
         }
       }
 
@@ -4809,7 +4876,7 @@ jprintf_open();
       (ec.rwi).MapArm(pat2, 0.0);
 
       // show path of grip point over time
-      end = __min(fn, 400);
+      end = tx.Filled();
       start = __max(0, end - trail);
       for (i = start; i < end; i++)
       {
@@ -4909,7 +4976,7 @@ jprintf_open();
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  (eb->neck).gaze0 = g0;
+  (eb->neck).SetDef(g0);
   d.ght = h0;
   d.gwid = w0;
   d.StatusText("Stopped.");  
@@ -4931,7 +4998,7 @@ void CBanzaiDoc::OnManipulationDeposit()
   jhcSurfObjs *sobj = &((ec.rwi).sobj);
   jhcManipulate *man = &(ec.man);
   jhcImg map2, space2, align2, shrink2;
-  double ix, iy, dx, dy, wid, len, ang, pan = 90.0, g0 = (eb->neck).gaze0, tilt = -70.0;
+  double ix, iy, dx, dy, wid, len, ang, pan = 90.0, g0 = (eb->neck).Default(), tilt = -70.0;
   int mbut, mx, my, cx, cy, ok, t = -1, rn = -1, a = -1, a2 = -1, gap = 0, phase = 0;
 
   // get destination location relation first
@@ -4958,8 +5025,8 @@ void CBanzaiDoc::OnManipulationDeposit()
     }
 
   // start vision routines
-  (eb->neck).gaze0 = tilt;
-  man->Reset(&(ec.atree));
+  (eb->neck).SetDef(tilt);
+  man->Reset(ec.atree);
   (ec.rwi).Reset(rob, 0);
   (eb->arm).Limp();
 
@@ -5114,7 +5181,7 @@ void CBanzaiDoc::OnManipulationDeposit()
   catch (...){Tell("Unexpected exit!");}
   v.Prefetch(0);
   (ec.rwi).Stop();
-  (eb->neck).gaze0 = g0;
+  (eb->neck).SetDef(g0);
   d.StatusText("Stopped.");  
 
   // cleanup
@@ -5133,7 +5200,7 @@ void CBanzaiDoc::OnUtilitiesTest()
 {
 //  Tell("No current function");
 
-  (ec.body).BindVideo(NULL);
+  ec.BindVideo(NULL);
   ec.Reset(0);
   ec.SetPeople("VIPs.txt");
 
@@ -5166,6 +5233,5 @@ void CBanzaiDoc::OnUtilitiesTest()
   }
 
 }
-
 
 

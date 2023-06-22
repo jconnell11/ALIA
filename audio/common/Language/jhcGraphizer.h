@@ -32,7 +32,7 @@
 #include "Reasoning/jhcAliaOp.h"
 #include "Reasoning/jhcAliaRule.h"
 #include "Semantic/jhcGraphlet.h"
-
+ 
 #include "Parse/jhcSlotVal.h"          
 
 
@@ -112,10 +112,17 @@ public:
   jhcAliaChain *TrySeq () const {return bulk;}
 
 
+// PROTECTED MEMBER FUNCTIONS
+protected:
+  // utilities
+  bool match_any (const char *txt, const char *val, const char *val2, const char *val3 =NULL,
+                  const char *val4 =NULL, const char *val5 =NULL, const char *val6 =NULL) const;
+
+
 // PRIVATE MEMBER FUNCTIONS
 private:
   // attention items
-  int cvt_attn (const char *alist);
+  int cvt_imm (const char *alist);
   int append_ynq (jhcAliaChain *seq, jhcNodePool& pool) const;  
   int append_exist (jhcAliaChain *seq, jhcNodePool& pool) const;
   int append_find (jhcAliaChain *seq, jhcNodePool& pool) const;
@@ -137,9 +144,17 @@ private:
   int build_sit (jhcSituation& sit, const char *alist, const char *ktag =NULL);
   double pref_val (const char *word) const;
 
+  // operator revisions
+  int cvt_rev (const char *alist);
+
   // command sequences
   jhcAliaChain *build_chain (const char *alist, jhcAliaChain *ult, jhcNodePool& pool);
+  jhcAliaChain *play_step (int& mode, const char *alist, jhcNodePool& pool);
+  jhcAliaChain *overt_loop (const char *alist, jhcNodePool& pool);
+  jhcAliaChain *single_cmd (const char *entry, const char *alist, jhcNodePool& pool);
   jhcAliaChain *dir_step (const char *kind) const;
+  jhcAliaChain *connect_loop (jhcAliaChain *ch0, jhcAliaChain *mini);
+  void finish_loop (jhcAliaChain *ch, jhcAliaChain *ult);
   jhcNetNode *build_cmd (const char *head, const char *alist, jhcNodePool& pool);
   jhcNetNode *build_query (const char *alist, jhcNodePool& pool);
   void demote_bind () const;
@@ -151,6 +166,7 @@ private:
   jhcNetNode *build_fact (const char **after, const char *alist, jhcNodePool& pool, 
                           jhcNetNode *subj =NULL, int pos =0);
   const char *act_deg (jhcNetNode *act, const char *amt, const char *alist, jhcNodePool& pool) const;
+  const char *act_amt (jhcNetNode *act, const char *num, const char *alist, jhcNodePool& pool) const;
   int add_quote (jhcNetNode *v, const char *alist, jhcNodePool& pool) const;
   jhcNetNode *add_args (jhcNetNode *v, const char *alist, jhcNodePool& pool);
   void add_rels (jhcNetNode *act, const char *alist, jhcNodePool& pool);
@@ -180,9 +196,10 @@ private:
   double belief_val (const char *word) const;
   const char *nsuper_kind (char *kind, int ssz, const char *alist) const;
 
+  // number strings
+  const char *parse_int (char *cnt, const char *txt, int ssz) const;
+
   // utilities
-  bool match_any (const char *txt, const char *val, const char *val2, const char *val3 =NULL,
-                  const char *val4 =NULL, const char *val5 =NULL, const char *val6 =NULL) const;
   void call_list (int lvl, const char *fcn, const char *alist, int skip =0, const char *entry =NULL) const;
 
 

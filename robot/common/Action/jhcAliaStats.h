@@ -29,8 +29,6 @@
 
 #include "Data/jhcArr.h"               // common video
 
-#include "Reasoning/jhcActionTree.h"   // common audio
-
 
 //= Monitors internal processes of ALIA reasoner.
 
@@ -38,19 +36,18 @@ class jhcAliaStats
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  jhcArr goal, wmem, hmem;             // core operations
-  jhcArr mcmd, mips, rcmd, rdps;       // wheel servos
-  jhcArr pcmd, pdeg, tcmd, tdeg;       // neck servos
-  int sz, fill;
-
-  // original graph size
-  int w0, h0;
-
+  int sz;                              // graph length
+  
 
 // PUBLIC MEMBER VARIABLES
 public:
-  // desired graph size
-  int ht;
+  jhcArr goal, wmem, hmem;             // core operations
+  jhcArr spch, talk, attn;             // speech state
+  jhcArr busy, walk, wave, emit;       // activity monitor
+  jhcArr mcmd, mips, rcmd, rdps;       // wheel servos
+  jhcArr pcmd, pdeg, tcmd, tdeg;       // neck servos
+  double cred, opt;                    // belief and preference
+  double active, bored, fidget;        // cached mood
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -59,26 +56,21 @@ public:
   ~jhcAliaStats ();
   jhcAliaStats (int n =600);
   void SetSize (int n =600);
-  double Len () const {return sz;}
+  int Len () const {return sz;}
+  double Time (double hz) const {return(sz / hz);}
  
-  // main functions
+  // data collection
   void Reset ();
-  void Thought (jhcActionTree& atree);
+  void Thought (class jhcAliaCore *core);
+  void Speech (int sprc, int tts, int gate);
+  void Motion (const class jhcAliaMood& mood);
   void Drive (double m, double mest, double r, double rest);
   void Gaze (double p, double pest, double t, double test);
-  void Shift () {fill++;}
-
-  // graphical display
-  void Memory (class jhcDisplay *d, int i =-1, int j =0, double hz =30.0);
-  void Wheels (class jhcDisplay *d, int i =-1, int j =0);
-  void Neck (class jhcDisplay *d, int i =-1, int j =0);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  // graphical display
-  int corner (int& x, int& y, int i, int j, class jhcDisplay *d);
-  void restore (jhcDisplay *d) const;
+
 
 };
 

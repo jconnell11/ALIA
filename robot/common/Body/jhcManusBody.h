@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -87,37 +87,36 @@ private:
   double msc, tsc, lsc, lsf, gsc;
   
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // serial port search
-  int port0;
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // camera parameters
-  jhcParam cps;
   double w2, w4, mag, roll;
 
   // depth parameters
-  jhcParam rps;
   double r0, r4, r12;
   int v0, v4, v12;
 
   // width parameters
-  jhcParam wps;
   double vmax, vfat, vmed, vmin, wfat, wmed;
 
   // drive parameters
-  jhcParam dps;
   double vcal, bal, sep;
   int lf0, rt0, ccal, dacc;
 
   // lift parameters
-  jhcParam lps;
   double hdef, hout, arm;
   int ldef, lout, lsp, lacc;
 
   // grip parameters
-  jhcParam gps;
   int gmax, gmin, gsp;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  jhcParam cps, rps, wps, dps, lps, gps;
+
+  // serial port search
+  int port0;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -140,6 +139,7 @@ public:
   void BindVideo (jhcVideoSrc *v);
   int SetWifiCam (int rpt =1);
   const jhcImg *Raw () const {return &now;}
+  bool NewFrame () const {return(vid != NULL);}
 
   // main functions
   int Reset (int noisy =0, const char *dir =NULL, int prefer =1);

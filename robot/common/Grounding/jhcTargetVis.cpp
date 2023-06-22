@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,27 +39,9 @@ jhcTargetVis::~jhcTargetVis ()
 
 jhcTargetVis::jhcTargetVis ()
 {
-  ver = 1.35;
   strcpy_s(tag, "TargetVis");
-  Platform(NULL);
+  rwi = NULL;
   rpt = NULL;
-}
-
-
-//= Attach physical enhanced body and make pointers to some pieces.
-
-void jhcTargetVis::Platform (jhcManusRWI *io) 
-{
-  rwi = io;
-  seg = NULL;
-  ext = NULL;
-  body = NULL;
-  if (rwi != NULL)
-  {
-    seg = rwi->seg;
-    ext = rwi->ext;
-    body = rwi->body;
-  }
 }
 
 
@@ -93,14 +75,25 @@ int jhcTargetVis::SaveVals (const char *fname) const
 //                          Overridden Functions                         //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Attach physical enhanced body and make pointers to some pieces.
+
+void jhcTargetVis::local_platform (void *soma) 
+{
+  rwi = (jhcManusRWI *) soma;
+  seg  = rwi->seg;
+  ext  = rwi->ext;
+  body = rwi->body;
+}
+
+
 //= Set up for new run of system.
 
-void jhcTargetVis::local_reset (jhcAliaNote *top)
+void jhcTargetVis::local_reset (jhcAliaNote& top)
 {
   const jhcImg *src;
 
   // noisy messages
-  rpt = top;
+  rpt = &top;
   dbg = 1;
 
   // status
@@ -128,7 +121,7 @@ void jhcTargetVis::local_volunteer ()
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if successful, -1 for problem, -2 if function unknown
 
-int jhcTargetVis::local_start (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::local_start (const jhcAliaDesc& desc, int i)
 {
   JCMD_SET(class_color);
   JCMD_SET(class_size);
@@ -142,7 +135,7 @@ int jhcTargetVis::local_start (const jhcAliaDesc *desc, int i)
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if done, 0 if still working, -1 if failed, -2 if function unknown
 
-int jhcTargetVis::local_status (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::local_status (const jhcAliaDesc& desc, int i)
 {
   JCMD_CHK(class_color);
   JCMD_CHK(class_size);
@@ -210,9 +203,9 @@ jhcAliaDesc *jhcTargetVis::obj_seen () const
 {
   jhcAliaDesc *act, *obj;
 
-  act = rpt->NewNode("act", "see", 0, 0.0);
+  act = rpt->NewAct("see");
   rpt->AddArg(act, "agt", rpt->Self());
-  obj = rpt->NewNode("obj", NULL, 0, 0.0);
+  obj = rpt->NewObj("obj");
   rpt->AddArg(act, "obj", obj);
   rpt->NewProp(obj, "ako", "object");
   return obj;
@@ -227,11 +220,11 @@ jhcAliaDesc *jhcTargetVis::obj_seen () const
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcTargetVis::class_color0 (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_color0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (desc->Val("arg") == NULL)
+  if (desc.Val("arg") == NULL)
     return -1;
   return 1;
 }
@@ -241,10 +234,10 @@ int jhcTargetVis::class_color0 (const jhcAliaDesc *desc, int i)
 // does not actually look for requested object but uses focus (if any)
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTargetVis::class_color (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_color (const jhcAliaDesc& desc, int i)
 {
   if (rwi->Readable())
-    return rwi->ReadDone(add_colors(desc->Val("arg"), focus, 1));
+    return rwi->ReadDone(add_colors(desc.Val("arg"), focus, 1));
   return 0;
 }
 
@@ -285,11 +278,11 @@ int jhcTargetVis::add_colors (jhcAliaDesc *obj, int id, int only)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcTargetVis::class_size0 (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_size0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (desc->Val("arg") == NULL)
+  if (desc.Val("arg") == NULL)
     return -1;
   return 1;
 }
@@ -299,10 +292,10 @@ int jhcTargetVis::class_size0 (const jhcAliaDesc *desc, int i)
 // does not actually look for requested object but uses focus (if any)
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTargetVis::class_size (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_size (const jhcAliaDesc& desc, int i)
 {
   if (rwi->Readable())
-    return rwi->ReadDone(add_size(desc->Val("arg"), focus, 1));
+    return rwi->ReadDone(add_size(desc.Val("arg"), focus, 1));
   return 0;
 }
 
@@ -340,11 +333,11 @@ int jhcTargetVis::add_size (jhcAliaDesc *obj, int id, int only)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcTargetVis::class_width0 (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_width0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (desc->Val("arg") == NULL)
+  if (desc.Val("arg") == NULL)
     return -1;
   return 1;
 }
@@ -354,10 +347,10 @@ int jhcTargetVis::class_width0 (const jhcAliaDesc *desc, int i)
 // does not actually look for requested object but uses focus (if any)
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTargetVis::class_width (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::class_width (const jhcAliaDesc& desc, int i)
 {
   if (rwi->Readable())
-    return rwi->ReadDone(add_width(desc->Val("arg"), focus, 1));
+    return rwi->ReadDone(add_width(desc.Val("arg"), focus, 1));
   return 0;
 }
 
@@ -395,11 +388,11 @@ int jhcTargetVis::add_width (jhcAliaDesc *obj, int id, int only)
 // instance number and bid already recorded by base class
 // returns 1 if okay, -1 for interpretation error
 
-int jhcTargetVis::det_texture0 (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::det_texture0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (desc->Val("arg") == NULL)
+  if (desc.Val("arg") == NULL)
     return -1;
   return 1;
 }
@@ -409,10 +402,10 @@ int jhcTargetVis::det_texture0 (const jhcAliaDesc *desc, int i)
 // does not actually look for requested object but uses focus (if any)
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcTargetVis::det_texture (const jhcAliaDesc *desc, int i)
+int jhcTargetVis::det_texture (const jhcAliaDesc& desc, int i)
 {
   if (rwi->Readable())
-    return rwi->ReadDone(add_striped(desc->Val("arg"), focus, 1));
+    return rwi->ReadDone(add_striped(desc.Val("arg"), focus, 1));
   return 0;
 }
 

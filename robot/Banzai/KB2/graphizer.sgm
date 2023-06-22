@@ -39,13 +39,11 @@
   greet
   dimiss
   give
-  ask
   tell
   explain
   fail
   acknowledge
   apologize
-  say
 
 
 // ================================================
@@ -71,5 +69,3 @@
   acknowledge * vprog = acknowledging
   acknowledge * vpast = acknowledged
   say * vpast = said
-
-

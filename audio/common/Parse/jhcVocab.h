@@ -45,7 +45,7 @@ private:
 
   // temporary outputs
   char clean[200], mark[200];
-  char cat[20], unk[nchar], oov[nchar];
+  char cat[20], unk[nchar], oov[nchar], dup[nchar];
   int worst;
 
   // category inference
@@ -77,7 +77,7 @@ public:
   // category inference
   void InitGuess ();
   const char *NextGuess (const char *txt);
-  const char *Unknown () const  {return unk;}
+  const char *Mystery () const  {return unk;}
   const char *Category () const {return cat;}
   const char *Confused () const {return oov;}
   const char *Marked () const   {return mark;}
@@ -91,6 +91,7 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // word list
+  bool known (const char *word) const;
   const char *lookup (const char *word) const;  
   int bin (const char *word) const; 
   void extend (int idx, int add);    

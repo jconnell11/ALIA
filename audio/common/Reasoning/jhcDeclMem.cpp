@@ -546,7 +546,7 @@ int jhcDeclMem::tether (jhcNetNode *focus, jhcNetNode *win)
 {
   if (noisy >= 1)
   {
-    jprintf(":- RECOGNIZE %s (%s) as memory %s", focus->Nick(), focus->LexStr(), win->Nick());
+    jprintf(":- SUSPECT %s (%s) is memory %s", focus->Nick(), focus->LexStr(), win->Nick());
     if (focus->Moored() && (focus->Deep() != win))
       jprintf(" (instead)");
     jprintf("\n");
@@ -907,8 +907,8 @@ int jhcDeclMem::LoadFacts (const char *base, int add, int rpt, int level)
   }
   if (fopen_s(&in, fname, "r") != 0)
   {
-    if (rpt < 3)
-      jprintf("  >>> Could not read fact file: %s !\n", fname);
+//    if (rpt < 3)
+//      jprintf("  >>> Could not read fact file: %s !\n", fname);
     return -1;
   }
 

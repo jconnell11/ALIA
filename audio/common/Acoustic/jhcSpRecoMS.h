@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,6 +68,7 @@
 //   ? = 0 or 1 word (same as "(#)")
 //   + = at least 1 word but more allowed
 //   * = 0 or more words (same as "(+)")
+//   @ = numeric value (ignored - use number.sgm and jhcParseNum instead) 
 // These should not be used anywhere else (in terminals or non-terminals).
 //
 // Comments can be added either with "//" or with ";" to disregard the 
@@ -110,6 +111,7 @@ private:
 protected:
   int r_ok;                       /** Status of recognizer.               */
   char rfile[200];                /** Recognizer DLL name (not used).     */
+  char select[200];               /** Recent acoustic model to install.   */
   char mic[80];                   /** Name of live audio source (if any). */
   char tag[20];                   /** Prefix for debugging messages.      */
   double dict_wt;                 /** Relative weight for dictation arcs. */
@@ -189,7 +191,6 @@ public:
   template <size_t ssz>
     int reco_speaker (char (&name)[ssz]) const
       {return reco_speaker(name, ssz);}
-
 
   // parsing configuration (low level sp_parse)
   const char *parse_version (char *spec, int ssz) const;

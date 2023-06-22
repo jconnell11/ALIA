@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -123,7 +123,7 @@ void jhcNetNode::rem_arg (const jhcNetNode *item)
 //= Default constructor initializes certain values.
 // NOTE: should only be created through jhcNodePool manager!
 
-jhcNetNode::jhcNetNode (int num, class jhcNodePool *pool)
+jhcNetNode::jhcNetNode (int num, jhcNodePool *pool)
 {
   // basic configuration data
   *base = '\0';
@@ -573,7 +573,7 @@ jhcNetNode *jhcNetNode::PropMatch (int i, const char *role, double bth, int neg)
 }
 
 
-//= Count the number of nodes that have this node as a filler for given role.
+//= Count the number of visible nodes that have this node as a filler for given role.
 // useful for determining if this node has a "tag" or a "cuz"
 // NOTE: assumes this is a surface node (ignores buoy) 
 
@@ -584,19 +584,20 @@ int jhcNetNode::NumFacts (const char *role) const
 
   for (i = 0; i < n; i++)
     if ((p = Prop(i)) != NULL)
-    {
-      a = p->NumArgs();
-      for (j = 0; j < a; j++)
-        if ((p->Arg(j) == this) && p->SlotMatch(j, role))
-          cnt++;
-    }
+      if (p->vis > 0)
+      {
+        a = p->NumArgs();
+        for (j = 0; j < a; j++)
+          if ((p->Arg(j) == this) && p->SlotMatch(j, role))
+            cnt++;
+      }
   return cnt;
 }
 
 
 //= Get the n'th node that has this node as a filler for the given role.
 // useful for asking about this node relative to "ako" or "hq" 
-// most recently added properties returned first
+// returns only visible nodes, most recently added properties first
 // returns NULL if invalid index
 // NOTE: assumes this is a surface node (ignores buoy) 
 
@@ -608,12 +609,33 @@ jhcNetNode *jhcNetNode::Fact (const char *role, int n) const
   if ((n >= 0) && (n < total))
     for (i = total - 1; i >= 0; i--)
       if ((p = Prop(i)) != NULL)
-      {
-        a = p->NumArgs();
-        for (j = 0; j < a; j++)
-          if ((p->Arg(j) == this) && p->SlotMatch(j, role))
-            if (cnt-- <= 0)
-              return p;
+        if (p->vis > 0) 
+        {
+          a = p->NumArgs();
+          for (j = 0; j < a; j++)
+            if ((p->Arg(j) == this) && p->SlotMatch(j, role))
+              if (cnt-- <= 0)
+                return p;
+        }
+  return NULL;
+}
+
+
+//= Get the first node (even if not visible) that has this node as a filler for the given role.
+// useful for graphizer processing of super-types
+
+jhcNetNode *jhcNetNode::AnyFact (const char *role) const
+{
+  jhcNetNode *p;
+  int i, j, a, total = NumProps();
+
+  for (i = total - 1; i >= 0; i--)
+    if ((p = Prop(i)) != NULL)
+    {
+      a = p->NumArgs();
+      for (j = 0; j < a; j++)
+        if ((p->Arg(j) == this) && p->SlotMatch(j, role))
+          return p;
     }
   return NULL;
 }

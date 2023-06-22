@@ -58,6 +58,8 @@ const char * const jhcSceneVis::sloc[] = {"middle",  "leftmost",       "rightmos
 
 jhcSceneVis::~jhcSceneVis ()
 {
+  delete [] cdir;
+  delete [] cpos;
 }
 
 
@@ -65,26 +67,27 @@ jhcSceneVis::~jhcSceneVis ()
 
 jhcSceneVis::jhcSceneVis ()
 {
-  ver = 1.80;
+  int i, n = MaxInst();
+
+  // pool identification
   strcpy_s(tag, "SceneVis");
-  Platform(NULL);
-  rpt = NULL;
-  Defaults();
-}
 
+  // create instance control variables
+  cpos = new jhcMatrix [n];
+  for (i = 0; i < n; i++)
+    cpos[i].SetSize(4);    
+  cdir = new jhcMatrix [n];
+  for (i = 0; i < n; i++)
+    cdir[i].SetSize(4);    
 
-//= Attach physical enhanced body and make pointers to some pieces.
-
-void jhcSceneVis::Platform (jhcEliGrok *io) 
-{
-  rwi = io;                  
+  // body and mind connection 
+  rwi  = NULL;
   sobj = NULL;
   body = NULL;
-  if (rwi != NULL)
-  {
-    sobj = &(rwi->sobj);
-    body = rwi->body;
-  }
+  rpt  = NULL;
+
+  // processing parameters
+  Defaults();
 }
 
 
@@ -100,12 +103,15 @@ int jhcSceneVis::rng_params (const char *fname)
   int ok;
 
   ps->SetTag("svis_rng", 0);
-  ps->NextSpecF( &dist3, 60.0, "Very far distance (in)");
-  ps->NextSpecF( &dist2, 36.0, "Far distance (in)");  
-  ps->NextSpecF( &dist1, 24.0, "Close distance (in)");
-  ps->NextSpecF( &dist0, 18.0, "Very close distance (in)");
-  ps->Skip();
-  ps->NextSpecF( &dvar,   1.0, "Alert dist hysteresis (in)"); 
+  ps->NextSpecF( &dist3,  60.0, "Very far distance (in)");
+  ps->NextSpecF( &dist2,  36.0, "Far distance (in)");  
+  ps->NextSpecF( &dist1,  24.0, "Close distance (in)");
+  ps->NextSpecF( &dist0,  18.0, "Very close distance (in)");
+  ps->NextSpecF( &dvar,    1.0, "Alert dist hysteresis (in)"); 
+  ps->NextSpecF( &drop,  144.0, "Abandon object distance (in)");
+
+  ps->NextSpecF( &xbd,     0.2, "X border inset for visible");
+  ps->NextSpecF( &ybd,     0.2, "Y border inset for visible");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -216,14 +222,24 @@ int jhcSceneVis::SaveVals (const char *fname) const
 //                          Overridden Functions                         //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Attach physical enhanced body and make pointers to some pieces.
+
+void jhcSceneVis::local_platform (void *soma) 
+{
+  rwi = (jhcEliGrok *) soma;
+  sobj = &(rwi->sobj);
+  body = rwi->body;
+}
+
+
 //= Set up for new run of system.
 
-void jhcSceneVis::local_reset (jhcAliaNote *top)
+void jhcSceneVis::local_reset (jhcAliaNote& top)
 {
   const jhcImg *src;
 
   // noisy messages
-  rpt = top;
+  rpt = &top;
   dbg = 0;
 
   // state variables
@@ -242,10 +258,10 @@ void jhcSceneVis::local_reset (jhcAliaNote *top)
 
 void jhcSceneVis::local_volunteer ()
 {
+  update_objs();
   alert_any();
   alert_close();
   mark_attn();
-  lost_tracks();
 }
 
 
@@ -254,9 +270,10 @@ void jhcSceneVis::local_volunteer ()
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if successful, -1 for problem, -2 if function unknown
 
-int jhcSceneVis::local_start (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::local_start (const jhcAliaDesc& desc, int i)
 {
-  JCMD_SET(vis_gaze);
+  JCMD_SET(vis_orient);
+  JCMD_SET(vis_look);
   JCMD_SET(vis_value);
   JCMD_SET(vis_val_ok);
   JCMD_SET(vis_color);
@@ -274,9 +291,10 @@ int jhcSceneVis::local_start (const jhcAliaDesc *desc, int i)
 // variables "desc" and "i" must be bound for macro dispatcher to run properly
 // returns 1 if done, 0 if still working, -1 if failed, -2 if function unknown
 
-int jhcSceneVis::local_status (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::local_status (const jhcAliaDesc& desc, int i)
 {
-  JCMD_CHK(vis_gaze);
+  JCMD_CHK(vis_orient);
+  JCMD_CHK(vis_look);
   JCMD_CHK(vis_value);
   JCMD_CHK(vis_val_ok);
   JCMD_CHK(vis_color);
@@ -293,6 +311,74 @@ int jhcSceneVis::local_status (const jhcAliaDesc *desc, int i)
 ///////////////////////////////////////////////////////////////////////////
 //                            Event Functions                            //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Makes sure node associations are accurate.
+// expected position of objects already adjusted by jhcEliGrok::interpret2()
+// "visible" = currently tracked, not necessarily in field of view
+
+void jhcSceneVis::update_objs ()
+{
+  int t, nt, id = 0;
+
+  // wait for next sensor cycle then lock visual data
+  if ((rpt == NULL) || (rwi == NULL) || !rwi->Accepting())
+    return;
+
+  // delink nodes from objects that are no longer tracked
+  while ((id = rpt->VisEnum(id)) > 0)
+    if (!sobj->OkayID(id))
+      mark_gone(id);
+
+  // determine whether each tracked object is likely visible currently
+  // Note: possibly move this part to jhcEliGrok like adjust_heads
+  sobj->AdjGeometry(0);
+  nt = sobj->ObjLimit();
+  for (t = 0; t < nt; t++)
+    if (sobj->ObjOK(t) && (in_view(t) <= 0))
+    {
+      if (sobj->DistXY(t) > drop)                // too far away
+        mark_gone(sobj->ObjID(t));
+      else
+        sobj->Retain(t);                         // prevent track erasure
+    }
+}
+
+
+//= Tells if object is not reasonably centered in camera view.
+// checks if object bounding box is in a bit from edges of frontal color image
+// NOTE: need to call sobj->AdjGeometry(0) first to handle head moves
+
+int jhcSceneVis::in_view (int t) const
+{
+  jhcRoi box;
+  int iw = 640, ih = 480;
+
+  if (t < 0)
+    return 0;
+  sobj->CamBox(box, t, ih);
+  if ((box.RoiX() < (xbd * iw)) || (box.RoiLimX() >= ((1.0 - xbd) * iw)) ||
+      (box.RoiY() < (ybd * ih)) || (box.RoiLimY() >= ((1.0 - ybd) * ih)))
+    return 0;
+  return 1;
+}
+
+
+//= Possible generate a NOTE that object with given ID is no longer visible.
+
+void jhcSceneVis::mark_gone (int id)
+{
+  jhcAliaDesc *obj = rpt->NodeFor(id, 0);
+  
+  rpt->VisAssoc(id, NULL, 0);                    // delink node
+  sobj->SetState(sobj->ObjTrack(id), 0);         // no highlight
+  if (obj != NULL)
+  {
+    rpt->StartNote();
+    rpt->NewProp(obj, "hq", "visible", 1, 1.0, 1);
+    rpt->FinishNote();
+  }
+}
+
 
 //= Generate spontaneous message if robot starts seeing objects.
 // only signals first of however many until there are none again
@@ -394,6 +480,7 @@ void jhcSceneVis::alert_close ()
 
 //= If anything newly marked (2) reset older marks to zero.
 // volunteered items are marked right away, others delayed one cycle
+// primarily for color in GUI display graphics
 
 void jhcSceneVis::mark_attn ()
 {
@@ -427,50 +514,34 @@ void jhcSceneVis::mark_attn ()
 }
 
 
-//= Remove the "visible" quality from any nodified objects which are no longer tracked.
-
-void jhcSceneVis::lost_tracks ()
-{
-  int id = 0;
-
-  while ((id = rpt->VisEnum(id)) > 0)
-    if (!sobj->OkayID(id))
-    {
-      rpt->StartNote();
-      rpt->NewProp(rpt->NodeFor(id), "hq", "visible", 1);
-      rpt->FinishNote();
-      rpt->VisAssoc(id, NULL);                   // erase entry
-    }
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //                             Gaze Control                              //
 ///////////////////////////////////////////////////////////////////////////
 
-//= First call to aim camera at object but not allowed to fail.
+//= First call to aim camera generally toward object but not allowed to fail.
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_gaze0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_orient0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((cobj[i] = desc->Val("arg")) == NULL)
+  if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
   ct0[0] = 0;                                    // reset timeout
   return 1;
 }
 
 
-//= Continue trying to aim camera toward some object.
+//= Continue trying to aim camera generally toward some object.
+// goal is to make selected object detectable in overhead map
 // assumes cobj[i] has desired target object
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_gaze (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_orient (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix view(4);
   jhcEliNeck *neck = &(body->neck);
-  double gtim = 1.0, atol = 7.0, gacc = 10.0;
+  double gtim = 1.0;
   double pan, tilt, ht, da;
   int t;
 
@@ -478,12 +549,70 @@ int jhcSceneVis::vis_gaze (const jhcAliaDesc *desc, int i)
   if (!rwi->Accepting())
     return 0;
   if ((t = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
-    return err_gone(cobj[i]);
-  if (rwi->Ghost() || (neck->CommOK() <= 0))
+    return err_miss(cobj[i]);
+  if (rwi->Ghost())
+    return 1;
+  if (neck->CommOK() <= 0)
     return err_neck();
-  ht = (rwi->lift)->Height();
 
   // send proper neck angles for object centroid
+  ht = (rwi->lift)->Height();
+  sobj->World(view, t);
+  neck->AimFor(pan, tilt, view, ht);
+  neck->GazeFix(pan, tilt, gtim, cbid[i]);
+
+  // see if close enough yet
+  sobj->AdjGeometry(0);
+  da = (rwi->neck)->GazeErr(view, ht);
+  if (in_view(t) <= 0)
+  {
+    if (chk_stuck(i, 0.1 * da) <= 0)
+      return 0;
+    jprintf(2, dbg, "    stuck: orient = %3.1f\n", da);
+    return -1;
+  }
+  return 1;                                      // success
+}
+
+
+//= First call to aim camera directly at object but not allowed to fail.
+// returns 1 if okay, -1 for interpretation error
+
+int jhcSceneVis::vis_look0 (const jhcAliaDesc& desc, int i)
+{
+  if ((rwi == NULL) || (rpt == NULL))
+    return -1;
+  if ((cobj[i] = desc.Val("arg")) == NULL)
+    return -1;
+  ct0[0] = 0;                                    // reset timeout
+  return 1;
+}
+
+
+//= Continue trying to aim camera directly at some object.
+// assumes cobj[i] has desired target object
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcSceneVis::vis_look (const jhcAliaDesc& desc, int i)
+{
+  jhcMatrix view(4);
+  jhcEliNeck *neck = &(body->neck);
+  double gtim = 1.0, atol = 3.0;
+  double pan, tilt, ht, da;
+  int t;
+
+  // make sure target object is still known 
+  if (!rwi->Accepting())
+    return 0;
+  if ((t = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
+    return err_miss(cobj[i]);
+  if (rwi->Ghost())
+    return 1;
+  if (neck->CommOK() <= 0)
+    return err_neck();
+
+  // send proper neck angles for object centroid
+  ht = (rwi->lift)->Height();
   sobj->World(view, t);
   neck->AimFor(pan, tilt, view, ht);
   neck->GazeFix(pan, tilt, gtim, cbid[i]);
@@ -494,9 +623,8 @@ int jhcSceneVis::vis_gaze (const jhcAliaDesc *desc, int i)
   {
     if (chk_stuck(i, 0.1 * da) <= 0)
       return 0;
-    jprintf(2, dbg, "    stuck: gaze = %3.1f\n", da);
-    if (da > gacc)
-      return -1;
+    jprintf(2, dbg, "    stuck: look = %3.1f\n", da);
+    return -1;
   }
   return 1;                                      // success
 }
@@ -530,13 +658,13 @@ int jhcSceneVis::chk_stuck (int i, double err)
 // answers "What distance/size/height is X?"
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_value0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_value0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *hq;
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((hq = desc->Val("arg")) == NULL)
+  if ((hq = desc.Val("arg")) == NULL)
     return -1;
   if (hq->Val("hq") == NULL)
     return -1;
@@ -567,9 +695,9 @@ int jhcSceneVis::net2rng (const jhcAliaDesc *hq) const
 // gives qualitative value for features, rules can lead to negation
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_value (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_value (const jhcAliaDesc& desc, int i)
 {
-  const jhcAliaDesc *hq = desc->Val("arg");
+  const jhcAliaDesc *hq = desc.Val("arg");
   jhcAliaDesc *obj = hq->Val("hq");
   int t, cat = cst[i];
 
@@ -593,13 +721,13 @@ int jhcSceneVis::vis_value (const jhcAliaDesc *desc, int i)
 // sets cst[i] to range category and camt[i] to desired value
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_val_ok0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_val_ok0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *hq;
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((hq = desc->Val("arg")) == NULL)
+  if ((hq = desc.Val("arg")) == NULL)
     return -1;
   if (hq->Val("hq") == NULL)
     return -1;
@@ -648,9 +776,9 @@ int jhcSceneVis::net2des (int& cat, const jhcAliaDesc *p) const
 //= Basic call to measurement verifier always finishes in one step.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_val_ok (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_val_ok (const jhcAliaDesc& desc, int i)
 {
-  const jhcAliaDesc *hq = desc->Val("arg");
+  const jhcAliaDesc *hq = desc.Val("arg");
   jhcAliaDesc *obj = hq->Val("hq");
   int t, cat = cst[i], des = (int) camt[i];
 
@@ -677,12 +805,13 @@ int jhcSceneVis::vis_val_ok (const jhcAliaDesc *desc, int i)
 // answers "What color is X?"
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_color0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_color0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (desc->Val("arg") == NULL)
+  if (desc.Val("arg") == NULL)
     return -1;
+  ct0[i] = jms_now();                  // for stable timeout
   return 1;
 }
 
@@ -690,17 +819,25 @@ int jhcSceneVis::vis_color0 (const jhcAliaDesc *desc, int i)
 //= Basic call to color analyzer always finishes in one step.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_color (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_color (const jhcAliaDesc& desc, int i)
 {
-  jhcAliaDesc *hq, *obj = desc->Val("arg"), *mix = NULL;
+  jhcAliaDesc *hq, *obj = desc.Val("arg"), *mix = NULL;
   int t, cnum, n = 0;
 
-  // find the referenced object and analyze its color
+  // wait for surface and object finding to settle
   if (!rwi->Readable())
     return 0;
+  if ((body->neck).Stare() < 10)
+  {
+    if (jms_elapsed(ct0[i]) > 1.0)     
+      return rwi->ReadDone(-1);                  // complain about motion?
+    return rwi->ReadDone(0);
+  }
+
+  // find the referenced object and analyze its color
   if ((t = node2trk(obj)) < 0)
     return rwi->ReadDone(-1);
-  sobj->SetState(t, 2);                                    // display as green
+  sobj->SetState(t, 2);                          // display as green
   n = sobj->Spectralize(body->Color(), body->Range(), t);
   if (n <= 0)
     return rwi->ReadDone(-1);
@@ -708,7 +845,7 @@ int jhcSceneVis::vis_color (const jhcAliaDesc *desc, int i)
   // assert values in net (add linking "and" node if multiple colors)
   rpt->StartNote();
   if (n > 1)
-    mix = rpt->NewNode("conj", "and");
+    mix = rpt->NewObj("conj", "and");
   for (cnum = 0; cnum <= 8; cnum++)
     if (sobj->DegColor(t, cnum) >= 2)
     {
@@ -725,18 +862,19 @@ int jhcSceneVis::vis_color (const jhcAliaDesc *desc, int i)
 // answers "Is X red/blue/white?"
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_col_ok0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_col_ok0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *hq;
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((hq = desc->Val("arg")) == NULL)
+  if ((hq = desc.Val("arg")) == NULL)
     return -1;
   if (hq->Val("hq") == NULL)
     return -1;
   if ((cst[i] = txt2cnum(hq->Lex())) < 0)
     return -1;
+  ct0[i] = jms_now();                  // for stable timeout
   return 1;
 }
 
@@ -758,15 +896,23 @@ int jhcSceneVis::txt2cnum (const char *txt) const
 //= Basic call to color verifier returns true or false assertion.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_col_ok (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_col_ok (const jhcAliaDesc& desc, int i)
 {
-  const jhcAliaDesc *hq = desc->Val("arg");
+  const jhcAliaDesc *hq = desc.Val("arg");
   jhcAliaDesc *obj = hq->Val("hq");
   int t, n, cnum = cst[i];
 
-  // find the referenced object and analyze its color
+  // wait for surface and object finding to settle
   if (!rwi->Readable())
     return 0;
+  if ((body->neck).Stare() < 10)
+  {
+    if (jms_elapsed(ct0[i]) > 1.0)     
+      return rwi->ReadDone(-1);                  // complain about motion?
+    return rwi->ReadDone(0);
+  }
+
+  // find the referenced object and analyze its color
   if ((t = node2trk(obj)) < 0)
     return rwi->ReadDone(-1);
   sobj->SetState(t, 2);                                      // display as green
@@ -793,13 +939,13 @@ int jhcSceneVis::vis_col_ok (const jhcAliaDesc *desc, int i)
 // answers "Where is X?" in relation to know objects
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_position0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_position0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *pos;
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((pos = desc->Val("arg")) == NULL)
+  if ((pos = desc.Val("arg")) == NULL)
     return -1;
   if (pos->Val("loc") == NULL) 
     return -1;
@@ -810,9 +956,9 @@ int jhcSceneVis::vis_position0 (const jhcAliaDesc *desc, int i)
 //= Basic call to location finder returns spatial assertion.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_position (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_position (const jhcAliaDesc& desc, int i)
 {
-  const jhcAliaDesc *pos = desc->Val("arg");
+  const jhcAliaDesc *pos = desc.Val("arg");
   jhcAliaDesc *hq, *ref = NULL, *obj = pos->Val("loc");
   char prep[20] = "on";
   const char *lex = prep;
@@ -861,7 +1007,7 @@ int jhcSceneVis::vis_position (const jhcAliaDesc *desc, int i)
   rpt->StartNote();
   if (anchor < 0)
   {
-    ref = rpt->NewNode("surf");
+    ref = rpt->NewObj("surf");
     rpt->NewProp(ref, "ako", (((rwi->tab).SurfHt() <= flr) ? "floor" : "surface"));
   }
   hq = rpt->NewProp(obj, "loc", lex, 0, 1.0, 1, 2);
@@ -875,13 +1021,13 @@ int jhcSceneVis::vis_position (const jhcAliaDesc *desc, int i)
 // answers "Is X behind/next to/to the left of Y?
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_pos_ok0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_pos_ok0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *pos;
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((pos = desc->Val("arg")) == NULL)
+  if ((pos = desc.Val("arg")) == NULL)
     return -1;
   if ((pos->Val("loc") == NULL) || (pos->Val("ref") == NULL))
     return -1;
@@ -912,9 +1058,9 @@ int jhcSceneVis::txt2pos (const char *txt) const
 //= Basic call to location check returns true or false assertion.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_pos_ok (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_pos_ok (const jhcAliaDesc& desc, int i)
 {
-  jhcAliaDesc *pos = desc->Val("arg"), *obj = pos->Val("loc");
+  jhcAliaDesc *pos = desc.Val("arg"), *obj = pos->Val("loc");
   jhcAliaDesc *ref = pos->Val("ref"), *ref2 = pos->Val("ref2");
   int t, r, r2, rel = cst[i], neg = 1;
 
@@ -955,13 +1101,13 @@ int jhcSceneVis::vis_pos_ok (const jhcAliaDesc *desc, int i)
 // answers "Is X closer/wider/greener than Y?"
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_comp_ok0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_comp_ok0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *hq;
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((hq = desc->Val("arg")) == NULL)
+  if ((hq = desc.Val("arg")) == NULL)
     return -1;
   if ((hq->Val("hq") == NULL) || (hq->Val("alt") == NULL))
     return -1;
@@ -999,9 +1145,9 @@ int jhcSceneVis::txt2comp (const char *txt) const
 //= Basic call to feature comparison returns true or false assertion.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_comp_ok (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_comp_ok (const jhcAliaDesc& desc, int i)
 {
-  const jhcAliaDesc *hq = desc->Val("arg");
+  const jhcAliaDesc *hq = desc.Val("arg");
   jhcAliaDesc *hq2, *obj = hq->Val("hq"), *ref = hq->Val("alt");
   const char *lex = NULL;
   int t, r, val, comp = cst[i], cat = abs(comp) - 1, neg = 1;
@@ -1054,12 +1200,13 @@ int jhcSceneVis::vis_comp_ok (const jhcAliaDesc *desc, int i)
 // answers "How many big red things to the right of Y are there?"
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_subit0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_subit0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (desc->Val("arg") == NULL)
+  if (desc.Val("arg") == NULL)
     return -1;
+  ct0[i] = jms_now();                  // for stable timeout
   return 1;
 }
 
@@ -1067,17 +1214,24 @@ int jhcSceneVis::vis_subit0 (const jhcAliaDesc *desc, int i)
 //= Basic call to object counter returns number of matching valid tracks.
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_subit (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_subit (const jhcAliaDesc& desc, int i)
 {
-  char nums[13][20] = {"none", "one", "two", "three", "four", "five", "six",
-                       "seven", "eight", "nine", "ten", "eleven", "twelve"};
+  char num[20] = "lots";
   int props[33];
-  jhcAliaDesc *obj = desc->Val("arg"), *ref, *ref2;
+  jhcAliaDesc *obj = desc.Val("arg"), *ref, *ref2;
   int cc, r, r2, t, nt, cnt = 0;
 
-  // determine selection criteria for objects based on query node properties
+  // wait for surface and object finding to settle
   if (!rwi->Readable())
     return 0;
+  if ((body->neck).Stare() < 10)
+  {
+    if (jms_elapsed(ct0[i]) > 1.0)     
+      return rwi->ReadDone(-1);                  // complain about motion?
+    return rwi->ReadDone(0);
+  }
+
+  // determine selection criteria for objects based on query node properties
   cc = obj_specs(props, &ref, &ref2, obj);
   if (cvt_refs(r, r2, ref, ref2) <= 0)
     return rwi->ReadDone(-1);
@@ -1096,8 +1250,10 @@ int jhcSceneVis::vis_subit (const jhcAliaDesc *desc, int i)
 
   // report resulting count
   rpt->StartNote();
-  obj = rpt->NewNode("obj", NULL, 0, 0.0);       // does not exist
-  rpt->NewProp(obj, "cnt", ((cnt <= cmax) ? nums[cnt] : "lots"));
+  obj = rpt->NewObj("obj", NULL, 0.0);           // does not exist
+  if (cnt <= cmax)
+    sprintf_s(num, "%d", cnt);
+  rpt->NewProp(obj, "cnt", num);
   prop2net(obj, props, ref, ref2);
   rpt->NewProp(obj, "ako", "object");
   rpt->FinishNote();
@@ -1114,12 +1270,13 @@ int jhcSceneVis::vis_subit (const jhcAliaDesc *desc, int i)
 // answers "Find a thin black thing near Y" repeatedly
 // returns 1 if okay, -1 for interpretation error
 
-int jhcSceneVis::vis_enum0 (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_enum0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (desc->Val("arg") == NULL)
+  if (desc.Val("arg") == NULL)
     return -1;
+  ct0[i] = jms_now();                  // for stable timeout
   cst[i] = 0;                          // nothing reported yet
   cmode[i] = 0;                        // no delay for first suggestion
   return 1;
@@ -1130,18 +1287,26 @@ int jhcSceneVis::vis_enum0 (const jhcAliaDesc *desc, int i)
 // enumeration limits kept in cst[i], irrelevant if a superlative was used
 // returns 1 if done, 0 if still working, -1 for failure
 
-int jhcSceneVis::vis_enum (const jhcAliaDesc *desc, int i)
+int jhcSceneVis::vis_enum (const jhcAliaDesc& desc, int i)
 {
   int props[33];
-  jhcAliaDesc *ref, *ref2, *obj = desc->Val("arg");
+  jhcAliaDesc *ref, *ref2, *obj = desc.Val("arg");
   int cc, r, r2, sel, t, nt, win, pref, born, cnt = 0;
 
-  // sync to sensors, possibly skip a cycle if just made a suggestion
+  // sync to sensors, skip a cycle if just made a suggestion
   if (!rwi->Readable())
     return 0;
-  if (cmode[i] > 0)
+  if (cmode[i] > 0)         
   {
     cmode[i] = 0;
+    return rwi->ReadDone(0);
+  }
+
+  // wait for surface and object finding to settle
+  if ((body->neck).Stare() < 10)
+  {
+    if (jms_elapsed(ct0[i]) > 1.0)     
+      return rwi->ReadDone(-1);                  // complain about motion?
     return rwi->ReadDone(0);
   }
 
@@ -1189,15 +1354,15 @@ int jhcSceneVis::vis_enum (const jhcAliaDesc *desc, int i)
       }
     }
 
-    // clean up object marks then add to NRI list
+    // clean up object marks then add to NRI list and get semantic node
     for (t = 0; t < nt; t++)
       sobj->SetState(t, 0);
     if (win < 0)
       return rwi->ReadDone(1);
     record(i, win);
-
-    // get semantic network node for object and assert that it meets all criteria
     obj = obj_node(win, born);         // either track node or new one 
+ 
+    // assert that it meets all criteria
     rpt->StartNote();                  
     std_props(obj, born);    
     prop2net(obj, props, ref, ref2);
@@ -1831,7 +1996,7 @@ double jhcSceneVis::pref_val (int cat, int t, int r, int r2) const
 
 //= Determine the required values for 33 properties based on semantic network for object.
 // properties: DSLWTH-ROYGBP-KXW-psn-dslwth-roygbp-kxw where lowercase are relative to reference
-// will only record one binding for ref (first one), ref2 is for "between"
+// will only record one binding for ref (first one), ref2 is for "between" or "in line with"
 // returns 1 if some color comparison needed, 0 if none (so ref needs no color analysis)
 
 int jhcSceneVis::obj_specs (int props[], jhcAliaDesc **ref, jhcAliaDesc **ref2, const jhcAliaDesc *obj) const
@@ -2078,7 +2243,7 @@ int jhcSceneVis::cvt_refs (int& r, int& r2, const jhcAliaDesc *ref, const jhcAli
   if ((r = node2trk(ref)) < 0)
     return 0;
 
-  // look for possible secondary reference (for "between")
+  // look for possible secondary reference (for "between" or "in line with")
   if (ref2 == NULL)
     return 1;
   if ((r2 = node2trk(ref2)) < 0)
@@ -2102,8 +2267,8 @@ jhcAliaDesc *jhcSceneVis::obj_node (int t, int& born)
   born = 0;
   if (obj == NULL)
   {
-    obj = rpt->NewNode("obj");
-    rpt->VisAssoc(sobj->ObjID(t), obj);
+    obj = rpt->NewObj("obj");
+    rpt->VisAssoc(sobj->ObjID(t), obj, 0);
     sobj->SetTag(t, obj->Nick());
     born = 1;
   }
@@ -2272,7 +2437,7 @@ void jhcSceneVis::super2net (jhcAliaDesc *obj, int sel) const
     // add dummy reference object for superlative (but only if new HQ)
     hq = rpt->NewProp(obj, "hq", val, 0, 1.0, 1, 2);
     if (hq->Val("alt") == NULL)
-      rpt->AddArg(hq, "alt", rpt->NewNode("obj", "all"));
+      rpt->AddArg(hq, "alt", rpt->NewObj("obj", "all"));
     rpt->GramTag(hq, JTAG_ASUP);
   }
 }
@@ -2298,11 +2463,11 @@ int jhcSceneVis::err_neck ()
   jhcAliaDesc *part, *own, *arm, *fail;
 
   rpt->StartNote();
-  part = rpt->NewNode("obj");
+  part = rpt->NewObj("sys");
   own = rpt->NewProp(part, "ako", "neck");
   rpt->AddArg(own, "wrt", rpt->Self());
   arm = rpt->Resolve(part);                      // find or make part
-  fail = rpt->NewNode("act", "work", 1);
+  fail = rpt->NewAct("work", 1);
   rpt->AddArg(fail, "agt", arm);                 // mark as not working
   rpt->FinishNote(fail);
   return -1;
@@ -2318,7 +2483,7 @@ int jhcSceneVis::err_neck ()
 // </pre>
 // returns -1 always for convenience
 
-int jhcSceneVis::err_gone (jhcAliaDesc *obj)
+int jhcSceneVis::err_miss (jhcAliaDesc *obj)
 {
   jhcAliaDesc *fail;
 
@@ -2328,7 +2493,7 @@ int jhcSceneVis::err_gone (jhcAliaDesc *obj)
 
   // event generation
   rpt->StartNote();
-  fail = rpt->NewNode("act", "see", 1);
+  fail = rpt->NewAct("see", 1);
   rpt->AddArg(fail, "agt", rpt->Self());
   rpt->AddArg(fail, "obj", obj);
   rpt->FinishNote(fail);
@@ -2351,5 +2516,40 @@ const char *jhcSceneVis::cat2txt (int cat) const
   if ((cat >= 15) && (cat <= 17))
     return sloc[cat - 12];             // added to array for convenience
   return NULL;
+}
+
+
+//= Generate two line string of properties with arrows indicating required.
+// properties: DSLWTH-ROYGBP-KXW-psn-dslwth-roygbp-kxw 
+// where lowercase are relative to reference 
+
+void jhcSceneVis::prop_vect (int *props) const
+{
+  int off[33] = { 0,  1,  2,  3,  4,  5,         // DSLWTH
+                  7,  8,  9, 10, 11, 12,         // ROYGBP
+                 14, 15, 16,                     // KXW
+                 18, 19, 20,                     // psn
+                 22, 23, 24, 25, 26, 27,         // dslwth
+                 29, 30, 31, 32, 33, 34,         // roygbp
+                 36, 37, 38};                    // kxw 
+  char hdr[80] = "DSLWTH ROYGBP KXW psn dslwth roygbp kxw";    // no dashes
+  char val[80], num[40];
+  int i, n;
+
+  strcpy_s(val, hdr);
+  for (i = 0; i < 33; i++)
+  {
+    n = off[i];
+    if (props[i] == 0)
+      val[n] = ' ';
+    else
+    {
+      _itoa_s(props[i], num, 10);
+      val[n] = num[0];
+    }
+  }
+  val[39] = '\0';
+  jprintf("props: %s\n", hdr);
+  jprintf(" vals: %s\n", val);
 }
 

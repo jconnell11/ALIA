@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,27 +60,28 @@ private:
   // angular speed estimate
   UL32 now;
   double p0, t0, ipv, itv;
+  int stable;
 
   // control loop performance
   double pvel, tvel;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // individual neck joints
-  jhcJoint jt[2];           
-
-  // joint ramp parameters
-  jhcParam rps;
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // parameters for motion control
-  jhcParam nps;
-  int ms;
   double gaze0, ndone, quit;
+  int ms;
 
   // residual geometric calibration
-  jhcParam gps;
   double nx0, ny0, nz0, cfwd, roll;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  jhcParam rps, nps, gps;
+
+  // individual neck joints
+  jhcJoint jt[2];           
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -88,9 +89,13 @@ public:
   // creation and initialization
   ~jhcEliNeck ();
   jhcEliNeck ();
+  double Default () const  {return gaze0;}
+  void SetDef (double t)   {gaze0 = t;}
+  void IncZ (double dz)    {nz0 += dz;}
+  void IncRoll (double dr) {roll += dr;}
 
   // configuration
-  void Bind (jhcDynamixel *ctrl);
+  void Bind (jhcDynamixel& ctrl);
   int CommOK (int bad =0) const {return nok;}
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
@@ -129,6 +134,7 @@ public:
   double TiltStep (int abs =0) const {return((abs > 0) ? fabs(Tilt() - t0) : Tilt() - t0);}
   bool Saccade (double plim =3.5, double tlim =1.0) const 
     {return((PanStep(1) > plim) || (TiltStep(1) > tlim));}
+  int Stare () const {return stable;}
 
   // goal specifying commands for view
   void GazeClear () {jt[0].RampReset(); jt[1].RampReset();}

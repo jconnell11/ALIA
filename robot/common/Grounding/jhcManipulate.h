@@ -27,8 +27,8 @@
 
 #include "jhcGlobal.h"
 
-#include "Reasoning/jhcAliaNote.h"     // common audio
-#include "Semantic/jhcAliaDesc.h" 
+#include "API/jhcAliaDesc.h"           // common audio
+#include "API/jhcAliaNote.h"     
 
 #include "Data/jhcParam.h"             // common video
 #include "Processing/jhcArea.h"
@@ -38,10 +38,11 @@
 #include "Processing/jhcStats.h"
 #include "Processing/jhcThresh.h"
 
-#include "Eli/jhcEliGrok.h"            // common robot
-#include "Objects/jhcSurfObjs.h"
+#include "Geometry/jhcMatrix.h"        // common robot
+#include "Objects/jhcSurfObjs.h"       
+#include "RWI/jhcEliGrok.h"            
 
-#include "Action/jhcStdKern.h"      
+#include "Kernel/jhcStdKern.h"      
 
 
 //= Interface to ELI object manipulation kernel for ALIA system.
@@ -65,6 +66,17 @@ private:
   enum RNUM {TWIXT, LEFT, RIGHT, FRONT, BEHIND, NEARBY, NEXTTO, ON, DOWN, RMAX};
   //           0     1      2      3      4       5       6     7    8     9
 
+  // instance control variables
+  jhcMatrix *cpos;                 /** Position goal for action.     */
+  jhcMatrix *cend;                 /** Final position for action.    */     
+  jhcMatrix *cdir;                 /** Direction goal for action.    */
+  double *caux2;                   /** More extra act information.   */
+  int *citem;                      /** Track num of target object.   */
+  int *cref;                       /** Track number of reference.    */
+  int *cref2;                      /** Track for second reference.   */
+  int *cflag;                      /** Exceptions in progress.       */
+  int *ccnt2;                      /** Secondary counter for action. */
+
   // link to hardware and processing
   jhcEliGrok *rwi;
 
@@ -80,7 +92,7 @@ private:
   // relation of gripper to object and surface (can only be one)
   jhcAliaDesc *held;
   double nose, left, hang, skew, wt;
-  int fcnt, htrk;
+  int fcnt, htrk, drop;
 
   // ground path of trajectory
   jhcImg path, mtns;
@@ -94,7 +106,7 @@ private:
   // currently selected action parameters (for convenience)
   jhcMatrix end, aim;
   double wid, sp, tim;
-  int inst, pmode, dmode, worksp, target;
+  int inst, pmode, dmode, worksp, target, keep;
 
   // error measurement and reporting (for convenience)
   jhcMatrix perr, derr;
@@ -102,36 +114,33 @@ private:
   int msg;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // control of diagnostic messages
-  int dbg;                   
-
+// PRIVATE MEMBER PARAMETERS
+private:
   // grab geometric parameters
-  jhcParam gps;
-  double knob, mesa, choke, ecc0, drop, gulp, loose, tip; 
+  double knob, mesa, choke, ecc0, down, gulp, loose, tip; 
 
   // deposit spot parameters
-  jhcParam sps;
   double swell, fuzz, iwid, bias, sdev, tween, buddy, hood;
 
   // trajectory control parameters
-  jhcParam cps;
   double ttol, hold, wmin, wtim, edge, over, graze;
   int park;
 
   // done tolerance parameters
-  jhcParam dps;
   double ptol, atol, wtol, ftol, cont, ztol, dtol;
   int detwang;
 
   // workspace limit parameters
-  jhcParam wps;
   double wx1, wx0, wy1, wy0, wz1, wz0, fwd, wcy;
 
   // workspace movement parameters
-  jhcParam ips;
   double zup, zdn, ztra, ybd, prow, ytra, xbd, xtra;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  int dbg;                   // control of diagnostic messages
+  jhcParam hps, sps, cps, dps, wps, ips;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -139,7 +148,6 @@ public:
   // creation and initialization
   ~jhcManipulate ();
   jhcManipulate ();
-  void Platform (jhcEliGrok *robot);
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -149,7 +157,7 @@ public:
   void Workspace (jhcImg& dest, int r =255, int g =255, int b =255) const;
   void ForceItem (int t);
   void ForceDest (double wx, double wy, double wz);
-  int Move () {local_volunteer(); return man_move(NULL, 0);}
+  int Move (); 
   int State () const   {return cst[0];}
   int LastErr () const {return msg;}
 
@@ -157,7 +165,7 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // processing parameters
-  int grab_params (const char *fname);
+  int hold_params (const char *fname);
   int ctrl_params (const char *fname);
   int done_params (const char *fname);
   int spot_params (const char *fname);
@@ -165,20 +173,20 @@ private:
   int into_params (const char *fname);
 
   // overridden virtuals
-  void local_reset (jhcAliaNote *top);
+  void local_platform (void *soma);
+  void local_reset (jhcAliaNote& top);
   void local_volunteer ();
-  int local_start (const jhcAliaDesc *desc, int i);
-  int local_status (const jhcAliaDesc *desc, int i);
+  int local_start (const jhcAliaDesc& desc, int i);
+  int local_status (const jhcAliaDesc& desc, int i);
 
   // recurring functions
   void set_size (const jhcImg& ref);
   int update_held ();
 
   // motion sequences 
-  JCMD_DEF(man_grab);
+  JCMD_DEF(man_wrap);
   JCMD_DEF(man_lift);
-  JCMD_DEF(man_take);
-  JCMD_DEF(man_move);
+  JCMD_DEF(man_trans);
   JCMD_DEF(man_tuck);
   JCMD_DEF(man_point);
 
@@ -220,7 +228,7 @@ private:
   double corner_ang (double tx, double ty) const;
   double easy_grip (double pan, double ecc, double grip) const;
   int clear_grip ();
-  void record_grip (jhcAliaDesc *obj, int t);
+  void record_grip (int t);
 
   // trajectory utilities
   double obj_peaks (double wx, double wy, double fsep, int carry);
@@ -252,9 +260,9 @@ private:
   int err_spot ();
   int err_gone (jhcAliaDesc *obj);
   int err_reach (jhcAliaDesc *obj);
-  int err_grasp ();
   int err_lack (jhcAliaDesc *obj);
-  void msg_hold ();
+  int err_drop (jhcAliaDesc *obj);
+  void msg_hold (jhcAliaDesc *obj, int neg);
 
 
 };

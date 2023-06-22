@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,14 +28,19 @@
 #include "Action/jhcAliaDLL.h"
 
 
-//= The DLL bind function is equivalent to this type.
+//= Used to extract the kernel name into local tag variable.
 
-typedef void (*bfcn)(void *body);
+typedef const char * (*nfcn)();
+
+
+//= The DLL platform function is equivalent to this type.
+
+typedef void (*pfcn)(void *body);
 
 
 //= The DLL reset function is equivalent to this type.
 
-typedef void (*rfcn)(jhcAliaNote *attn);
+typedef void (*rfcn)(jhcAliaNote& attn);
 
 
 //= The DLL volunteer function is equivalent to this type.
@@ -44,7 +50,7 @@ typedef void (*vfcn)();
 
 //= The DLL start, status, and stop functions are all equivalent to this type.
 
-typedef int (*sfcn)(const jhcAliaDesc *desc, int i);
+typedef int (*sfcn)(const jhcAliaDesc& desc, int i);
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -70,7 +76,8 @@ int jhcAliaDLL::close ()
   if (dll != NULL)
     FreeLibrary(dll);
   lib = NULL;
-  local_bind      = NULL;
+  local_name      = NULL;
+  local_platform  = NULL;
   local_reset     = NULL;
   local_volunteer = NULL;
   local_start     = NULL;
@@ -85,13 +92,14 @@ int jhcAliaDLL::close ()
 
 jhcAliaDLL::jhcAliaDLL (const char *file)
 {
-  next = NULL;
+  alloc = 1;                 // mark for deletion at end
   lib = NULL;
   Load(file);
 }
 
 
 //= Try to bind necessary dispatch functions from given DLL name.
+// Action/alia_gnd.cpp encapsulates class derived from jhcAliaKernel
 // returns 1 if successful, 0 if missing functions, -1 if bad file
 
 int jhcAliaDLL::Load (const char *file)
@@ -110,17 +118,19 @@ int jhcAliaDLL::Load (const char *file)
   // bind required functions
   while (1)
   {
-    if ((local_bind      = (bfcn) GetProcAddress(dll, "pool_bind")) == NULL)
+    if ((local_name      = (nfcn) GetProcAddress(dll, "gnd_name")) == NULL)
       break;
-    if ((local_reset     = (rfcn) GetProcAddress(dll, "pool_reset")) == NULL)
+    if ((local_platform  = (pfcn) GetProcAddress(dll, "gnd_platform")) == NULL)
       break;
-    if ((local_volunteer = (vfcn) GetProcAddress(dll, "pool_volunteer")) == NULL)
+    if ((local_reset     = (rfcn) GetProcAddress(dll, "gnd_reset")) == NULL)
       break;
-    if ((local_start     = (sfcn) GetProcAddress(dll, "pool_start")) == NULL)
+    if ((local_volunteer = (vfcn) GetProcAddress(dll, "gnd_volunteer")) == NULL)
       break;
-    if ((local_status    = (sfcn) GetProcAddress(dll, "pool_status")) == NULL)
+    if ((local_start     = (sfcn) GetProcAddress(dll, "gnd_start")) == NULL)
       break;
-    if ((local_stop      = (sfcn) GetProcAddress(dll, "pool_stop")) == NULL)
+    if ((local_status    = (sfcn) GetProcAddress(dll, "gnd_status")) == NULL)
+      break;
+    if ((local_stop      = (sfcn) GetProcAddress(dll, "gnd_stop")) == NULL)
       break;
     all = 1;
     break;
@@ -129,36 +139,38 @@ int jhcAliaDLL::Load (const char *file)
   // unload everything if failure else connect to body
   if (all <= 0)
     return close();
+  strcpy_s(tag, local_name());         // cache in member text string
   return 1;
 }
 
 
 //= Tack another pool of functions onto tail of list.
 
-void jhcAliaDLL::AddFcns (jhcAliaKernel *pool)
+void jhcAliaDLL::AddFcns (jhcAliaKernel& pool)
 {
-  if (pool == NULL)
-    return;
   if (next != NULL)
     next->AddFcns(pool);
   else
-    next = pool;
+    next = &pool;
 }
 
 
-//= Generally need to connect routines to some physical "body".
+//= Generally need to connect routines to some physical body.
+// needs pointer (*soma) instead of pass by refernce (&soma) with void
 
-void jhcAliaDLL::Bind (void *body)
+void jhcAliaDLL::Platform (void *soma)
 {
-  if (local_bind != NULL)
-    (*local_bind)(body);
+  if (local_platform != NULL)
+    (*local_platform)(soma);
+  if (next != NULL) 
+    next->Platform(soma);
 }
 
 
 //= Kill all instance of all functions.
 // automatically chains to "next" pool
 
-void jhcAliaDLL::Reset (jhcAliaNote *attn)  
+void jhcAliaDLL::Reset (jhcAliaNote& attn)  
 {
   if (local_reset != NULL)
     (*local_reset)(attn);
@@ -186,7 +198,7 @@ void jhcAliaDLL::Volunteer ()
 //= Start a function using given importance bid.
 // returns new instance number (>= 0) if success, -1 for problem, -2 for unknown
 
-int jhcAliaDLL::Start (const jhcAliaDesc *desc, int bid)
+int jhcAliaDLL::Start (const jhcAliaDesc& desc, int bid)
 {
   int rc = -2;
 
@@ -201,7 +213,7 @@ int jhcAliaDLL::Start (const jhcAliaDesc *desc, int bid)
 //= Check whether a function instance has completed yet.
 // returns positive for done, 0 for still running, -1 for failure, -2 if unknown
 
-int jhcAliaDLL::Status (const jhcAliaDesc *desc, int inst)
+int jhcAliaDLL::Status (const jhcAliaDesc& desc, int inst)
 {
   int rc = -2;
 
@@ -217,13 +229,13 @@ int jhcAliaDLL::Status (const jhcAliaDesc *desc, int inst)
 // calling with NULL description causes all instances of everything to stop
 // returns positive for convenience, -2 if unknown (courtesy call - should never wait)
 
-int jhcAliaDLL::Stop (const jhcAliaDesc *desc, int inst)
+int jhcAliaDLL::Stop (const jhcAliaDesc& desc, int inst)
 {
   int rc = -2;
 
   if (local_stop != NULL)
     rc = (*local_stop)(desc, inst);
-  if (((rc <= -2) || (desc == NULL)) && (next != NULL))
+  if ((rc <= -2) && (next != NULL))
     rc = next->Status(desc, inst);
   return rc;
 }

@@ -224,6 +224,25 @@ int jhcGraphlet::ReplaceMain (jhcNetNode *main)
 }
 
 
+//= Remove old main act node and verb (if any) and set main act to given node and with new verb.
+// returns 1 if successful, 0 for problem
+
+int jhcGraphlet::ReplaceAct (jhcNetNode *act)
+{
+  jhcNetNode *fcn;
+
+  if (act == NULL)
+    return 0;
+  if ((fcn = act->Fact("fcn")) == NULL)
+    return 0;
+  desc[0] = fcn;
+  desc[1] = act;
+  if (ni <= 1)
+   ni = 2;
+  return 1;
+}
+
+
 //= Make the last node added be the main node of the graphlet.
 
 jhcNetNode *jhcGraphlet::MainLast ()
@@ -403,7 +422,8 @@ int jhcGraphlet::Save (FILE *out, int lvl, int detail) const
   {
     n = desc[i];
     if ((i == 0) || (n->Literal() != NULL) || (n->NumArgs() > 0) || 
-        (n->Lex() != NULL) || ((n->tags != 0) && (detail >= 2)))
+        (n->Lex() != NULL) || (n->Neg() > 0) || (n->Done() > 0) ||
+        ((n->tags != 0) && (detail >= 2)))
       lvl2 = n->Save(out, lvl2, kmax, nmax, rmax, detail, this);   
   }
   return((ferror(out) != 0) ? -1 : 1);
