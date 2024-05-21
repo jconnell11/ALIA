@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ int jhcAliaKudos::kudo_conf0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *hq = desc.Val("arg");
 
-  if (atree == NULL)
+  if (mood == NULL)
     return -1;
   if (hq == NULL)
     return -1;
@@ -98,8 +98,7 @@ int jhcAliaKudos::kudo_conf0 (const jhcAliaDesc& desc, int i)
 
 int jhcAliaKudos::kudo_conf (const jhcAliaDesc& desc, int i)
 {
-  if (mood != NULL)
-    mood->UserMinBlf(cmode[i]);
+  mood->UserConf(cmode[i]);
   return 1;
 }
 
@@ -111,7 +110,7 @@ int jhcAliaKudos::kudo_pref0 (const jhcAliaDesc& desc, int i)
 {
   const jhcAliaDesc *hq = desc.Val("arg");
 
-  if (atree == NULL)
+  if (mood == NULL)
     return -1;
   if (hq == NULL)
     return -1;
@@ -125,8 +124,7 @@ int jhcAliaKudos::kudo_pref0 (const jhcAliaDesc& desc, int i)
 
 int jhcAliaKudos::kudo_pref (const jhcAliaDesc& desc, int i)
 {
-  if (mood != NULL)
-    mood->UserMinPref(cmode[i]);
+  mood->UserPref(cmode[i]);
   return 1;
 }
 

@@ -31,7 +31,7 @@
 
 #include "Interface/jhcMessage.h"
 
-#pragma inline_depth(10)
+//#pragma inline_depth(10)
 
 
 //= One dimensional integer array with size.

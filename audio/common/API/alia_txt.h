@@ -42,25 +42,29 @@
 
 /////////////////////////////////////////////////////////////////////////////
 
-#ifndef _ALIATXT_DLL_
-#define _ALIATXT_DLL_
+#pragma once
 
+#ifdef __linux__
 
-// function declarations (possibly combined with other header files)
+  #define DEXP               // nothing special needed for Linux shared lib
 
-#ifndef DEXP
-  #ifdef ALIATXT_EXPORTS
-    #define DEXP __declspec(dllexport)
-  #else
-    #define DEXP __declspec(dllimport)
+#else 
+
+  // function declarations (possibly combined with other header files)
+  #ifndef DEXP
+    #ifdef ALIATXT_EXPORTS
+      #define DEXP __declspec(dllexport)
+    #else
+      #define DEXP __declspec(dllimport)
+    #endif
   #endif
-#endif
 
 
-// link to library stub
+  // link to library stub
+  #ifndef ALIATXT_EXPORTS
+    #pragma comment(lib, "alia_txt.lib")
+  #endif
 
-#ifndef ALIATXT_EXPORTS
-  #pragma comment(lib, "alia_txt.lib")
 #endif
 
 
@@ -122,11 +126,12 @@ extern "C" DEXP class jhcAliaNote *alia_note ();
 ///////////////////////////////////////////////////////////////////////////
 
 //= Reset processing state at the start of a run.
+// dir: base directory for config, language, log, and KB subdirectories
 // rname: robot name (like "Jim Jones"), can be NULL if desired
 // quiet: 1 = no console printing (only log), 0 = copious status messages
 // returns 1 if successful, 0 for error
 
-extern "C" DEXP int alia_reset (const char *rname, int quiet);
+extern "C" DEXP int alia_reset (const char *dir, const char *rname, int quiet);
 
 
 //= Record current speeds of body and condition of battery.
@@ -156,6 +161,3 @@ extern "C" DEXP void alia_daydream (int pace);
 extern "C" DEXP int alia_done (int save);
 
 
-///////////////////////////////////////////////////////////////////////////
-
-#endif  // once

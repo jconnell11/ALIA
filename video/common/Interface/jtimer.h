@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2019 IBM Corporation
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,20 +21,19 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JTIMER_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JTIMER_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
 #include <stdlib.h>    // needed for definition of NULL !
 
 
+// code profiling
 void jtimer_clr ();
 void jtimer (int n, const char *fcn =NULL);
 void jtimer_x (int n =-1);
 int jtimer_rpt (int tree =1, const char *fname =NULL, int full =0);
 
-
-#endif  // once
+// utilities
+UL64 jtimer_now ();
+double jtimer_secs (UL64 t0);

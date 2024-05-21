@@ -20,14 +20,35 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include <windows.h>
-#include <conio.h>
+#ifndef __linux__
+  #include <windows.h>
+#else
+  #include <signal.h>
+#endif
+
 #include <stdio.h>
 
-#include "API/alia_txt.h"
+#include "jhcGlobal.h"                 // common video
+#include "jhc_conio.h"                 
+
+#include "API/alia_txt.h"              // common audio
 
 
 ///////////////////////////////////////////////////////////////////////////
+
+#ifndef __linux__
+  void term_save () {}                 // Windows saves no info!
+#else
+  void clean_stop (int signum) {alia_done(0);}
+  void term_save ()
+  {
+    struct sigaction act;
+    memset(&act, 0, sizeof(struct sigaction));
+    act.sa_handler = clean_stop;
+    sigaction(SIGTERM, &act, NULL);    // close log but drop KB
+  }
+#endif
+
 
 //= Non-blocking gets() for retrieving a full line from user.
 // also handles limited editing using backspace and ESC for exit
@@ -46,12 +67,13 @@ int get_line (char *text, int& fill)
     if ((ch = _getch()) == 0x1B)
       return -1;
 
-    // handle simple edits via backspace
-    if (ch == '\b') 
+    // handle simple edits via backspace (also delete for Linux)
+    if (strchr("\b\x7F", ch) != NULL) 
     {
       if (fill > 0)
       {
         printf("\b \b");
+        fflush(stdout);
         text[--fill] = '\0';
       }
       return 0;
@@ -60,7 +82,7 @@ int get_line (char *text, int& fill)
     // check for return or too many characters
     if (fill >= 199)
       _ungetch(ch);
-    if ((ch == '\r') || (fill >= 199))
+    if ((strchr("\n\r\x0A", ch) != NULL) || (fill >= 199))
     {
       printf(" \n");
       text[fill] = '\0';
@@ -70,7 +92,8 @@ int get_line (char *text, int& fill)
 
     // echo keystroke and add character to end
     _putch(ch);
-    text[fill++] = ch;
+    fflush(stdout);
+    text[fill++] = (char) ch;
     text[fill] = '\0';
   }
   return 0;
@@ -80,6 +103,7 @@ int get_line (char *text, int& fill)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Main entry point for command line program.
+// NOTE: any newly learned info is NOT saved if machine gets shutdown!
 
 int main (int argc, char *argv[])
 {
@@ -87,11 +111,15 @@ int main (int argc, char *argv[])
   const char *output;
   int rc, n, fill = 0;
 
+  // attempt to save newly learned info if program suddenly terminated
+  term_save();
+  alia_reset(NULL, "Joe", 1);
+
   // announce entry and prompt user for input
   printf("\nTest of DLL: %s -- jconnell@alum.mit.edu\n", alia_version());
   printf("Hit ESC to exit ...\n\n");
   printf("> ");
-  alia_reset("Joe", 1);
+  fflush(stdout);
 
   // link reasoning agent to user
   while ((rc = get_line(input, fill)) >= 0)
@@ -101,7 +129,10 @@ int main (int argc, char *argv[])
 
     // process any user statement
     if (rc > 0)
+    {
       printf("> ");
+      fflush(stdout);
+    }
     output = alia_respond((rc > 0) ? input : NULL);
 
     // report any agent message
@@ -110,6 +141,7 @@ int main (int argc, char *argv[])
       n = (int) strlen(output) - (fill + 3);
       printf("\r%s%*s\n", output, __max(0, n), "");
       printf("> %s", ((fill > 0) ? input : ""));
+      fflush(stdout);
     }
 
     // issue command to actuators on robot hardware
@@ -121,6 +153,6 @@ int main (int argc, char *argv[])
 
   // cleanup
   alia_done(0);
-  printf("\n\nDone -- see log file for details\n");
+  printf("\n\nDone -- see ALIA log file for details\n");
   return 1;
 }

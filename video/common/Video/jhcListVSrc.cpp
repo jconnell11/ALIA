@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
+// Copyright 2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -362,14 +363,14 @@ int jhcListVSrc::next_line ()
     // prune whitespace from front
     begin = line;
     while (*begin != '\0')
-      if (strchr(" \n\r", *begin) != NULL)
+      if (strchr(" \n\r\x0A", *begin) != NULL)
         begin++;
       else
         break;
 
     // prune whitespace from back
     for (i = (int) strlen(begin); i > 0; i--)
-      if (strchr(" \n\r", begin[i - 1]) == NULL)
+      if (strchr(" \n\r\x0A", begin[i - 1]) == NULL)
         break;
   }
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@
 
 #include <ctype.h>
 #include <math.h>
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Language/jhcMorphTags.h"     // common audio
 #include "Semantic/jhcGraphlet.h"      // since only spec'd as class in header
@@ -536,7 +538,7 @@ jhcNetNode *jhcNodePool::MakeAct (const char *word, int neg, double def, int don
 jhcNetNode *jhcNodePool::CloneAct (const jhcNetNode *act, int neg)
 {
   const jhcNetNode *fcn;
-  jhcNetNode *act2;
+  jhcNetNode *act2, *dest, *dest2;
   int i = 0;
 
   // find action verb (limit to original query)
@@ -550,7 +552,11 @@ jhcNetNode *jhcNodePool::CloneAct (const jhcNetNode *act, int neg)
   else
     act2 = MakeAct(fcn->Lex());
   act2->AddArg("obj", act->Val("obj"));
-  act2->AddArg("dest", act->Val("dest"));
+  if ((dest = act->Fact("dest")) != NULL)
+  {
+    dest2 = AddProp(act2, "dest", "to");
+    dest2->AddArg("ref", dest->Val("ref"));
+  }
 
   // add selected adverbs
   copy_mods(act2, act);

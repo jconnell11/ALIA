@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCELIBASE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCELIBASE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -33,7 +30,8 @@
 #include "Geometry/jhcMotRamp.h"         // common robot
 #include "Peripheral/jhcSerialFTDI.h" 
 
-#include "Data/jhcArr.h"
+#include "Body/jhcGenBase.h"
+
 
 /** If condition occurs increment error count and return code, otherwise clear error count. **/
 #define BBARF(val, cond) if (cond) {berr++; return(val);} else berr = 0;
@@ -52,7 +50,7 @@
 //   AdjustXY function moves some point (target) to compensate for base motion
 // errors: generally try all sends but increment berr on failed receives
 
-class jhcEliBase 
+class jhcEliBase : public jhcGenBase
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -142,7 +140,7 @@ public:
   int SaveCfg (const char *fname) const;
 
   // configuration
-  int CommOK (int bad =3) const {return((berr > bad) ? 0 : 1);}
+  int CommOK () const {return((berr > 0) ? 0 : 1);}
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
   double Battery ();
@@ -173,7 +171,7 @@ public:
   double Y () const         {return ypos;}  
   double StepFwd () const   {return dy0;}
   double StepSide () const  {return dx0;}
-  double StepLeft () const  {return -dx0;}
+//  double StepLeft () const  {return -dx0;}
   double StepTurn () const  {return dr;}
   double StepX () const     {return dx;}
   double StepY () const     {return dy;}
@@ -182,6 +180,7 @@ public:
   double TurnCmdV () const  {return tvel;}
   double MoveIPS (int abs =1) const {return((abs > 0) ? fabs(imv) : imv);}
   double TurnDPS (int abs =1) const {return((abs > 0) ? fabs(itv) : itv);}
+  double TravelRate () const {return fabs(mctrl.rt);}
   int Static () const {return parked;}
   void AdjustXY (double& tx, double& ty, double tx0 =0.0, double ty0 =0.0) const;
   void AdjustTarget (jhcMatrix& pos) const;
@@ -190,14 +189,14 @@ public:
   // base goal specification
   void DriveClear () {mctrl.RampReset(); tctrl.RampReset();} 
   int DriveAbsolute (double tr, double hd, double m_rate =1.0, double t_rate =0.0, int bid =10);
-  int MoveAbsolute (double tr, double rate =1.0, int bid =10); 
+  int MoveAbsolute (double tr, double rate =1.0, int bid =10, double skew =0.0); 
   int TurnAbsolute (double hd, double rate =1.0, int bid =10);
   int DriveTarget (double dist, double ang, double rate =1.0, int bid =10)
     {return DriveAbsolute(trav + dist, head + ang, rate, rate, bid);}
-  int MoveTarget (double dist, double rate =1.0, int bid =10)
-    {return MoveAbsolute(trav + dist, rate, bid);}
-  int TurnTarget (double ang, double rate =1.0, int bid =10)
-    {return TurnAbsolute(head + ang, rate, bid);}
+//  int MoveTarget (double dist, double rate =1.0, int bid =10)
+//    {return MoveAbsolute(trav + dist, rate, bid);}
+//  int TurnTarget (double ang, double rate =1.0, int bid =10)
+//    {return TurnAbsolute(head + ang, rate, bid);}
   int DriveStop (double rate =1.5, int bid =1)
     {return DriveAbsolute(mctrl.SoftStop(trav, mdead, rate), tctrl.SoftStop(head, tdead, rate), rate, rate, bid);}
   int MoveStop (double rate =1.5, int bid =1)
@@ -217,8 +216,8 @@ public:
   // -------------------- BASE EXTRAS ---------------------------
 
   // convert relative goal to absolute
-  double MoveGoal (double dist) const {return(trav + dist);}
-  double TurnGoal (double ang) const  {return(head + ang);}
+//  double MoveGoal (double dist) const {return(trav + dist);}
+//  double TurnGoal (double ang) const  {return(head + ang);}
   double RateIPS (double rate =1.0) const {return(rate * mctrl.vstd);}
   double RateDPS (double rate =1.0) const {return(rate * tctrl.vstd);}
 
@@ -314,10 +313,4 @@ private:
   int wheel_vels (double ips, double dps);
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -21,18 +21,17 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-// Build.Settings.Link.General must have library winmm.lib
-#pragma comment(lib, "winmm.lib")   
+#ifndef __linux__
+  #pragma comment(lib, "winmm.lib")   
+  #include <windows.h>
+#else
+  #include <stddef.h>
+  #include <time.h>
+#endif
 
-#include <windows.h>
 #include <stdio.h>
 
 #include "Interface/jms_x.h"
-
-
-//= Persistent synchronization object for more precise sleep.
-
-//static HANDLE wait = CreateWaitableTimer(NULL, TRUE, NULL);
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -43,22 +42,17 @@
 
 void jms_sleep (int ms)
 {
-  if (ms > 0)
-    Sleep(ms);
-/*
-  LARGE_INTEGER due;
-
-  // figure out time to sleep in 100ns ticks
   if (ms <= 0)
     return;
-  due.QuadPart = -10LL * ms;
 
-  // wait at least the amount requested
-  timeBeginPeriod(1);
-  if (SetWaitableTimer(wait, &due, 0, NULL, NULL, 0))
-    WaitForSingleObject(wait, INFINITE);
-  timeEndPeriod(1);
-*/
+#ifndef __linux__
+  Sleep(ms);
+#else
+  timespec ts;
+  ts.tv_sec = ms / 1000;
+  ts.tv_nsec = 1000000 * (ms % 1000);
+  nanosleep(&ts, NULL); 
+#endif
 }
 
 
@@ -68,7 +62,15 @@ void jms_sleep (int ms)
 
 UL32 jms_now ()
 {
-  UL32 now = timeGetTime();
+  UL32 now;
+
+#ifndef __linux__
+  now = timeGetTime();
+#else
+  timespec ts;
+  clock_gettime(CLOCK_BOOTTIME, &ts);
+  now = (UL32)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+#endif
 
   return __max(1, now);
 }
@@ -170,18 +172,34 @@ char *jms_offset (char *dest, UL32 tref, int dot, int ssz)
 
 char *jms_date (char *dest, int res, int ssz) 
 {
-  SYSTEMTIME t;
+  int yr, mon, day, hr, min, sec;
 
+#ifndef __linux__
+  SYSTEMTIME t;
   GetLocalTime(&t);
+  yr  = t.wYear;
+  mon = t.wMonth;
+  day = t.wDay;
+  hr  = t.wHour;
+  min = t.wMinute;
+  sec = t.wSecond;
+#else
+  time_t t = time(NULL);
+  tm *loc = localtime(&t);
+  yr  = loc->tm_year % 100;            // last two digits only
+  mon = loc->tm_mon + 1;
+  day = loc->tm_mday;
+  hr  = loc->tm_hour;
+  min = loc->tm_min;
+  sec = loc->tm_sec;
+#endif
+
   if (res < 0)
-    sprintf_s(dest, ssz, "%02d%02d%02d", 
-                         t.wMonth, t.wDay, t.wYear % 100);
+    sprintf_s(dest, ssz, "%02d%02d%02d", mon, day, yr % 100);
   else if (res == 0)
-    sprintf_s(dest, ssz, "%02d%02d%02d_%02d%02d", 
-                         t.wMonth, t.wDay, t.wYear % 100, t.wHour, t.wMinute);
+    sprintf_s(dest, ssz, "%02d%02d%02d_%02d%02d", mon, day, yr % 100, hr, min);
   else 
-    sprintf_s(dest, ssz, "%02d%02d%02d_%02d%02d%02d", 
-                         t.wMonth, t.wDay, t.wYear % 100, t.wHour, t.wMinute, t.wSecond);
+    sprintf_s(dest, ssz, "%02d%02d%02d_%02d%02d%02d", mon, day, yr % 100, hr, min, sec);
   return dest;
 } 
 
@@ -193,15 +211,29 @@ char *jms_date (char *dest, int res, int ssz)
 
 char *jms_time (char *dest, int res, int ssz) 
 {
-  SYSTEMTIME t;
+  int hr, min, sec, ms;
 
+#ifndef __linux__
+  SYSTEMTIME t;
   GetLocalTime(&t);
+  hr  = t.wHour;
+  min = t.wMinute;
+  sec = t.wSecond;
+  ms  = t.wMilliseconds;
+#else
+  timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);  
+  tm *loc = localtime(&(ts.tv_sec));
+  hr  = loc->tm_hour;
+  min = loc->tm_min;
+  sec = loc->tm_sec;
+  ms  = (int)(ts.tv_nsec / 1000000);
+#endif
+
   if (res <= 0)
-    sprintf_s(dest, ssz, "%02d:%02d:%02d", 
-                         t.wHour, t.wMinute, t.wSecond);
+    sprintf_s(dest, ssz, "%02d:%02d:%02d", hr, min, sec);
   else 
-    sprintf_s(dest, ssz, "%02d:%02d:%02d.%03d",
-                         t.wHour, t.wMinute, t.wSecond, t.wMilliseconds);
+    sprintf_s(dest, ssz, "%02d:%02d:%02d.%03d", hr, min, sec, ms);
   return dest;
 } 
 
@@ -211,33 +243,23 @@ char *jms_time (char *dest, int res, int ssz)
 
 bool jms_expired (int mon, int yr, int smon, int syr)
 {
-  SYSTEMTIME t;
-  int cmon, cyr;
+  int cyr, cmon;
 
+#ifndef __linux__
+  SYSTEMTIME t;
   GetLocalTime(&t);
+  cyr  = t.wYear;
   cmon = t.wMonth;
-  cyr = t.wYear;
+#else
+  time_t t = time(NULL);
+  tm *loc = localtime(&t);
+  cyr  = loc->tm_year + 1900;          // full 4 digit year
+  cmon = loc->tm_mon + 1;
+#endif
+
   return( (cyr > yr) || 
          ((cyr == yr) && (cmon > mon)) ||
          ((syr > 0) && (cyr < syr)) || 
          ((syr > 0) && (cyr == syr) && (smon > 0) && (cmon < smon)));
 }
 
-
-//= Returns number of 100 ns intervals since 12:00 AM on January 1, 1601 (UTC).
-// useful as an absolute time stamp independent of system start or time zone
-
-UL64 jms_chrono ()
-{
-  FILETIME ftime;
-  ULARGE_INTEGER time;
- 
-#if WINVER >= 0x0602
-  GetSystemTimePreciseAsFileTime(&ftime);        // 100ns
-#else
-  GetSystemTimeAsFileTime(&ftime);               // about 1ms
-#endif
-  time.LowPart  = ftime.dwLowDateTime;
-  time.HighPart = ftime.dwHighDateTime;
-  return((UL64) time.QuadPart);
-}

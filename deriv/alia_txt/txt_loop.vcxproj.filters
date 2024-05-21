@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\common video">
+      <UniqueIdentifier>{6ac8386a-af22-410a-ba30-31a33414d900}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio">
+      <UniqueIdentifier>{f3152c4c-16ac-4f4c-a228-29d98ba303ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio\API">
+      <UniqueIdentifier>{d96063dc-de2b-42ec-b6de-76489f66d822}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="txt_loop.cpp">
@@ -20,8 +29,14 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\video\common\jhc_conio.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\jhcGlobal.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\audio\common\API\alia_txt.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\common audio\API</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

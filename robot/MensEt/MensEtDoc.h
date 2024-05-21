@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@
 
 #include "Body/jhcTaisRemote.h"        // common robot
 
-#include "RWI/jhcMensCoord.h"          // class encapsulating base functionality
+#include "RWI/jhcManusCoord.h"         // class encapsulating base functionality
 
 
 class CMensEtDoc : public CDocument, private jhcTools
@@ -69,7 +69,7 @@ public:
 
 // Attributes
 public:
-  jhcMensCoord mc;     // class encapsulating base functionality
+  jhcManusCoord mc;    // class encapsulating base functionality
   jhcTaisRemote tais;  // linkage to remotely hosted brain
   jhcConsole prt;      // place for jprintf output
   jhcChatBox chat;     // place for text interaction

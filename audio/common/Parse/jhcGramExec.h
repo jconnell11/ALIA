@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGRAMEXEC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGRAMEXEC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -211,7 +208,8 @@ public:
   // debugging
   void PrintTree (int top =1);
   int SaveCats (const char *fname, int lvl, const class jhcMorphFcns& mf) const;
-
+  int SaveNames (const char *fname) const;
+ 
 
 // PUBLIC MEMBER FUNCTIONS (low level sp_parse)
 public:
@@ -297,9 +295,6 @@ private:
 
 
 };
-
-
-#endif  // once
 
 
 

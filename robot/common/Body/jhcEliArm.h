@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCELIARM_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCELIARM_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -34,6 +31,8 @@
 #include "Geometry/jhcMatrix.h"
 #include "Geometry/jhcMotRamp.h"
 #include "Peripheral/jhcDynamixel.h"
+
+#include "Body/jhcGenArm.h"
 
 
 //= Kinematics and serial control for ELI robot arm.
@@ -79,7 +78,7 @@
 // Use a negative rate to linearly change completion time using identical trajectory.
 // </pre>
 
-class jhcEliArm 
+class jhcEliArm : public jhcGenArm
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -89,8 +88,8 @@ private:
 
   // sensor data refreshed by Update
   jhcMatrix ang0;                       /** Extracted arm joint angles.  */ 
-  jhcMatrix loc;                        /** Current gripper position.    */
-  jhcMatrix aim;                        /** Current gripper orientation. */
+//  jhcMatrix loc;                        /** Current gripper position.    */
+//  jhcMatrix aim;                        /** Current gripper orientation. */
   jhcMatrix fvec;                       /** Raw endpoint force vector.   */
   jhcMatrix fsm;                        /** Temporally smoothed force.   */
   double w00, w0;                       /** Gripper width on last cycle. */
@@ -145,11 +144,11 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  jhcParam tps, ips, fps, gps;
+  jhcParam tps, ips, fps, gps, sps;
 
   // arm stowing position
-  jhcParam sps;
-  double retx, rety, retz, rdir, rtip, rgap, rets, rete;
+//  double retx, rety, retz, rdir, rtip, rgap, rets, rete;
+  double rgap, rets, rete;
 
   // individual arm and hand joints
   jhcJoint jt[7];  
@@ -172,7 +171,7 @@ public:
   void SetX0 (double v) {ax0 = v;}
   void SetY0 (double v) {ay0 = v;}
   void SetZ0 (double v) {az0 = v;}
-  int CommOK (int bad =0) const {return aok;}
+  int CommOK () const {return aok;}
   double FingerIPS () const {return __max(iarm, igrip);}
 
   // configuration
@@ -219,7 +218,6 @@ public:
   double Squeeze () const {return sqz;}
   const double *Crush () const {return &sqz;}
   bool WidthStop (double wch =0.1) const {return(fabs(w00 - w0) < wch);}
-  bool SqueezeSome (double f =8.0) const {return(sqz >= f);}
   bool HoldMode () const  {return(fwin > 0.0);}
   double GripIPS () const {return igrip;}
     
@@ -230,8 +228,8 @@ public:
   int HandTarget (double sep, double rate =1.0, int bid =10);
 
   // hand motion progress
-  double WidthErr (double sep, int abs =1) const;
-  double SqueezeErr (double f, int abs =1) const;
+  double WidthErr (double sep) const;
+  double SqueezeErr (double f) const;
   bool WidthClose (double wtol =0.1) const   {return(wctrl.RampDist(w0) <= wtol);}
   bool SqueezeClose (double ftol =2.0) const {return(fabs(sqz - fwin) <= ftol);}
   bool HandClose (double wid, double wtol =0.1, double ftol =2.0) const
@@ -273,15 +271,16 @@ public:
   void ArmConfig (jhcMatrix& ang) const;
   const jhcMatrix *ArmConfig () const {return &ang0;}                // values continually updated
   void ArmPose (jhcMatrix& pos, jhcMatrix& dir) const;              
-  void Position (jhcMatrix& pos) const; 
-  void Direction (jhcMatrix& dir) const;
-  const jhcMatrix *Position () const  {return &loc;}                 // values continually updated
-  const jhcMatrix *Direction () const {return &aim;}                 // values continually updated
+//  void Position (jhcMatrix& pos) const; 
+//  void Direction (jhcMatrix& dir) const;
+//  const jhcMatrix *Position () const  {return &loc;}                 // values continually updated
+//  const jhcMatrix *Direction () const {return &aim;}                 // values continually updated
   int ForceVect (jhcMatrix &fdir, double z0 =0.0, int raw =0) const;
   double ForceAlong (const jhcMatrix &dir, int raw =0) const;
   double ForceZ (double z0 =0.0, int raw =0) const; 
   double ObjectWt (double grav =4.0, double fsc =0.57) const;
   double ArmIPS () const {return iarm;}
+  double ReachRate () const {return fabs(pctrl.rt);}
   int Static () const {return parked;}
 
   // arm goal specification commands
@@ -289,6 +288,7 @@ public:
   void ArmClear () {pctrl.RampReset(); dctrl.RampReset();}
   int CfgTarget (const jhcMatrix& ang, double rate =1.0, int bid =10);
   int CfgTarget (const jhcMatrix& ang, const jhcMatrix& rates, int bid =10);
+  int Tuck (double rate =1.0, int bid =10);
   int ArmTarget (const jhcMatrix& pos, const jhcMatrix& dir, double p_rate =1.0, double d_rate =0.0, int bid =10);
   int PosTarget (const jhcMatrix& pos, double rate =1.0, int bid =10, int mode =0x0);
   int PosTarget (double ax, double ay, double az, double rate =1.0, int bid =10, int mode =0x0);
@@ -299,6 +299,7 @@ public:
 
   // arm motion progress
   void CfgErr (jhcMatrix& aerr, const jhcMatrix& ang, int abs =1) const;
+  double TuckErr () const;
   void ArmErr (jhcMatrix& perr, jhcMatrix& derr, 
                const jhcMatrix& pos, const jhcMatrix& dir, int abs =1) const;
   double PosErr (jhcMatrix& perr, const jhcMatrix& pos, int abs =1) const;
@@ -457,10 +458,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

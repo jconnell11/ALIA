@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,19 +21,18 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCBACKGRWI_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCBACKGRWI_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
+
+#include "RWI/jhcGenRWI.h"             // common robot
 
 
 //= Base class for pushing robot processing to background threads.
 // main thread "xchg" gets inputs, shares with "aux2", then sets outputs
 // "aux2" can be a simple NOP if interpret2 fcn is not overridden
 
-class jhcBackgRWI
+class jhcBackgRWI : public jhcGenRWI
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -55,8 +54,8 @@ public:
   int Issue ();
 
   // intermediate access
-  bool Accepting ();
-  bool Readable ();
+  bool Accepting () const;
+  bool Readable () const;
   int ReadDone (int rc =0);
 
 
@@ -89,10 +88,3 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
-

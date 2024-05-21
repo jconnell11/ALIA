@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2013-2015 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JRAND_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JRAND_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -37,10 +35,6 @@ double jrand_rng (double lo, double hi);
 double jrand_cent (double mid, double dev);
 double jrand_norm (double avg, double std);
 double jrand_trim (double avg, double std, double lo, double hi);
-
-
-#endif  // once
-
 
 
 

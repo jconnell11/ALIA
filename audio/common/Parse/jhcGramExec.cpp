@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Language/jhcMorphFcns.h"     // since only spec'd as class in header
 
@@ -99,6 +101,7 @@ void jhcGramExec::SetGrammar (const char *fname, ...)
     return;
   va_start(args, fname); 
   vsprintf_s(gfile, fname, args);
+  va_end(args);
   if (strchr(gfile, '.') == NULL)
     strcat_s(gfile, ".sgm");
 }
@@ -168,6 +171,7 @@ int jhcGramExec::DumpRules (const char *fname, ...)
     return 0;
   va_start(args, fname); 
   vsprintf_s(dump, fname, args);
+  va_end(args);
 
   // try opening file then clear marks on all rules
   if (fopen_s(&out, dump, "w") != 0)
@@ -294,6 +298,7 @@ const char *jhcGramExec::Expand (const char *sent, int fix)
   subst_all("who's",  "who is");  
   subst_all("what's", "what is");  
   subst_all("'d",     " would");       // might be "had"
+  subst_all("°",     " degrees");     // for Azure STT
 
   // expand negations
   if (fix < 2)
@@ -409,7 +414,7 @@ int jhcGramExec::normalize (int n0, const jhcGramRule *r)
     return n0;
 
   // check all step in rule
-  s = r->tail;
+  s = r->tail; 
   while (s != NULL)
   {
     // check if step is itself a rule
@@ -1010,9 +1015,9 @@ void jhcGramExec::noun_vars (FILE *out, int lvl, const jhcMorphFcns& mf) const
         t = t->tail;
       }
 
-     // record any irregular plurals
-     if ((var = mf.Irregular(base, JTAG_NPL)) != NULL)
-       fprintf_s(out, "  %s * npl = %s\n", base, var);
+      // record any irregular plurals
+      if ((var = mf.Irregular(base, JTAG_NPL)) != NULL)
+        fprintf(out, "  %s * npl = %s\n", base, var);
     }
     r = r->next;             // next grammar rule
   }
@@ -1093,6 +1098,45 @@ void jhcGramExec::verb_vars (FILE *out, int lvl, const jhcMorphFcns& mf) const
 }
 
 
+//= Save out all valid expansions of NAME and ATTN categories.
+// help speech recognition correctly transcribe VIP and robot names
+// return number written to file
+
+int jhcGramExec::SaveNames (const char *fname) const
+{
+  FILE *out;
+  const jhcGramRule *r = gram;
+  const jhcGramStep *t;
+  int n = 0;
+
+  // attempt to open file
+  if (fopen_s(&out, fname, "w") != 0)
+    return 0;
+
+  // look through all rules for matching non-terminal
+  while (r != NULL)
+  {
+    if ((strcmp(r->head, "NAME") == 0) || (strcmp(r->head, "ATTN") == 0))
+    {
+      // write out all words of expansion on single line
+      t = r->tail;
+      while (t != NULL)
+      {
+        fprintf(out, "%s ", t->symbol);
+        t = t->tail;
+      }
+      fprintf_s(out, "\n");
+      n++;
+    }
+    r = r->next;             // next grammar rule
+  }
+
+  // clean up 
+  fclose(out);
+  return n;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                        Parsing Configuration                          //
 ///////////////////////////////////////////////////////////////////////////
@@ -1128,9 +1172,7 @@ int jhcGramExec::parse_start (int level, const char *log_file)
 {
   if (log_file == NULL)
     return 1;
-  if (*log_file != '\0')
-    return jprintf_open(log_file, 1);
-  return jprintf_open();                  // for "" filename
+  return jprintf_open(log_file);
 }
 
 
@@ -1237,8 +1279,7 @@ char *jhcGramExec::clean_line (char *ans, int len, FILE *in, int ssz)
   strcpy_s(ans, ssz, start);
 
   // remove final newline and anything after semicolon
-  if ((end = strchr(ans, '\n')) != NULL)
-    *end = '\0';
+  ans[strcspn(ans, "\n\r\x0A")] = '\0';
   if ((end = strchr(ans, ';')) != NULL)
     *end = '\0';
 
@@ -1316,7 +1357,7 @@ int jhcGramExec::split_paren (const char *rname, char *base, char *start, int lv
   }
 
   // generate one version with group missing
-  strncpy_s(alt, base, start - base);                // always adds terminator
+  strncpy_s(alt, 500, base, start - base);                // always adds terminator
   if (*end != '\0')
     strcat_s(alt, end + 1);
 
@@ -1598,7 +1639,7 @@ int jhcGramExec::parse_analyze (const char *text, const char *conf)
   {
     if (r->status >= 2)
       if (add_chart(r, 0, NULL, 1, token) <= 0)
-        return -1;
+       return -1;
     r = r->next;
   }
 
@@ -1759,7 +1800,6 @@ int jhcGramExec::add_chart (const jhcGramRule *r, int end, jhcGramRule *s0, int 
   s->id = snum++;
   s->next = chart;
   chart = s;
-
   if (init > 0)
   {
     // initialize rule to become state
@@ -1845,7 +1885,7 @@ int jhcGramExec::parse_span (int *first, int *last)
     if ((t = find_non(s, s->mark)) == NULL)
       return 0;
     if ((s = t->back) == NULL)
-      return 0;
+     return 0;
   }
 
   // bind first and last word positions and calculate length

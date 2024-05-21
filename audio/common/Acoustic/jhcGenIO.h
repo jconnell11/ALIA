@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,9 +27,9 @@
 /* CPPDOC_END_EXCLUDE */
 
 #include "jhcGlobal.h"
+#include "jhc_conio.h"
 
 #include <string.h>
-#include <conio.h>
 
 
 //= Interface class specifying speech-like input and output.

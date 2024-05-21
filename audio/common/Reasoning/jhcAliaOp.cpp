@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 #include <ctype.h>
 
 #include "Interface/jhcMessage.h"   // common video
+#include "Interface/jprintf.h"
 
 #include "Action/jhcAliaDir.h"      // common robot
 
@@ -412,13 +413,13 @@ int jhcAliaOp::load_pattern (jhcTxtLine& in)
 //= Save self out in machine readable form to current position in a file.
 // return: 1 = successful, 0 = bad format, -1 = file error
 
-int jhcAliaOp::Save (FILE *out)
+int jhcAliaOp::Save (FILE *out, int src)
 {
   jhcAliaDir dir;
   int i;
 
   // header ("OP <id> - <gist>") and optional provenance
-  if (*prov != '\0')
+  if ((src > 0) && (*prov != '\0'))
     jfprintf(out, "// originally operator %d from %s\n\n", pnum, prov);  
   jfprintf(out, "OP");
   if (id > 0)

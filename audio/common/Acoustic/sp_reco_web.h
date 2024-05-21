@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSPRECOWEB_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSPRECOWEB_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include <stdlib.h>            // needed for NULL
 
@@ -57,17 +54,11 @@ extern "C" DEXP const char *reco_version ();
 
 
 //= Configure system to process speech from default input source (microphone).
-// generally takes separate key string (kf) and geographic zone (area)
-// if area is NULL, kf is file with credentials (defaults to "sp_reco_web.key")
-// returns 1 if successful, 0 if cannot connect, -1 for bad credentials
+// reads required key and area from file:    config/sp_reco_web.key
+// optionally reads special names from file: config/all_names.txt
+// returns 1 + names if successful, 0 if cannot connect, neg for bad credentials
 
-extern "C" DEXP int reco_setup (const char *kf =NULL, const char *reg =NULL);
-
-
-//= Fix a mis-recognized phrase by making it more likely (not super useful).
-// can be called even when recognition is actively running
-
-extern "C" DEXP int reco_prefer (const char *phrase);
+extern "C" DEXP int reco_setup ();
 
 
 //= Start processing speech right now.
@@ -97,6 +88,12 @@ extern "C" DEXP const char *reco_partial ();
 extern "C" DEXP const char *reco_heard ();
 
 
+//= Add a particular name to grammar to increase likelihood of correct spelling.
+// can be called even when recognition is actively running
+
+extern "C" DEXP int reco_name (const char *name);
+
+
 //= Stop recognizing speech (can be restarted with reco_start).
 
 extern "C" DEXP void reco_stop ();
@@ -105,8 +102,3 @@ extern "C" DEXP void reco_stop ();
 //= Stop recognizing speech and clean up all objects and files.
 
 extern "C" DEXP void reco_cleanup ();
-
-
-///////////////////////////////////////////////////////////////////////////
-
-#endif  // once

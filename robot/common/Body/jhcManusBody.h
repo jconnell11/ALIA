@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -114,6 +114,7 @@ private:
 // PUBLIC MEMBER VARIABLES
 public:
   jhcParam cps, rps, wps, dps, lps, gps;
+  char rname[80];
 
   // serial port search
   int port0;
@@ -124,7 +125,6 @@ public:
   // creation and initialization
   ~jhcManusBody ();
   jhcManusBody ();
-  void SetID (int n);
   int RobotID () const {return id;}
   void SetSize (int x, int y);
 

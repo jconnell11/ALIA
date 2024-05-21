@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -287,7 +287,6 @@ jhcAliaChain *jhcGraphizer::tell_step (const char *verb, jhcNodePool& pool) cons
   jhcAliaChain *step;
   jhcAliaDir *dir;
   jhcGraphlet *old;
-  jhcNetNode *act;
 
   // build a DO directive embedded in a step
   step = new jhcAliaChain;
@@ -296,7 +295,7 @@ jhcAliaChain *jhcGraphizer::tell_step (const char *verb, jhcNodePool& pool) cons
   
   // flesh out directive with given action
   old = pool.BuildIn(dir->key);
-  act = pool.MakeAct(verb);
+  pool.MakeAct(verb);
   pool.BuildIn(old);
   return step;
 }
@@ -746,7 +745,7 @@ int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *k
   char head[80], body[amax];
   jhcNetNode *cmd = NULL;
   const char *tail = alist;
-  int cond, neg, prima, must = 0;
+  int cond, prima, must = 0;
 
   call_list(1, "build_sit", alist);
 
@@ -759,7 +758,6 @@ int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *k
     cond = ((SlotMatch(body, "UNLESS")) ? 0 : 1);
     if ((tail = SplitFrag(head, body, tail)) == NULL)
       break;
-    neg = ((HasSlot(body, "NEG")) ? 1 : 0);
 
     // determine type of clause
     if ((*head == '!') && (ktag != NULL))
@@ -981,13 +979,12 @@ jhcAliaChain *jhcGraphizer::single_cmd (const char *entry, const char *alist, jh
 { 
   jhcGraphlet key0;
   jhcAliaChain *ch, *mini;
-  jhcNetNode *cmd;
   jhcAliaDir *dir;
 
   // get complete action specification (incl. building BINDs)
   skolem = NULL;
   pool.BuildIn(key0);
-  cmd = build_cmd(entry, alist, pool);
+  build_cmd(entry, alist, pool);
 //  if ((cmd = build_cmd(entry, alist, pool)) == NULL)
 //    return NULL; 
 //  key0.SetMain(cmd);
@@ -1105,7 +1102,7 @@ void jhcGraphizer::finish_loop (jhcAliaChain *ch, jhcAliaChain *ult)
 jhcNetNode *jhcGraphizer::build_cmd (const char *head, const char *alist, jhcNodePool& pool)
 {
   char body[amax];
-  jhcNetNode *focus, *main;
+  jhcNetNode *focus, *main, *dest;
   jhcGraphlet *acc;
 
   call_list(1, "build_cmd", alist, 0, head);
@@ -1122,8 +1119,9 @@ jhcNetNode *jhcGraphizer::build_cmd (const char *head, const char *alist, jhcNod
     if ((acc = pool.Accum()) != NULL)
       acc->Clear();                                        // sometimes me/you?
     main = pool.MakeAct("tell");
-    main->AddArg("dest", (core->atree).Human());
     main->AddArg("obj", focus);
+    dest = pool.AddProp(main, "dest", "to");
+    dest->AddArg("ref", (core->atree).Human());
     return main;
   }
 
@@ -1156,7 +1154,7 @@ jhcNetNode *jhcGraphizer::build_cmd (const char *head, const char *alist, jhcNod
 
 
 //= Build structures for various types of wh-questions and return focal node.
-//  query -> np or $q-ako or $q-hq or $q-name or $q-loc or $q-cnt or $q-has
+//  query -> np or $q-mod or $q-ako or $q-hq or $q-name or $q-loc or $q-cnt or $q-has
 
 jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool) 
 {
@@ -1176,6 +1174,15 @@ jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool)
   if (*head != '$')
     return build_obj(NULL, alist, pool);
   tail = body;
+
+  // look for adverbial modifier of reference statement
+  if (strcmp(head, "$q-mod") == 0)
+  {
+    act = build_fact(NULL, tail, nr);
+    main = nr.AddProp(act, "mod", NULL);
+    nr.CmdHead(main);
+    return nr.FindMake(pool, 0, NULL, (core->atree).MinBlf(), &skolem); 
+  }
 
   // get constraint on desired answer kind 
   if (strcmp(head, "$q-hq") == 0)                          // required for props
@@ -1316,7 +1323,7 @@ jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool)
 {
   char next[200];
   const char *val = NULL, *end = alist, *tail = alist;
-  jhcNetNode *act, *iobj;
+  jhcNetNode *act, *iobj, *dest;
   UL32 t = 0;      
   int quote = 0, neg = 0;  
 
@@ -1358,7 +1365,10 @@ jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool)
   if (quote > 0)
   {
     if ((iobj = build_obj(NULL, end, pool)) != NULL)       // iobj only (FINDs okay)
-      act->AddArg("dest", iobj);
+    {
+      dest = pool.AddProp(act, "dest", "to");
+      dest->AddArg("ref", iobj);
+    }
     add_quote(act, end, pool);
   }
   else 
@@ -1559,7 +1569,7 @@ jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePoo
 {
   char entry[200] = "";
   const char *tail;
-  jhcNetNode *swap, *dobj = NULL, *iobj = NULL, *act = NULL;
+  jhcNetNode *swap, *dest, *dobj = NULL, *iobj = NULL, *act = NULL;
 
   // sanity check 
   if (alist == NULL)
@@ -1593,12 +1603,15 @@ jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePoo
     }
         
   // attach arguments (if any)
-  if (iobj != NULL)
-    v->AddArg("dest", iobj);
   if (dobj != NULL)
     v->AddArg("obj", dobj);
   if (act != NULL)
     v->AddArg("act", act);
+  if (iobj != NULL)
+  {
+    dest = pool.AddProp(v, "dest", "to");
+    dest->AddArg("ref", iobj);
+  }
   return((act != NULL) ? act : v);
 }
 
@@ -1608,7 +1621,7 @@ jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePoo
 void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& pool) 
 {
   char entry[200], entry2[200];
-  jhcNetNode *obj, *src;
+  jhcNetNode *obj, *tool, *src, *dest;
   const char *t2, *tail = alist;
 
   // sanity check 
@@ -1630,7 +1643,8 @@ void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& po
       else if ((obj = build_obj(&t2, tail, pool)) != NULL)
       {
         // add "with" adjunct instead
-        act->AddArg("with", obj);
+        tool = pool.AddProp(act, "with", "with");
+        tool->AddArg("ref", obj);
         tail = t2;
       }
     }
@@ -1656,7 +1670,8 @@ void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& po
       if ((obj = build_obj(&t2, tail, pool)) != NULL)
       {
         // end location (also indirect object) as a noun
-        act->AddArg("dest", obj);
+        dest = pool.AddProp(act, "dest", "to");
+        dest->AddArg("ref", obj);
         tail = t2;
       }
       else if ((t2 = FragNextPair(tail, entry2)) != NULL)
@@ -1664,7 +1679,7 @@ void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& po
         {
           // end location as a prepositional phrase 
           obj = add_place(&tail, obj, entry2, t2, pool);
-          act->AddArg("dest", obj);
+          obj->AddArg("dest", act);
         }
     }
     tail = FragClose(tail, 0);                   // ignore rest of fragment 
@@ -1756,8 +1771,8 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
     *after = FragClose(alist);
 //  if ((&pool == rule) || (&pool == oper))
     nr.bth = -nr.bth;                                      // allow hypotheticals
-  if ((nr.NumPat() == 1) && (obj->tags == 0))
-    obj->tags = JTAG_ITEM;                                 // for naked "the thing"
+//  if ((nr.NumPat() == 1) && (obj->tags == 0))              // for naked "the thing"
+//    obj->tags = JTAG_ITEM;                                 //   (but fouls mem_encode.tst)
   ref = nr.FindMake(pool, find, f0, blf, &skolem);
 
   // if properties being added to old node, return last such property

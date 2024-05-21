@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCMANIPULATE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCMANIPULATE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -40,7 +37,7 @@
 
 #include "Geometry/jhcMatrix.h"        // common robot
 #include "Objects/jhcSurfObjs.h"       
-#include "RWI/jhcEliGrok.h"            
+#include "RWI/jhcEliRWI.h"            
 
 #include "Kernel/jhcStdKern.h"      
 
@@ -78,12 +75,12 @@ private:
   int *ccnt2;                      /** Secondary counter for action. */
 
   // link to hardware and processing
-  jhcEliGrok *rwi;
+  jhcEliRWI *rwi;
 
   // useful subparts of platform
   jhcSurfObjs *sobj;
-  jhcEliLift *lift;
-  jhcEliArm *arm;
+  jhcGenLift *lift;
+  jhcGenArm *arm;
   const jhcMatrix *pos, *dir;
 
   // reported events
@@ -139,8 +136,9 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int dbg;                   // control of diagnostic messages
   jhcParam hps, sps, cps, dps, wps, ips;
+  int gok;                   // whether succeeds without body
+  int dbg;                   // control of diagnostic messages
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -264,12 +262,5 @@ private:
   int err_drop (jhcAliaDesc *obj);
   void msg_hold (jhcAliaDesc *obj, int neg);
 
-
 };
-
-
-#endif  // once
-
-
-
 

@@ -15,11 +15,13 @@ OP 2 - "To say something to someone ..."
   trig:
     DO[ fcn-1 -lex-   say
               -fcn--> act-1
-        act-1 -dest-> agt-1
-              -obj--> txt-1 ]
+        act-1 -obj--> txt-1
+        end-1 -lex-   to
+              -dest-> act-1
+              -ref--> agt-1 ]
 -----------
    GND[ call-1 -lex-   talk_echo
-               -dest-> agt-1
+               -targ-> agt-1
                -pat--> txt-1 ]
 
 
@@ -37,9 +39,11 @@ OP 4 - "To ask someone something ..."
   trig:
     DO[ fcn-1 -lex-   ask
               -fcn--> act-1
-        act-1 -dest-> agt-1
-              -obj--> txt-1 ]
+        act-1 -obj--> txt-1 
+        end-1 -lex-   to
+              -dest-> act-1
+              -ref--> agt-1 ]
 -----------
    GND[ call-1 -lex-   talk_wait
-               -dest-> agt-1
+               -targ-> agt-1
                -pat--> txt-1 ]

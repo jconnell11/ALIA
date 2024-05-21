@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCELINECK_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCELINECK_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -32,6 +29,8 @@
 
 #include "Geometry/jhcJoint.h"         // common robot
 #include "Peripheral/jhcDynamixel.h"
+
+#include "Body/jhcGenNeck.h"
 
 
 //= Control of Eli robot's head pan and tilt actuators.
@@ -41,7 +40,7 @@
 // action defaults to Stop(0) at each cycle, else highest bid wins
 // all persistent goals should be maintained OUTSIDE this class
 
-class jhcEliNeck
+class jhcEliNeck : public jhcGenNeck
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -96,7 +95,7 @@ public:
 
   // configuration
   void Bind (jhcDynamixel& ctrl);
-  int CommOK (int bad =0) const {return nok;}
+  int CommOK () const {return nok;}
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
   double Voltage ();
@@ -119,13 +118,13 @@ public:
   // --------------------- NECK MAIN ----------------------------
 
   // current neck information
-  void HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift) const; 
+  void HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift =0.0) const; 
   void HeadLoc (jhcMatrix& pos, double lift) const;
   double HeadZ (double lift) const {return(pos0.Z() + lift);}
   double Pan () const  {return jt[0].Angle();}
   double Tilt () const {return jt[1].Angle();}
   void Gaze (double& p, double& t) const {p = Pan(); t = Tilt();}
-  void AimFor (double& p, double& t, const jhcMatrix& targ, double lift) const;
+  void AimFor (double& p, double& t, const jhcMatrix& targ, double lift =0.0) const;
   double PanCmdV () const  {return pvel;}
   double TiltCmdV () const {return tvel;}
   double PanDPS (int abs =0) const   {return((abs > 0) ? fabs(ipv) : ipv);}
@@ -144,26 +143,26 @@ public:
   int ShiftTarget (double dp, double dt, double rate =1.0, int bid =10)
     {return GazeTarget(Pan() + dp, Tilt() + dt, rate, rate, bid);}
   int GazeAt (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10);
-  int GazeAt (const jhcMatrix *targ, double lift, double rate =1.0, int bid =10)
-    {return((targ == NULL) ? 0 : GazeAt(*targ, lift, rate, bid));}
+//  int GazeAt (const jhcMatrix *targ, double lift, double rate =1.0, int bid =10)
+//    {return((targ == NULL) ? 0 : GazeAt(*targ, lift, rate, bid));}
   int GazeFix (const jhcMatrix& targ, double lift, double secs =0.5, int bid =10);
   int GazeStop (double rate =1.5, int bid =1)
     {return GazeTarget(jt[0].SoftStop(Pan(), ndone, rate), jt[1].SoftStop(Tilt(), ndone, rate), rate, bid);}
 
   // progress irrespective of controlling behavior
-  double PanErr (double pan, int abs =1, int lim =1) const;
-  double TiltErr (double tilt, int abs =1, int lim =1) const;
-  double GazeErr (double pan, double tilt, int lim =1) const
-    {return __max(PanErr(pan, 1, lim), TiltErr(tilt, 1, lim));}
-  double GazeErr (const jhcMatrix& targ, double lift) const;
+  double PanErr (double pan, int abs =1) const;
+  double TiltErr (double tilt, int abs =1) const;
+  double GazeErr (double pan, double tilt) const
+    {return __max(PanErr(pan, 1), TiltErr(tilt, 1));}
+  double GazeErr (const jhcMatrix& targ, double lift =0.0) const;
   bool PanDone (double p, double tol =3.0) const  
     {return(PanErr(p) <= tol);}
   bool TiltDone (double t, double tol =3.0) const 
     {return(TiltErr(t) <= tol);}
-  bool GazeDone (double p, double t, double tol =3.0) const 
-    {return(PanDone(p, tol) && TiltDone(t, tol));}
-  bool GazeDone (const jhcMatrix& targ, double lift, double tol =3.0) const 
-    {return(GazeErr(targ, lift) <= tol);}
+//  bool GazeDone (double p, double t, double tol =3.0) const 
+//    {return(PanDone(p, tol) && TiltDone(t, tol));}
+//  bool GazeDone (const jhcMatrix& targ, double lift =0.0, double tol =3.0) const 
+//    {return(GazeErr(targ, lift) <= tol);}
 
   // profiled motion progress
   bool GazeClose (double tol =1.0) const {return(PanClose(tol) && TiltClose(tol));}
@@ -273,10 +272,4 @@ private:
   double norm_ang (double degs) const;
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@
 // limitations under the License.
 // 
 ///////////////////////////////////////////////////////////////////////////
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Semantic/jhcSituation.h"
 
@@ -102,10 +104,12 @@ int jhcSituation::MatchGraph (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   // returns negative if no candidate, 0 if no matches to picked candidate
   if ((cnt = try_props(m, mc, pat, f, f2)) < 0)
     if ((cnt = try_args(m, mc, pat, f, f2)) < 0)
+    {
       if (f.NumBins() > 1)
         cnt = try_hash(m, mc, pat, f, f2);
       else      
         cnt = try_bare(m, mc, pat, f, f2);
+    }
   if (cnt > 0)
     return cnt;
 

@@ -49,7 +49,6 @@ public:
   virtual int NumBands () const {return 1;}
   virtual bool InBand (const jhcNetNode *n, int part) const {return true;}
 
-
 };
 
 

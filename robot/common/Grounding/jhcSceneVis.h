@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,15 +20,12 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSCENEVIS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSCENEVIS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
 #include "Geometry/jhcMatrix.h"        // common robot
-#include "RWI/jhcEliGrok.h"              
+#include "RWI/jhcEliRWI.h"              
 
 #include "Kernel/jhcStdKern.h"         
 
@@ -146,7 +143,7 @@ private:
   jhcMatrix *cpos, *cdir; 
 
   // link to hardware 
-  jhcEliGrok *rwi;           // likely shared
+  jhcEliRWI *rwi;           // likely shared
   jhcSurfObjs *sobj;
   jhcEliBody *body;
 
@@ -176,8 +173,9 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:  
-  int dbg;                   // control of diagnostic messages
   jhcParam rps, sps, dps, cps;
+  int gok;                   // whether succeeds without body
+  int dbg;                   // control of diagnostic messages
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -299,12 +297,5 @@ private:
   const char *cat2txt (int cat) const;
   void prop_vect (int *props) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

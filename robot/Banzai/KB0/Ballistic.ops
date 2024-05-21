@@ -1,4 +1,4 @@
-// basic commands understood by ELI robot base
+// Basic interface to "Ballistic" kernel
 // ================================================
 
 OP 1 - "To freeze ..."
@@ -392,5 +392,18 @@ OP 29 - "To scan to the left scan left"
               -dir-> act-2 ]
 
 
+OP 30 - "To look around visually search downward"
+  trig:
+     DO[ fcn-1 -lex-  look
+               -fcn-> act-1
+         dir-1 -lex-  around
+               -dir-> act-1 ]
+-----------------
+     DO[ fcn-2 -lex-  search
+               -fcn-> act-2
+         mod-2 -lex-  visually
+               -mod-> act-2
+         dir-2 -lex-  downwards
+               -dir-> act-2 ]
 
 

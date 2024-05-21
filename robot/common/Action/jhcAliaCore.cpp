@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,10 +22,11 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include <stdarg.h>
+#include <ctype.h>
 
 #include "Action/jhcAliaCore.h"
 
-
+#include "Interface/jtimer.h"
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -52,9 +53,10 @@ jhcAliaCore::~jhcAliaCore ()
 jhcAliaCore::jhcAliaCore ()
 {
   // global variables
-  ver = 5.10;                // reflected in GUI
+  ver = 5.40;                // reflected in GUI
   vol = 1;                   // enable free will reactions
   acc = 0;                   // forget rules/ops
+  gnd = 0;                   // no grounding DLLs yet
 
   // connect up required resources for components
   net.Bind(this);
@@ -63,87 +65,27 @@ jhcAliaCore::jhcAliaCore ()
   mood.Bind(atree);
   ltm.Bind(dmem);
   fb.BindMood(mood);
+  emo.BindMood(mood);
 
   // add various common grounding kernels to list
   kern.AddFcns(talk);
   kern.AddFcns(ltm);
   kern.AddFcns(why);
   kern.AddFcns(fb);
+  kern.AddFcns(emo);
   kern.AddFcns(tim);
-  add_dlls("GND/kernels.lst");
 
   // standard cycle timing
   thz = 80.0;
   shz = 30.0;
 
   // clear state
+  *wdir = '\0';
+  *myself = '\0';
   *cfile = '\0';
-  log = NULL;
+  netlog = NULL;
   Defaults();
   init_state(NULL);
-}
-
-
-//= Load grounding DLLs and associated operators from a list of names.
-// all the routines must be associated with the same "soma" (RWI) instance
-// "GND/kernels.lst" file contains a list like:
-//   sound_fcn
-//   basic_act
-// so sound_fcn.dll and basic_act.dll should be in this same directory 
-// DLLs must supply functions listed in sample Action/alia_gnd.h
-// returns number of additional DLLs loaded, negative for problem
-
-int jhcAliaCore::add_dlls (const char *fname)
-{
-  char dir[80], line[80], name[200];
-  jhcAliaDLL *gnd = NULL;
-  FILE *in;
-  char *trim, *end;
-  int cnt = 0;
-
-  // try to open file 
-  if (fopen_s(&in, fname, "r") != 0)
-    return 0;
-
-  // save directory part of path
-  strcpy_s(dir, fname);
-  if ((end = strrchr(dir, '/')) == NULL)
-    end = strrchr(dir, '\\');
-  if (end != NULL)
-    *(end + 1) = '\0';
-  else
-    *dir = '\0';
-
-  // read list of names
-  while (fgets(line, 80, in) != NULL)
-  {
-    // see if valid line (minus any newline marker)
-    trim = line;
-    while (*trim == ' ')
-      trim++;
-    end = trim + (int) strlen(trim) - 1;
-    if (*end == '\n')
-      *end = '\0';
-    if ((*trim == '\0') || (strncmp(trim, "//", 2) == 0))
-      continue;
-
-    // attempt to bind DLL 
-    if (gnd == NULL)
-      gnd = new jhcAliaDLL;
-    sprintf_s(name, "%s%s.dll", dir, trim);
-    if (gnd->Load(name) > 0)
-    {
-      // add associated operators and rules then link things up
-      kern.AddFcns(*gnd);
-      gnd = NULL;
-      cnt++;
-    }
-  }
-
-  // clean up
-  fclose(in);
-  delete gnd;                          // in case last one not used
-  return cnt;
 }
 
 
@@ -176,7 +118,6 @@ void jhcAliaCore::init_state (const char *rname)
   pmem.noisy = noisy;
   amem.noisy = noisy;
   dmem.noisy = noisy;
-  mood.noisy = noisy;
 
   // reset loop timing
   t0 = jms_now();
@@ -244,6 +185,7 @@ int jhcAliaCore::Defaults (const char *fname)
   ok &= msg_params(fname);
   ok &= atree.LoadCfg(fname);
   ok &= mood.LoadCfg(fname);
+  ok &= emo.Defaults(fname);
   ok &= dmem.Defaults(fname);
   return ok;
 }
@@ -259,6 +201,7 @@ int jhcAliaCore::SaveVals (const char *fname) const
   ok &= mps.SaveVals(fname);
   ok &= atree.SaveCfg(fname);
   ok &= mood.SaveCfg(fname);
+  ok &= emo.SaveVals(fname);
   ok &= dmem.SaveVals(fname);
   return ok;
 }
@@ -286,13 +229,18 @@ int jhcAliaCore::AddName (const char *name, int bot)
   // update parsing grammar and possibly speech front-end also 
   sp_listen(0);
   if (bot > 0)
-    gram_add("ATTN", name, 0);
-  gram_add("NAME", name, 0);
-  gram_add("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP), 0);
-  if (sep != NULL)
+    gram_add("ATTN", name, 0);         // not to NAME
+  else
   {
-    if (bot > 0)
-      gram_add("ATTN", first, 0);
+    gram_add("NAME", name, 0);
+    gram_add("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP), 0);
+  }
+  if (sep == NULL)
+    return 1;
+  if (bot > 0)
+    gram_add("ATTN", first, 0);        // not to NAME
+  else
+  {
     gram_add("NAME", first, 0);
     gram_add("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP), 0);
   }
@@ -369,35 +317,185 @@ return 0;
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Load up all operators, rules, and grammar fragments for next run.
+//= Set up directory to read configuration files from.
+// makes sure there is a slash at end of directory
 
-void jhcAliaCore::Reset (const char *rname, int cvt)
+const char *jhcAliaCore::SetDir (const char *dir)
 {
+  int n;
+
+  *wdir = '\0';
+  if (dir != NULL)
+  {
+    strcpy_s(wdir, dir);
+    n = (int) strlen(dir) - 1;
+    if ((dir[n] != '/') && (dir[n] != '\\'))
+      strcat_s(wdir, "/");
+  }
+  return wdir;
+}
+
+
+//= Prefix the given relative file name with the working directory.
+// uses internal temporary string which might get re-used
+
+const char *jhcAliaCore::wrt (const char *rel)
+{
+  sprintf_s(fname, "%s%s", wdir, rel);
+  return fname;
+}
+
+
+//= Load up all operators, rules, and grammar fragments for next run.
+// rname is robot name, prt controls printing, cvt saves parse trees
+// prt: 0 = nothing, 1 = log file only, 2 = console only, 3 = log + console
+// assumes base directory for configuration and log files already recorded
+
+void jhcAliaCore::Reset (const char *rname, int prt, int cvt)
+{
+  int i, n;
+
+  // determine how to handle voluminous message stream
+  log_opts(rname, prt);
+  *echo = '\0';                                  // canonicalized input
+
+  // potentially add extra grounding functions (needs wdir)
+  if (gnd <= 0)
+  {
+    add_dlls(wrt("GND/kernels.lst"));    
+    gnd = 1;
+  }
+
   // set basic grammar and clear state
   jprintf("Initializing ALIA core %4.2f\n\n", Version());
   gr.ClearGrammar();
-  gr.LoadGram("language/alia_top.sgm", -1);
+  gr.LoadGram(wrt("language/alia_top.sgm"), -1);
   AddName(rname, 1);
+  gr.SetBonus("ACT-2");                          // prefer these trees
   gr.MarkRule("toplevel");
-  (net.mf).AddVocab(gr, "language/vocabulary.sgm", 0, -1);
+  (net.mf).AddVocab(gr, wrt("language/vocabulary.sgm"), 0, -1);
   init_state(rname);
 
   // possibly some test LTM facts then support for groundings 
-  if (dmem.LoadFacts("test.facts", 0, 3, 0) >= 0)
+  if (dmem.LoadFacts(wrt("KB/test.facts"), 0, 3, 0) >= 0)
     jprintf("\n"); 
-  kern_extras("KB0/");                           // operators and rules
+  kern_extras(wrt("KB0/"));                      // operators and rules
 
   // load main operators and rules (and words)
-  baseline("KB2/baseline.lst", 1, 2);            // includes graphizer.sgm
+  baseline(wrt("KB2/baseline.lst"), 1, 2);       // includes graphizer.sgm
   if (vol > 0)
-    baseline("KB2/volition.lst", 1, 2);
+    baseline(wrt("KB2/volition.lst"), 1, 2);
   if (acc >= 1)
     LoadLearned();                               // includes KB/learned.sgm
+
+  // add the names of important people (keeps "vip" list)
+  n = vip.Load(wrt("config/VIPs.txt"), 0);
+  for (i = 0; i < n; i++)
+    AddName(vip.Full(i));
+  jprintf("  %2d known users from file: config/VIPs.txt\n\n", n);
 
   // catalog known words and start graphizer log
   vc.GetWords(gr.Expansions());
   if (cvt > 0)
-    open_cvt();
+    open_cvt(rname);
+
+  // make sure printf captured by setvbuf() get emitted
+  fflush(stdout);                    
+}
+
+
+//= Control printing of messages to console and/or log file.
+// prt: 0 = nothing, 1 = log file only, 2 = console only, 3 = log + console
+// NOTE: "log" directory under working directory must already exist!
+
+void jhcAliaCore::log_opts (const char *rname, int prt)
+{
+  char fname[200], date[80];
+  char *sep;
+
+  // possibly suppress all console printout 
+  jprintf_log((prt < 2) ? 1 : 0);
+
+  // extract robot first name
+  *myself = '\0';
+  if ((rname != NULL) && (*rname != '\0'))
+  {
+    strcpy_s(myself, rname);                  
+    if ((sep = strchr(myself, ' ')) != NULL)
+      *sep = '\0';
+  }
+  
+  // possibly open a log file using robot's name and date/time
+  if ((prt == 1) || (prt >= 3))
+  {
+    if (*myself != '\0')
+      sprintf_s(fname, "%slog/%s_%s.txt", wdir, myself, jms_date(date));
+    else
+      sprintf_s(fname, "%slog/log_%s.txt", wdir, jms_date(date));
+    if (jprintf_open(fname) <= 0)
+      printf("  >>> Could not open main log file: %s !\n", fname + strlen(wdir));
+  }
+}
+
+
+//= Load grounding DLLs and associated operators from a list of names.
+// all the routines must be associated with the same "soma" (RWI) instance
+// "GND/kernels.lst" file contains a list like:
+//   sound_fcn
+//   basic_act
+// so sound_fcn.dll and basic_act.dll should be in this same directory 
+// DLLs must supply functions listed in sample Action/alia_gnd.h
+// returns number of additional DLLs loaded, negative for problem
+
+int jhcAliaCore::add_dlls (const char *fname)
+{
+  char dir[80], line[80], name[200];
+  jhcAliaDLL *gnd = NULL;
+  FILE *in;
+  char *trim, *end;
+  int cnt = 0;
+
+  // try to open file 
+  if (fopen_s(&in, fname, "r") != 0)
+    return 0;
+
+  // save directory part of path
+  strcpy_s(dir, fname);
+  if ((end = strrchr(dir, '/')) == NULL)
+    end = strrchr(dir, '\\');
+  if (end != NULL)
+    *(end + 1) = '\0';
+  else
+    *dir = '\0';
+
+  // read list of names
+  while (fgets(line, 80, in) != NULL)
+  {
+    // see if valid line (minus any newline marker)
+    trim = line;
+    while (*trim == ' ')
+      trim++;
+    trim[strcspn(trim, "\n\r\x0A")] = '\0';
+    if ((*trim == '\0') || (strncmp(trim, "//", 2) == 0))
+      continue;
+
+    // attempt to bind DLL 
+    if (gnd == NULL)
+      gnd = new jhcAliaDLL;
+    sprintf_s(name, "%s%s.dll", dir, trim);
+    if (gnd->Load(name) > 0)
+    {
+      // add associated operators and rules then link things up
+      kern.AddFcns(*gnd);
+      gnd = NULL;
+      cnt++;
+    }
+  }
+
+  // clean up
+  fclose(in);
+  delete gnd;                          // in case last one not used
+  return cnt;
 }
 
 
@@ -461,6 +559,7 @@ bool jhcAliaCore::readable (char *fname, int ssz, const char *msg, ...) const
     return false;
   va_start(args, msg); 
   vsprintf_s(fname, ssz, msg, args);
+  va_end(args);
   if (fopen_s(&in, fname, "r") != 0)
     return false;
   fclose(in);
@@ -517,7 +616,7 @@ int jhcAliaCore::baseline (const char *list, int add, int rpt)
     n = 0;
     end = line;
     while (line[n] != '\0')
-      if (strchr(" \t\n", line[n++]) == NULL)
+      if (strchr(" \t\n\r\x0A", line[n++]) == NULL)
         end = line + n;
     if (end == line)
       continue;
@@ -535,48 +634,63 @@ int jhcAliaCore::baseline (const char *list, int add, int rpt)
 }
 
 
-//= Make sentence conversion log file.
+//= Make sentence to internal directives conversion log file.
 
-void jhcAliaCore::open_cvt ()
+void jhcAliaCore::open_cvt (const char *rname)
 {
-  char date[80], fname[80];
+  char date[80], fname[80], first[80] = "log";
+  char *sep;
 
   // pick output file name
   if (*cfile != '\0')
     strcpy_s(fname, cfile);
   else
-    sprintf_s(fname, "log/log_%s.cvt", jms_date(date));
+  {
+    if ((rname != NULL) && (*rname != '\0'))
+    {
+      strcpy_s(first, rname);                  
+      if ((sep = strchr(first, ' ')) != NULL)
+        *sep = '\0';
+    }
+    sprintf_s(fname, "%slog/%s_%s.cvt", wdir, first, jms_date(date)); 
+  }
 
   // try opening it
-  if (log != NULL)
-    fclose(log);
-  log = NULL;
-  if (fopen_s(&log, fname, "w") != 0)
-    log = NULL;
+  if (netlog != NULL)
+    fclose(netlog);
+  netlog = NULL;
+  if (fopen_s(&netlog, fname, "w") == 0)
+    return;
+  netlog = NULL;
+  printf("  >>> Could not open conversion log file: %s !\n", fname + strlen(wdir));
 }
 
 
 //= Process input sentence from some source.
-// if awake == 0 then needs to hear attention word to process sentence
+// if gate == 0 then usually needs to hear attention word to process sentence
+// amode: -1 text, 0 not needed, 1 front or back, 2 front, 3 by itself
 // returns 2 if attention found, 1 if understood, 0 if unintelligible
 
-int jhcAliaCore::Interpret (const char *input, int awake, int amode)
+int jhcAliaCore::Interpret (const char *input, int gate, int amode)
 {
   char alist[1000] = "";
-  const char *fix, *sent = ((input != NULL) ? input : alist);
-  int nt = 0, attn = 0;
+  const char *fix, *sent = alist;
+  int wake, nt = 0;
 
   // check if name mentioned (will trigger on unparsable "robot fizzboom")
-//  attn = gr.NameSaid(sent, amode);
-//  if ((awake == 0) && (attn <= 0))
+//  wake = gr.NameSaid(input, amode);
+//  if ((gate == 0) && (wake <= 0))
 //    return 0;
 
+jtimer(21, "Interpret");
   // parse input string to get association list
-  if (input != NULL)
+  if ((input != NULL) && (*input != '\0'))
   {
-    sent = gr.Expand(sent, 1);                   // undo contractions   
-    nt = gr.Parse(sent, 0);                      
-    if (nt <= 0) 
+    sent = gr.Expand(input, 1);                  // undo contractions  
+jtimer(18, "Parse"); 
+    nt = gr.Parse(sent, 0);
+jtimer_x(18);
+    if ((nt <= 0) && (amode < 0))
       if ((fix = vc.FixTypos(sent)) != NULL)     // correct typing errors
       {
         sent = fix;
@@ -586,29 +700,63 @@ int jhcAliaCore::Interpret (const char *input, int awake, int amode)
       }
     if (nt <= 0)
       if (guess_cats(sent) > 0)                  // handle unknown words
+{
+jtimer(18, "Parse");
         nt = gr.Parse(sent, 0);
+jtimer_x(18);
+}
     if (nt > 0)
       gr.AssocList(alist, 1);
   }
 
   // check if name mentioned (will NOT trigger on unparsable "robot fizzboom")
   hear0 = 0;
-  attn = net.NameSaid(alist, amode);
-  if ((awake == 0) && (attn <= 0))
+  wake = net.NameSaid(alist, amode);
+  if ((gate == 0) && (wake <= 0))                          // not listening
+  {
+    if ((input != NULL) && (*input != '\0'))
+      jprintf(1, noisy, " { Ignored input: \"%s\" }\n", input);
+jtimer_x(21);
     return 0;
+  }
+  if ((nt <= 0) && (amode >= 0) && !syllables(sent, 2))    // spurious noise
+  {
+    if ((input != NULL) && (*input != '\0'))
+      jprintf(1, noisy, " { Too few syllables in: \"%s\" }\n", input);
+jtimer_x(21);
+    return 0;
+  }
+
+  // get canonicalized form of input for logs
+  if ((gate > 0) || (wake > 0))
+  {
+    if (gr.NumTrees() > 0)
+      strcpy_s(echo, gr.Clean());                // with typos fixed
+    else 
+      strcpy_s(echo, vc.Marked());               // with unknown words marked
+    echo[0] = (char) toupper((int)(echo[0]));    // capitalize first letter
+    if (input[strlen(input) - 1] == '?')
+      if (echo[strlen(echo) - 1] != '?')
+        strcat_s(echo, "?");                     // save question mark
+  }
 
   // show parsing steps and reduce "lonely" (even if not understood)
-  gr.PrintInput(NULL, __min(noisy, 1));
+  gr.PrintInput(NULL, echo, __min(noisy, 1));
   if (nt > 0)
   {
     mood.Hear((int) strlen(input));     
+jtimer(19, "PrintResult");
     gr.PrintResult(pshow, 1);
+jtimer_x(19);
   }
 
   // generate semantic nets (nt = 0 gives huh? response)
+jtimer(20, "Convert");
   spact = net.Convert(alist, sent);     
-  net.Summarize(log, sent, nt, spact);
-  hear0 = ((attn > 0) ? 2 : 1);
+jtimer_x(20);
+  net.Summarize(netlog, echo, nt, spact);
+  hear0 = ((wake > 0) ? 2 : 1);
+jtimer_x(21);
   return hear0;
 }
 
@@ -678,6 +826,43 @@ void jhcAliaCore::gram_add_hq (const char *wd)
 }
 
 
+//= See if enough syllables heard as an aid to rejecting spurious noises (e.g. "spin").
+// counts vowel clusters ("ia" = 2) but adjusts for word breaks, leading "y", and final "e"
+// returns 1 if count meets threshold, 0 otherwise
+// NOTE: problems with answers like "yes", interjections like "stop"?
+
+int jhcAliaCore::syllables (const char *txt, int th) const
+{
+  const char *t = txt;
+  char t0, v = '\0';
+  int sp = 1, n = 0;
+
+  // scan through lowercase string
+  while (*t != '\0')
+  {
+    t0 = (char) tolower(*t++);
+    if ((strchr("aiou", t0) != NULL) ||
+        ((t0 == 'e') && (isalpha(*t) != 0)) ||
+        ((t0 == 'y') && (sp <= 0)))
+    {
+      // vowel cluster (except leading "y" or final "e", split "ia")
+      if ((v == '\0') || ((v == 'i') && (t0 == 'a')))
+        if (++n >= th)
+          return 1;
+      v = t0;
+      sp = 0;
+    }
+    else 
+    { 
+      // consonant or word break
+      v = '\0';
+      sp = ((t0 == ' ') ? 1 : 0);
+    }
+  }
+  return 0;
+}
+
+
 //= Consider next best parse tree to generate a new bulk sequence for TRY directive.
 // returns NULL if no other parses with same speech act as original
 
@@ -720,13 +905,12 @@ int jhcAliaCore::RunAll (int gc)
   if (gc > 0)
   {
     now = jms_now();
-    mood.Emit(Talking());
-    stat.Motion(mood);      
+    stat.Affect(mood);    
     stat.Thought(this);                        
-    mood.Update();                               // status NOTEs
+    mood.Update();                              
   }
-  if (atree.Active() > 0)
-    jprintf(3, noisy, "============================= %s =============================\n\n", jms_offset(time, t0, 1));
+//  if (atree.Active() > 0)
+//    jprintf(3, noisy, "============================= %s =============================\n\n", jms_offset(time, t0, 1));
 
   // go through the foci from newest to oldest
   while ((svc = atree.NextFocus()) >= 0)
@@ -750,27 +934,36 @@ int jhcAliaCore::RunAll (int gc)
 
 void jhcAliaCore::DayDream ()
 {
-  double frac = 1.0;
-  int cyc, n = 1, ms = ROUND(1000.0 / shz);      // standard sensing time
+  double budget = 0.9, turbo = 2.0, frac = 1.0;
+  int ms = ROUND(1000.0 * budget / shz);         // time limit for this call
+  int melt, cyc, n = 1; 
 
 jtimer(17, "DayDream");
   // determine how many total thought cycles to run right now
   if (start == 0)
-    start = now;
+    start = now;                                 // for total run time stats
   else 
   {
-    frac = thz * jms_secs(now, last) + rem;
-    n = ROUND(frac);
+    frac = thz * jms_secs(now, last) + rem;      // number needed to catch up
+    n = ROUND(frac);                             // ideal number to do now
+    melt = ROUND(turbo * thz / shz);             // cognition speed limit
+    n = __min(n, melt);
   }
-  last = now;
+  last = now;                                    // time thinking call happened
 
-  // possibly catch up on thinking (commands will be ignored)
-  for (cyc = 1; cyc < n; cyc++)
-    if (jms_diff(jms_now(), last) < ms)
-      RunAll(0);
-  rem = frac - cyc;          // how many thought cycles NOT completed
+  // possibly catch up on thinking (output commands will be ignored)
+  for (cyc = 1; cyc < n; cyc++)                  // already did one
+  {
+    if (jms_diff(jms_now(), last) >= ms)         // quit early if too long
+      break;
+    RunAll(0);                                   // think some more
+  }
+  rem = frac - cyc;                              // cycles NOT completed
   think += cyc;
-  sense++;
+  sense++;                                       // original call had sensors
+
+  // make sure printf captured by setvbuf() get emitted
+  fflush(stdout);                    
 jtimer_x(17);
 }
 
@@ -782,10 +975,10 @@ void jhcAliaCore::Done (int save)
   // stop all running activities
   stop_all();
 
-  // close any open graphizer log
-  if (log != NULL)
-    fclose(log);
-  log = NULL;
+  // close any open graphizer tree log
+  if (netlog != NULL)
+    fclose(netlog);
+  netlog = NULL;
 
   // possibly save all operators and rules in KB files
   if ((save > 0) && (acc >= 2))
@@ -795,6 +988,8 @@ void jhcAliaCore::Done (int save)
   jprintf("\n==========================================================\n");
   ShowMem();
   jprintf("DONE - Think %3.1f Hz, Sense %3.1f Hz\n", Thinking(), Sensing()); 
+  fflush(stdout);
+  jprintf_close();
 }
 
 
@@ -848,7 +1043,7 @@ int jhcAliaCore::GetChoices (jhcAliaDir *d)
 
   // possibly lower operator threshold
   if ((n <= 0) && (d->anyops > 0))
-    mood.BumpMinPref(-1);         
+    mood.OpBelow();         
   return n;
 }
 
@@ -954,12 +1149,12 @@ void jhcAliaCore::KernList () const
 void jhcAliaCore::LoadLearned ()
 {
   jprintf(1, noisy, "Reloading learned knowledge:\n");
-  pmem.Load("KB/learned.ops",   1, noisy + 1, 2);          // 2 = accumulated level
-  pmem.Overrides("KB/learned.pref");
-  amem.Load("KB/learned.rules", 1, noisy + 1, 2);         
-  amem.Overrides("KB/learned.conf");
-  dmem.LoadFacts("KB/learned.facts", 1, noisy + 1, 2);  
-  (net.mf).AddVocab(gr, "KB/learned.sgm", 0, 2);
+  pmem.Load(wrt("KB/learned.ops"),   1, noisy + 1, 2);     // 2 = accumulated level
+  pmem.Overrides(wrt("KB/learned.pref"));
+  amem.Load(wrt("KB/learned.rules"), 1, noisy + 1, 2);         
+  amem.Overrides(wrt("KB/learned.conf"));
+  dmem.LoadFacts(wrt("KB/learned.facts"), 1, noisy + 1, 2);  
+  (net.mf).AddVocab(gr, wrt("KB/learned.sgm"), 0, 2);
   jprintf(1, noisy, "\n");
 }
 
@@ -967,13 +1162,14 @@ void jhcAliaCore::LoadLearned ()
 //= Save all rules and operators beyond baseline and kernels.
 // saves a copy with time and date stamp as well as "learned" version
 
-void jhcAliaCore::DumpLearned () const
+void jhcAliaCore::DumpLearned ()
 {
-  char base[80] = "KB/kb_";
+  char base[80];
   int nop, nr, nf, nw;
 
   // save rules and operators  
   jprintf(1, noisy, "\nSaving learned knowledge:\n");
+  sprintf_s(base, "%sKB/kb_", wdir);
   jms_date(base + 6, 0, 74);
   nop = pmem.Save(base, 2);                               // 2 = accumulated level
   pmem.Alterations(base);
@@ -983,12 +1179,12 @@ void jhcAliaCore::DumpLearned () const
   nw = gr.SaveCats(base, 2, net.mf);
 
   // make copies as generic database
-  copy_file("KB/learned.ops",   base);
-  copy_file("KB/learned.pref",  base);
-  copy_file("KB/learned.rules", base);
-  copy_file("KB/learned.conf",  base);
-  copy_file("KB/learned.facts", base);
-  copy_file("KB/learned.sgm",   base);
+  copy_file(wrt("KB/learned.ops"),   base);
+  copy_file(wrt("KB/learned.pref"),  base);
+  copy_file(wrt("KB/learned.rules"), base);
+  copy_file(wrt("KB/learned.conf"),  base);
+  copy_file(wrt("KB/learned.facts"), base);
+  copy_file(wrt("KB/learned.sgm"),   base);
   jprintf(1, noisy, " TOTAL = %d operators, %d rules, %d facts, %d words\n", nop, nr, nf, nw);
 }
 
@@ -1026,23 +1222,25 @@ void jhcAliaCore::copy_file (const char *dest, const char *base) const
 
 
 //= Save all rules and operators learned during this session.
+// NOTE: directory "dump" must already exist!
 
 void jhcAliaCore::DumpSession () 
 {
-  pmem.Save("session.ops", 3);
-  amem.Save("session.rules", 3);
-  dmem.SaveFacts("session.facts", 3);
-  gr.SaveCats("session.sgm", 3, net.mf);
-//atree.Save("session.wmem");
+  pmem.Save(wrt("dump/session.ops"), 3);
+  amem.Save(wrt("dump/session.rules"), 3);
+  dmem.SaveFacts(wrt("dump/session.facts"), 3);
+  gr.SaveCats(wrt("dump/session.sgm"), 3, net.mf);
+//atree.Save(wrt("dump/session.wmem"));
 }
 
 
 //= Save all rules and operators from any source.
+// NOTE: directory "dump" must already exist!
 
-void jhcAliaCore::DumpAll () const
+void jhcAliaCore::DumpAll ()
 {
-  pmem.Save("all.ops", 0);
-  amem.Save("all.rules", 0);
-  dmem.SaveFacts("all.facts", 0);
-  gr.SaveCats("all.sgm", -1, net.mf);
+  pmem.Save(wrt("dump/all.ops"), 0);
+  amem.Save(wrt("dump/all.rules"), 0);
+  dmem.SaveFacts(wrt("dump/all.facts"), 0);
+  gr.SaveCats(wrt("dump/all.sgm"), -1, net.mf);
 }

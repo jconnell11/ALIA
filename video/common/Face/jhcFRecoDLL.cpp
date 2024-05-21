@@ -570,6 +570,7 @@ void jhcFRecoDLL::SetDir (const char *fmt, ...)
     return;
   va_start(args, fmt); 
   vsprintf_s(dir, fmt, args);
+  va_end(args);
 }
 
 
@@ -608,8 +609,7 @@ int jhcFRecoDLL::LoadDB (const char *fname, int append)
       if ((n = (int) strlen(line)) > 1)
       {
         // try to load data for person (initializes vectors)
-        if (line[n - 1] == '\n')
-          line[n - 1] = '\0';
+        line[strcspn(line, "\n\r\x0A")] = '\0';
         dude = new jhcFaceOwner(line, vsz);
         if (dude->Load(dir) < 0)
         {
@@ -656,7 +656,7 @@ int jhcFRecoDLL::SaveDB (const char *fname)
   jhcFaceOwner *dude = NULL;
   jhcFaceVect *v;
   const char *fn = fname;
-  char iname[200], def[80] = "people.txt";
+  char iname[200], def[80] = "config/people.txt";
   int cnt = 0;
 
   // try opening names file

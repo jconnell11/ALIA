@@ -204,7 +204,6 @@ void jhcStdKern::Volunteer ()
 
 int jhcStdKern::Start (const jhcAliaDesc& desc, int bid)
 {
-  const char *str;
   int inst, rc;
 
   // sanity check
@@ -227,7 +226,6 @@ int jhcStdKern::Start (const jhcAliaDesc& desc, int bid)
 
   // speculatively bind entry then see if function is in local pool
   strcpy_s(cmd[inst], 40, desc.Lex());
-  str = desc.Literal();
   if ((rc = local_start(desc, inst)) >= 0)
     return inst;
 

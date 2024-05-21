@@ -34,6 +34,7 @@
     <ClInclude Include="..\..\audio\common\Parse\jhcGramExec.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcGramRule.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcGramStep.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcNameList.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcSlotVal.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcTxtLine.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcTxtSrc.h" />
@@ -61,6 +62,7 @@
     <ClInclude Include="..\..\robot\common\Action\jhcEchoFcn.h" />
     <ClInclude Include="..\..\robot\common\Kernel\jhcAliaKudos.h" />
     <ClInclude Include="..\..\robot\common\Kernel\jhcAliaTimer.h" />
+    <ClInclude Include="..\..\robot\common\Kernel\jhcEmotion.h" />
     <ClInclude Include="..\..\robot\common\Kernel\jhcIntrospect.h" />
     <ClInclude Include="..\..\robot\common\Kernel\jhcMemStore.h" />
     <ClInclude Include="..\..\robot\common\Kernel\jhcStdKern.h" />
@@ -74,6 +76,7 @@
     <ClInclude Include="..\..\video\common\Interface\jrand.h" />
     <ClInclude Include="..\..\video\common\Interface\jtimer.h" />
     <ClInclude Include="..\..\video\common\jhcGlobal.h" />
+    <ClInclude Include="..\..\video\common\jhc_conio.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -85,6 +88,7 @@
     <ClCompile Include="..\..\audio\common\Parse\jhcGenParse.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcGramExec.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcGramRule.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcNameList.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcSlotVal.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcTxtLine.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcTxtSrc.cpp" />
@@ -111,6 +115,7 @@
     <ClCompile Include="..\..\robot\common\Action\jhcEchoFcn.cpp" />
     <ClCompile Include="..\..\robot\common\Kernel\jhcAliaKudos.cpp" />
     <ClCompile Include="..\..\robot\common\Kernel\jhcAliaTimer.cpp" />
+    <ClCompile Include="..\..\robot\common\Kernel\jhcEmotion.cpp" />
     <ClCompile Include="..\..\robot\common\Kernel\jhcIntrospect.cpp" />
     <ClCompile Include="..\..\robot\common\Kernel\jhcMemStore.cpp" />
     <ClCompile Include="..\..\robot\common\Kernel\jhcStdKern.cpp" />
@@ -142,26 +147,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,15 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
+#ifndef __linux__
+  #include <direct.h>
+  #include <share.h>
+#endif
+
 #include <string.h>
 #include <stdarg.h>
-#include <direct.h>
-#include <conio.h>
-#include <share.h>
 
-#include "Interface/jms_x.h"
+#include "jhc_conio.h"
 
 #include "Interface/jprintf.h"
 
@@ -54,24 +56,14 @@ static int only_log = 0;
 // unless full > 0 then tacks on "_MMDDYY_HHMM.txt"
 // returns 1 if succeeds, 0 for no log file
 
-int jprintf_open (const char *fname, int full)
+int jprintf_open (const char *log, ...)
 {
-  char date[80];
+  va_list args;
 
-  // create new log file name based on current time
-  if ((full > 0) && (fname != NULL))
-    strcpy_s(log_name, fname);
-  else
-  {
-    // possibly create directory
-    if (_chdir("log") == 0)
-      _chdir("..");
-    else
-      _mkdir("log");
-
-    // create name based on time
-    sprintf_s(log_name, "log/%s_%s.txt", ((fname != NULL) ? fname : "log"), jms_date(date));
-  }
+  // assemble pieces of file name
+  va_start(args, log); 
+  vsprintf_s(log_name, log, args);
+  va_end(args);
 
   // attempt to open (allow shared reading for "tail")
   jprintf_close();
@@ -132,6 +124,7 @@ int jprintf_end (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val, msg, args);
+    va_end(args);
     jprintf(val);
   }
 
@@ -157,6 +150,7 @@ int jprintf (const char *msg, ...)
 
   va_start(args, msg); 
   vsprintf_s(val, msg, args);
+  va_end(args);
   return jprint(val);
 }
 
@@ -176,6 +170,7 @@ int jprintf (int th, int lvl, const char *msg, ...)
     return 0;
   va_start(args, msg); 
   vsprintf_s(val, msg, args);
+  va_end(args);
   return jprint(val);
 }
 
@@ -226,6 +221,7 @@ int jfprintf (FILE *out, const char *msg, ...)
 
   va_start(args, msg); 
   n = vsprintf_s(val, msg, args);
+  va_end(args);
   if (out == stdout)
   {
     if (log_file != NULL)

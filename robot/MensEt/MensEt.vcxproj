@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -53,13 +53,13 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">
     <PlatformToolset>v142</PlatformToolset>
@@ -299,6 +299,10 @@
     <ClCompile Include="MensEtDoc.cpp" />
     <ClCompile Include="MensEtFrm.cpp" />
     <ClCompile Include="MensEtView.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSAPI.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcNameList.cpp" />
+    <ClCompile Include="..\common\Kernel\jhcEmotion.cpp" />
+    <ClCompile Include="..\common\RWI\jhcManusCoord.cpp" />
     <ClCompile Include="..\common\Action\jhcAliaChart.cpp" />
     <ClCompile Include="..\common\Kernel\jhcAliaTimer.cpp" />
     <ClCompile Include="..\common\Kernel\jhcAliaKudos.cpp" />
@@ -309,7 +313,6 @@
     <ClCompile Include="..\common\RWI\jhcBackgRWI.cpp" />
     <ClCompile Include="..\common\RWI\jhcInteractFSM.cpp" />
     <ClCompile Include="..\common\RWI\jhcManusRWI.cpp" />
-    <ClCompile Include="..\common\RWI\jhcMensCoord.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp" />
     <ClCompile Include="..\common\Action\jhcAliaMood.cpp" />
@@ -323,7 +326,6 @@
     <ClCompile Include="..\common\Grounding\jhcLocalSeq.cpp" />
     <ClCompile Include="..\common\Grounding\jhcTargetVis.cpp" />
     <ClCompile Include="..\common\Grounding\jhcSoundFcn.cpp" />
-    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp" />
     <ClCompile Include="..\..\video\common\Processing\jhcDist.cpp" />
     <ClCompile Include="..\..\video\common\Processing\jhcVect.cpp" />
     <ClCompile Include="..\..\robot\common\Objects\jhcPatchProps.cpp" />
@@ -419,7 +421,7 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSAPI.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcSpeechWeb.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\sp_reco_web.h" />
     <ClInclude Include="..\..\audio\common\API\jhcAliaDesc.h" />
@@ -428,6 +430,7 @@
     <ClInclude Include="..\..\audio\common\Comm\zmq.h" />
     <ClInclude Include="..\..\audio\common\Language\jhcMorphFcns.h" />
     <ClInclude Include="..\..\audio\common\Language\jhcNetBuild.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcNameList.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcVocab.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcActionTree.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h" />
@@ -435,6 +438,7 @@
     <ClInclude Include="..\..\audio\common\Semantic\jhcTxtList.h" />
     <ClInclude Include="..\..\video\common\Data\jhcBBox.h" />
     <ClInclude Include="..\..\video\common\Data\jhcBlob.h" />
+    <ClInclude Include="..\..\video\common\jhc_conio.h" />
     <ClInclude Include="..\..\video\common\Processing\jhcALU.h" />
     <ClInclude Include="..\..\video\common\Processing\jhcArea.h" />
     <ClInclude Include="..\..\video\common\Processing\jhcColor.h" />
@@ -460,6 +464,7 @@
     <ClInclude Include="..\common\Grounding\jhcTargetVis.h" />
     <ClInclude Include="..\common\Kernel\jhcAliaKudos.h" />
     <ClInclude Include="..\common\Kernel\jhcAliaTimer.h" />
+    <ClInclude Include="..\common\Kernel\jhcEmotion.h" />
     <ClInclude Include="..\common\Kernel\jhcIntrospect.h" />
     <ClInclude Include="..\common\Kernel\jhcMemStore.h" />
     <ClInclude Include="..\common\Kernel\jhcStdKern.h" />
@@ -468,8 +473,8 @@
     <ClInclude Include="..\common\Objects\jhcStackSeg.h" />
     <ClInclude Include="..\common\RWI\jhcBackgRWI.h" />
     <ClInclude Include="..\common\RWI\jhcInteractFSM.h" />
+    <ClInclude Include="..\common\RWI\jhcManusCoord.h" />
     <ClInclude Include="..\common\RWI\jhcManusRWI.h" />
-    <ClInclude Include="..\common\RWI\jhcMensCoord.h" />
     <ClInclude Include="MensEtDoc.h" />
     <ClInclude Include="MensEt.h" />
     <ClInclude Include="MensEtFrm.h" />
@@ -550,23 +555,13 @@
     <ClInclude Include="..\..\video\common\Video\jhcWmVSrc.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
     <None Include="res\MensEt.ico" />
     <None Include="res\MensEt.rc2" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets" Condition="Exists('packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets')" />
-  </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
       <UserProperties RESOURCE_FILE="MensEt.rc" />
     </VisualStudio>
   </ProjectExtensions>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets'))" />
-  </Target>
 </Project>

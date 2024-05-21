@@ -324,21 +324,6 @@
     <ClCompile Include="..\..\audio\common\Parse\jhcTxtSrc.cpp">
       <Filter>Source Files\common audio\Parse</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Body\jhcEliArm.cpp">
-      <Filter>Source Files\common robot\Body</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\Body\jhcEliBase.cpp">
-      <Filter>Source Files\common robot\Body</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\Body\jhcEliBody.cpp">
-      <Filter>Source Files\common robot\Body</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\Body\jhcEliLift.cpp">
-      <Filter>Source Files\common robot\Body</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\Body\jhcEliNeck.cpp">
-      <Filter>Source Files\common robot\Body</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Peripheral\jhcAccelXY.cpp">
       <Filter>Source Files\common robot\Peripheral</Filter>
     </ClCompile>
@@ -440,9 +425,6 @@
     </ClCompile>
     <ClCompile Include="..\common\Action\jhcEchoFcn.cpp">
       <Filter>Source Files\common robot\Action</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp">
-      <Filter>Source Files\common audio\Acoustic</Filter>
     </ClCompile>
     <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp">
       <Filter>Source Files\common video\Interface</Filter>
@@ -573,9 +555,6 @@
     <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp">
       <Filter>Source Files\common audio\Reasoning</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\RWI\jhcEliGrok.cpp">
-      <Filter>Source Files\common robot\RWI</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\RWI\jhcEliCoord.cpp">
       <Filter>Source Files\common robot\RWI</Filter>
     </ClCompile>
@@ -602,6 +581,30 @@
     </ClCompile>
     <ClCompile Include="..\common\Action\jhcAliaChart.cpp">
       <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliBase.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliArm.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliNeck.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliLift.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Body\jhcEliBody.cpp">
+      <Filter>Source Files\common robot\Body</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSAPI.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcEliRWI.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Kernel\jhcEmotion.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -773,21 +776,6 @@
     <ClInclude Include="..\..\audio\common\Parse\jhcTxtSrc.h">
       <Filter>Header Files\common audio\Parse</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\Body\jhcEliArm.h">
-      <Filter>Header Files\common robot\Body</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Body\jhcEliBase.h">
-      <Filter>Header Files\common robot\Body</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Body\jhcEliBody.h">
-      <Filter>Header Files\common robot\Body</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Body\jhcEliLift.h">
-      <Filter>Header Files\common robot\Body</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Body\jhcEliNeck.h">
-      <Filter>Header Files\common robot\Body</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Peripheral\jhcAccelXY.h">
       <Filter>Header Files\common robot\Peripheral</Filter>
     </ClInclude>
@@ -901,9 +889,6 @@
     </ClInclude>
     <ClInclude Include="..\common\Action\jhcEchoFcn.h">
       <Filter>Header Files\common robot\Action</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h">
-      <Filter>Header Files\common audio\Acoustic</Filter>
     </ClInclude>
     <ClInclude Include="..\common\Grounding\jhcBallistic.h">
       <Filter>Header Files\common robot\Grounding</Filter>
@@ -1046,9 +1031,6 @@
     <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h">
       <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\RWI\jhcEliGrok.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\RWI\jhcEliCoord.h">
       <Filter>Header Files\common robot\RWI</Filter>
     </ClInclude>
@@ -1085,6 +1067,48 @@
     <ClInclude Include="..\common\Action\jhcAliaChart.h">
       <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\video\common\jhc_conio.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliBase.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliArm.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliNeck.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliLift.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcEliBody.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSAPI.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcEliRWI.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcGenNeck.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcGenLift.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcGenBase.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcGenArm.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcGenRWI.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Kernel\jhcEmotion.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\Banzai.ico">
@@ -1093,7 +1117,6 @@
     <None Include="res\Banzai.rc2">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Banzai.rc">

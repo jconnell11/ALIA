@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JMS_X_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JMS_X_
-/* CPPDOC_END_EXCLUDE */
+#pragma once 
 
 #include "jhcGlobal.h"
 
@@ -43,22 +40,17 @@ char *jms_offset (char *dest, UL32 tref, int dot, int ssz);
 char *jms_date (char *dest, int res, int ssz);
 char *jms_time (char *dest, int res, int ssz);
 bool jms_expired (int mon, int yr, int smon =0, int syr =0);
-UL64 jms_chrono ();
 
 // convenience
 template <size_t ssz> 
   char *jms_offset (char (&dest)[ssz], UL32 tref, int dot =0)
     {return jms_offset(dest, tref, dot, ssz);}
 template <size_t ssz> 
-  char *jms_date (char (&dest)[ssz], int res =0) 
+  char *jms_date (char (&dest)[ssz], int res =0)
     {return jms_date(dest, res, ssz);}
 template <size_t ssz> 
-  char *jms_time (char (&dest)[ssz], int res =0) 
+  char *jms_time (char (&dest)[ssz], int res =0)
     {return jms_time(dest, res, ssz);}
-
-
-#endif  // once
-
 
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "Interface/jhcMessage.h"
+#include "Interface/jprintf.h"         
 
 #include "Geometry/jhcMatrix.h"
 
@@ -2359,7 +2360,7 @@ int jhcMatrix::inv_core (const jhcMatrix& ref)
   jhcMatrix a(ref);
   int *fixed;
   double val, big, swap, recip, f;
-  int d, i, j, row, diag;
+  int d, i, j, row = 0, diag = 0;
 
   // original matrix "a" goes to identity, self "b" reduced in place to inverse
   a.Copy(ref);
@@ -2463,7 +2464,7 @@ double jhcMatrix::Det () const
            MRef0(0, 0) * MRef0(2, 1) * MRef0(1, 2));
  
   // general case with cofactors from first row
-  jhcMatrix minor(w - 1, h - 1);
+  jhcMatrix minor_m(w - 1, h - 1);
   for (pick = 0; pick < w; pick++)
   {
     // get cofactor with correct sign
@@ -2478,12 +2479,12 @@ double jhcMatrix::Det () const
       if (i != pick)
       {
         for (j = 1; j < h; j++)
-          minor.MSet0(col, j - 1, MRef0(i, j));
+          minor_m.MSet0(col, j - 1, MRef0(i, j));
         col++;
       } 
 
     // recursively combine determinants of minors weight by cofactors
-    sum += cf * minor.Det();
+    sum += cf * minor_m.Det();
   }
   return sum;
 }

@@ -39,7 +39,7 @@
 
 //= See if attention (to speech) should be renewed based on association list.
 // basically looks for the presense of the ATTN non-terminal category
-// mode: 0 = always, 1 = ATTN anywhere, 2 = ATTN at start, 3 = ATTN only (hail)
+// mode: <= 0 always on, 1 ATTN anywhere, 2 ATTN at start, 3 ATTN only (hail)
 // NOTE: better rejection of initial yes/no (if parsable) than jhcGramExec version 
 
 int jhcNetBuild::NameSaid (const char *alist, int mode) const
@@ -285,7 +285,7 @@ int jhcNetBuild::huh_tag () const
 int jhcNetBuild::hail_tag () const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch = build_tag(NULL, "hail", NULL, 1);
+  jhcAliaChain *ch = build_tag(NULL, "hail", NULL, 0);
 
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
@@ -298,7 +298,7 @@ int jhcNetBuild::hail_tag () const
 int jhcNetBuild::greet_tag () const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch = build_tag(NULL, "greet", NULL, 1);
+  jhcAliaChain *ch = build_tag(NULL, "greet", NULL, 0);
 
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
@@ -311,7 +311,7 @@ int jhcNetBuild::greet_tag () const
 int jhcNetBuild::farewell_tag () const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch = build_tag(NULL, "dismiss", NULL, 1);
+  jhcAliaChain *ch = build_tag(NULL, "dismiss", NULL, 0);
 
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
@@ -382,7 +382,6 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
   add = new jhcAliaDir(JDIR_ADD);
   (add->key).AddItem(item);            // dummy node
   steps->BindDir(add);
-  steps->fail = exp_fail(item);        // failed for some reasone
 
   // move newly create rule or operator into directive (in case slow)
   if (spact == 5)
@@ -397,6 +396,10 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
   }
   rule = NULL;                         // prevent deletion by jhcGraphizer
   oper = NULL;
+
+  // acknowledge if accepted, explain if rejected
+  steps->cont = ack_meta(item);
+  steps->fail = exp_fail(item);        
 
   // combine with preamble and transfer structure to attention buffer
   tail->cont = steps;
@@ -413,11 +416,11 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
 int jhcNetBuild::rev_tag (int spact, const char *alist) const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch, *tail;
+  jhcAliaChain *ch, *tail, *main;
   jhcNetNode *input, *item;
 
   // make a new NOTE directive for speech act
-  ch = build_tag(&input, "revise", alist, 0);
+  ch = build_tag(&input, "revise", alist, -1);
   item = atree->MakeNode("op");
   input->AddArg("obj", item);
   atree->AddProp(item, "ako", "operator");
@@ -430,7 +433,9 @@ int jhcNetBuild::rev_tag (int spact, const char *alist) const
 
   // tack on a play encapsulating the bulk sequence
   // then add completed structure to attention buffer
-  tail->cont = guard_plan(bulk, item);
+  main = guard_plan(bulk, item);
+  main->cont = ack_meta(item);
+  tail->cont = main;
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
   return 4;
@@ -477,14 +482,19 @@ jhcAliaChain *jhcNetBuild::build_tag (jhcNetNode **node, const char *fcn, const 
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = new jhcAliaChain;
   jhcAliaDir *dir = new jhcAliaDir;
-  jhcNetNode *n;
+  jhcNetNode *n, *iobj;
  
   // fill in details of the speech act
   atree->BuildIn(dir->key);
   n = atree->MakeAct(fcn);
-  n->AddArg("agt", atree->Human());                 // in WMEM since NOTE
-  if (dest > 0)
-    n->AddArg("dest", atree->Robot());              // in WMEM since NOTE
+  n->AddArg("agt", atree->Human());  
+  if (dest == 0)
+    n->AddArg("obj", atree->Robot());  
+  else if (dest > 0)
+  {
+    iobj = atree->AddProp(n, "dest", "to");
+    iobj->AddArg("ref", atree->Robot());    
+  }         
   if ((alist != NULL) && HasSlot(alist, "POLITE"))
     atree->AddProp(n, "mod", "polite");
 
@@ -542,6 +552,24 @@ const char *jhcNetBuild::no_fluff (const char *sent, const char *alist)
       break;
   trim[i + 1] = '\0';
   return trim;
+}
+
+
+//= Signal to user that new or revised rule or operator was successfully incorporated.
+
+jhcAliaChain *jhcNetBuild::ack_meta (jhcNetNode *item) const
+{
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *ch = new jhcAliaChain;
+  jhcAliaDir *dir = new jhcAliaDir(JDIR_DO);
+  jhcNetNode *act;
+ 
+  ch->BindDir(dir);
+  atree->BuildIn(dir->key);
+  act = atree->MakeAct("acknowledge");
+  act->AddArg("obj", item);
+  atree->BuildIn(NULL);
+  return ch;
 }
 
 
@@ -945,7 +973,7 @@ int jhcNetBuild::scan_lex (const char *fname)
           continue;
         end = wds + 1;
         last = end;
-        while ((*end != '\0') && (*end != '\n')) 
+        while ((*end != '\0') && (strchr("\n\r\x0A", *end) == NULL)) 
         {
           if (isalnum(*end) != 0)
             last = end;

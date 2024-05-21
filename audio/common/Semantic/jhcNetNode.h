@@ -50,8 +50,10 @@
 //  "keep" field: preserve node during garbage collection (1 = spread from this) 
 // NOTE: probably should convert blf/blf0 to blf + "hyp" flag (cleaner)
 
-class jhcNetNode : public jhcAliaDesc
+class jhcNetNode final : public jhcAliaDesc
 {
+friend class jhcNodePool;
+
 // PRIVATE MEMBER VARIABLES
 private:
   static const int amax = 10;        /** Maximum arguments for a node.  */
@@ -95,9 +97,6 @@ public:
 
 // PUBLIC MEMBER FUNCTIONS
 public:
-  // special access for jhcNodePool only!
-  ~jhcNetNode ();
-  jhcNetNode (int num, class jhcNodePool *pool);
   jhcNetNode *NodeTail () const {return next;}
   void SetTail (jhcNetNode *n)  {next = n;}
   void SetConvo (int val)       {ref = val;}  
@@ -240,6 +239,8 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // creation and initialization
+  ~jhcNetNode ();                                // private dtor requires "final"
+  jhcNetNode (int num, class jhcNodePool *pool);
   void rem_prop (const jhcNetNode *item);
   void rem_arg (const jhcNetNode *item);
 

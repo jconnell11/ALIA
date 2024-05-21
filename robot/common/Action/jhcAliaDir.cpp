@@ -456,7 +456,7 @@ int jhcAliaDir::Start (jhcAliaChain *st)
   jhcAliaCore *core = st->Core();
   jhcActionTree *wmem = &(core->atree);
   jhcBindings *scope = st->Scope();
-  double s;
+//  double s;
   int lvl = st->Level(), ver = wmem->Version();
 
   // set up internal state, assume something needs to run
@@ -468,7 +468,7 @@ int jhcAliaDir::Start (jhcAliaChain *st)
 //dbg = 2;                                       // local FIND debug (2 or 3 for matcher)
   wmem->RevealAll(key);                          // make available for matching
   reset();     
-  (core->mood).Launch(); 
+  (core->mood).OpLaunch(); 
   jprintf(2, noisy, "%*sstart %s[ %s ]\n", lvl, "", KindTag(), KeyTag());
 
   // initialize various types of directive
@@ -486,10 +486,11 @@ int jhcAliaDir::Start (jhcAliaChain *st)
     key.ActualizeAll(ver);                        // assert pending truth values
     wmem->Refresh(key);
     if (wmem->Endorse(key) <= 0)                  // too coarse?
-    {
-      s = wmem->CompareHalo(key, core->mood);     // update rule result beliefs
-      (core->mood).Believe(s);
-    }
+      wmem->CompareHalo(key, core->mood);         // update rule result beliefs
+//    {
+//      s = wmem->CompareHalo(key, core->mood);     // update rule result beliefs
+//      (core->mood).RuleAdj(s);
+//    }
     own = core->Percolate(key);                   // mark nodes for reactive ops
   }
   else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || 
@@ -562,6 +563,7 @@ int jhcAliaDir::Status ()
   int res, lvl = step->Level();
 
   // determine whether to record grounding kernel error messages
+  jprintf(3, noisy, "%*sstatus %s[ %s ]\n", lvl, "", KindTag(), KeyTag());
   if (lvl <= 0)
     core->SaveErr(1);
   if ((kind != JDIR_DO) && (kind != JDIR_GND) && (kind != JDIR_ACH))
@@ -592,9 +594,9 @@ int jhcAliaDir::Status ()
     if ((op = atree->Motive(key, &main, &d2o)) == NULL)
       return report(-2);
     if (key.ActNeg() > 0)
-      atree->AdjOpPref(op, -1);                            // ding preference
+      atree->AdjOpPref(op, -1, 1);                         // ding preference
     else if (step->cont == NULL)
-      atree->AdjOpPref(op, 1);                  
+      atree->AdjOpPref(op, 1, 1);                  
     if (core->OpEdit(*op, *main, d2o, step->cont) <= 0)    // replace step
       return report(-2);
     return report(1);
@@ -640,8 +642,8 @@ int jhcAliaDir::Status ()
     return report(-3);
 
   // maybe raise preference threshold
-  if ((res == -2) && (wait <= 0))
-    (core->mood).BumpMinPref(1);                 
+//  if ((res == -2) && (wait <= 0) && (t1 == 0))
+//    (core->mood).OpEval(1);                 
 
   // generally try next method, but special handling for DO and NOTE 
   if (kind == JDIR_DO)
@@ -875,10 +877,10 @@ int jhcAliaDir::report (int val)
     if (val > 0)
     {
       alter_pref();                              // only when top level goal succeeds
-      (core->mood).Win();
+      (core->mood).OpWin();
     }
     else if (val == -2)                          // ignore Stop (val == -1)
-      (core->mood).Lose();
+      (core->mood).OpLose();
 
     // old failure reason is moot since this action succeeded
     if ((val > 0) && (kind == JDIR_DO))
@@ -1095,7 +1097,7 @@ int jhcAliaDir::pick_method ()
 {
   jhcAliaCore *core = step->Core();
   jhcGraphlet ctx2;
-  int all, cnt, lvl = step->Level();
+  int lvl = step->Level(), cnt = 0;
 
   // see if too many methods tried or perhaps wait (2 cycles) for NOTEs to post then halo rules to run 
   if (nri >= hmax)
@@ -1107,8 +1109,8 @@ int jhcAliaDir::pick_method ()
   // find maximally specific operators that apply
   if (lvl > core->MaxStack())
     return jprintf("%*s>>> Subgoal stack too deep for %s[ %s ] !\n", lvl, "", KindTag(), KeyTag());
-  all = match_ops(sel);
-  cnt = max_spec(sel);
+  if (match_ops(sel) > 0)
+    cnt = max_spec(sel);
   if (cnt <= 0)
   {
     if (noisy >= 2) 
@@ -1796,7 +1798,7 @@ void jhcAliaDir::pron_gender (jhcNetNode *mate, int note)
   jhcAliaCore *core = step->Core();
   jhcActionTree *atree = &(core->atree);
   jhcNetNode *fact;
-  int tags = focus->tags;
+  UL32 tags = focus->tags;
 
   // make sure naked FIND[ x ] was sought
   if ((cond.NumItems() != 1) || (focus->Lex() != NULL) || !focus->ObjNode())

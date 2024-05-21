@@ -59,8 +59,10 @@ OP 4 - "To hail someone say finally, someone to play with"
 ---------------
     DO[ fcn-3 -lex-   say
               -fcn--> act-3
-        act-3 -dest-> agt-1
-              -obj--> txt-1
+        act-3 -obj--> txt-1
+        end-3 -lex-   to
+              -dest-> act-3
+              -ref--> agt-1
         txt-1 -str-   finally, someone to play with ]
 
 
@@ -72,8 +74,10 @@ OP 5 - "To hail someone say hey there whoever"
 ---------------
     DO[ fcn-3 -lex-   say
               -fcn--> act-3
-        act-3 -dest-> agt-1
-              -obj--> txt-1
+        act-3 -obj--> txt-1
+        end-3 -lex-   to
+              -dest-> act-3
+              -ref--> agt-1
         txt-1 -str-   hey there ?0 ]
 
 
@@ -85,8 +89,10 @@ OP 6 - "To hail someone say good to see you whoever"
 ---------------
     DO[ fcn-3 -lex-   say
               -fcn--> act-3
-        act-3 -dest-> agt-1
-              -obj--> txt-1
+        act-3 -obj--> txt-1
+        end-3 -lex-   to
+              -dest-> act-3
+              -ref--> agt-1
         txt-1 -str-   good to see you ?0 ]
 
 

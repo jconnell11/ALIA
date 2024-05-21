@@ -183,6 +183,7 @@
   <$q-src>
   <$q-cnt>
   <$q-has>
+  <$q-mod>
 
 
 // hypothetical FIND for prohibitions (not used?)
@@ -273,6 +274,12 @@
   which <%obj-q> has <np-any>
 
 
+// question about manner of action
+
+=[$q-mod]
+  how <aux> <%fact>
+
+
 // --------------------------------------------------
 
 // CHK directive
@@ -293,9 +300,8 @@
 // implicit tell for answering yn-question
 
 =[!chk-t]
-  <be> <%fact>
   is <%fact-n>
-  <AUX-D> <%fact>
+  <aux> <%fact>
 
 
 // ==================================================

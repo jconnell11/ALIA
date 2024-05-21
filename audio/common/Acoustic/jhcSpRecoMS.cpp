@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2022-2023 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include <process.h>
 
 #include "Interface/jhcString.h"       // common video
+#include "Interface/jprintf.h"         
 
 #include <sapi.h>                      // used to have "sapi_xp.h"
 
@@ -1816,8 +1817,7 @@ char *jhcSpRecoMS::clean_line (char *ans, int len, FILE *in, char ignore)
     return NULL;
 
   // remove final newline and anything after comment
-  if ((end = strchr(ans, '\n')) != NULL)
-    *end = '\0';
+  ans[strcspn(ans, "\n\r\x0A")] = '\0';
   if ((end = strchr(ans, ignore)) != NULL)
     *end = '\0';
 

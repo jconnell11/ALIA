@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIACORE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIACORE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -33,6 +30,7 @@
 #include "Acoustic/jhcGenIO.h"         // common audio
 #include "Language/jhcNetBuild.h" 
 #include "Parse/jhcGramExec.h"
+#include "Parse/jhcNameList.h"
 #include "Parse/jhcVocab.h"
 #include "Reasoning/jhcActionTree.h"     
 #include "Reasoning/jhcAssocMem.h"
@@ -45,6 +43,7 @@
 #include "Action/jhcEchoFcn.h"     
 #include "Kernel/jhcAliaKudos.h"          
 #include "Kernel/jhcAliaTimer.h"          
+#include "Kernel/jhcEmotion.h"          
 #include "Kernel/jhcIntrospect.h"          
 #include "Kernel/jhcMemStore.h"          
 #include "Kernel/jhcTalkFcn.h"          
@@ -123,6 +122,10 @@ private:
   jhcProcMem pmem;             // reactions and expansions
 
   double ver;                  // current code version
+  char wdir[200];              // base directory for files
+  char myself[80];             // robot first name
+  char fname[200];             // temporary absolute file name
+  int gnd;                     // whether grounding DLLs are loaded
 
   double det;                  // determination to achieve intent
   double argh;                 // wait before retry of intention
@@ -135,7 +138,7 @@ private:
   int spact;                   // last speech act received
 
   UL32 t0;                     // starting time of this run
-  FILE *log;                   // user input conversion results
+  FILE *netlog;                // user input to semantic net log
   char time[40];               // temporary time stamp string
 
   // loop timing and cycle counts
@@ -149,6 +152,7 @@ private:
 
 // PROTECTED MEMBER VARIABLES
 protected:
+  char echo[500];              // cleaned up input string
   double thz, shz;             // timing parameters
   UL32 now;
 
@@ -161,8 +165,10 @@ public:
   jhcNetBuild net;             // language to network conversion
   jhcGramExec gr;              // text parser
   jhcVocab vc;                 // known words and corrections
+  jhcNameList vip;             // names of important people
   jhcAliaStats stat;           // monitor for various activities
   jhcAliaMood mood;            // time varying goal preferences
+  jhcEmotion emo;              // conscious affective state
   char cfile[80];              // preferred log file for conversions  
   int vol;                     // load volition operators
   int acc;                     // mode for long-term KB items
@@ -180,14 +186,16 @@ public:
   // creation and initialization
   ~jhcAliaCore ();
   jhcAliaCore ();
-  double Version () const {return ver;}
-  double Retry () const   {return argh;}
-  double Dither () const  {return waver;}
-  int NextBid () const    {return bid;}
-  int LastTop () const    {return topval;}
+  double Version () const   {return ver;}
+  const char *Dir () const  {return wdir;}
+  const char *Name () const {return myself;}
+  double Retry () const     {return argh;}
+  double Dither () const    {return waver;}
+  int NextBid () const      {return bid;}
+  int LastTop () const      {return topval;}
   double Stretch (double secs) const {return(det * secs);}
-  int MaxStack () const   {return deep;}
-  int Talking () const    {return talk.Busy();}
+  int MaxStack () const     {return deep;}
+  int Talking () const      {return talk.Busy();}
   virtual int SpeechRC () const {return hear0;}
   virtual int BusyTTS () const  {return 0;}
 
@@ -201,6 +209,7 @@ public:
     {return((think <= 0) ? 0.0 : think / jms_secs(last, start));}
   UL32 NextSense () const
     {return(start + ROUND((1000.0 * sense) / shz));}
+  double SenseRate () const {return shz;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);       
@@ -215,8 +224,9 @@ public:
   void Remove (const jhcAliaOp *rem)   {pmem.Remove(rem);}
 
   // main functions
-  void Reset (const char *rname, int cvt =1);
-  int Interpret (const char *input =NULL, int awake =1, int amode =2);
+  const char *SetDir (const char *dir =NULL);
+  void Reset (const char *rname =NULL, int prt =3, int cvt =1);
+  int Interpret (const char *input =NULL, int gate =1, int amode =2);
   jhcAliaChain *Reinterpret ();
   int RunAll (int gc =1);
   int Response (char *out, int ssz) {return talk.Output(out, ssz);}
@@ -250,9 +260,15 @@ public:
   void KernList () const;
   void ShowMem () {atree.PrintMain(memhyp);}
   void LoadLearned ();
-  void DumpLearned () const;
+  void DumpLearned ();
   void DumpSession ();
-  void DumpAll () const;
+  void DumpAll ();
+
+
+// PROTECTED MEMBER FUNCTIONS
+protected:
+  // main functions
+  const char *wrt (const char *rel);
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -266,13 +282,15 @@ private:
   int msg_params (const char *fname);
 
   // main functions
+  void log_opts (const char *rname, int prt);
   void kern_extras (const char *kdir);
   int add_info (const char *dir, const char *base, int rpt, int level);
   bool readable (char *fname, int ssz, const char *msg, ...) const;
   int baseline (const char *fname, int add, int rpt);
-  void open_cvt ();
+  void open_cvt (const char *rname);
   int guess_cats (const char *txt);
   void gram_add_hq (const char *wd);
+  int syllables (const char *txt, int th) const;
   void stop_all();
 
   // speech overrides for adding new words
@@ -285,10 +303,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -1,6 +1,29 @@
 // OPEN CLASS WORDS
 // ================================================
 
+// robot name
+
+=[ATTN]
+  robot
+
+
+// proper nouns
+
+=[NAME]
+  Rick
+  Mary
+  Dan
+  Ken
+  Vassar
+  Gwen
+  IBM
+  Scar
+  Simba
+  Joe
+  Jill
+  the Yankees
+
+
 // singular nouns
 
 =[AKO]
@@ -17,13 +40,27 @@
   table
   hammer
   girl
+  boy
   animal
-  block
+  top
+  surface
+  car
+  wife
+  bowl
+  lion
+  man
+  screw
+  knob
+  sport
+  rice
+  baseball
+  favorite
 
 
-// mass nouns (do not take "the" or "a")
+// mass noun plurals (cannot take "a" like "sand")
 
-=[AKO-M]
+=[AKO-S]
+  baseball
 
 
 // adjectives
@@ -45,54 +82,56 @@
   ferocious
   high
   low
-
-
-// proper nouns
-
-=[NAME]
-  Rick
-  Mary
-
-
-// robot name
-
-=[ATTN]
-  robot
-  Robby
+  dumb
+  interesting
+  good
+  brown
+  furry
+  little
+  pretty
 
 
 // -----------------------------------------
 
-// modifiers
-
-=[MOD]
-
-
-// directions
-
-=[DIR]
-
-
 // imperative verbs
 
 =[ACT]
+  have
   do something
   do anything
   sleep
   stop
-  tell
   see
   catch
   grab
   hit
   vet
   complain
-  look around
+  look
   flee
-  shimmy
-  cha-cha
-  dance
-  pounce
+  walk
+  search 
+  look
+  claim
+  eat
+  like
+  remove
+  steal
+  walk
+  like
+  ask about
+  snarf
+  advance
+
+
+// imperative verbs requiring object and location or direction
+
+=[ACT-2]
+
+
+// adverbial modifiers
+
+=[MOD]
 
 
 // ================================================
@@ -100,6 +139,9 @@
 // irregular morphologies (np, acomp, asup, vpres, vprog, vpast)
 
 =[XXX-morph]
+  have * vpres = has
+  have * vprog = having
+  have * vpast = had
   do something * vpres = does something
   do something * vprog = doing something
   do something * vpast = did something
@@ -108,9 +150,25 @@
   do anything * vpast = did anything
   orange * acomp = oranger
   orange * asup  = orangest
+  blue * acomp = bluer
+  blue * asup  = bluest
   striped * acomp = more striped
   striped * asup  = most striped
+  square * acomp = squarer
+  square * asup  = squarest
+  ferocious * acomp = more ferocious
+  ferocious * asup  = most ferocious
   sleep * vpast = slept
   see * vpast = saw
   catch * vpast = caught
   hit * vpast = hit
+  flee * vpast = fled
+  interesting * acomp = more interesting
+  interesting * asup  = most interesting
+  streaked * acomp = more streaked
+  streaked * asup  = most streaked
+  wife * npl = wives
+  eat * vpast = ate
+  man * npl = men
+  rice * npl = rice
+ 

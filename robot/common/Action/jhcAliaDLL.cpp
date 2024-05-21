@@ -21,9 +21,26 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include <windows.h>
+#ifndef __linux__
 
-#include "Interface/jhcString.h"       // common video
+  #include <windows.h>
+  #include "Interface/jhcString.h"       // common video
+  HMODULE LoadLib (const char *name) 
+    {jhcString fn; fn.Set(name); return LoadLibrary(fn.Txt());}
+
+#else
+
+  // NOTE: Linker->Input->Additional Dependencies must have -ldl
+
+  #include <dlfcn.h>
+  #define HMODULE void *
+  #define GetProcAddress dlsym
+  #define FreeLibrary(ptr) dlclose(ptr)
+  inline void *LoadLib(const char *name) 
+    {return dlopen(name, RTLD_LAZY);}
+
+#endif
+
 
 #include "Action/jhcAliaDLL.h"
 
@@ -104,14 +121,12 @@ jhcAliaDLL::jhcAliaDLL (const char *file)
 
 int jhcAliaDLL::Load (const char *file)
 {
-  jhcString fn;
   HMODULE dll;
   int all = 0;
 
   // get rid of any old functions then try to open new DLL file
   close();
-  fn.Set(file);
-  if ((dll = LoadLibrary(fn.Txt())) == NULL)
+  if ((dll = LoadLib(file)) == NULL)
     return -1;
   lib = (void *) dll;
 
@@ -137,7 +152,7 @@ int jhcAliaDLL::Load (const char *file)
   }
 
   // unload everything if failure else connect to body
-  if (all <= 0)
+  if (all <= 0) 
     return close();
   strcpy_s(tag, local_name());         // cache in member text string
   return 1;

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@
 
 #include "Reasoning/jhcAssocMem.h"
 
-
+#include "Interface/jtimer.h"
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -241,8 +241,8 @@ jtimer_x(14);
 int jhcAssocMem::Consolidate (const jhcBindings& b, int dbg)
 {
   jhcBindings list, list2, m2c;
-  jhcAliaRule *r2, *r1, *mix = NULL;
-  jhcBindings *b2, *b1;
+  jhcAliaRule *r2 = NULL, *r1 = NULL, *mix = NULL;
+  jhcBindings *b2 = NULL, *b1 = NULL;
   int j, nc, nb = b.NumPairs(), i = -1, cnt = 0;
 
   // search through main fact inference bindings (length may change)

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@
 // limitations under the License.
 // 
 /////////////////////////////////////////////////////////////////////////// 
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Language/jhcMorphTags.h"     // common audio
 
@@ -88,6 +90,7 @@ jhcSceneVis::jhcSceneVis ()
 
   // processing parameters
   Defaults();
+  gok = 1;                   // either 1 or -1
 }
 
 
@@ -226,7 +229,7 @@ int jhcSceneVis::SaveVals (const char *fname) const
 
 void jhcSceneVis::local_platform (void *soma) 
 {
-  rwi = (jhcEliGrok *) soma;
+  rwi = (jhcEliRWI *) soma;
   sobj = &(rwi->sobj);
   body = rwi->body;
 }
@@ -313,7 +316,7 @@ int jhcSceneVis::local_status (const jhcAliaDesc& desc, int i)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Makes sure node associations are accurate.
-// expected position of objects already adjusted by jhcEliGrok::interpret2()
+// expected position of objects already adjusted by jhcEliRWI::interpret2()
 // "visible" = currently tracked, not necessarily in field of view
 
 void jhcSceneVis::update_objs ()
@@ -330,7 +333,7 @@ void jhcSceneVis::update_objs ()
       mark_gone(id);
 
   // determine whether each tracked object is likely visible currently
-  // Note: possibly move this part to jhcEliGrok like adjust_heads
+  // Note: possibly move this part to jhcEliRWI like adjust_heads
   sobj->AdjGeometry(0);
   nt = sobj->ObjLimit();
   for (t = 0; t < nt; t++)
@@ -551,7 +554,7 @@ int jhcSceneVis::vis_orient (const jhcAliaDesc& desc, int i)
   if ((t = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
     return err_miss(cobj[i]);
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (neck->CommOK() <= 0)
     return err_neck();
 
@@ -607,7 +610,7 @@ int jhcSceneVis::vis_look (const jhcAliaDesc& desc, int i)
   if ((t = sobj->ObjTrack(rpt->VisID(cobj[i]))) < 0)
     return err_miss(cobj[i]);
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (neck->CommOK() <= 0)
     return err_neck();
 

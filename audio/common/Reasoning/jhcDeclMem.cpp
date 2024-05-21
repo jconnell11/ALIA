@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022-2023 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,11 +20,13 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
+#include "Interface/jprintf.h"         // common video
+
 #include "Reasoning/jhcActionTree.h"   // since only spec'd as class in hdr
 
 #include "Reasoning/jhcDeclMem.h"
 
-
+#include "Interface/jtimer.h"
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -694,7 +696,7 @@ double jhcDeclMem::score_unary (const jhcNetNode *focus, const jhcNetNode *mate,
 
 double jhcDeclMem::score_rels (const jhcNetNode *focus, const jhcNetNode *mate, double qth) const
 {
-  const jhcNetNode *p, *p2, *win = NULL;
+  const jhcNetNode *p, *p2;
   const char *role;
   double sc0, sc2, sc, best = -1.0, sum = 0.0;
   int i, j, np = focus->NumProps(), np2 = mate->NumProps();
@@ -727,10 +729,7 @@ double jhcDeclMem::score_rels (const jhcNetNode *focus, const jhcNetNode *mate, 
 
           // save score of best matched mate relation
           if (sc > best)
-          {
             best = sc;
-            win = mate;
-          }
         }
 
       // some relations more important than others in combination
@@ -913,9 +912,9 @@ int jhcDeclMem::LoadFacts (const char *base, int add, int rpt, int level)
   }
 
   // see if there is a hint about number of translations needed
-  fgets(hdr, 80, in);
-  if ((tail = strstr(hdr, "Nodes = ")) != NULL)
-    sscanf_s(tail + 8, "%d", &nt);
+  if (fgets(hdr, 80, in) != NULL)
+    if ((tail = strstr(hdr, "Nodes = ")) != NULL)
+      sscanf_s(tail + 8, "%d", &nt);
   fclose(in);
 
   // try reading facts from file and record starting ID for next level(s)

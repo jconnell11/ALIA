@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCWORKMEM_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCWORKMEM_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -62,6 +59,7 @@ private:
 // PROTECTED MEMBER VARIABLES
 protected:
   jhcNodePool halo;          // expectations
+  double bth0;               // default belief threshold
 
 
 // PUBLIC MEMBER VARIABLES
@@ -83,7 +81,8 @@ public:
   int HaloSize (int hyp =0) const {return halo.NodeCnt(hyp);}
 
   // belief threshold
-  double MinBlf () const {return skep;}
+  double MinBlf () const    {return skep;}
+  double RestBlf () const   {return bth0;}
   void SetMinBlf (double s) {skep = __max(0.1, __min(1.0, s));}
 
   // conversation participants
@@ -167,10 +166,5 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include <ctype.h>
 
 #include "Data/jhcParam.h"             // common video
+#include "Interface/jprintf.h"
 
 #include "Acoustic/sp_reco_web.h"      // common audio (DLL interface)
 
@@ -47,7 +48,6 @@ jhcSpeechWeb::~jhcSpeechWeb ()
 jhcSpeechWeb::jhcSpeechWeb ()
 {
   clr_state();
-  Defaults();
 }
 
 
@@ -75,36 +75,6 @@ const char *jhcSpeechWeb::Version () const
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                           Parameter Bundles                           //
-///////////////////////////////////////////////////////////////////////////
-
-//= Load online credentials from file.
-
-int jhcSpeechWeb::Defaults (const char *fname)
-{
-  jhcParam ps;
-  int ok = 1;
-  
-  ok &= ps.LoadText(key, fname, "sp_key", "");
-  ok &= ps.LoadText(reg, fname, "sp_reg", "");
-  return ok;
-}
-
-
-//= Save online credentials to file.
-
-int jhcSpeechWeb::SaveVals (const char *fname) const
-{
-  jhcParam ps;
-  int ok = 1;
-
-  ok &= ps.SaveText(fname, "sp_key", key);
-  ok &= ps.SaveText(fname, "sp_reg", reg);
-  return ok;
-}
-
-
-///////////////////////////////////////////////////////////////////////////
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
@@ -119,9 +89,9 @@ int jhcSpeechWeb::Init (int partial)
 
   clr_state();
   dbg = partial;
-  LoadFix("misheard.map");                 // always try fixup file
+  LoadFix("config/misheard.map");                // always try fixup file
   Listen(1);
-  if ((ans = reco_setup(key, reg)) <= 0)
+  if ((ans = reco_setup()) <= 0)
     return ans;
   return reco_start();
 }

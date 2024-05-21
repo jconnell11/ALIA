@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2009-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCCONSOLE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCCONSOLE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -32,6 +29,7 @@
 
 
 //= Makes a window for printf and gets within a GUI application.
+// NOTE: saves up printfs for speed - MUST call fflush() to emit
 
 class jhcConsole
 {
@@ -50,10 +48,4 @@ public:
   void SetPosition (int x, int y, int w =0, int h =0);
 
 };
-
-
-#endif  // once
-
-
-
 

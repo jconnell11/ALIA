@@ -21,16 +21,13 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCELICOORD_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCELICOORD_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
 #include "Data/jhcParam.h"             // common video
 
-#include "Acoustic/jhcAliaSpeech.h"    // common audio 
+#include "Acoustic/jhcAliaSAPI.h"      // common audio 
 #include "Parse/jhcNameList.h"         
 
 #include "Action/jhcAliaChart.h"       // common robot
@@ -40,7 +37,7 @@
 #include "Grounding/jhcSceneVis.h"
 #include "Grounding/jhcSocial.h"
 #include "Grounding/jhcSupport.h"
-#include "RWI/jhcEliGrok.h"
+#include "RWI/jhcEliRWI.h"
 
 
 //= Top level parsing, learning, and control for ELI robot.
@@ -48,7 +45,7 @@
 // class tree overview (+ = member, > = pointer):
 //
 //   EliCoord         
-//     AliaSpeech
+//     AliaSAPI
 //       AliaCore            reasoning (see header file)
 //       +SpeechX            TTS + local speech
 //         SpTextMS
@@ -77,7 +74,7 @@
 // 
 // </pre>
 
-class jhcEliCoord : public jhcAliaSpeech
+class jhcEliCoord : public jhcAliaSAPI
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -88,10 +85,7 @@ private:
 public:
   // possibly shared components
   jhcEliBody body;           
-  jhcEliGrok rwi;                     
-
-  // face reco people
-  jhcNameList vip;  
+  jhcEliRWI rwi;                     
 
   // extra grounding kernels
   jhcBallistic ball; 
@@ -118,7 +112,6 @@ public:
   int SaveVals (const char *fname);
 
   // main functions
-  int SetPeople (const char *fname, int append =0, int wds =1);
   int BindVideo (jhcVideoSrc *v, int vnum =0);
   int Reset (int bmode =0);
   int Respond ();
@@ -134,8 +127,6 @@ private:
 
 };
 
-
-#endif  // once
 
 
 

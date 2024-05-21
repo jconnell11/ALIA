@@ -216,6 +216,12 @@
 #define ID_MOOD_RULEOPADJ               32944
 #define ID_DEMO_CYCLERATE               32945
 #define ID_GRAB_SURFMOTION              32946
+#define ID_MOOD_VALENCELEVEL            32947
+#define ID_MOOD_CONTROLLEVEL            32948
+#define ID_MOOD_SURENESSLEVEL           32949
+#define ID_MOOD_ADJUSTMIX               32950
+#define ID_MOOD_PREFERENCEMIX           32951
+#define ID_MOOD_NAGTIMING               32952
 
 // Next default values for new objects
 // 
@@ -223,7 +229,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32947
+#define _APS_NEXT_COMMAND_VALUE         32953
 #define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

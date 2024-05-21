@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2019 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +31,9 @@
 
 #include <stdio.h>
 
-#include "Comm/zmq.h"                 // common audio
+#include "Interface/jprintf.h"         // common video
+
+#include "Comm/zmq.h"                  // common audio
 #include "Comm/jhcReportZMQ.h"
 
 
@@ -125,6 +128,7 @@ int jhcReportZMQ::ZPrintf (char *fmt, ...)
   {
     va_start(args, fmt); 
     vsprintf_s(msg, fmt, args);
+    va_end(args);
   }
 
   // flush buffer if new message does not fit

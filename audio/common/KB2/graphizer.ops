@@ -15,8 +15,10 @@ OP 1 - "To explain something when that something is because something else then 
 -----------------
     DO[  fcn-3 -lex-   tell
                -fcn--> act-2 
-         act-2 -dest-> user-1
-               -obj--> sit-1
+         act-2 -obj--> sit-1
+         end-2 -lex-   to
+               -dest-> act-2
+               -ref--> user-1
         user-1 -lex-   you ] 
 
 
@@ -31,8 +33,10 @@ OP 2 - "To explain failing to do something that I asked you about pass"
          fcn-3 -lex-   ask
                -fcn--> act-2
          act-2 -agt--> agt-1
-               -dest-> self-1
-               -act--> plan-1 ]
+               -act--> plan-1 
+         end-2 -lex-   to
+               -dest-> act-2
+               -ref--> self-1 ]
 -----------------
     DO[ fcn-4 -lex-  pass 
               -fcn-> act-3 ]

@@ -35,20 +35,9 @@ OP 3 - "To check if you are doing something to something ..."
                -arg-> act-1 ]
 
 
-OP 4 - "To check if you are doing something to something for someone  ..."
-  trig:
-   CHK[  act-1 -agt->  self-1 
-               -dest-> obj-2
-               -obj->  obj-1
-        self-1 -lex-   me ]
----------------
-   GND[ call-1 -lex-  why_run
-               -arg-> act-1 ]
-
-
 // --------------------------------------
 
-OP 5 - "To check if you did something ..."
+OP 4 - "To check if you did something ..."
   trig:
    CHK[  act-1 -ach-  1
                -agt-> self-1 
@@ -58,7 +47,7 @@ OP 5 - "To check if you did something ..."
                -arg-> act-1 ]
 
 
-OP 6 - "To check if you did something to something ..."
+OP 5 - "To check if you did something to something ..."
   trig:
    CHK[  act-1 -ach-  1
                -agt-> self-1 
@@ -67,16 +56,3 @@ OP 6 - "To check if you did something to something ..."
 ---------------
    GND[ call-1 -lex-  why_run
                -arg-> act-1 ]
-
-
-OP 7 - "To check if you did something to something for someone  ..."
-  trig:
-   CHK[  act-1 -ach-   1
-               -agt->  self-1 
-               -dest-> obj-2
-               -obj->  obj-1
-        self-1 -lex-   me ]
----------------
-   GND[ call-1 -lex-  why_run
-               -arg-> act-1 ]
-

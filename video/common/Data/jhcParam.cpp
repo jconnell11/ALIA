@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
+// Copyright 2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -232,6 +233,7 @@ void jhcParam::SetTitle (const char *label, ...)
 
   va_start(args, label); 
   vsprintf_s(title, label, args);
+  va_end(args);
   title[79] = '\0';
 }
 
@@ -813,7 +815,7 @@ int jhcParam::find_line (char *line, const char *fname, const char *tag) const
 
   // search for line with given leading tag followed by whitespace
   while (fgets(line, 200, in) != NULL)
-    if ((strncmp(line, tag, n) == 0) && (strchr(" \t\n", line[n]) != NULL))
+    if ((strncmp(line, tag, n) == 0) && (strchr(" \t\n\r\x0A", line[n]) != NULL))
     {
       // success, line already contains correct data
       fclose(in);
@@ -852,7 +854,7 @@ int jhcParam::excise_line (const char *fname, const char *tag) const
 
   // copy most lines to this new file but omit tagged line (if any)
   while (fgets(line, 200, in) != NULL)
-    if ((strncmp(line, tag, n) == 0) && (strchr(" \t\n", line[n]) != NULL))
+    if ((strncmp(line, tag, n) == 0) && (strchr(" \t\n\r\x0A", line[n]) != NULL))
       any++;
     else
       fputs(line, tmp);

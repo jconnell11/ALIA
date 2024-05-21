@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{909dfca6-0bb9-4649-bcae-545ba3ce1ec6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{0224b61e-04f9-4e01-862e-ce5569b123d4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video">
+      <UniqueIdentifier>{1ace3658-50df-4e37-a1c5-615d141a6d6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video">
+      <UniqueIdentifier>{c0cd8b73-48c3-4208-be82-ce6b3ecb4927}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio">
+      <UniqueIdentifier>{3597f96b-4b2a-45f0-87b7-e40fb8a28253}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common audio\API">
+      <UniqueIdentifier>{8a9633f4-cbf5-4c3b-840e-1ddc46066ca7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\video\common\jhc_conio.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\jhcGlobal.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\jhc_str_s.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\API\alia_txt.h">
+      <Filter>Header Files\common audio\API</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\video\common\jhc_conio.cpp">
+      <Filter>Source Files\common video</Filter>
+    </ClCompile>
+    <ClCompile Include="txt_loop.cpp" />
+  </ItemGroup>
+</Project>

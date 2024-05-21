@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,8 @@
 
 #include <stdio.h>
 
-#include "Interface/jhcMessage.h"
+#include "Interface/jhcMessage.h"      // common video
+#include "Interface/jprintf.h"         
 #include "Video/jhcKinVSrc.h"
 
 #include "Body/jhcEliBody.h"
@@ -68,7 +69,7 @@ jhcEliBody::jhcEliBody ()
   tfill = 0;
 
   // default robot name
-  *rname = '\0';
+  strcpy_s(rname, "Banzai");
   *vname = '\0';
   loud = 0;
 
@@ -552,11 +553,11 @@ int jhcEliBody::CfgFile (char *fname, int chk, int ssz)
   if (fopen_s(&in, fname, "r") != 0)
   {
     // else look in subdirectory of current
-    sprintf_s(fname, ssz, "config/robot-%d.cfg", __max(0, bnum));
+    sprintf_s(fname, ssz, "calib/robot-%d.cfg", __max(0, bnum));
     if (fopen_s(&in, fname, "r") != 0)
     {
       // else look in parallel directory
-      sprintf_s(fname, ssz, "../config/robot-%d.cfg", __max(0, bnum));
+      sprintf_s(fname, ssz, "../calib/robot-%d.cfg", __max(0, bnum));
       if (fopen_s(&in, fname, "r") != 0)
       {
         *fname = '\0';
@@ -598,19 +599,19 @@ int jhcEliBody::CommOK (int rpt, int bad) const
   int ok = mok;
 
   // compute overall value as OR of components
-  ok = __min(ok, arm.CommOK(bad));
-  ok = __min(ok, neck.CommOK(bad));
-  ok = __min(ok, base.CommOK(bad));
-  ok = __min(ok, lift.CommOK(bad));
+  ok = __min(ok, arm.CommOK());
+  ok = __min(ok, neck.CommOK());
+  ok = __min(ok, base.CommOK());
+  ok = __min(ok, lift.CommOK());
   ok = __min(ok, mic.CommOK(bad));
 
   // tell reason for failure (if any)
   if ((ok <= 0) && (rpt > 0))
     jprintf("!!! Comm failure:%s%s%s%s%s !!!\n\n",
-            ((arm.CommOK(bad)  <= 0) ? " arm" : ""), 
-            ((neck.CommOK(bad) <= 0) ? " neck" : ""), 
-            ((base.CommOK(bad) <= 0) ? " base" : ""), 
-            ((lift.CommOK(bad) <= 0) ? " lift" : ""), 
+            ((arm.CommOK()  <= 0) ? " arm" : ""), 
+            ((neck.CommOK() <= 0) ? " neck" : ""), 
+            ((base.CommOK() <= 0) ? " base" : ""), 
+            ((lift.CommOK() <= 0) ? " lift" : ""), 
             ((mic.CommOK(bad)  <= 0) ? " mic" : ""));
   return ok;
 }

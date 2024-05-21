@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2019 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include <string.h>
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Parse/jhcGenParse.h"
 
@@ -67,11 +69,13 @@ void jhcGenParse::PrintResult (int lvl, int close)
 
 
 //= Show final input string received by system.
+// canon: cleaned up version of input (if desired)
 // sep: 0 = no separator, 1 = just a line, 2 = number of parses
 // allows diarization by pre-pending name of user (utag)
 
-void jhcGenParse::PrintInput (const char *utag, int sep)
+void jhcGenParse::PrintInput (const char *utag, const char *canon, int sep)
 {
+  const char *sent = ((canon != NULL) ? canon : Input());
   int n = NumTrees();
 
   // possibly print separator line
@@ -84,9 +88,9 @@ void jhcGenParse::PrintInput (const char *utag, int sep)
 
   // print input, possibly tagged with user name
   if ((utag == NULL) || (*utag == '\0'))
-    jprintf("\"%s\"\n", Input());
+    jprintf("\"%s\"\n", sent);
   else
-    jprintf("%s: \"%s\"\n", utag, Input());
+    jprintf("%s: \"%s\"\n", utag, sent);
   if (sep > 0)
     jprintf("\n");
 }

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIAKERNEL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIAKERNEL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -55,7 +52,7 @@ public:
   virtual void AddFcns (jhcAliaKernel& pool) =0;
 
   // main functions
-  virtual void Platform (void *soma) =0;         // ignored unless HW fcns
+  virtual void Platform (void *soma) =0;         // be careful of casts
   virtual void Reset (jhcAliaNote& attn) =0;                    
   virtual void Volunteer () =0;
   virtual int Start (const jhcAliaDesc& desc, int bid) =0;
@@ -63,10 +60,3 @@ public:
   virtual int Stop (const jhcAliaDesc& desc, int inst) =0;
   
 };
-
-
-#endif  // once
-
-
-
-

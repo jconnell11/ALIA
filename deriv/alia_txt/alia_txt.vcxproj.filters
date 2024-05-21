@@ -87,9 +87,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\audio\common\API\alia_txt.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\video\common\Interface\jhcMessage.h">
       <Filter>Header Files\common video\Interface</Filter>
     </ClInclude>
@@ -97,9 +94,6 @@
       <Filter>Header Files\common video\Interface</Filter>
     </ClInclude>
     <ClInclude Include="..\..\video\common\Interface\jprintf.h">
-      <Filter>Header Files\common video\Interface</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\video\common\Interface\jhcString.h">
       <Filter>Header Files\common video\Interface</Filter>
     </ClInclude>
     <ClInclude Include="..\..\robot\common\Action\jhcAliaChain.h">
@@ -255,6 +249,21 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\video\common\jhc_conio.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcString.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\API\alia_txt.h">
+      <Filter>Header Files\common audio\API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcNameList.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\robot\common\Kernel\jhcEmotion.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="alia_txt.cpp">
@@ -267,9 +276,6 @@
       <Filter>Source Files\common video\Interface</Filter>
     </ClCompile>
     <ClCompile Include="..\..\video\common\Interface\jprintf.cpp">
-      <Filter>Source Files\common video\Interface</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\video\common\Interface\jhcString.cpp">
       <Filter>Source Files\common video\Interface</Filter>
     </ClCompile>
     <ClCompile Include="..\..\robot\common\Action\jhcAliaChain.cpp">
@@ -397,6 +403,15 @@
     </ClCompile>
     <ClCompile Include="..\..\video\common\Interface\jrand.cpp">
       <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcString.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcNameList.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\robot\common\Kernel\jhcEmotion.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

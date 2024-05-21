@@ -3,50 +3,48 @@
 
 OP 1 - "If someone hails you then acknowledge that"
   trig:
-  NOTE[ fcn-1 -lex-   hail
-              -fcn--> act-1
-        act-1 -agt--> obj-1  
-              -dest-> obj-2  
-        obj-2 -lex-   me ]
+  NOTE[  fcn-1 -lex-  hail
+               -fcn-> act-1
+         act-1 -agt-> agt-1  
+               -obj-> self-1  
+        self-1 -lex-  me ]
 -----------------
     DO[ fcn-2 -lex-  acknowledge
               -fcn-> act-2
         act-2 -obj-> act-1 ]
 
 
-OP 2 - "To acknowledge when someone hails you say to them I'm here whoever"
+OP 2 - "To acknowledge someone hailing you say I'm here whoever"
   trig:
-    DO[ fcn-1 -lex-   acknowledge
-              -fcn--> act-1
-        act-1 -obj--> act-2
-        fcn-2 -lex-   hail
-              -fcn--> act-2
-        act-2 -agt--> obj-1  
-              -dest-> obj-2  
-        obj-2 -lex-   me ]
+    DO[ fcn-1 -lex-  acknowledge
+              -fcn-> act-1
+        act-1 -obj-> act-2
+        fcn-2 -lex-  hail
+              -fcn-> act-2
+        act-2 -agt-> obj-1  
+              -obj-> obj-2  
+        obj-2 -lex-  me ]
 -----------------
     DO[ fcn-3 -lex-   say
               -fcn--> act-3
-        act-3 -dest-> obj-1
-              -obj--> txt-1
+        act-3 -obj--> txt-1
         txt-1 -str-   I'm here ?0 ]
 
 
-OP 3 - "To acknowledge when someone hails you say to them I'm listening"
+OP 3 - "To acknowledge someone hailing you say I'm listening"
   trig:
-    DO[ fcn-1 -lex-   acknowledge
-              -fcn--> act-1
-        act-1 -obj--> act-2
-        fcn-2 -lex-   hail
-              -fcn--> act-2
-        act-2 -agt--> obj-1  
-              -dest-> obj-2  
-        obj-2 -lex-   me ]
+    DO[ fcn-1 -lex-  acknowledge
+              -fcn-> act-1
+        act-1 -obj-> act-2
+        fcn-2 -lex-  hail
+              -fcn-> act-2
+        act-2 -agt-> obj-1  
+              -obj-> obj-2  
+        obj-2 -lex-  me ]
 -----------------
     DO[ fcn-3 -lex-   say
               -fcn--> act-3
-        act-3 -dest-> obj-1
-              -obj--> txt-1
+        act-3 -obj--> txt-1
         txt-1 -str-   I'm listening ]
 
 
@@ -54,18 +52,18 @@ OP 3 - "To acknowledge when someone hails you say to them I'm listening"
 
 OP 4 - "If someone greets you then greet them"
   trig:
-  NOTE[ fcn-1 -lex-   greet
-              -fcn--> act-1
-        act-1 -agt--> agt-1  
-              -dest-> agt-2  
-        agt-2 -lex-   me ]
+  NOTE[  fcn-1 -lex-  greet
+               -fcn-> act-1
+         act-1 -agt-> agt-1  
+               -obj-> self-1
+        self-1 -lex-  me ]
 -----------------   
     DO[ fcn-2 -lex-  greet
               -fcn-> act-2
         act-2 -obj-> agt-1 ]
 
 
-OP 5 - "To greet someone say to them hello there whoever"
+OP 5 - "To greet someone say hello there whoever"
   trig:
     DO[ fcn-1 -lex-  greet
               -fcn-> act-1
@@ -73,12 +71,11 @@ OP 5 - "To greet someone say to them hello there whoever"
 -----------------
     DO[ fcn-2 -lex-   say
               -fcn--> act-2
-        act-2 -dest-> agt-1
-              -obj--> txt-1
+        act-2 -obj--> txt-1
         txt-1 -str-   Hello there ?0 ]
 
 
-OP 6 - "To greet someone say to them nice to see you again whoever"
+OP 6 - "To greet someone say nice to see you again whoever"
   trig:
     DO[ fcn-1 -lex-  greet
               -fcn-> act-1
@@ -86,12 +83,11 @@ OP 6 - "To greet someone say to them nice to see you again whoever"
 -----------------
     DO[ fcn-2 -lex-   say
               -fcn--> act-2
-        act-2 -dest-> agt-1
-              -obj--> txt-1
+        act-2 -obj--> txt-1
         txt-1 -str-   Nice to see you again ?0 ]
 
 
-OP 7 - "To greet someone say to them hey whoever, how are you doing."
+OP 7 - "To greet someone say hey whoever, how are you doing."
   trig:   
     DO[ fcn-1 -lex-  greet
               -fcn-> act-1
@@ -99,8 +95,7 @@ OP 7 - "To greet someone say to them hey whoever, how are you doing."
 -----------------
     DO[ fcn-2 -lex-   say
               -fcn--> act-2
-        act-2 -dest-> agt-1
-              -obj--> txt-1
+        act-2 -obj--> txt-1
         txt-1 -str-   hey ?0, how're you doing? ]
 
 
@@ -108,48 +103,80 @@ OP 7 - "To greet someone say to them hey whoever, how are you doing."
 
 OP 8 - "If someone dismisses you then acknowledge that"
   trig:
-  NOTE[ fcn-1 -lex-   dismiss
-              -fcn--> act-1
-        act-1 -agt--> obj-1  
-              -dest-> obj-2  
-        obj-2 -lex-   me ]
+  NOTE[ fcn-1 -lex-  dismiss
+              -fcn-> act-1
+        act-1 -agt-> obj-1  
+              -obj-> obj-2  
+        obj-2 -lex-  me ]
 -----------------
     DO[ fcn-2 -lex-  acknowledge
               -fcn-> act-2
         act-2 -obj-> act-1 ]
 
 
-OP 9 - "To acknowledge when someone dismisses you say to them goodbye for now whoever"
+OP 9 - "To acknowledge someone dismissing you say goodbye for now whoever"
   trig:
-    DO[ fcn-1 -lex-   acknowledge
-              -fcn--> act-1
-        act-1 -obj--> act-2
-        fcn-2 -lex-   dismiss
-              -fcn--> act-2
-        act-2 -agt--> obj-1  
-              -dest-> obj-2  
-        obj-2 -lex-   me ]
+    DO[ fcn-1 -lex-  acknowledge
+              -fcn-> act-1
+        act-1 -obj-> act-2
+        fcn-2 -lex-  dismiss
+              -fcn-> act-2
+        act-2 -agt-> obj-1  
+              -obj-> obj-2  
+        obj-2 -lex-  me ]
 -----------------
     DO[ fcn-3 -lex-   say
               -fcn--> act-3
-        act-3 -dest-> obj-1
-              -obj--> txt-1
+        act-3 -obj--> txt-1
         txt-1 -str-   goodbye for now ?0 ]
 
 
-OP 10 - "To acknowledge that someone dismisses you say to them ta ta, see you later"
+OP 10 - "To acknowledge someone dismissing you say ta ta, see you later"
   trig:
-    DO[ fcn-1 -lex-   acknowledge
-              -fcn--> act-1
-        act-1 -obj--> act-2
-        fcn-2 -lex-   dismiss
-              -fcn--> act-2
-        act-2 -agt--> obj-1  
-              -dest-> obj-2  
-        obj-2 -lex-   me ]
+    DO[ fcn-1 -lex-  acknowledge
+              -fcn-> act-1
+        act-1 -obj-> act-2
+        fcn-2 -lex-  dismiss
+              -fcn-> act-2
+        act-2 -agt-> obj-1  
+              -obj-> obj-2  
+        obj-2 -lex-  me ]
 -----------------
     DO[ fcn-3 -lex-   say
               -fcn--> act-3
-        act-3 -dest-> obj-1
-              -obj--> txt-1
+        act-3 -obj--> txt-1
         txt-1 -str-   ta ta, see you later ]
+
+
+// ----------------------------------------
+
+OP 11 - "To hail a named person say long time no see whoever"
+  trig:
+    DO[ fcn-1 -lex-   hail
+              -fcn--> act-1 
+        act-1 -obj--> agt-1 
+        ref-1 -name-> agt-1 
+        ako-1 -lex-   person
+              -ako--> agt-1 ]
+-----------------
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -obj--> txt-1
+        txt-1 -str-   Long time no see ?1 
+              -arg1-> ref-1 ]
+
+
+OP 12 - "To hail a named person say whoever you're back"
+  trig:
+    DO[ fcn-1 -lex-   hail
+              -fcn--> act-1 
+        act-1 -obj--> agt-1 
+        ref-1 -name-> agt-1 
+        ako-1 -lex-   person
+              -ako--> agt-1 ]
+-----------------
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -obj--> txt-1
+        txt-1 -str-   ?1 you're back 
+              -arg1-> ref-1 ]

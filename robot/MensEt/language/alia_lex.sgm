@@ -94,8 +94,10 @@
   (to the) right 
   (to the) left
   up 
+  upward
   upwards
   down
+  downward
   downwards
   level
   straight
@@ -263,16 +265,17 @@
   is
   am
   are
-  was
-  were
+  do
+  does
+  <AUX-D>
 
 
 // past tense auxiliary verbs
 
 =[AUX-D]
   did
-  does
-  do
+  was
+  were
 
 
 // infinitive

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,9 +32,9 @@
 /* CPPDOC_BEGIN_EXCLUDE */
 
 #ifdef _DEBUG
-#define new DEBUG_NEW
-#undef THIS_FILE
-static char THIS_FILE[] = __FILE__;
+  #define new DEBUG_NEW
+  #undef THIS_FILE
+  static char THIS_FILE[] = __FILE__;
 #endif
 
 /* CPPDOC_END_EXCLUDE */
@@ -87,7 +87,7 @@ void jhcChatBox::Launch (int x, int y)
 // call this first to make sure previous conversation finishes
 // if "dir" log directory is non-NULL (even "") then saves interaction to file
 
-void jhcChatBox::Reset (int disable, const char *dir)
+void jhcChatBox::Reset (int disable, const char *dir, const char *rname)
 {
   char fname[200], date[80];
 
@@ -95,15 +95,16 @@ void jhcChatBox::Reset (int disable, const char *dir)
   m_hist.Clear();
   Mute(disable);
   Interact();
+  *prior = '\0';
   last = 0;                            // suppress separator
 
   // create chat log file (if desired)
   if (dir != NULL)
   {
     if (*dir == '\0')
-      sprintf_s(fname, "log_%s.chat", jms_date(date));
+      sprintf_s(fname, "%s_%s.chat", ((rname == NULL) ? "log" : rname), jms_date(date));
     else
-      sprintf_s(fname, "%s/log_%s.chat", dir, jms_date(date));
+      sprintf_s(fname, "%s/%s_%s.chat", dir, ((rname == NULL) ? "log" : rname), jms_date(date));
     log = _fsopen(fname, "w", _SH_DENYWR);
   }
 }

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2014 IBM Corporation
+// Copyright 2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCMESSAGE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCMESSAGE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -38,11 +36,4 @@ int AskNot (const char *msg =NULL, ...);
 int AskStop (const char *msg =NULL, ...);
 int Pause (const char *msg =NULL, ...);
 int Ignore (const char *msg =NULL, ...);
-
-
-#endif
-
-
-
-
 

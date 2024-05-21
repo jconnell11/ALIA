@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCELILIFT_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCELILIFT_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -33,6 +30,8 @@
 
 #include "Geometry/jhcMotRamp.h"   // common robot
 
+#include "Body/jhcGenLift.h"
+
 
 //= Control of Eli robot's motorized forklift stage.
 // built from dual-rack actuator driven by Polulu feedback controller
@@ -40,7 +39,7 @@
 // action defaults to Stop(0) at each cycle, else highest bid wins
 // all persistent goals should be maintained OUTSIDE this class
 
-class jhcEliLift : public jhcMotRamp
+class jhcEliLift : public jhcMotRamp, public jhcGenLift
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -96,7 +95,7 @@ public:
   // configuration
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
-  int CommOK (int bad =0) const {return lok;}
+  int CommOK () const {return lok;}
   void Inject (double ht0) {ht = ht0;}
   void AdjustRaw (double ht0, int v0, double ht1, int v1);
   void ResetRaw (int p1, int p0) {pmax = p1; pmin = p0;}
@@ -122,13 +121,13 @@ public:
   // lift goal specification commands
   void LiftClear () {RampReset();}
   int LiftTarget (double high, double rate =1.0, int bid =10);
-  int LiftShift (double dz, double rate =1.0, int bid =10) 
-    {return LiftTarget(Height() + dz, rate, bid);}
+//  int LiftShift (double dz, double rate =1.0, int bid =10) 
+//    {return LiftTarget(Height() + dz, rate, bid);}
   int LiftStop (double rate =1.5, int bid =1)
     {return LiftTarget(SoftStop(ht, ldone, rate), rate, bid);}
 
   // profiled motion progress
-  double LiftErr (double high, int abs =1, int lim =1) const; 
+  double LiftErr (double high, int abs =1) const; 
   bool LiftClose (double tol =0.2) const {return(RampDist(ht) <= tol);} 
 
   // -------------------- LIFT EXTRAS ---------------------------
@@ -170,10 +169,4 @@ private:
   void clr_lock (int hist);
 
 };
-
-
-#endif  // once
-
-
-
 

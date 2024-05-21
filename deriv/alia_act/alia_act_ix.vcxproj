@@ -1,0 +1,295 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|ARM">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM">
+      <Configuration>Release</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x86">
+      <Configuration>Debug</Configuration>
+      <Platform>x86</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x86">
+      <Configuration>Release</Configuration>
+      <Platform>x86</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{e6724adf-2967-4f92-90af-998d97adf300}</ProjectGuid>
+    <Keyword>Linux</Keyword>
+    <RootNamespace>alia_act_ix</RootNamespace>
+    <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
+    <ApplicationType>Linux</ApplicationType>
+    <ApplicationTypeRevision>1.0</ApplicationTypeRevision>
+    <TargetLinuxPlatform>Generic</TargetLinuxPlatform>
+    <LinuxProjectType>{D51BCBC9-82E9-4017-911E-C93873C4EA2B}</LinuxProjectType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WSL2_1_0</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <TargetName>libalia_act</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetName>libalia_act_x64_d</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <TargetName>libalia_act</TargetName>
+    <RemoteCCompileToolExe>aarch64-linux-gnu-g++</RemoteCCompileToolExe>
+    <RemoteCppCompileToolExe>aarch64-linux-gnu-g++</RemoteCppCompileToolExe>
+    <RemoteLdToolExe>aarch64-linux-gnu-g++</RemoteLdToolExe>
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <TargetName>libalia_act_arm_d</TargetName>
+    <RemoteCCompileToolExe>aarch64-linux-gnu-g++</RemoteCCompileToolExe>
+    <RemoteCppCompileToolExe>aarch64-linux-gnu-g++</RemoteCppCompileToolExe>
+    <RemoteLdToolExe>aarch64-linux-gnu-g++</RemoteLdToolExe>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+    <TargetName>libalia_act_rpi</TargetName>
+    <RemoteCCompileToolExe>arm-linux-gnueabihf-g++</RemoteCCompileToolExe>
+    <RemoteCppCompileToolExe>arm-linux-gnueabihf-g++</RemoteCppCompileToolExe>
+    <RemoteLdToolExe>arm-linux-gnueabihf-g++</RemoteLdToolExe>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h" />
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcGenIO.h" />
+    <ClInclude Include="..\..\audio\common\API\alia_act.h" />
+    <ClInclude Include="..\..\audio\common\API\jhcAliaDesc.h" />
+    <ClInclude Include="..\..\audio\common\API\jhcAliaKernel.h" />
+    <ClInclude Include="..\..\audio\common\API\jhcAliaNote.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcDegrapher.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcGraphizer.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcMorphFcns.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcMorphTags.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcNetBuild.h" />
+    <ClInclude Include="..\..\audio\common\Language\jhcNetRef.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcGenParse.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramExec.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramRule.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcGramStep.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcNameList.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcSlotVal.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcSpFix.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcTxtLine.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcTxtSrc.h" />
+    <ClInclude Include="..\..\audio\common\Parse\jhcVocab.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcActionTree.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaOp.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAliaRule.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcAssocMem.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcProcMem.h" />
+    <ClInclude Include="..\..\audio\common\Reasoning\jhcWorkMem.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcBindings.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcGraphlet.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNetNode.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNodeList.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcNodePool.h" />
+    <ClInclude Include="..\..\audio\common\Semantic\jhcSituation.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaChain.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaCore.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaDir.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaDLL.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaMood.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaPlay.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcAliaStats.h" />
+    <ClInclude Include="..\..\robot\common\Action\jhcEchoFcn.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcGenArm.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcGenBase.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcGenLift.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcGenNeck.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcSwapArm.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcSwapBase.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcSwapLift.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcSwapNeck.h" />
+    <ClInclude Include="..\..\robot\common\Geometry\jhcMatrix.h" />
+    <ClInclude Include="..\..\robot\common\Grounding\jhcBallistic.h" />
+    <ClInclude Include="..\..\robot\common\Kernel\jhcAliaKudos.h" />
+    <ClInclude Include="..\..\robot\common\Kernel\jhcAliaTimer.h" />
+    <ClInclude Include="..\..\robot\common\Kernel\jhcEmotion.h" />
+    <ClInclude Include="..\..\robot\common\Kernel\jhcIntrospect.h" />
+    <ClInclude Include="..\..\robot\common\Kernel\jhcMemStore.h" />
+    <ClInclude Include="..\..\robot\common\Kernel\jhcStdKern.h" />
+    <ClInclude Include="..\..\robot\common\Kernel\jhcTalkFcn.h" />
+    <ClInclude Include="..\..\robot\common\RWI\jhcGenRWI.h" />
+    <ClInclude Include="..\..\robot\common\RWI\jhcSwapCoord.h" />
+    <ClInclude Include="..\..\robot\common\RWI\jhcSwapRWI.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcArr.h" />
+    <ClInclude Include="..\..\video\common\Data\jhcParam.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcMessage.h" />
+    <ClInclude Include="..\..\video\common\Interface\jhcUserIO.h" />
+    <ClInclude Include="..\..\video\common\Interface\jms_x.h" />
+    <ClInclude Include="..\..\video\common\Interface\jprintf.h" />
+    <ClInclude Include="..\..\video\common\Interface\jrand.h" />
+    <ClInclude Include="..\..\video\common\Interface\jtimer.h" />
+    <ClInclude Include="..\..\video\common\jhcGlobal.h" />
+    <ClInclude Include="..\..\video\common\jhc_conio.h" />
+    <ClInclude Include="..\..\video\common\jhc_pthread.h" />
+    <ClInclude Include="..\..\video\common\jhc_str_s.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcDegrapher.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcGraphizer.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcMorphFcns.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcNetBuild.cpp" />
+    <ClCompile Include="..\..\audio\common\Language\jhcNetRef.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcGenParse.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcGramExec.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcGramRule.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcNameList.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcSlotVal.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcSpFix.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcTxtLine.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcTxtSrc.cpp" />
+    <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcActionTree.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaOp.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAliaRule.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcAssocMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcProcMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Reasoning\jhcWorkMem.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcBindings.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcGraphlet.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcNetNode.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcNodePool.cpp" />
+    <ClCompile Include="..\..\audio\common\Semantic\jhcSituation.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaChain.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaCore.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaDir.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaDLL.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaMood.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaPlay.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcAliaStats.cpp" />
+    <ClCompile Include="..\..\robot\common\Action\jhcEchoFcn.cpp" />
+    <ClCompile Include="..\..\robot\common\Body\jhcSwapArm.cpp" />
+    <ClCompile Include="..\..\robot\common\Body\jhcSwapBase.cpp" />
+    <ClCompile Include="..\..\robot\common\Body\jhcSwapLift.cpp" />
+    <ClCompile Include="..\..\robot\common\Body\jhcSwapNeck.cpp" />
+    <ClCompile Include="..\..\robot\common\Geometry\jhcMatrix.cpp" />
+    <ClCompile Include="..\..\robot\common\Grounding\jhcBallistic.cpp" />
+    <ClCompile Include="..\..\robot\common\Kernel\jhcAliaKudos.cpp" />
+    <ClCompile Include="..\..\robot\common\Kernel\jhcAliaTimer.cpp" />
+    <ClCompile Include="..\..\robot\common\Kernel\jhcEmotion.cpp" />
+    <ClCompile Include="..\..\robot\common\Kernel\jhcIntrospect.cpp" />
+    <ClCompile Include="..\..\robot\common\Kernel\jhcMemStore.cpp" />
+    <ClCompile Include="..\..\robot\common\Kernel\jhcStdKern.cpp" />
+    <ClCompile Include="..\..\robot\common\Kernel\jhcTalkFcn.cpp" />
+    <ClCompile Include="..\..\robot\common\RWI\jhcSwapCoord.cpp" />
+    <ClCompile Include="..\..\robot\common\RWI\jhcSwapRWI.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcArr.cpp" />
+    <ClCompile Include="..\..\video\common\Data\jhcParam.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jhcUserIO.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jms_x.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jprintf.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jrand.cpp" />
+    <ClCompile Include="..\..\video\common\Interface\jtimer.cpp" />
+    <ClCompile Include="..\..\video\common\jhc_conio.cpp" />
+    <ClCompile Include="alia_act.cpp" />
+  </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;$(StlIncludeDirectories);%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>-ldl;$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>-pthread %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;$(StlIncludeDirectories);%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>-ldl;$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>-ldl;$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>-ldl;$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>-pthread %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>.;..\..\robot\common;..\..\video\common;..\..\audio\common;%(ClCompile.AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "Interface/jms_x.h"           // common video
+#include "Interface/jprintf.h"
 
 #include "Grounding/jhcSupport.h"
 
@@ -61,6 +62,7 @@ jhcSupport::jhcSupport ()
 
   // processing parameters
   Defaults();
+  gok = 1;                   // either 1 or -1
 }
 
 
@@ -217,7 +219,7 @@ int jhcSupport::SaveVals (const char *fname) const
 
 void jhcSupport::local_platform (void *soma) 
 {
-  rwi = (jhcEliGrok *) soma;
+  rwi = (jhcEliRWI *) soma;
   tab = NULL;
   neck = NULL;
   lift = NULL;
@@ -637,7 +639,7 @@ int jhcSupport::surf_orient (const jhcAliaDesc& desc, int i)
   if ((idx = saved_index(cobj[i])) < 0)
     return err_vis(cobj[i]);
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (neck->CommOK() <= 0)
@@ -699,7 +701,7 @@ int jhcSupport::surf_look (const jhcAliaDesc& desc, int i)
   if ((idx = saved_index(cobj[i])) < 0)
     return err_vis(cobj[i]);
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (neck->CommOK() <= 0)
@@ -760,7 +762,7 @@ int jhcSupport::surf_goto (const jhcAliaDesc& desc, int i)
   if ((idx = saved_index(cobj[i])) < 0)
     return err_vis(cobj[i]);
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if ((rwi->body)->CommOK() <= 0)

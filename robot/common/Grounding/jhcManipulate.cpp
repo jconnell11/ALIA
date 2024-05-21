@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "Interface/jhcMessage.h"      // common video
+#include "Interface/jprintf.h"
 
 #include "Grounding/jhcManipulate.h"
 
@@ -102,6 +103,7 @@ jhcManipulate::jhcManipulate ()
 
   // processing parameters
   Defaults();
+  gok = 1;                   // either 1 or -1
   dbg = 1;
 dbg = 3;
 }
@@ -294,7 +296,7 @@ int jhcManipulate::SaveVals (const char *fname) const
 
 void jhcManipulate::local_platform (void *soma) 
 {
-  rwi = (jhcEliGrok *) soma;
+  rwi = (jhcEliRWI *) soma;
   sobj = &(rwi->sobj);
   lift = rwi->lift;
   arm  = rwi->arm;
@@ -461,7 +463,7 @@ int jhcManipulate::man_wrap (const jhcAliaDesc& desc, int i)
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i], 0))) < 0)
     return err_gone(cobj[i]);
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (arm->CommOK() <= 0)
     return err_arm();
 
@@ -541,7 +543,7 @@ int jhcManipulate::man_lift (const jhcAliaDesc& desc, int i)
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i], 0))) < 0)
     return err_gone(cobj[i]);
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (arm->CommOK() <= 0)
     return err_arm();
 
@@ -645,7 +647,7 @@ int jhcManipulate::man_trans (const jhcAliaDesc& desc, int i)
       return -1;                       // generates err_gone also
   }
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (arm->CommOK() <= 0)
     return err_arm();
 
@@ -704,7 +706,7 @@ int jhcManipulate::man_tuck (const jhcAliaDesc& desc, int i)
 
   // lock to sensor cycle and update standard cached info
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (arm->CommOK() <= 0)
@@ -755,7 +757,7 @@ int jhcManipulate::man_point (const jhcAliaDesc& desc, int i)
 
   // lock to sensor cycle and check update standard cached info
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (arm->CommOK() <= 0)
@@ -1286,6 +1288,45 @@ int jhcManipulate::stow_arm ()
 
 int jhcManipulate::tuck_elbow (int rc)
 {
+  double da;
+
+  // remember outer arm configuration (but change elbow if stow failed)
+  if (cst2[inst] == 0)
+  {
+    jprintf(1, dbg, "|- Manipulate %d: tuck %s\n", cbid[inst], 
+            ((cobj[inst] != NULL) ? cobj[inst]->Nick() : "arm"));
+    ct0[inst] = jms_now();       
+    cst2[inst] = 1;  
+  }
+
+  // check if tucked yet
+  keep = 0;
+  da = arm->TuckErr();
+  if (da > arm->AngTol())
+  {
+    // quit if not making progress
+    if (chk_stuck(0.1 * da) <= 0)
+    {
+      // send joint angles to arm and close hand (no gaze command)
+      arm->Tuck(1.0, cbid[inst]);
+      arm->HandTarget(((held != NULL) ? -hold : wmin), 1.0, cbid[inst]);                              
+      return 0;
+    }
+    jprintf(2, dbg, "    stuck: da = %3.1f\n", da);
+  }
+
+  // return value given, possibly advancing state if normal sequence
+  if (rc <= 0)
+    return rc;
+  cst[inst] += 1;            // largely for GUI
+  cst2[inst] = 0;            
+  ct0[inst]  = 0;           
+  return 1;                         
+}
+
+/*
+int jhcManipulate::tuck_elbow (int rc)
+{
   const jhcMatrix *cfg = arm->ArmConfig();
   jhcMatrix tuck(6);
   double ds, de, etol = 10.0;
@@ -1338,7 +1379,7 @@ int jhcManipulate::tuck_elbow (int rc)
   ct0[inst]  = 0;           
   return 1;                         
 }
-
+*/
 
 ///////////////////////////////////////////////////////////////////////////
 //                           Sequence Helpers                            //
@@ -1634,7 +1675,7 @@ int jhcManipulate::chk_outside (int& old, double gx, double gy, double gz)
 
 int jhcManipulate::adj_workspace (int fix, double gx, double gy, double gz)
 {
-  jhcEliBase *base = rwi->base;
+  jhcGenBase *base = rwi->base;
   double trav, nd, azm, ang, ztop = ((pos->Y() < (arm->rety + fwd)) ? arm->retz : wz1);                        
 
   // sanity check
@@ -2791,7 +2832,7 @@ int jhcManipulate::Move ()
   if (ref_tracks(cref[i], cref2[i], cmode[i], cspot[i]) < 0)   
     return -1;                         // generates err_gone also
   if (rwi->Ghost())
-    return 1;
+    return gok;
   if (arm->CommOK() <= 0)
     return err_arm();
 

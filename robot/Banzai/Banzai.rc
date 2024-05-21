@@ -143,14 +143,17 @@ BEGIN
     MENUITEM "|",                           0
     POPUP "&Mood"
     BEGIN
+        MENUITEM "&Thought Level",              ID_MOOD_ENERGYLEVEL
         MENUITEM "&Activity Level",             ID_MOOD_ACTIVITYLEVEL
         MENUITEM "&Interact Level",             ID_MOOD_INTERACTIONLEVEL
-        MENUITEM "&Energy Level",               ID_MOOD_ENERGYLEVEL
+        MENUITEM "Valence Level",               ID_MOOD_VALENCELEVEL
         MENUITEM SEPARATOR
-        MENUITEM "&Rule Op Adj",                ID_MOOD_RULEOPADJ
-        MENUITEM "&Belief Thresh",              ID_MOOD_CONFADJUST
-        MENUITEM "&Select Thresh",              ID_MOOD_PREFADJUST
+        MENUITEM "Control Level",               ID_MOOD_CONTROLLEVEL
+        MENUITEM "Sureness Level",              ID_MOOD_SURENESSLEVEL
+        MENUITEM "Wild Belief Mix",             ID_MOOD_ADJUSTMIX
+        MENUITEM "Preference Mix",              ID_MOOD_PREFERENCEMIX
         MENUITEM SEPARATOR
+        MENUITEM "Nag Timing",                  ID_MOOD_NAGTIMING
         MENUITEM "&LTM Match",                  ID_MOOD_LTMMATCH
     END
     POPUP "&Social"
@@ -196,8 +199,6 @@ BEGIN
     END
     POPUP "&Ballistic"
     BEGIN
-        MENUITEM "Body &Events",                ID_PARAMETERS_BATTERYLEVEL
-        MENUITEM SEPARATOR
         MENUITEM "&Neck Cmd",                   ID_GROUNDING_NECKCMD
         MENUITEM "&Lift Cmd",                   ID_PARAMETERS_LIFTCMD
         MENUITEM SEPARATOR
@@ -329,8 +330,8 @@ CAPTION "About Banzai"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "Banzai Version 5.10",IDC_STATIC,47,11,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2015-2023, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
+    LTEXT           "Banzai Version 5.40",IDC_STATIC,47,11,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2015-2024, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
 END
@@ -419,8 +420,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 5,10,0,1
- PRODUCTVERSION 5,10,0,1
+ FILEVERSION 5,40,0,1
+ PRODUCTVERSION 5,40,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -436,12 +437,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "Banzai Robot Reasoner"
-            VALUE "FileVersion", "5.10.0.1"
+            VALUE "FileVersion", "5.40.0.1"
             VALUE "InternalName", "Banzai"
-            VALUE "LegalCopyright", "Copyright (C) 2023 Etaoin Systems"
+            VALUE "LegalCopyright", "Copyright (C) 2024 Etaoin Systems"
             VALUE "OriginalFilename", "Banzai.exe"
             VALUE "ProductName", "Banzai"
-            VALUE "ProductVersion", "5.10.0.1"
+            VALUE "ProductVersion", "5.40.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -781,9 +782,9 @@ BEGIN
                             "Robot is fully charged so recalibrate battery capacity"
     ID_OBJECTS_SHAPEBINS    "Set object shape thresholds for categories"
     ID_ROOM_PERSONMAP       "Set the size and resolution of the area in which to look for people"
-    ID_MOOD_ACTIVITYLEVEL   "Adjust thresholds for boredom and overwhelmed"
-    ID_MOOD_ENERGYLEVEL     "Adjust threshold for tiredness"
-    ID_MOOD_INTERACTIONLEVEL "Adjust thresholds for loneliness"
+    ID_MOOD_ACTIVITYLEVEL   "Adjust threshold for boredom"
+    ID_MOOD_ENERGYLEVEL     "Adjust thresholds for core indicators"
+    ID_MOOD_INTERACTIONLEVEL "Adjust threshold for loneliness"
     ID_SOCIAL_FOOTCHECK     "Parameters for automatically re-checking ground in front of robot"
     ID_ROOM_ROBOTDIMS       "Specify rough footprint of robot on floor and map fading"
     ID_SOCIAL_SACCADES      "Parameters governing local mapping gazes during movement"
@@ -838,6 +839,12 @@ BEGIN
     ID_MOOD_RULEOPADJ       "Parameters for updating rule confidence and operator preference"
     ID_DEMO_CYCLERATE       "Adjust thinking speed and default body update rate"
     ID_GRAB_SURFMOTION      "Paramters controlling motion relative to a surface"
+    ID_MOOD_VALENCELEVEL    "Adjust threshold for happiness"
+    ID_MOOD_CONTROLLEVEL    "Adjust threshold for anger"
+    ID_MOOD_SURENESSLEVEL   "Adjust threshold for scared"
+    ID_MOOD_ADJUSTMIX       "Tune wildness and belief threshold contributions"
+    ID_MOOD_PREFERENCEMIX   "Tune preference threshold contributions"
+    ID_MOOD_NAGTIMING       "Rates for repeated emotional notifications"
 END
 
 #endif    // English (United States) resources

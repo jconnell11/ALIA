@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@
 // limitations under the License.
 // 
 ///////////////////////////////////////////////////////////////////////////
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Semantic/jhcBindings.h"
 
@@ -453,10 +455,10 @@ void jhcBindings::Print (const char *prefix, int lvl, int num) const
   {
     // list key node and substitution node then possibly lexical variable with value
     jprintf("%*s  %*s = %s", lvl, "", (k + n + 1), key[i]->Nick(), ((sub[i] != NULL) ? sub[i]->Nick() : "NULL"));
-    if (term[i] > 0)
-      jprintf("%*s  %*s = %s", lvl, "", (k + n + 1), key[i]->Lex(), sub[i]->Lex());
     if (mark[i] != 0)
       jprintf(" [%d]", mark[i]);                 // add any non-zero mark at end
+    if (term[i] > 0)
+      jprintf("\n%*s  %*s = %s", lvl, "", (k + n + 1), key[i]->Lex(), sub[i]->Lex());
     jprintf("\n");
   }
 }

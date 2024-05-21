@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCNETBUILD_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCNETBUILD_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -84,6 +81,7 @@ private:
   int attn_tag (int spact, const char *alist) const;
   const char *no_fluff (const char *sent, const char *alist);
   jhcAliaChain *build_tag (jhcNetNode **node, const char *fcn, const char *alist, int dest) const;
+  jhcAliaChain *ack_meta (jhcNetNode *item) const;
   jhcAliaChain *guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const;
   jhcAliaChain *exp_fail (jhcNetNode *plan) const;
 
@@ -102,10 +100,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
+#include <stdio.h>
 #include <string.h>
 
 #include "Parse/jhcNameList.h"
@@ -91,7 +93,7 @@ int jhcNameList::Load (const char *fname, int append)
     while (line[i] != '\0')
     {
       full[nn][i] = line[i];
-      if ((line[i] != ' ') && (line[i] != '\n'))
+      if (strchr(" \n\r\x0A", line[i]) == NULL)
         end = i;
       i++;
     }

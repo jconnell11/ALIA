@@ -77,7 +77,7 @@ protected:
   // convenience
   template <size_t ssz>
     int NextSubDir (char (&spec)[ssz], const char *full, int last =0) const
-      {return NextSubDir(spec, fill, last, ssz);}
+      {return NextSubDir(spec, full, last, ssz);}
 
 };
 

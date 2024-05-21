@@ -79,7 +79,7 @@ OP 5 - "To claim something say I really like this"
     DO[ fcn-3 -lex-  say
               -fcn-> act-3
         act-3 -obj-> txt-4
-        txt-1 -str-  I really like this ]
+        txt-4 -str-  I really like this ]
 
 
 OP 6 - "To claim something say this belongs to me now"
@@ -91,7 +91,7 @@ OP 6 - "To claim something say this belongs to me now"
     DO[ fcn-3 -lex-  say
               -fcn-> act-3
         act-3 -obj-> txt-4
-        txt-1 -str-  this belongs to me now ]
+        txt-4 -str-  this belongs to me now ]
 
 
 // ----------------------------------------------

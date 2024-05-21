@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@
 
 #include <math.h>
 #include <ctype.h>
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Reasoning/jhcAliaRule.h"
 
@@ -206,14 +208,18 @@ int jhcAliaRule::same_result (const jhcBindings *m, int mc, int t0) const
       {
         pn = b->GetKey(i);
         n = m[j].LookUp(pn);
-        if ((b->GetSub(i) != n) && result_uses(pn))
+        if ((b->GetSub(i) != n) && result_node(pn))
           break;
+        if (pn->LexVar() > 0)
+          if (strcmp(b->LexSub(pn), m[j].LexSub(pn)) != 0) 
+            if (result_lex(pn->Lex()))
+              break; 
         tval = __max(tval, n->top);    // get max "top" over preconditions
       }
 
       // if all relevants vars the same, check if some better top value
       if (i >= nb)       
-        return((tval >= t0) ? -j : j); 
+        return((tval >= t0) ? -j : j);
     }
   return 0;                            // nothing gave identical result
 }
@@ -221,18 +227,40 @@ int jhcAliaRule::same_result (const jhcBindings *m, int mc, int t0) const
 
 //= See if instantiated result will use the binding for some pattern node.
 
-bool jhcAliaRule::result_uses (const jhcNetNode *key) const
+bool jhcAliaRule::result_node (const jhcNetNode *key) const
 {
   const jhcNetNode *item;
   int i, j, na, nr = result.NumItems();
 
-  for (i = 0; i < nr; i++)
+  for (i = 0; i < nr; i++)             
   {
-    if ((item = result.Item(i)) == key)
+    item = result.Item(i);
+    if (item == key)
       return true;
     na = item->NumArgs();
     for (j = 0; j < na; j++)
       if (item->Arg(j) == key)
+        return true;
+  }
+  return false;
+}
+
+
+//= See if instantiated result will use a particular lex variable binding.
+
+bool jhcAliaRule::result_lex (const char *key) const
+{
+  const jhcNetNode *item;
+  int i, j, na, nr = result.NumItems();
+
+  for (i = 0; i < nr; i++)             
+  {
+    item = result.Item(i);
+    if (strcmp(item->LexStr(), key) == 0)
+      return true;
+    na = item->NumArgs();
+    for (j = 0; j < na; j++)
+      if (strcmp((item->Arg(j))->LexStr(), key) == 0)
         return true;
   }
   return false;

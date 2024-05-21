@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,8 +23,9 @@
 
 #include <math.h>
 
-#include "Interface/jhcMessage.h"
+#include "Interface/jhcMessage.h"      // common video
 #include "Interface/jms_x.h"
+#include "Interface/jprintf.h"         
 
 #include "Body/jhcEliBase.h"
 
@@ -824,8 +825,8 @@ void jhcEliBase::cvt_cnts ()
 
   // find offset in former local coordinate system (y = forward, x = RIGHT)
   avg = D2R * 0.5 * dr;
-  dx0 = dm * sin(avg);    // sideways
-  dy0 = dm * cos(avg);    // forward
+  dx0 = -dm * sin(avg);      // sideways
+  dy0 =  dm * cos(avg);      // forward
 
   // update inferred global Cartesian position
   mid = D2R * (head + 0.5 * dr);
@@ -1120,10 +1121,11 @@ int jhcEliBase::DriveAbsolute (double tr, double hd, double m_rate, double t_rat
 
 //= Drive until a particular cumulative path distance has been reached.
 // negative rate does not scale acceleration (for snappier response)
+// skew is travel angle relative to centerline (ignored: two wheel drive)
 // bid value must be greater than previous command to take effect
 // returns 1 if newly set, 0 if pre-empted by higher priority
 
-int jhcEliBase::MoveAbsolute (double tr, double rate, int bid) 
+int jhcEliBase::MoveAbsolute (double tr, double rate, int bid, double skew) 
 {
   if (bid <= mlock)
     return 0;

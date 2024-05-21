@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -145,7 +145,6 @@ const char *jhcTxtLine::NextBlank ()
 const char *jhcTxtLine::Next (int force)
 {
   char *end, *end2;
-  int last;
 
   // file must be open
   if (in == NULL)
@@ -163,9 +162,7 @@ const char *jhcTxtLine::Next (int force)
     // strip any final carriage return
     read++;
     head = line;
-    if ((last = (int) strlen(line) - 1) >= 0)
-      if (line[last] == '\n')
-        line[last] = '\0';
+    line[strcspn(line, "\n\r\x0A")] = '\0';
 
     // find comment start (if any) and terminate earlier
     if ((end = strchr(line, ';')) != NULL)

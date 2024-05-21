@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2020 IBM Corporation
-// Copyright 2021-2022 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,9 +24,10 @@
 #include <stdio.h>
 #include <math.h>
 
-#include "Interface/jhcMessage.h"
+#include "Interface/jhcMessage.h"      // common video
+#include "Interface/jprintf.h"         
 
-#include "jhcDirMic.h"
+#include "Peripheral/jhcDirMic.h"
 
 
 ///////////////////////////////////////////////////////////////////////////

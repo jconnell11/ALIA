@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIACHART_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIACHART_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -56,30 +53,29 @@ public:
   jhcAliaChart ();
   void Bind (jhcAliaStats& s) {stat = &s;}
  
-  // graphical display
+  // general operations
   void Memory (jhcDisplay& d);
   void Audio (jhcDisplay& d);
+
+  // emotion components
   void Physical (jhcDisplay& d);
+  void Valence (jhcDisplay& d);
+  void Modulation (jhcDisplay& d);
+
+  // servo tracking
   void Wheels (jhcDisplay& d);
   void Neck (jhcDisplay& d);
 
   // text display
-  void Mood (jhcDisplay& d) const;
-  const char *MoodTxt ();
+  void Parameters (jhcDisplay& d) const;
+  const char *ParamTxt ();
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  // graphical display
+  // utilities
   void resize (jhcDisplay& d);
   void restore (jhcDisplay& d) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

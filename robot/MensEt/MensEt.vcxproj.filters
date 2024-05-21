@@ -414,9 +414,6 @@
     <ClCompile Include="..\common\Grounding\jhcLocalSeq.cpp">
       <Filter>Source Files\common robot\Grounding</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp">
-      <Filter>Source Files\common audio\Acoustic</Filter>
-    </ClCompile>
     <ClCompile Include="MensEtFrm.cpp">
       <Filter>Source Files\Afx-Standard</Filter>
     </ClCompile>
@@ -447,9 +444,6 @@
     <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp">
       <Filter>Source Files\common audio\Reasoning</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\RWI\jhcMensCoord.cpp">
-      <Filter>Source Files\common robot\RWI</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\RWI\jhcInteractFSM.cpp">
       <Filter>Source Files\common robot\RWI</Filter>
     </ClCompile>
@@ -479,6 +473,18 @@
     </ClCompile>
     <ClCompile Include="..\common\Action\jhcAliaChart.cpp">
       <Filter>Source Files\common robot\Action</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Parse\jhcNameList.cpp">
+      <Filter>Source Files\common audio\Parse</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSAPI.cpp">
+      <Filter>Source Files\common audio\Acoustic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcManusCoord.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Kernel\jhcEmotion.cpp">
+      <Filter>Source Files\common robot\Kernel</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -788,9 +794,6 @@
     <ClInclude Include="..\common\Grounding\jhcLocalSeq.h">
       <Filter>Header Files\common robot\Grounding</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h">
-      <Filter>Header Files\common audio\Acoustic</Filter>
-    </ClInclude>
     <ClInclude Include="MensEtFrm.h">
       <Filter>Header Files\Afx-Standard</Filter>
     </ClInclude>
@@ -826,9 +829,6 @@
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h">
       <Filter>Header Files\common audio\Reasoning</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\RWI\jhcMensCoord.h">
-      <Filter>Header Files\common robot\RWI</Filter>
     </ClInclude>
     <ClInclude Include="..\common\RWI\jhcManusRWI.h">
       <Filter>Header Files\common robot\RWI</Filter>
@@ -869,6 +869,21 @@
     <ClInclude Include="..\common\Action\jhcAliaChart.h">
       <Filter>Header Files\common robot\Action</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\video\common\jhc_conio.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Parse\jhcNameList.h">
+      <Filter>Header Files\common audio\Parse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSAPI.h">
+      <Filter>Header Files\common audio\Acoustic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcManusCoord.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Kernel\jhcEmotion.h">
+      <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="res\MensEt.ico">
@@ -877,7 +892,6 @@
     <None Include="res\MensEt.rc2">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MensEt.rc">

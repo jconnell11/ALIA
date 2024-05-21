@@ -1478,7 +1478,7 @@ int jhcArr::NearestPeak (int pos) const
 
 int jhcArr::NearMassPeak (int pos, int th, int any) const
 {
-  int i, top, dist, best, pk = -1, win = -1;
+  int i, dist, best, top = 0, pk = -1, win = -1;
 
   // scan for contiguous regions over th
   for (i = i0; i <= i1; i++)
@@ -1487,7 +1487,7 @@ int jhcArr::NearMassPeak (int pos, int th, int any) const
       // possibly new region or better peak
       if ((pk < 0) || (arr[i] > top))
       {
-        top = arr[i];
+        top = arr[i];        // always overwrites default
         pk = i;
       }
     }
@@ -1564,9 +1564,9 @@ int jhcArr::AdjacentPeak (int pos, double drop) const
 
 int jhcArr::DualPeak (int pos, int rng, double dip) const
 {
-  int i, rt, lf, lmode = 0, rmode = 0;
   int lo = __max(0, pos - rng), hi = __min(pos + rng, sz - 1);
   int last, val = arr[pos], th = (int)((1.0 - dip) * val + 0.5);
+  int i, lf = lo, rt = hi, lmode = 0, rmode = 0;
 
   // correct for small fractions so a real drop happens
   if ((dip > 0.0) && (th == ARef(pos)))

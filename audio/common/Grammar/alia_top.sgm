@@ -90,10 +90,9 @@
 =[%Revision]
   <ACC> <cmd>                                         
   <REJ> <NEG-V> <cmd>                     
-  (<ACC>) or <$proc> (instead)                         
-  (<ACC>) or you <PREF> <$proc> (instead) 
-  (<REJ>) you <PREF> <$proc> instead                    
-  (<REJ>) <$proc> instead 
+  (<ACC>) or (instead) (you <PREF>) <$proc> (instead)                         
+  (<REJ>) (you <PREF>) <$proc> instead                    
+  (<REJ>) instead (you <PREF>) <$proc> 
   (<REJ>) <NEG-V> <cmd> but <$proc>
   (<REJ>) <NEG-V> <cmd> (but) <$proc> instead
   (<REJ>) <NEG-V> <cmd> (but) instead <$proc>                       
@@ -109,6 +108,7 @@
   yup
   okay
   sure
+  good
 
 
 // rejection of prior action

@@ -5,8 +5,8 @@ OP 1 - "To hold onto a thing ..."
   trig:   
     DO[ fcn-1 -lex-   hold
               -fcn--> act-1
-        act-1 -dest-> loc-1 
         loc-1 -lex-   onto
+              -dest-> act-1
               -ref--> obj-1 ]
 ---------------
    GND[ call-1 -lex-  man_wrap 
@@ -60,7 +60,9 @@ OP 5 - "To point to something ..."
   trig:   
     DO[ fcn-1 -lex-   point
               -fcn--> act-1
-        act-1 -dest-> obj-1 ]
+        loc-1 -lex-   to
+              -dest-> act-1
+              -ref--> obj-1 ]
 ---------------
    GND[ call-1 -lex-  man_point
                -arg-> obj-1 ]
@@ -73,7 +75,9 @@ OP 6 - "To move a thing somewhere make sure you are holding it then ..."
     DO[ fcn-1 -lex-   move
               -fcn--> act-1
         act-1 -obj--> obj-1
-              -dest-> loc-1 ]
+        end-1 -lex-   to
+              -dest-> act-1 
+              -ref--> loc-1 ]
 ---------------
    ACH[ fcn-2 -lex-  hold
               -fcn-> act-2
@@ -109,8 +113,8 @@ OP 8 - "Before holding onto something if you are holding something else put that
   trig:   
   ANTE[ fcn-1 -lex-   hold
               -fcn--> act-1
-        act-1 -dest-> loc-1
         loc-1 -lex-   onto
+              -dest-> act-1
               -ref--> obj-1
         fcn-2 -lex-   hold
               -fcn--> act-2
@@ -163,7 +167,9 @@ OP 11 - "Before moving something somewhere make sure you are holding it"
   ANTE[ fcn-1 -lex-   move
               -fcn--> act-1
         act-1 -obj--> obj-1 
-              -dest-> loc-1 ]
+        end-1 -lex-   to
+              -dest-> act-1
+              -ref--> loc-1 ]
 ---------------
    ACH[ fcn-2 -lex-  hold
               -fcn-> act-2
@@ -222,17 +228,21 @@ OP 15 - "To grab a thing lift it"
         act-2 -obj-> obj-1 ]
 
 
-OP 16 - "To put a thing to somewhere move it there"
+OP 16 - "To put a thing somewhere move it there"
   trig:   
     DO[ fcn-1 -lex-   put
               -fcn--> act-1
         act-1 -obj--> obj-1
-              -dest-> loc-1 ]
+        end-1 -lex-   ***-1
+              -dest-> act-1
+              -ref--> loc-1 ]
 ---------------
     DO[ fcn-2 -lex-   move
               -fcn--> act-2
         act-2 -obj--> obj-1
-              -dest-> loc-1 ]
+        end-2 -lex-   ***-1
+              -dest-> act-2
+              -ref--> loc-1 ]
 
 
 OP 17 - "To put a thing somewhere relative to something move it there"
@@ -240,13 +250,16 @@ OP 17 - "To put a thing somewhere relative to something move it there"
     DO[ fcn-1 -lex-  put
               -fcn-> act-1
         act-1 -obj-> obj-1
-        loc-1 -loc-> act-1
-              -ref-> obj-2 ]
+        end-1 -lex-  ***-1
+              -loc-> act-1
+              -ref-> loc-1 ]
 ---------------
-    DO[ fcn-2 -lex-   move
-              -fcn--> act-2
-        act-2 -obj--> obj-1
-              -dest-> loc-1 ]
+    DO[ fcn-2 -lex-  move
+              -fcn-> act-2
+        act-2 -obj-> obj-1
+        end-2 -lex-  ***-1
+              -loc-> act-2
+              -ref-> loc-1 ]
 
 
 OP 18 - "To put a thing somewhere relative to something and something else move it there"
@@ -254,14 +267,18 @@ OP 18 - "To put a thing somewhere relative to something and something else move 
     DO[ fcn-1 -lex-   put
               -fcn--> act-1
         act-1 -obj--> obj-1
-        loc-1 -loc--> act-1
+        loc-1 -lex-   ***-1
+              -loc--> act-1
               -ref--> obj-2 
               -ref2-> obj-3 ]
 ---------------
     DO[ fcn-2 -lex-   move
               -fcn--> act-2
         act-2 -obj--> obj-1
-              -dest-> loc-1 ]
+        end-2 -lex-   ***-1
+              -loc--> act-2
+              -ref--> obj-2
+              -ref2-> obj-3 ]
 
 
 OP 19 - "To deposit something put it down"
@@ -313,7 +330,9 @@ OP 22 - "To point at something point to it"
 ---------------
     DO[ fcn-2 -lex-   point
               -fcn--> act-2
-        act-2 -dest-> obj-1 ]
+        end-2 -lex-   to
+              -dest-> act-2
+              -ref--> obj-1 ]
 
 
 // --------------------------------------
@@ -322,8 +341,10 @@ OP 23 - "To tell someone that something is somewhere point at it, say here, then
   trig:
     DO[ fcn-1 -lex-   tell
               -fcn--> act-1
-        act-1 -dest-> dude-1
-              -obj--> loc-1
+        act-1 -obj--> loc-1
+        end-1 -lex-   to
+              -dest-> act-1
+              -ref--> dude-1
         loc-1 -loc--> obj-1
               -ref--> obj-2 ]
 ---------------
@@ -386,5 +407,3 @@ OP 26 - "If you dropped something say uh oh, I lost it"
               -fcn-> act-2
         act-2 -obj-> txt-1
         txt-1 -str-  uh oh, I lost it ]
-
-

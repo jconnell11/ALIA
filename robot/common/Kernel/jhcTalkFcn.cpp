@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -201,7 +201,7 @@ int jhcTalkFcn::talk_wait0 (const jhcAliaDesc& desc, int i)
 
 
 //= Assert already assembled question as a good thing to say.
-// waits for user to repond or a long interval of silence
+// waits for user to respond or a long interval of silence
 // saves utterance in member variable in case daydreaming
 // returns 1 if done, 0 if still working, -1 for failure
 
@@ -280,7 +280,7 @@ void jhcTalkFcn::q_mark (char *txt) const
 //         -pat->  obj-1                   (directly describe object)
 //
 //   fcn-1 -lex-   echo_wds
-//         -dest-> agt-1                   (optional binding for ?0)
+//         -targ-> agt-1                   (optional binding for ?0)
 //         -pat--> txt-1
 //   txt-1 -str-   I think ?1 is ?2 ?0     (fill in slots with arguments)
 //         -arg1-> obj-1
@@ -323,7 +323,7 @@ int jhcTalkFcn::build_string (const jhcAliaDesc& desc, int inst)
     if (num == '0')
     {
       // ?0 means user so see if proper name given or previously known
-      if ((n = desc.Val("dest")) != NULL)   
+      if ((n = desc.Val("targ")) != NULL)
         ref = dg.NameRef(n);
       else 
         ref = dg.UserRef();

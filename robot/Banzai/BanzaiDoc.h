@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -159,7 +159,6 @@ public:
   afx_msg void OnDemoResetrobot();
   afx_msg void OnParametersLiftcmd();
   afx_msg void OnParametersLiftramp();
-  afx_msg void OnParametersBatterylevel();
   afx_msg void OnParametersGrabcmd();
   afx_msg void OnParametersGrabramp();
   afx_msg void OnParametersArmhome();
@@ -246,11 +245,14 @@ public:
   afx_msg void OnGrabSurfevents();
   afx_msg void OnGrabSurftracking();
   afx_msg void OnMoodLtmmatch();
-  afx_msg void OnMoodConfadjust();
-  afx_msg void OnMoodPrefadjust();
-  afx_msg void OnMoodRuleopadj();
   afx_msg void OnDemoCyclerate();
   afx_msg void OnGrabSurfmotion();
+  afx_msg void OnMoodValencelevel();
+  afx_msg void OnMoodControllevel();
+  afx_msg void OnMoodSurenesslevel();
+  afx_msg void OnMoodAdjustmix();
+  afx_msg void OnMoodPreferencemix();
+  afx_msg void OnMoodNagtiming();
 };
 
 /////////////////////////////////////////////////////////////////////////////

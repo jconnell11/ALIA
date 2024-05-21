@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 
 #include "Interface/jhcMessage.h"      // common video
 #include "Interface/jms_x.h"      
+#include "Interface/jprintf.h"         
 #include "Video/jhcOcv3VSrc.h"
 
 #include "Body/jhcManusBody.h"
@@ -76,6 +77,7 @@ jhcManusBody::jhcManusBody ()
   wifi = 0;
 
   // default robot ID and serial port
+  strcpy_s(rname, "Manus");
   port0 = 10;
   id = 0;
 
@@ -235,6 +237,7 @@ int jhcManusBody::Defaults (const char *fname)
 {
   int ok = 1;
 
+  cps.LoadText(rname, fname, "robot_name");
   ok &= cam_params(fname);
   ok &= range_params(fname);
   ok &= width_params(fname);
@@ -251,6 +254,7 @@ int jhcManusBody::SaveVals (const char *fname) const
 {
   int ok = 1;
 
+  cps.SaveText(fname, "robot_name", rname);
   ok &= cps.SaveVals(fname);
   ok &= rps.SaveVals(fname);
   ok &= wps.SaveVals(fname);
@@ -288,7 +292,7 @@ int jhcManusBody::SaveCfg (const char *dir)
 const char *jhcManusBody::CfgName (const char *dir)
 {
   if (dir != NULL)
-    sprintf_s(cfile, "%s/Manus-%d.cfg", dir, id);
+    sprintf_s(cfile, "%s\\Manus-%d.cfg", dir, id);
   else
     sprintf_s(cfile, "Manus-%d.cfg", id);
   return cfile;

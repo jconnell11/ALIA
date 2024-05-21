@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIASTATS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIASTATS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -41,13 +38,18 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
+  double bth, pth, wex, mok;           // cached system values
+
   jhcArr goal, wmem, hmem;             // core operations
+  jhcArr blf, pref, wild;              // reasoning thresholds
   jhcArr spch, talk, attn;             // speech state
-  jhcArr busy, walk, wave, emit;       // activity monitor
+
+  jhcArr walk, wave, emit, mdrv;       // activity monitor
+  jhcArr hear, face, sdrv;             // social interaction
+  jhcArr val,  sad,  surp;             // satisfaction and surprise
+
   jhcArr mcmd, mips, rcmd, rdps;       // wheel servos
   jhcArr pcmd, pdeg, tcmd, tdeg;       // neck servos
-  double cred, opt;                    // belief and preference
-  double active, bored, fidget;        // cached mood
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -63,20 +65,9 @@ public:
   void Reset ();
   void Thought (class jhcAliaCore *core);
   void Speech (int sprc, int tts, int gate);
-  void Motion (const class jhcAliaMood& mood);
+  void Affect (const class jhcAliaMood& mood);
   void Drive (double m, double mest, double r, double rest);
   void Gaze (double p, double pest, double t, double test);
 
-
-// PRIVATE MEMBER FUNCTIONS
-private:
-
-
 };
-
-
-#endif  // once
-
-
-
 

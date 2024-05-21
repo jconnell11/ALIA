@@ -150,27 +150,6 @@ int jhcEliCoord::SaveVals (const char *fname)
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Add the names of important people for face recognition and grammar.
-// can append to any that have previously been specified
-// should be called after Reset (else speech grammar might be cleared)
-// better to build word list at this point (wds > 0) rather than in Reset
-// returns number just added
-
-int jhcEliCoord::SetPeople (const char *fname, int append, int wds)
-{
-  int i, n, n0 = ((append > 0) ? vip.Names() : 0);
-
-  ((rwi.fn).fr).LoadDB(fname, append);
-  n = vip.Load(fname, append);
-  for (i = 0; i < n; i++)
-    AddName(vip.Full(i + n0));
-  jprintf("Added %d known users from %s\n\n", n, fname);
-  if (wds > 0)
-    vc.GetWords(gr.Expansions());
-  return n;
-}
-
-
 //= Connect a possibly canned video input to robot (or disconnect all). 
 
 int jhcEliCoord::BindVideo (jhcVideoSrc *v, int vnum)
@@ -202,11 +181,14 @@ int jhcEliCoord::Reset (int bmode)
   rwi.Reset(mech);
   alert = 0;
 
-  // initialize timing and speech components
-  if (jhcAliaSpeech::Reset(body.rname, body.vname, 1) <= 0)
+  // initialize speech and reasoning and add user faces
+  if (jhcAliaSAPI::Reset(body.rname, body.vname, 1) <= 0)
     return 0;
+  ((rwi.fn).fr).LoadDB(wrt("config/VIPs.txt"), 0);
+
+  // possibly reset battery gauge
   if (mech > 0)
-    body.UpdateBat();        // possibly reset battery gauge
+    body.UpdateBat();        
   return((rc <= 0) ? 1 : 2);
 }
 
@@ -216,7 +198,7 @@ int jhcEliCoord::Reset (int bmode)
 
 int jhcEliCoord::Respond ()
 {
-  const jhcEliBase *b = &(body.base);
+  jhcEliBase *b = &(body.base);
   const jhcEliArm *a  = &(body.arm);
   const jhcEliNeck *n = &(body.neck);
   int eye;
@@ -235,18 +217,20 @@ int jhcEliCoord::Respond ()
   else if (Attending() <= 0)
     alert = 0;
   if (rwi.base != NULL)
-    (rwi.base)->AttnLED(alert);                  // could use eye instead
+    b->AttnLED(alert);                 // could use eye instead
 
   // pass dynamic status of body to mood monitor and statistics collector
   if (!rwi.Ghost())
   {
-    mood.Body(body.BodyIPS(), a->FingerIPS(), body.Percent());
+    mood.Travel(b->TravelRate());
+    mood.Reach(a->ReachRate());
+    mood.Battery(body.Percent());
     stat.Drive(b->MoveCmdV(), b->MoveIPS(0), b->TurnCmdV(), b->TurnDPS(0));
     stat.Gaze(n->PanCtrlGoal(), n->Pan(), n->TiltCtrlGoal(), n->Tilt());
   }
 
   // figure out what to do then issue action commands
-  if (jhcAliaSpeech::Respond(eye) <= 0)
+  if (jhcAliaSAPI::Respond(eye) <= 0)
     return 0;
   if (rwi.Issue() <= 0)
     return 0;
@@ -284,9 +268,9 @@ int jhcEliCoord::Done (int face)
 
   // save learned items
   DumpSession();                       // brand new rules and ops
-  jhcAliaSpeech::Done(1);              // incl. accumulated knowledge
+  jhcAliaSAPI::Done(1);                // incl. accumulated knowledge
   if (face > 0)
-    ((rwi.fn).fr).SaveDB("all_people.txt");
+    ((rwi.fn).fr).SaveDB("config/all_people.txt");
 
   // possibly report robot power level
   if (!rwi.Ghost())

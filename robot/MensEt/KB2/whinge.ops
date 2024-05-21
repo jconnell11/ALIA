@@ -230,3 +230,134 @@ OP 16 - "To announce that you are lonely say all by myself again"
         act-2 -obj-> txt-1
         txt-1 -str-  all by myself again ]
 
+
+// ----------------------------------------
+
+OP 17 - "If you are angry announce that"
+  trig:
+  NOTE[  hq-1 -lex-  angry
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 ]
+
+
+OP 18 - "To announce that you are angry say I'm getting angry"
+  trig:
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
+         hq-1 -lex-  angry
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  I'm getting angry ]
+
+
+OP 19 - "To announce that you are angry say This is frustrating"
+  trig:
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
+         hq-1 -lex-  angry
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  This is frustrating ]
+
+
+OP 20 - "If you are very angry announce that"
+  trig:
+  NOTE[  hq-1 -lex-  angry
+              -hq--> obj-1
+        deg-1 -lex-  very
+              -deg-> hq-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 ]
+
+
+OP 21 - "To announce that you are very angry say Darn it whoever"
+  trig:
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
+         hq-1 -lex-  angry
+              -hq--> obj-1
+        deg-1 -lex-  very
+              -deg-> hq-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  Darn it ?0 ]
+
+
+// ----------------------------------------
+
+OP 22 - "If you are scared announce that"
+  trig:
+  NOTE[  hq-1 -lex-  scared
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 ]
+
+
+OP 23 - "To announce that you are scared say Things aren't going well whoever"
+  trig:
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
+         hq-1 -lex-  scared
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  Things aren't going well ?0 ]
+
+
+OP 24 - "If you are very scared announce that"
+  trig:
+  NOTE[  hq-1 -lex-  scared
+              -hq--> obj-1
+        deg-1 -lex-  very
+              -deg-> hq-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 ]
+
+
+OP 25 - "To announce that you are very scared say Save me master"
+  trig:
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
+         hq-1 -lex-  scared
+              -hq--> obj-1
+        deg-1 -lex-  very
+              -deg-> hq-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  Save me master ]
+

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSPEECHWEB_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSPEECHWEB_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -48,12 +45,6 @@ private:
   jhcTxtAssoc canon;
 
 
-// PUBLIC MEMBER VARIABLES
-public:
-  // web service credentials
-  char key[200], reg[40];
-
-
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and initialization
@@ -62,10 +53,6 @@ public:
   const char *Version () const;
   int LoadFix (const char *fname) {return canon.LoadList(fname);}
   int Fixes () const {return canon.TotalVals();}
-
-  // processing parameter bundles 
-  int Defaults (const char *fname =NULL);
-  int SaveVals (const char *fname) const;
 
   // main functions
   int Init (int partial =0);
@@ -89,12 +76,5 @@ private:
   // main functions
   void fix_up (char *fix, int ssz, const char *orig) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include "Interface/jms_x.h"           // common video
+#include "Interface/jprintf.h"
 
 #include "Grounding/jhcBallistic.h"
 
@@ -65,6 +66,7 @@ jhcBallistic::jhcBallistic ()
 
   // processing parameters
   Defaults();
+  gok = 1;                   // either 1 or -1
   dbg = 1;
 //dbg = 3;                   // progress messages
 }
@@ -73,22 +75,6 @@ jhcBallistic::jhcBallistic ()
 ///////////////////////////////////////////////////////////////////////////
 //                         Processing Parameters                         //
 ///////////////////////////////////////////////////////////////////////////
-
-//= Parameters used for battery and freezing.
-
-int jhcBallistic::evt_params (const char *fname)
-{
-  jhcParam *ps = &eps;
-  int ok;
-
-  ps->SetTag("ball_evt", 0);
-  ps->NextSpecF( &hmin,   0.1, "Min hold width (in)");
-  ps->NextSpec4( &hwait, 10,   "Firm hold cycles");
-  ok = ps->LoadDefs(fname);
-  ps->RevertAll();
-  return ok;
-}
-
 
 //= Parameters used for translational motion.
 
@@ -295,7 +281,6 @@ int jhcBallistic::Defaults (const char *fname)
 {
   int ok = 1;
 
-  ok &= evt_params(fname);
   ok &= trans_params(fname);
   ok &= rot_params(fname);
   ok &= prog_params(fname);
@@ -315,7 +300,6 @@ int jhcBallistic::SaveVals (const char *fname) const
 {
   int ok = 1;
 
-  ok &= eps.SaveVals(fname);
   ok &= tps.SaveVals(fname);
   ok &= rps.SaveVals(fname);
   ok &= pps.SaveVals(fname);
@@ -337,7 +321,7 @@ int jhcBallistic::SaveVals (const char *fname) const
 
 void jhcBallistic::local_platform (void *soma) 
 {
-  rwi = (jhcEliGrok *) soma;
+  rwi = (jhcGenRWI *) soma;
 }
 
 
@@ -410,12 +394,12 @@ int jhcBallistic::ball_stop0 (const jhcAliaDesc& desc, int i)
 int jhcBallistic::ball_stop (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix pos(4), dir(4);
-  jhcEliBase *b = rwi->base;
-  jhcEliArm *a = rwi->arm;
+  jhcGenArm *a = rwi->arm;
+  jhcGenBase *b = rwi->base;
 
   // lock to sensor cycle 
-  if (rwi->Ghost())
-    return 1;
+  if (rwi->Ghost() || (a == NULL) || (b == NULL))
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if ((b->CommOK() <= 0) || (a->CommOK() <= 0))
@@ -424,12 +408,14 @@ int jhcBallistic::ball_stop (const jhcAliaDesc& desc, int i)
   // check for timeout
   if (jms_diff(jms_now(), ct0[i]) > 0)
     return 1;
-  a->ArmPose(pos, dir);
+  a->Position(pos);
+  a->Direction(dir);
  
   // re-issue basic command (coast to stop, no bouncing)
   jprintf(2, dbg, "|- Ballistic %d: stop motion\n", cbid[i]);
   a->ArmTarget(pos, dir, 1.0, 1.0, cbid[i]);
-  b->DriveTarget(0.0, 0.0, 1.0, cbid[i]);
+  b->MoveTarget(0.0, 1.0, cbid[i]);
+  b->TurnTarget(0.0, 1.0, cbid[i]);
   return 0;
 }
 
@@ -462,12 +448,12 @@ int jhcBallistic::ball_drive0 (const jhcAliaDesc& desc, int i)
 
 int jhcBallistic::ball_drive (const jhcAliaDesc& desc, int i)
 {
-  jhcEliBase *b = rwi->base;
+  jhcGenBase *b = rwi->base;
   double err;
 
   // lock to sensor cycle
-  if (rwi->Ghost())
-    return 1;
+  if (rwi->Ghost() || (b == NULL))
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (b->CommOK() <= 0)
@@ -603,12 +589,12 @@ int jhcBallistic::ball_turn0 (const jhcAliaDesc& desc, int i)
 
 int jhcBallistic::ball_turn (const jhcAliaDesc& desc, int i)
 {
-  jhcEliBase *b = rwi->base;
+  jhcGenBase *b = rwi->base;
   double err;
 
   // lock to sensor cycle
-  if (rwi->Ghost())
-    return 1;
+  if (rwi->Ghost() || (b == NULL))
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (b->CommOK() <= 0)
@@ -752,16 +738,16 @@ int jhcBallistic::ball_lift0 (const jhcAliaDesc& desc, int i)
 
 int jhcBallistic::ball_lift (const jhcAliaDesc& desc, int i)
 {
-  jhcEliLift *f = rwi->lift;
+  jhcGenLift *f = rwi->lift;
   double err;
 
   // lock to sensor cycle
-  if (rwi->Ghost())
-    return 1;
+  if (rwi->Ghost() || (f == NULL))
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (f->CommOK() <= 0)
-    return err_hw("body");
+    return err_hw("lift stage");
 
   if (cst[i] <= 0)
   {
@@ -884,13 +870,13 @@ int jhcBallistic::ball_grip0 (const jhcAliaDesc& desc, int i)
 
 int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
 {
-  jhcEliArm *a = rwi->arm;
+  jhcGenArm *a = rwi->arm;
   const char *act = ((camt[i] < 0.0) ? "hold" : ((camt[i] > 2.0) ? "open" : "close"));
   double err, stop = __max(0.0, camt[i]);
 
   // lock to sensor cycle
-  if (rwi->Ghost())
-    return 1;
+  if (rwi->Ghost() || (a == NULL))
+    return gok;
   if (!rwi->Accepting())
     return 0;  
   if (a->CommOK() <= 0)
@@ -899,7 +885,8 @@ int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
   if (cst[i] <= 0)
   {
     // remember initial finger center position
-    a->ArmPose(cpos[i], cdir[i]);
+    a->Position(cpos[i]);
+    a->Direction(cdir[i]);
     cerr[i] = a->WidthErr(camt[i]);
     cst[i]  = 1;
   }
@@ -917,7 +904,7 @@ int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
       jprintf(1, dbg, " { ball_grip: nothing between fingers }", err, ndone); 
       return -1;
     }
-    if ((camt[i] < 0.0) && a->SqueezeSome(fhold))
+    if ((camt[i] < 0.0) && (a->Squeeze() >= fhold))
     {
       // if holding, switch to force mode after initial contact 
       ct0[i] = 0;  
@@ -932,7 +919,7 @@ int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
   else if (cst[i] >= 3)
   {
     // request force application for a while (always succeeds)
-    err = a->SqueezeErr(fhold, 0);
+    err = a->SqueezeErr(fhold);
     jprintf(3, dbg, "hold[3]: width = %3.1f, force = %3.1f, good = %d, try = %d\n", 
             a->Width(), a->Squeeze(), ROUND(csp[i]), ct0[i]);
     if (ct0[i]++ >= (UL32) fask)  
@@ -998,11 +985,14 @@ int jhcBallistic::get_hand (double &width, const jhcAliaDesc *act) const
 
 int jhcBallistic::ball_arm0 (const jhcAliaDesc& desc, int i)
 {
+  int fixed;
+
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if ((cst[i] = get_pos(i, desc.Val("arg"))) < 0)
+  if ((fixed = get_pos(i, desc.Val("arg"))) < 0)
     return -1;
-  cerr[i] = cpos[i].LenVec3();       // not accurate for absolute position
+  cst[i]  = fixed - 1;                 // -1 = inc, 0 = fixed
+  cerr[i] = cpos[i].LenVec3();         // assume incremental       
   return 1;
 } 
 
@@ -1015,25 +1005,33 @@ int jhcBallistic::ball_arm (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix now(4);
   char txt[40];
-  jhcEliArm *a = rwi->arm;
+  jhcGenArm *a = rwi->arm;
   double err, zerr;
 
   // lock to sensor cycle
-  if (rwi->Ghost())
-    return 1;
+  if (rwi->Ghost() || (a == NULL))
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (a->CommOK() <= 0)
     return err_hw("arm");
 
-  if (cst[i] <= 0)
+  if (cst[i] < 0)
   {
     // set up absolute position based on hand direction (pan tilt roll)
-    a->ArmPose(now, cdir[i]);
+    a->Position(now);
+    a->Direction(cdir[i]);
     cpos[i].RotPan3(cdir[i].P());
     cpos[i].IncVec3(now);
     cst[i] = 1;
   }
+  else if (cst[i] == 0)
+  {
+    // find distance to fixed position
+    a->Position(now);
+    cerr[i] = now.PosDiff3(cpos[i]);   
+    cst[i] = 1;
+  }  
   else
   {
     // check if finished or stuck
@@ -1047,7 +1045,7 @@ int jhcBallistic::ball_arm (const jhcAliaDesc& desc, int i)
       return 1;
     if (stuck(i, err, hprog, hstart, hmid))
     {
-      jprintf(1, dbg, " { ball_hand: stuck at offset %4.2f [%4.2f] }\n", err, hdone); 
+      jprintf(1, dbg, " { ball_arm: stuck at offset %4.2f [%4.2f] }\n", err, hdone); 
       return -1;
     }
   }
@@ -1062,11 +1060,11 @@ int jhcBallistic::ball_arm (const jhcAliaDesc& desc, int i)
 
 
 //= Read semantic network parts to determine desired new hand postition.
-// returns 1 if absolute, 0 if relative to current, -1 for problem
+// returns 1 if absolute fixed, 0 if relative to current, -1 for problem
 
 int jhcBallistic::get_pos (int i, const jhcAliaDesc *act) 
 {
-  jhcEliArm *a = rwi->arm;
+  jhcGenArm *a = rwi->arm;
   const jhcAliaDesc *fcn, *dir;
   double h = dxy, v = dz, dist = 0.0;
   int w = 0;
@@ -1100,10 +1098,10 @@ int jhcBallistic::get_pos (int i, const jhcAliaDesc *act)
   cpos[i].Zero(1.0);
   while ((dir = act->Fact("dir", w++)) != NULL)
   {
-    // get pointing offset (assume hand is along x axis)
-    if (dir->LexIn("forward", "forwards"))
+    // get pointing offset (NOTE: assumes hand is along X axis)
+    if (dir->LexIn("forward", "forwards", "out"))
       cpos[i].SetX(h);
-    else if (dir->LexIn("backward", "backwards"))
+    else if (dir->LexIn("back", "backward", "backwards", "in"))
       cpos[i].SetX(-h);
 
     // get lateral offset
@@ -1153,12 +1151,12 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix now(4);
   char txt[40];
-  jhcEliArm *a = rwi->arm;
+  jhcGenArm *a = rwi->arm;
   double err;
 
   // lock to sensor cycle
-  if (rwi->Ghost())
-    return 1;
+  if (rwi->Ghost() || (a == NULL))
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (a->CommOK() <= 0)
@@ -1167,7 +1165,8 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc& desc, int i)
   if (cst[i] <= 0)
   {
     // set up absolute orientation based on current hand direction (pan tilt roll)
-    a->ArmPose(cpos[i], now);
+    a->Position(cpos[i]);
+    a->Direction(now);
     cdir[i].IncVec3(now);
     cdir[i].CycNorm3();
     cst[i] = 2;
@@ -1175,7 +1174,8 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc& desc, int i)
   else if (cst[i] == 1)
   {
     // change zero components to current angles
-    a->ArmPose(cpos[i], now);
+    a->Position(cpos[i]);
+    a->Direction(now);
     cdir[i].SubZero3(now);
     cst[i] = 2;
   }
@@ -1317,12 +1317,12 @@ int jhcBallistic::ball_neck0 (const jhcAliaDesc& desc, int i)
 
 int jhcBallistic::ball_neck (const jhcAliaDesc& desc, int i)
 {
-  jhcEliNeck *n = rwi->neck;
+  jhcGenNeck *n = rwi->neck;
   double err = 0.0;
 
   // lock to sensor cycle
-  if (rwi->Ghost())
-    return 1;
+  if (rwi->Ghost() || (n == NULL))
+    return gok;
   if (!rwi->Accepting())
     return 0;
   if (n->CommOK() <= 0)
@@ -1419,9 +1419,9 @@ int jhcBallistic::get_gaze (int i, const jhcAliaDesc *act)
       cdir[i].SetP(0.1);
 
     // get incremental tilt offset
-    if (dir->LexMatch("up"))
+    if (dir->LexIn("up", "upward", "upwards"))
       cdir[i].IncT(mag * t);
-    else if (dir->LexMatch("down"))
+    else if (dir->LexIn("down", "downward", "downwards"))
       cdir[i].IncT(-mag * t);
     else if (dir->LexMatch("level"))
       cdir[i].SetT(-0.1);
@@ -1575,11 +1575,11 @@ int jhcBallistic::err_hw (const char *sys)
   jhcAliaDesc *part, *own, *arm, *fail;
 
   rpt->StartNote();
+  fail = rpt->NewAct("work", 1);
   part = rpt->NewObj("sys");
   own = rpt->NewProp(part, "ako", sys);
   rpt->AddArg(own, "wrt", rpt->Self());
   arm = rpt->Resolve(part);                      // find or make part
-  fail = rpt->NewAct("work", 1);
   rpt->AddArg(fail, "agt", arm);                 // mark as not working
   rpt->FinishNote(fail);
   return -1;

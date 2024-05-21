@@ -224,8 +224,10 @@ OP 19 - "To tell someone something just tell something"
   trig:
     DO[ fcn-1 -lex-   tell
               -fcn--> act-1 
-        act-1 -dest-> obj-1
-              -obj--> obj-2 ]
+        act-1 -obj--> obj-2 
+        end-1 -lex-   to
+              -dest-> act-1
+              -ref--> obj-1 ]
 -----------------
     DO[ fcn-2 -lex-  tell
               -fcn-> act-2
@@ -236,8 +238,10 @@ OP 20 - "To tell someone about themself just tell something"
   trig:
     DO[ fcn-1 -lex-   tell
               -fcn--> act-1 
-        act-1 -dest-> obj-1
-              -obj--> obj-1 ]
+        act-1 -obj--> obj-1 
+        end-1 -lex-   to
+              -dest-> act-1
+              -ref--> obj-1 ]
 -----------------
     DO[ fcn-2 -lex-  tell
               -fcn-> act-2
@@ -248,8 +252,10 @@ OP 21 - "To tell someone about themself say the boss whoever"
   trig:
     DO[ fcn-1 -lex-   tell
               -fcn--> act-1 
-        act-1 -dest-> obj-1
-              -obj--> obj-1 ]
+        act-1 -obj--> obj-1 
+        end-1 -lex-   to
+              -dest-> act-1
+              -ref--> obj-1 ]
 -----------------
     DO[ fcn-2 -lex-  say
               -fcn-> act-2

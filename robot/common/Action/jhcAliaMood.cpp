@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,6 @@ jhcAliaMood::~jhcAliaMood ()
 
 jhcAliaMood::jhcAliaMood ()
 {
-  noisy = 1;                 // defaulted from jhcAliaCore
   LoadCfg();
   Reset();
 }
@@ -54,29 +53,164 @@ jhcAliaMood::jhcAliaMood ()
 //                         Processing Parameters                         //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Parameters used for adjusting minimum belief threshold.
-// NOTE: these parameters affect personality
+//= Parameters to evaluate reasoning state and battery level.
 
-int jhcAliaMood::blf_params (const char *fname)
+int jhcAliaMood::core_params (const char *fname)
 {
-  jhcParam *ps = &bps;
+  jhcParam *ps = &cps;
   int ok;
 
-  ps->SetTag("mood_blf", 0);
-  ps->NextSpecF( &right,  0.1, "Threshold down on correct");
-  ps->NextSpecF( &wrong,  0.1, "Threshold up on wrong");
-  ps->NextSpecF( &fyes,   0.1, "User \"yes\" threshold lower");
-  ps->NextSpecF( &fno,    0.1, "User \"no\" threshold raise");
-  ps->Skip();
-  ps->NextSpecF( &bfade, 60.0, "Revert time constant (sec)");
+  ps->SetTag("mood_core", 0);
+  ps->NextSpecF( &btime,    0.3, "Busy decay (sec)");
+  ps->NextSpecF( &engaged, 15.0, "Tolerable goals");      
+  ps->NextSpecF( &frantic, 25.0, "Overwhelmed goals");    
+  ps->NextSpecF( &wtime,    3.0, "Surprise decay (sec)");
+  ps->NextSpecF( &surp,     0.7, "Surprised level");
+  ps->NextSpecF( &vsurp,    1.3, "Very surprised level");
+
+  ps->NextSpecF( &low,     30.0, "Tired battery (pct)");  
+  ps->NextSpecF( &vlow,    20.0, "Very tired battery (pct)");  
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
 }
 
 
-//= Parameters used for adjusting minimum preference threshold.
-// NOTE: these parameters affect personality
+//= Parameters for combining inputs to assess robot motion level.
+
+int jhcAliaMood::motion_params (const char *fname)
+{
+  jhcParam *ps = &mps;
+  int ok;
+
+  ps->SetTag("mood_mot", 0);
+  ps->NextSpecF( &fhand,  10.0,  "Hand idle wrt motion");
+  ps->NextSpecF( &fbase,  10.0,  "Base idle wrt motion");
+  ps->NextSpecF( &ftalk,   0.0,  "Talk idle wrt motion");
+  ps->NextSpecF( &noise,   0.15, "Low motion squelch");
+  ps->NextSpecF( &mtime,  30.0,  "Motion smoothing (sec)");  
+  ps->NextSpecF( &mok,     0.5,  "Adequate motion level");  
+
+  ps->NextSpecF( &bore,   40.0,  "Bored time (sec)");
+  ps->NextSpecF( &vbore,  90.0,  "Very bored time (sec)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for combining inputs to assess robot sociality level.
+
+int jhcAliaMood::social_params (const char *fname)
+{
+  jhcParam *ps = &sps;
+  int ok;
+
+  ps->SetTag("mood_soc", 0);
+  ps->NextSpecF( &fhear,  15.0, "Speech idle wrt hearing");
+  ps->NextSpecF( &fdude,   0.3, "Boost per face");
+  ps->NextSpecF( &lps,    12.0, "Letters per second");
+  ps->NextSpecF( &stime,  60.0, "Social smoothing (sec)");  
+  ps->NextSpecF( &sok,     0.5, "Adequate social level");  
+  ps->Skip();
+
+  ps->NextSpecF( &lone,   30.0, "Lonely time (sec)");
+  ps->NextSpecF( &vlone,  60.0, "Very lonely time (sec)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for combining inputs to assess happiness/unhappiness.
+
+int jhcAliaMood::valence_params (const char *fname)
+{
+  jhcParam *ps = &vps;
+  int ok;
+
+  ps->SetTag("mood_val", 0);
+  ps->NextSpecF( &mmix, 0.5,  "Motion importance");
+  ps->NextSpecF( &smix, 0.5,  "Social importance");
+  ps->NextSpecF( &hhys, 0.2,  "Happy hysteresis");
+  ps->NextSpecF( &hap,  0.75, "Happy level");  
+  ps->NextSpecF( &vhap, 1.5,  "Very happy level");  
+  ps->NextSpecF( &lmix, 1.0,  "Lonely wrt bored wt");  
+
+  ps->NextSpecF( &sad,  1.0,  "Unhappy level");  
+  ps->NextSpecF( &vsad, 2.0,  "Very unhappy level");  
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for assessing performance of operators.
+
+int jhcAliaMood::op_params (const char *fname)
+{
+  jhcParam *ps = &ops;
+  int ok;
+
+  ps->SetTag("mood_op", 0);
+  ps->NextSpecF( &fgood,  7.0,  "User approval wt");
+  ps->NextSpecF( &fbad,   2.0,  "User critique wt");
+  ps->NextSpecF( &osamp, 50.0,  "Sample normalization");  
+  ps->NextSpecF( &otime, 30.0,  "Reversion time (sec)");
+  ps->NextSpecF( &cdes,   0.9,  "Target success rate");
+  ps->NextSpecF( &chys,   0.05, "Angry hysteresis");
+
+  ps->NextSpecF( &mad,    0.7,  "Angry rate");
+  ps->NextSpecF( &vmad,   0.6,  "Very angry rate");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for assessing performance of rules.
+
+int jhcAliaMood::rule_params (const char *fname)
+{
+  jhcParam *ps = &rps;
+  int ok;
+
+  ps->SetTag("mood_rule", 0);
+  ps->NextSpecF( &fconf,   7.0,  "User confirmation wt");  
+  ps->NextSpecF( &fref,    2.0,  "User refutation wt");   
+  ps->NextSpecF( &rsamp,  50.0,  "Sample normalization");
+  ps->NextSpecF( &rtime,  45.0,  "Reversion time (sec)");
+  ps->NextSpecF( &sdes,    0.9,  "Target correct rate");
+  ps->NextSpecF( &shys,    0.03, "Scared hysteresis");
+
+  ps->NextSpecF( &scare,   0.85, "Scared rate");
+  ps->NextSpecF( &vscare,  0.8,  "Very scared rate");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for adjusting wildness and belief threshold.
+
+int jhcAliaMood::adj_params (const char *fname)
+{
+  jhcParam *ps = &aps;
+  int ok;
+
+  ps->SetTag("mood_adj", 0);
+  ps->NextSpecF( &whi,  5.0, "Op success over optimal");
+  ps->NextSpecF( &wlo, -3.0, "Op success under optimal");
+  ps->Skip();
+  ps->NextSpecF( &bhi, -5.0, "Rule correct over optimal");
+  ps->NextSpecF( &blo,  3.0, "Rule correct under optimal");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for computing overall desire for action.
 
 int jhcAliaMood::pref_params (const char *fname)
 {
@@ -84,82 +218,15 @@ int jhcAliaMood::pref_params (const char *fname)
   int ok;
 
   ps->SetTag("mood_pref", 0);
-  ps->NextSpecF( &miss,   0.05, "Threshold down on missed");
-  ps->NextSpecF( &dud,    0.01, "Threshold up on failed");
-  ps->NextSpecF( &fgood,  0.1,  "User \"good\" threshold lower");
-  ps->NextSpecF( &fbad,   0.1,  "User \"bad\" threshold raise");
-  ps->Skip();
-  ps->NextSpecF( &pfade, 60.0,  "Revert time constant (sec)");
-  ok = ps->LoadDefs(fname);
-  ps->RevertAll();
-  return ok;
-}
+  ps->NextSpecF( &mhi,  0.2, "Motion over optimal");  
+  ps->NextSpecF( &mlo, -0.2, "Motion under optimal");   
+  ps->NextSpecF( &shi,  0.2, "Social over optimal");
+  ps->NextSpecF( &slo, -0.2, "Social under optimal");
+  ps->NextSpecF( &ohi, -5.0, "Control over optimal");
+  ps->NextSpecF( &olo,  2.0, "Control under optimal");
 
-
-//= Parameters for assessing boredom and overwork.
-// NOTE: these parameters can affect personality
-
-int jhcAliaMood::bored_params (const char *fname)
-{
-  jhcParam *ps = &aps;
-  int ok;
-
-  ps->SetTag("mood_bored", 0);
-  ps->NextSpecF( &frantic,  25.0, "Overwhelmed threshold");
-  ps->NextSpecF( &engaged,  15.0, "Optimum thought level");
-  ps->NextSpecF( &idle,     10.0, "Minimal thought level");
-  ps->NextSpecF( &active,    2.0, "Good motion level");
-  ps->NextSpecF( &bored,     0.5, "Bored motion threshold");
-  ps->NextSpecF( &nag,      30.0, "Whine interval (sec)");
-
-  ps->NextSpecF( &btime,     3.5, "Thought decay (sec)");  
-  ps->NextSpecF( &ftime,    20.0, "Motion decay (sec)");  
-  ok = ps->LoadDefs(fname);
-  ps->RevertAll();
-  return ok;
-}
-
-
-//= Parameters for assessing social interaction.
-// NOTE: these parameters can affect personality
-
-int jhcAliaMood::lonely_params (const char *fname)
-{
-  jhcParam *ps = &sps;
-  int ok;
-
-  ps->SetTag("mood_lonely", 0);
-  ps->NextSpecF( &attn,    1.5, "Attention threshold");  
-  ps->NextSpecF( &sat,     5.0, "Attention saturation");  
-  ps->NextSpecF( &prod,   90.0, "Prod interval (sec)");
-  ps->NextSpecF( &ramp,    5.0, "Shorten interval (sec)"); 
-  ps->NextSpecF( &needy,  40.0, "Minimum interval (sec)");
-  ps->NextSpec4( &bereft,  4,   "Very lonely on repeat");
-
-  ps->NextSpecF( &fade,   10.0, "User input decay (sec)"); 
-  ok = ps->LoadDefs(fname);
-  ps->RevertAll();
-  return ok;
-}
-
-
-//= Parameters for assessing remaining battery energy.
-// NOTE: these parameters can affect personality
-
-int jhcAliaMood::tired_params (const char *fname)
-{
-  jhcParam *ps = &tps;
-  int ok;
-
-  ps->SetTag("mood_tired", 0);
-  ps->NextSpec4( &fresh,   35,   "Okay battery (pct)");
-  ps->NextSpec4( &tired,   30,   "Low battery (pct)");
-  ps->NextSpec4( &slug,    20,   "Very low battery (pct)");
-  ps->NextSpec4( &psamp,  900,   "Test interval cycles");      // 30 secs
-  ps->NextSpecF( &repeat, 180.0, "Complaint repeat (sec)");  
-  ps->NextSpecF( &urgent,  30.0, "Fastest repeat (sec)");  
-
-  ps->NextSpecF( &calm,    5.0,  "Surprise decay (sec)");
+  ps->NextSpecF( &rhi, -5.0, "Sureness over optimal");
+  ps->NextSpecF( &rlo,  2.0, "Sureness under optimal");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -176,11 +243,14 @@ int jhcAliaMood::LoadCfg (const char *fname)
 {
   int ok = 1;
 
-  ok &= blf_params(fname);
+  ok &= core_params(fname);
+  ok &= motion_params(fname);
+  ok &= social_params(fname);
+  ok &= valence_params(fname);
+  ok &= op_params(fname);
+  ok &= rule_params(fname);
+  ok &= adj_params(fname);
   ok &= pref_params(fname);
-  ok &= bored_params(fname);
-  ok &= lonely_params(fname);
-  ok &= tired_params(fname);
   return ok;
 }
 
@@ -191,11 +261,14 @@ int jhcAliaMood::SaveCfg (const char *fname) const
 {
   int ok = 1;
 
-  ok &= bps.SaveVals(fname);
-  ok &= pps.SaveVals(fname);
-  ok &= aps.SaveVals(fname);
+  ok &= cps.SaveVals(fname);
+  ok &= mps.SaveVals(fname);
   ok &= sps.SaveVals(fname);
-  ok &= tps.SaveVals(fname);
+  ok &= vps.SaveVals(fname);
+  ok &= ops.SaveVals(fname);
+  ok &= rps.SaveVals(fname);
+  ok &= aps.SaveVals(fname);
+  ok &= pps.SaveVals(fname);
   return ok;
 }
 
@@ -208,351 +281,425 @@ int jhcAliaMood::SaveCfg (const char *fname) const
 
 void jhcAliaMood::Reset ()
 {
-  // clear time stamp and raw data
-  now = 0;
-  clr_evts();
+  // event data and timers
+  clr_accum();
+  now  = 0;
+  mtim = 0.0;
+  itim = 0.0;
 
-  // sampled body state
-  bspeed = 0.0;
-  fspeed = 0.0;
-  mspeed = 0.0;
-  pct = 100;
+  // drive values
+  energy = 100.0;
+  motion = mok;
+  social = sok;
+
+  // valence metrics
+  satis = mok + sok;
+  antsy = 0.0;
+  isol  = 0.0;
+  lack  = 0.0;
 
   // mental level
   busy = 0.0;
-  yikes = 0;
+  wow  = 0.0;
+  ctrl = cdes;
+  sure = sdes;
 
-  // physical level
-  fidget = active;
-  blah = 0;
-
-  // speech level
-  input = attn;
-  lament = 0;
-
-  // battery charge
-  power = 100;
-  delay = 0;
-
-  // rule changes
-  surp = 0.0;
+  // cached emotion bits 
+  melt = 0;
+  vect = 0;
 }
 
 
-//= Clear event data which has accumulated during cycle.
+//= Clear reasoning event data which has accumulated during cycle.
 
-void jhcAliaMood::clr_evts ()
+void jhcAliaMood::clr_accum ()
 {
-  win = 0;
+  // operator data
+  win  = 0;
   lose = 0;
+  good = 0;
+  bad  = 0;
+
+  // rule data
+  right   = 0;
+  wrong   = 0;
+  confirm = 0; 
+  refute  = 0;
+  jump    = 0.0;
 }
 
 
-//= Set up for next round of data collection.
+//= Adjust emotions then set up for next round of data collection.
 
-void jhcAliaMood::Update (int nag)
+void jhcAliaMood::Update ()
 {
-  double dt, s0, p0, ips, noise = 2.0;           // was 1
+  double dt;
   UL32 last = now;
 
   // get elapsed time since last call
   now = jms_now();  
-  if (last != 0)
-  {
-    // figure out overall body motion (squelched)
-    dt = jms_secs(now, last);
-    ips = bspeed + fspeed + mspeed;
-    if (ips < noise)
-      ips = 0.0;
-
-    // update various mood variables
-    fidget += (ips - fidget) * dt / ftime;
-    busy  -= busy * dt / btime;           
-    input -= input * dt / fade;
-    surp  -= dt / calm;                   
-
-    // gradually revert belief and preference thresholds
-    if (rpt != NULL)
-    {
-      s0 = rpt->MinBlf(); 
-      p0 = rpt->MinPref();
-      rpt->SetMinBlf( s0 - (s0 - rpt->RestBlf())  * dt / bfade);
-      rpt->SetMinPref(p0 - (p0 - rpt->RestPref()) * dt / pfade);
-    }
-  }
-
-  // clear old accumulated data 
-  clr_evts();
-
-  // possibly generate a status NOTE
-  if (rpt == NULL)
+  if (last == 0)
     return;
-  rpt->StartNote();
-  if (last == 0)                                 // start up
-    rpt->NewProp(rpt->Self(), "hq", "awake");
-  else if (nag > 0)                              // see if nags enabled
-    if (chk_busy() <= 0)                         // might be overwhelmed
-      if (chk_antsy() <= 0)
-        if (chk_lonely() <= 0)
-          chk_tired();
-  rpt->FinishNote();
+  dt = jms_secs(now, last);
+
+  // evaluate basic drives 
+  sm_motion(dt);
+  sm_social(dt);
+  valence(dt);
+
+  // evaluate reasoning
+  sm_busy(dt);
+  sm_ctrl(dt);
+  sm_sure(dt);
+
+  // tune reasoning system
+  adj_wild();
+  adj_belief();
+  adj_pref();
+
+  // quantize emotions then clear events
+  vect = bit_vector();
+  clr_accum();
 }
 
 
-//= See if mental activity is above the overwhelmed threshold.
-// returns 1 if some NOTE composed (assumes NOTE already started)
+//= Generates a bit vector of thresholded mood states for external use.
+// <pre>
+// very:   80:00   40:00   20:00   10:00      08:00   04:00   02:00   01:00
+//      surprised  angry  scared   happy  -  unhappy  bored   lonely  tired
+// base:   00:80   00:40   00:20   00:10      00:08   00:04   00:02   00:01
+// </pre>
+// robot can be feeling multiple emotions at the same time
+// "very scared and tired" = 04:00 | 00:40 | 00:01 = 04:41 hex
 
-int jhcAliaMood::chk_busy ()
+int jhcAliaMood::bit_vector () const
 {
-  // clear hysteretic state (explicitly retract assertions)
-  if (busy < engaged)
-    if (yikes > 0)
-    {
-      rpt->NewProp(rpt->Self(), "hq", "overwhelmed", 1);
-      yikes = 0;
-      return 1;
-    }
+  int feel = 0;
 
-  // check for overstimulation (complains just once at beginning)
-  if ((busy >= frantic) && (yikes <= 0))
-  {
-    jprintf(1, noisy, " { chk_busy: subgoaling at %3.1f }\n", busy);
-    rpt->NewProp(rpt->Self(), "hq", "overwhelmed");
-    yikes = 1;
-    return 1;
-  }
-  return 0;                  // no NOTEs generated
+  // upper byte (specific conditions)
+  if (wow >= surp)                                   // surprised
+    feel |= ((wow >= vsurp) ? 0x8080 : 0x0080); 
+  feel |= dual_under(0x4000, ctrl,   vmad, chys);    // angry
+  feel |= dual_under(0x0040, ctrl,    mad, chys);   
+  feel |= dual_under(0x2000, sure, vscare, shys);    // scared
+  feel |= dual_under(0x0020, sure,  scare, shys);   
+  feel |= dual_over( 0x1000, satis,  vhap, hhys);    // happy
+  feel |= dual_over( 0x0010, satis,   hap, hhys);   
+
+  // lower byte (general dissatisfaction)
+  if (lack >= sad)                                   // unhappy
+    feel |= ((lack >= vsad)   ? 0x0808 : 0x0008);
+  if (antsy >= bore)                                 // bored
+    feel |= ((antsy >= vbore) ? 0x0404 : 0x0004);
+  if (isol >= lone)                                  // lonely
+    feel |= ((isol >= vlone)  ? 0x0202 : 0x0002);    
+  if (energy <= low)                                 // tired
+    feel |= ((energy <= vlow) ? 0x0101 : 0x0001);
+
+  // special case for overwhelmed
+  if (melt > 0)
+    feel |= 0x8080;                                  // very surprised
+  return feel;
 }
 
 
-//= See if physical activity is below the boredom threshold.
-// only initiates complaint during low thought periods (clears always)
-// returns 1 if some NOTE composed (assumes NOTE already started)
+//= Do hysteretic thresholding on some indicator under a threshold to set a bit.
 
-int jhcAliaMood::chk_antsy ()
+int jhcAliaMood::dual_under (int mask, double val, double on, double hys) const
 {
-  int b0 = blah, very = 3;
+  int set = vect & mask;
 
-  // clear hysteretic state (explicitly retract assertions)
-  if (fidget >= active)
-  {
-    blah = 0;
-    if (b0 > 1)
-    {
-      rpt->NewProp(rpt->Self(), "hq", "bored", 1);
-      return 1;
-    }
-  }
-
-  // check for boredom (waits a while then complains regularly)
-  if ((fidget < bored) && (blah <= 0))
-  {
-    kvetch = now;
-    blah = 1;
-  }
-  else if ((blah > 0) && (jms_secs(now, kvetch) >= nag))
-    if (busy <= idle)
-    {
-      jprintf(1, noisy, " { chk_antsy: activity at %3.1f [x%d] }\n", fidget, blah);
-      rpt->NewDeg(rpt->Self(), "hq", "bored", ((blah >= very) ? "very" : NULL));
-      kvetch = now;
-      blah++;
-      return 1;
-    }
-  return 0;                  // no NOTEs generated
+  if (val <= on)
+    return mask;
+  if ((set != 0) && (val >= (on + hys)))
+    return 0;
+  return set;
 }
 
 
-//= See if user input level is below the loneliness threshold.
-// only initiates complaint during low thought periods (clears always)
-// returns 1 if some NOTE composed (assumes NOTE already started)
+//= Do hysteretic thresholding on some indicator over a threshold to set a bit.
 
-int jhcAliaMood::chk_lonely ()
+int jhcAliaMood::dual_over (int mask, double val, double on, double hys) const
 {
-  double pause;
-  int lam0 = lament;
+  int set = vect & mask;
 
-  // possibly erase lonely state (and explicitly retract assertion)
-  if (input >= attn)
-  {
-    lament = 0;
-    if (lam0 > 1)
-    {
-      rpt->NewProp(rpt->Self(), "hq", "lonely", 1);
-      return 1;
-    }
-  }
-
-  // comment at successively more frequent intervals (skip first)
-  if (input < attn)
-  {
-    if (lament <= 0)
-    {
-      call = now;
-      lament = 1;
-    }
-    else
-    {
-      pause = prod - ramp * lament;
-      pause = __max(needy, pause);
-      if (jms_secs(now, call) >= pause) 
-        if (busy <= idle)
-        {
-          jprintf(1, noisy, " { chk_lonely: interaction at %3.1f [x%d] }\n", input, lament);
-          rpt->NewDeg(rpt->Self(), "hq", "lonely", ((lament >= bereft) ? "very" : NULL));
-          call = now;
-          lament++;
-          return 1;
-        }
-    }
-  }
-  return 0;                  // no NOTEs generated
-}
-
-
-//= See if remaining battery charge has dropped too far.
-// only initiates complaint during low thought periods (clears always)
-// returns 1 if some NOTE composed (assumes NOTE already started)
-
-int jhcAliaMood::chk_tired ()
-{
-  double wait;
-  UL32 m0 = moan;
-
-  // see if battery low for a while 
-  if (power >= fresh)
-  {
-    delay = 0;
-    moan = 0;
-    if (m0 != 0)
-    {
-      rpt->NewProp(rpt->Self(), "hq", "tired", 1);
-      return 1;
-    }
-  }
-  else if (power <= tired)
-    delay++;
-
-  // determine how often to complain (more frequent when lower)
-  if (delay >= psamp)
-  {
-    delay = 0;
-    wait = repeat * power / tired;
-    wait = __max(urgent, wait);
-    if ((moan == 0) || (jms_secs(now, moan) >= wait))
-      if (busy <= idle)
-      {
-        jprintf(1, noisy, " { chk_tired: battery at %d percent }\n", power);
-        rpt->NewDeg(rpt->Self(), "hq", "tired", ((power <= slug) ? "very" : NULL));
-        moan = now;
-        return 1;
-      }
-  }
-  return 0;                  // no NOTEs generated
+  if (val >= on)
+    return mask;
+  if ((set != 0) && (val <= (on - hys)))
+    return 0;
+  return set;
 }
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                    Global Threshold Adjustment                        //
+//                       Drives and Evaluations                          //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Adjust minimum fact belief level based on user agreement or refutation.
-// returns change to threshold value 
+//= Generate smoothed version of overall body motion.
+// motion = 1.0 is ideal (servo setpoint)
 
-void jhcAliaMood::UserMinBlf (int correct) 
+void jhcAliaMood::sm_motion (double dt)
 {
-  if (rpt == NULL)
+  double m;
+
+  m = fhand * fspeed + fbase * bspeed;           // physical action
+  if (m < noise)                                 // squelch jitter
+    m = 0.0;
+  if (mtim > 0.0)                                // stretched output
+  {
+    m += ftalk;                                  
+    mtim = __max(0.0, mtim - dt);
+  }
+  motion += (m - motion) * dt / mtime;           // IIR filter
+}
+
+
+//= Generate smoothed version of social interaction.
+// social = 1.0 is ideal (servo setpoint)
+
+void jhcAliaMood::sm_social (double dt)
+{
+  double s;
+
+  s = fdude * __min(people, 3);                  // human company
+  if (itim > 0.0)                                // stretched input
+  {
+    s += fhear;
+    itim = __max(0.0, itim - dt);
+  }
+  social += (s - social) * dt / stime;           // IIR filter
+}
+
+
+//= Evaluate fulfillment of basic drives.
+
+void jhcAliaMood::valence (double dt)
+{
+  double bmix = 1.0;
+
+  // get overall drive satisfaction level
+  satis = mmix * motion + smix * social;
+
+  // see if motion or social below desired level
+  if (motion > mok)
+    antsy = 0.0;
+  else
+    antsy += dt;
+  if (social > sok)
+    isol = 0.0;
+  else
+    isol += dt;
+
+  // get overall dissatisfaction level 
+  lack = bmix * (antsy / bore) + lmix * (isol / lone);  
+}
+
+
+//= Assess general state of reasoning system.
+// short term number of goals (0-n) and rule surprise (0-1)
+
+void jhcAliaMood::sm_busy (double dt)
+{
+  // mental activity
+  busy -= busy * dt / btime;     
+  busy = __max(busy, atree->NumGoals());      
+
+  // check for excessive thinking
+  if (busy >= frantic)
+    melt = 1;
+  else if (busy <= engaged)
+    melt = 0;
+
+  // surprise
+  wow -= wow * dt / wtime;
+  wow = __max(wow, jump); 
+}
+
+
+//= Determine robot's control over its environment.
+// long term average of success in executing operators (0-1)
+// ideal value of ctrl = cdes which yields nominal wildness
+
+void jhcAliaMood::sm_ctrl (double dt)
+{
+  double pos, neg, sum, c, f;
+
+  // slow reversion
+  ctrl += (cdes - ctrl) * dt / otime;            
+
+  // calculate positive and negative weights
+  pos = win + fgood * good;
+  neg = lose + fbad * bad;
+  if ((sum = pos + neg) <= 0.0)
     return;
-  if (correct > 0)
-    adj_blf(rpt->MinBlf() - correct * fyes);  // lowers
-  else if (correct < 0)
-    adj_blf(rpt->MinBlf() - correct * fno);   // raises
+
+  // mix new estimate with running average
+  c = pos / sum;
+  f = sum / osamp;
+  ctrl += __min(f, 1.0) * (c - ctrl);  
 }
 
 
-//= Adjust the global belief threshold based on a number of correct and incorrect predictions.
-// returns change to threshold value 
+//= Determine robot's sureness about the analysis of its environment.
+// long term average of success of inference rules (0-1)
+// ideal value of sure = sdes which yields nominal confidence threshold
 
-void jhcAliaMood::BumpMinBlf (int hit, int miss) 
+void jhcAliaMood::sm_sure (double dt)
 {
-  if (rpt != NULL)
-    adj_blf(rpt->MinBlf() + hit * right - miss * wrong);
-}   
+  double pos, neg, sum, s, f;
 
+  // slow reversion
+  sure += (sdes - sure) * dt / rtime;            
 
-//= Set minimum belief threshold value to new value.
-// MinBlf() = "skep" hard limited to range 0.1 - 1.0
-// returns change to threshold value 
-
-void jhcAliaMood::adj_blf (double s) 
-{
-  double chg, s0 = rpt->MinBlf();
-
-  rpt->SetMinBlf(s);
-  chg = rpt->MinBlf() - s0;
-  if ((noisy >= 1) && (fabs(chg) > 0.001))       // fades to 0.5 over cycle
-    jprintf("  MOOD: belief thresh --> %4.2f (more %s)\n", rpt->MinBlf(), ((chg < 0.0) ? "confident" : "unsure"));
-}
-
-
-//= Adjust minimum operator preference level based on user praise or disapproval.
-// threshold alteration happens immediately
-
-void jhcAliaMood::UserMinPref (int good)    
-{
-  if (rpt == NULL)
+  // calculate positive and negative weights
+  pos = right + fconf * confirm;
+  neg = wrong + fref * refute;
+  if ((sum = pos + neg) <= 0.0)
     return;
-  if (good > 0)
-    adj_pref(rpt->MinPref() - good * fgood);     // lowers
-  else if (good < 0)
-    adj_pref(rpt->MinPref() - good * fbad);      // raises
-}
 
-
-//= Change operator preference threshold either up or down.
-// inc = +1: some operator failed (perhaps should not have been tried)
-// inc = -1: no applicable operators over current threshold, but something below
-// threshold alteration happens immediately
-
-void jhcAliaMood::BumpMinPref (int inc)
-{
-  if (rpt == NULL)
-    return;
-  if (inc > 0)
-    adj_pref(rpt->MinPref() + inc * dud);
-  else if (inc < 0)
-    adj_pref(rpt->MinPref() - inc * miss);
-}
-
-
-//= Set minimum preference threshold value to new value.
-
-void jhcAliaMood::adj_pref (double p) 
-{
-  double chg, p0 = rpt->MinPref();
-
-  rpt->SetMinPref(p);
-  chg = rpt->MinPref() - p0;
-  if ((noisy >= 1) && (fabs(chg) > 0.001))       // fades to 0.5 over cycle
-    jprintf("  MOOD: operator thresh --> %4.2f (more %s)\n", rpt->MinPref(), ((chg < 0.0) ? "curious" : "prudent"));
+  // mix new estimate with running average
+  s = pos / sum;
+  f = sum / rsamp;
+  sure += __min(f, 1.0) * (s - sure);  
 }
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                        Operator Invocation                            //
+//                        Reasoning Adjustment                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Determine how strictly operator preference ordering should be followed.
+// the higher the operator success rate, the more experimentation is allowed
+
+void jhcAliaMood::adj_wild () const
+{
+  double cerr = ctrl - cdes, cf = ((cerr < 0.0) ? -wlo : whi); 
+  double w, w0 = atree->RestWild();
+
+  w = w0 + cf * cerr;
+  atree->SetWild(w);
+}
+
+
+//= Determine minimum belief threshold for facts derived from rules.
+// the higher the rule correctness rate, the weaker the conclusions accepted
+
+void jhcAliaMood::adj_belief () const
+{
+  double serr = sure - sdes, sf = ((serr < 0.0) ? -blo : bhi); 
+  double b, b0 = atree->RestBlf();
+
+  b = b0 + sf * serr;
+  atree->SetMinBlf(b);
+}
+
+
+//= Determine how much activity is currently desired.
+// weighted sum of deviations from ideal values across four drives
+// separate over and under factors in case setpoint toward end of range
+
+void jhcAliaMood::adj_pref () const
+{
+  double merr = motion - 1.0, serr = social - 1.0;
+  double oerr = ctrl - cdes, rerr = sure - sdes;
+  double mf = ((merr < 0.0) ? -mlo : mhi), sf = ((serr < 0.0) ? -slo : shi);
+  double of = ((oerr < 0.0) ? -olo : ohi), rf = ((rerr < 0.0) ? -rlo : rhi);
+  double p, p0 = atree->RestPref(); 
+
+  p = p0 + mf * merr + sf * serr + of * oerr + rf * rerr;
+  atree->SetMinPref(p);
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                      User Communication Data                          //
+///////////////////////////////////////////////////////////////////////////
+
+//= Note the robot generated a linguistic output of some length.
+// adds samples for total emit time 
+
+void jhcAliaMood::Speak (int len, double hz)
+{
+  mtim += len / lps;
+}
+
+
+//= Note the user provided linguistic input of some length.
+// adds samples for total input time
+
+void jhcAliaMood::Hear (int len, double hz)
+{
+  itim += len / lps;
+}
+
+
+//= Note that a new operator has been added (by user).
+
+void jhcAliaMood::React (int cnt)
+{
+  // ignored for now
+}
+
+
+//= Note that new rules have been added by user or through consolidation.
+
+void jhcAliaMood::Infer (int cnt)
+{
+  // ignored for now
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                       Body and Environment Data                       //
+///////////////////////////////////////////////////////////////////////////
+
+//= Indicate that the base in translating (not rotating) at some rate wrt nominal.
+
+void jhcAliaMood::Travel (double rate)
+{
+  bspeed = rate;
+}
+
+
+//= Indicate that the hand is traveling (not reorienting) at some rate wrt nominal.
+
+void jhcAliaMood::Reach (double rate)
+{
+  fspeed = rate;
+}
+
+
+//= Cache battery capacity as a percentage of full.
+
+void jhcAliaMood::Battery (double pct)
+{
+  energy = pct;
+}
+
+
+//= Record the number of faces currently visible.
+
+void jhcAliaMood::Faces (int cnt)
+{
+  people = cnt;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                        Operator Monitoring                            //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Note that a new directive has been started.
 
-void jhcAliaMood::Launch ()
+void jhcAliaMood::OpLaunch ()
 {
-  busy += 1.0;
+// ignored for now
 }
 
 
 //= Note that some directive has completed successfully.
 
-void jhcAliaMood::Win ()
+void jhcAliaMood::OpWin ()
 {
   win++;
 }
@@ -560,91 +707,60 @@ void jhcAliaMood::Win ()
 
 //= Note that some directive has failed.
 
-void jhcAliaMood::Lose ()
+void jhcAliaMood::OpLose ()
 {
   lose++;
 }
 
 
+//= An operator was available but not tried due to preference threshold.
+
+void jhcAliaMood::OpBelow ()
+{
+// ignored for now
+}
+
+
+//= Record user praise or disapproval of operator-derived action.
+
+void jhcAliaMood::UserPref (int fb)    
+{
+  if (fb > 0)
+    good += fb;
+  else
+    bad -= fb;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
-//                          Internal Changes                             //
+//                          Rule Monitoring                              //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Reccord number of correct and incorrect rule predictions.
+
+void jhcAliaMood::RuleEval (int hit, int miss, double chg) 
+{
+  right += hit;
+  wrong += miss;
+  jump  = __max(chg, jump);
+}   
+
 
 //= Note that some rule strength was off by a certain amount.
 
-void jhcAliaMood::Believe (double adj)
+void jhcAliaMood::RuleAdj (double adj)
 {
-  if (adj == 0.0)
-    return;
-  surp = __max(surp, fabs(adj));
+// ignored for now
 }
 
 
-///////////////////////////////////////////////////////////////////////////
-//                         User Communication                            //
-///////////////////////////////////////////////////////////////////////////
+//= Record user agreement or refutation with a rule-derived fact.
 
-//= Note that the robot generated an output (possibly with some output length).
-
-void jhcAliaMood::Speak (int len)
+void jhcAliaMood::UserConf (int correct) 
 {
-  if (len <= 0)
-    return;
-  // ignored for now
+  if (correct > 0)
+    confirm += correct;
+  else
+    refute -= correct;
 }
 
-
-//= Note that a user is provided input to the robot (possibly with some input length).
-
-void jhcAliaMood::Hear (int len)
-{
-  if (len <= 0)
-    return;
-  input += 1.0;
-  input = __min(input, sat);
-}
-
-
-//= Note that a new rule has been added (or more than one).
-
-void jhcAliaMood::Infer (int cnt)
-{
-  if (cnt <= 0)
-    return;
-  // ignored for now
-}
-
-
-//= Note that a new operator has been added (or more than one).
-
-void jhcAliaMood::React (int cnt)
-{
-  if (cnt <= 0)
-    return;
-  // ignored for now
-}
-
-
-///////////////////////////////////////////////////////////////////////////
-//                            Body Activity                              //
-///////////////////////////////////////////////////////////////////////////
-
-//= Cache movement speed, manipulator speed, and battery charge.
-// speeds should be positive only, pct from 0 to 100, emit is 0 or 1
-// typically called from main loop in overall coordination class
-
-void jhcAliaMood::Body (double bips, double fips, int pct)
-{
-  bspeed = bips;
-  fspeed = fips;
-  power = pct;
-}
-
-
-//= Cache mouth speed based on whether robot is currently speaking.
-// assumes "out" is positive when TTS is occurring (not utterance length)
-
-void jhcAliaMood::Emit (int out)
-{
-  mspeed = ((out > 0) ? 6.0 : 0.0);
-}

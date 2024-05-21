@@ -1,9 +1,11 @@
 # ALIA
 ## Architecture for Linguistic Interaction and Augmentation
 
-The secret to AI is that there is no secret! It is all just programming, but the programming is done by other members of your culture. To this end ALIA provides an end-to-end symbolic cognitive system that is able to learn from natural language instructions via text or speech. It can acquire specific likes and dislikes, generic problem solving skills, and socially appropriate reactions, as shown in this [video](https://youtu.be/Yoq7n6lGhYo). Building an agent by incrementally uploading (as opposed to DNN batch training) allows many opportunities for debugging so that the finally product is not alien, but more like a probabitionary member of society. You can read about the basic system design [here](https://arxiv.org/abs/1911.09782), or try out a Windows text-only version yourself by downloading [this](https://github.com/jconnell11/ALIA/releases/download/v5.10/alia_txt_v510.zip).
+The secret to AI is that there is no secret! It is all just programming, but the programming is done by other members of your culture. To this end ALIA provides an end-to-end symbolic cognitive system that is able to learn from natural language instructions via text or speech. It can acquire specific likes and dislikes, generic problem solving skills, and socially appropriate reactions, as shown in this [video](https://youtu.be/Yoq7n6lGhYo). 
 
 ![Stealing stuff](red_handed.jpg)
+
+Building an agent by incrementally uploading (as opposed to DNN batch training) allows many opportunities for debugging so that the finally product is not alien, but more like a probabitionary member of society. You can read about the basic system design [here](https://arxiv.org/abs/1911.09782), or try out a Windows text-only version yourself by downloading [this](https://github.com/jconnell11/ALIA/releases/download/v5.10/alia_txt_v510.zip).
 
 ## Demos
 

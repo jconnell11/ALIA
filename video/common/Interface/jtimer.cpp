@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2019 IBM Corporation
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,30 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include <windows.h>
+#ifndef __linux__
+
+  #include <windows.h>
+  #include <direct.h>
+  #define val64(v) (v.QuadPart)
+  #define set64(v, n) (v.QuadPart = (LONGLONG)(n))
+  #define QPF(vptr) QueryPerformanceFrequency(vptr);
+  #define QPC(vptr) QueryPerformanceCounter(vptr)
+
+#else
+
+  #include <time.h>
+  #define LONGLONG unsigned long long
+  #define LARGE_INTEGER long long
+  #define val64(v) (v)
+  #define set64(v, n) (v = (LARGE_INTEGER)(n))
+  #define QPF(vptr) (*(vptr) = 1000000000)
+  #define QPC(vptr) {timespec ts;  \
+                     clock_gettime(CLOCK_BOOTTIME, &ts);  \
+                     *(vptr) = (long long)(ts.tv_sec * 1000000000 + ts.tv_nsec);}
+
+#endif
 
 #include <stdio.h>
-#include <direct.h>
 
 #include "Interface/jms_x.h"
 
@@ -65,6 +86,11 @@ static LARGE_INTEGER start[TIMERS];
 static LARGE_INTEGER total[TIMERS];
 
 
+//= Persistent global array of maximum time in each function.
+
+static int maxtime[TIMERS];
+
+
 //= Persistent global array of total calls to each function.
 
 static int count[TIMERS];
@@ -86,10 +112,11 @@ void jtimer_clr ()
   for (i = 0; i < TIMERS; i++)
   {
     name[i][0] = '\0';
-    under[i] = -2;
-    total[i].QuadPart = 0;
-    start[i].QuadPart = 0;
-    count[i] = 0;
+    under[i]   = -2;
+    count[i]   = 0;
+    maxtime[i] = 0;
+    set64(total[i], 0);
+    set64(start[i], 0);
   }
 }
 
@@ -115,7 +142,7 @@ void jtimer (int n, const char *fcn)
   }
 
   // record entrance time
-  QueryPerformanceCounter(start + n);
+  QPC(start + n);
 
   // infer parent if not yet assigned
   if (under[n] == -2)
@@ -123,9 +150,9 @@ void jtimer (int n, const char *fcn)
     win = -1;
     diff = 0;
     for (i = 0; i < TIMERS; i++)
-      if ((i != n) && (start[i].QuadPart != 0))  // look for active calls
+      if ((i != n) && (val64(start[i]) != 0))    // look for active calls
       {
-        diff = (int)(start[n].QuadPart - start[i].QuadPart);
+        diff = (int)(val64(start[n]) - val64(start[i]));
         if ((win < 0) || (diff <= best))
         {
           win = i;
@@ -144,29 +171,33 @@ void jtimer (int n, const char *fcn)
 void jtimer_x (int n)
 {
   LARGE_INTEGER now;
-  int i;
+  int i, len;
 
   // possibly close all timers still open
   if (n < 0)
   {
-    QueryPerformanceCounter(&now);
+    QPC(&now);
     for (i = 0; i < TIMERS; i++)
-      if (start[i].QuadPart != 0)
+      if (val64(start[i]) != 0)
       {
         // increment final statistics
-        total[i].QuadPart += (now.QuadPart - start[i].QuadPart);
-        start[i].QuadPart = 0;
+        len = (int)(val64(now) - val64(start[i]));
+        maxtime[i] = __max(maxtime[i], len);
+        set64(total[i], val64(total[i]) + val64(now) - val64(start[i]));
+        set64(start[i], 0);
         count[i] += 1;
       }
     return;
   }
 
   // check for valid id and suitable entrance
-  if ((n < TIMERS) && (start[n].QuadPart != 0))
+  if ((n < TIMERS) && (val64(start[n]) != 0))
   {
-    QueryPerformanceCounter(&now);
-    total[n].QuadPart += (now.QuadPart - start[n].QuadPart);
-    start[n].QuadPart = 0;
+    QPC(&now);
+    len = (int)(val64(now) - val64(start[n]));
+    maxtime[n] = __max(maxtime[n], len);
+    set64(total[n], val64(total[n]) + val64(now) - val64(start[n]));
+    set64(start[n], 0);
     count[n] += 1;
   }
 }
@@ -210,23 +241,23 @@ int jtimer_rpt (int tree, const char *fname, int full)
   fprintf(out, "    total ms    pct max    calls     avg ms");
   for (i = 0; i < deep; i++)
     fprintf(out, "  ");
-  fprintf(out, "  timer name\n");
+  fprintf(out, "   max ms  timer name\n");
   fprintf(out, " -------------  -------  ---------  -------");
   for (i = 0; i < deep; i++)
     fprintf(out, "--");
-  fprintf(out, "  ------------------------\n");
+  fprintf(out, "  -------  ------------------------\n");
 
   // find max time in any function and measure timer frequency
-  big.QuadPart = 0;
+  set64(big, 0);
   for (i = 0; i < TIMERS; i++)
-    if (total[i].QuadPart > big.QuadPart)
-      big.QuadPart = total[i].QuadPart;
+    if (val64(total[i]) > val64(big))
+      set64(big, val64(total[i]));
   f = jtimer_freq();
 
   // generate report lines then cleanup
   for (i = 0; i < TIMERS; i++)
     done[i] = 0;
-  jtimer_lines(out, big.QuadPart, f, -1, 0, deep);
+  jtimer_lines(out, val64(big), f, -1, 0, deep);
   fclose(out);
   return 1; 
 }
@@ -244,10 +275,10 @@ static FILE *jtimer_file (const char *fname, int full)
   else
   {
     // possibly create directory
-    if (_chdir("timing") == 0)
-      _chdir("..");
-    else
+    if (_chdir("timing") != 0)
       _mkdir("timing");
+    else if (_chdir("..") != 0)        // should never fail
+      return NULL;
 
     // make up name based on time
     sprintf_s(fn, "timing/%s_%s.txt", ((fname != NULL) ? fname : "timing"), jms_date(tmp));
@@ -267,14 +298,14 @@ static double jtimer_freq ()
   int i, ms = 100;
 
   // validate rough timer frequency
-  QueryPerformanceCounter(&t0);
-  Sleep(ms);
-  QueryPerformanceCounter(&t1);
-  fmax = (1000.0 * (t1.QuadPart - t0.QuadPart)) / ms;
+  QPC(&t0);
+  jms_sleep(ms);
+  QPC(&t1);
+  fmax = (1000.0 * (double)(val64(t1) - val64(t0))) / ms;
 
   // get a reasonable value for actual frequency 
-  QueryPerformanceFrequency(&freq);
-  f = (double)(freq.QuadPart);
+  QPF(&freq);
+  f = (double) val64(freq);
   if (f > fmax)
   {
     i = ROUND(f / fmax);
@@ -320,18 +351,18 @@ static void jtimer_lines (FILE *out, LONGLONG all, double f, int focus, int lvl,
   while (1)
   {
     // find next biggest time hog under current focus (if any)
-    best.QuadPart = 0;
+    set64(best, 0);
     for (i = 0; i < TIMERS; i++)
       if (done[i] <= 0)
         if (under[i] == focus)
-          if (total[i].QuadPart > best.QuadPart)
+          if (val64(total[i]) > val64(best))
           {
-            best.QuadPart = total[i].QuadPart;
+            set64(best, val64(total[i]));
             win = i;
           }
 
     // see if all functions have been reported
-    if (best.QuadPart <= 0)
+    if (val64(best) <= 0)
       return;
     done[win] = 1;
 
@@ -339,15 +370,15 @@ static void jtimer_lines (FILE *out, LONGLONG all, double f, int focus, int lvl,
     if (out != NULL)
     {
       fprintf(out, " %13.2f  %6.2f   %9d  ", 
-              (1000.0 * total[win].QuadPart) / f, 
-              (100.0  * total[win].QuadPart) / all,
+              (1000.0 * (double) val64(total[win])) / f, 
+              (100.0  * (double) val64(total[win])) / (double) all,
               count[win]);
       for (i = 0; i < lvl; i++)              // indent
         fprintf(out, "  ");
-      fprintf(out, "%7.2f", (1000.0 * total[win].QuadPart) / (count[win] * f));
+      fprintf(out, "%7.2f", (1000.0 * (double) val64(total[win])) / (count[win] * f));
       for (i = depth - lvl; i > 0; i--)      // tab
         fprintf(out, "  ");
-      fprintf(out, "  %s\n", name[win]);
+      fprintf(out, "  %7.2f  %s\n", (1000.0 * maxtime[win]) / f, name[win]);
     }
 
     // list any subfunctions directly below this one
@@ -356,6 +387,27 @@ static void jtimer_lines (FILE *out, LONGLONG all, double f, int focus, int lvl,
 }
 
 
- 
+///////////////////////////////////////////////////////////////////////////
+
+//= Utility that gives current timestamp for use with jtimer_secs.
+// granularity is sub-microsecond referenced to some random start 
+
+UL64 jtimer_now ()
+{
+  LARGE_INTEGER t0;
+
+  QPC(&t0);
+  return val64(t0);
+}
 
 
+//= Utility computes difference in seconds from random timestamp t0 to now.
+
+double jtimer_secs (UL64 t0)
+{
+  LARGE_INTEGER freq, t1;
+
+  QPC(&t1);
+  QPF(&freq);
+  return((double)(val64(t1) - t0) / (double) val64(freq));
+}

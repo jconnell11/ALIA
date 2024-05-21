@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2013-2015 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,69 +21,37 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include <intrin.h>                // for cpuid
-#include <time.h>                  // for random seed
 #include <string.h>
-#include <intrin.h>
 #include <math.h>
+#include <time.h>
 
 #include "Interface/jrand.h"
 
 
-///////////////////////////////////////////////////////////////////////////
-//                        Persistent Global State                        //
-///////////////////////////////////////////////////////////////////////////
+#ifdef __linux__             // use entropy source
 
-//= Cached result of whether hardware random number generator exists.
+#include <sys/random.h>  
 
-static int hw = -1;
+bool rdrand (UL32 *val) {return(getrandom(val, 4, 0) == 4);}
 
+int chk_trng () {return 1;}
 
-///////////////////////////////////////////////////////////////////////////
-//                         Low Level Processor Code                      //
-///////////////////////////////////////////////////////////////////////////
-
-// Map rdrand function to either 32 bit inline or 64 bit assembly
-
-#ifdef _WIN64
+#elif defined(_M_X64)        // use thermal noise
 
 // Note: Project / Properties / Configuration / Link / Input
 //   Additional Dependencies must have ..\..\video\common\Interface\rdrand64.obj
 
+#include <intrin.h>         // for cpuid
+
+
+// persistent flag about whether random hardware exists
+static int hw = -1;                    
+
+
+// Map rdrand function to either 32 bit inline or 64 bit assembly
 extern "C" bool __fastcall rdrandx64 (__deref_out UL32 *val);
 
 #define rdrand(param) rdrandx64((param))
-
-#else
-
-// ------------------------------------------------------------------------
-
-//= Define opcode for new Intel RDRAND instruction.
-
-#define rdrand_eax __asm _emit 0x0F __asm _emit 0xC7 __asm _emit 0xF0
-
-
-//= Uses RDRAND instruction to get 32 bits of entropy.
-// assembly code modified from example by Stephen Higgins
-// returns TRUE if ok, FALSE for problem
-
-static bool rdrand (__deref_out UL32 *val) 
-{
-  UC8 err;
-
-  __asm
-  {
-    xor eax, eax       // mark EAX and EDX as being used
-    xor edx, edx
-    rdrand_eax         // get random number in EAX
-    setc err           // save error flag to "err"
-    mov edx, val       // save value to "val"
-    mov [edx], eax
-  }
-  return((err == 0) ? true : false);
-}
-
-#endif
 
 
 //= See if TRNG hardware is present (takes around 0.15 ms).
@@ -107,6 +76,14 @@ static int chk_trng ()
   }
   return hw;
 }
+
+#else                        // revert to pseudo-random numbers
+
+bool rdrand (UL32 *val) {return false;}
+
+int chk_trng () {return 0;}
+
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -140,14 +117,14 @@ double jrand ()
   // use special hardware if present (or fall through)
   if (chk_trng() > 0)
     for (i = 0; i < 10; i++)    // sometimes slow to generate
-		  if (rdrand(&r0))
+      if (rdrand(&r0))
       {
         // mask top 2 bits for compatibility with PRNG
         r0 &= 0x3FFFFFFF;
-        v = r0 / (double) 0x40000000;
+        v = ((double) r0) / 0x40000000;
         if (v < 1.0)
           return v;
-		  }
+       }
 
   // normal pseudo-random function
   while (v >= 1.0)
@@ -157,12 +134,11 @@ double jrand ()
     r2 = rand();
 
     // combine into one floating point value
-    v = r + (r2 / (double)(RAND_MAX + 1));
-    v /= (RAND_MAX + 1);
+    v = r + (r2 / ((double) RAND_MAX + 1.0));
+    v /= (double) RAND_MAX + 1.0;
   }
   return v;
 }
-
 
 ///////////////////////////////////////////////////////////////////////////
 //                            Special Versions                           //

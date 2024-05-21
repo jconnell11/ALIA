@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGRAPHIZER_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGRAPHIZER_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -38,29 +35,31 @@
 
 //= Turns parser alist into network structures.
 // set "dbg" in base class to 1 to see call sequence on input
-// verb links:
-//   "obj"   object affected
-//   "dest"  location for action 
-//   "cmd"   embedded action as object
-//   "agt"   agent performing action
-// property links:
-//   "name"  proper name for object (e.g. "Dan")
-//   "ako"   general noun class
-//     "of"  for noun-noun modification ("baseball bat")
-//     "wrt" for vague ownership (e.g. "my hand" = ako hand wrt me)
-//   "hq"    general adjective class
-//     "alt" for comparative adjectives ("than")
-//   "loc"   current spatial location
-//     "ref" anchor location for relation ("on the table")
-//   "src"   starting point for object or action
-//   "cnt"   how many of an object there are
-//   "with"  generally tool used in action
-//   "has"   descriptive part (e.g. "with a red top")
-// modifier links:
-//   "deg"  for properties (e.g "very")
-//   "mod"  general adverb ("quickly")
-//   "amt"  for command verbs (e.g. "far")
-//   "dir"  for command verbs (e.g. "down")
+// verb argument links:
+//   "obj"    object affected
+//   "act"    embedded action as object
+//   "agt"    agent performing action
+// verb property links:
+//   "fcn"    verb or class associated with action
+//   "mod"    general adverb ("quickly")
+//   "dir"    direction of action (e.g. "down")
+//   "amt"    size of action (e.g. "far")
+//   "src"    starting point for object or action (with "ref")
+//   "dest"   location for action (with "ref")
+// noun property links:
+//   "name"   proper name for object (e.g. "Dan")
+//   "ako"    general noun class
+//     "of"   for noun-noun modification ("baseball bat")
+//     "wrt"  for vague ownership (e.g. "my hand" = ako hand wrt me)
+//   "hq"     general adjective class
+//     "alt"  for comparative adjectives ("than")
+//   "loc"    current spatial location
+//     "ref"  anchor item for relation ("on the table")
+//     "ref2" second anchor item ("between the salt and the pepper")
+//   "cnt"    how many of an object there are
+//   "has"    descriptive part (e.g. "with a red top")
+// special property links:
+//   "deg"    intensifier for adjective or adverb (e.g "very")
 
 class jhcGraphizer : protected jhcSlotVal
 {
@@ -204,10 +203,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

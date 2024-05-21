@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include <string.h>
 
 #include "Interface/jms_x.h"
+#include "Interface/jprintf.h"         
 #include "Video/vid_ocv3.h"
 
 #include "Video/jhcOcv3VSrc.h"

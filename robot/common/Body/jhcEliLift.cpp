@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,8 +23,9 @@
 
 #include <math.h>
 
-#include "Interface/jhcMessage.h"
+#include "Interface/jhcMessage.h"      // common video
 #include "Interface/jms_x.h"
+#include "Interface/jprintf.h"         
 
 #include "Body/jhcEliLift.h"
 
@@ -451,12 +452,11 @@ int jhcEliLift::LiftTarget (double height, double rate, int bid)
 
 
 //= Gives error (in inches) between current height and goal.
-// can optionally give absolute value and constrain goal to valid range
+// can optionally give absolute value, constrains goal to valid range
 
-double jhcEliLift::LiftErr (double high, int abs, int lim) const 
+double jhcEliLift::LiftErr (double high, int abs) const 
 {
-  double goal = __max(bot, __min(high, top));
-  double err = ((lim > 0) ? (ht - goal) : (ht - high));
+  double goal = __max(bot, __min(high, top)), err = ht - goal;
 
   return((abs > 0) ? fabs(err) : err);
 }

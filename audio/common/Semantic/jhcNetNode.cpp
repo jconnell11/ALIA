@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@
 
 #include <string.h>
 #include <ctype.h>
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Language/jhcMorphTags.h"
 #include "Semantic/jhcBindings.h"      // since only spec'd as class in header

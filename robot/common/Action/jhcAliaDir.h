@@ -141,7 +141,7 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_GATE, JDIR_PUNT, JDIR_GND,
 // 
 // </pre>
 
-class jhcAliaDir : private jhcSituation
+class jhcAliaDir final : private jhcSituation    // "final" should not be required
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -155,7 +155,7 @@ private:
   static const char * const ktag[JDIR_MAX];
 
   // calling environment and scoping
-//  jhcAliaChain *step;
+  jhcAliaChain *step;
   jhcNetNode *fact[smax], *val0[smax];
   int anum[smax];
   int nsub, inum0;
@@ -210,9 +210,6 @@ public:
   int noisy;                    
 
 
-jhcAliaChain *step;
-
-
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and initialization
@@ -261,8 +258,9 @@ public:
   int HaltActive (const jhcGraphlet& desc, const jhcAliaDir *skip =NULL, int halt =1);
   void FindCall (const jhcAliaDir **act, const jhcAliaDir **src, jhcBindings *d2a, 
                  const jhcGraphlet& desc, UL32& start, int done =1, const jhcAliaDir *prev =NULL, int cyc =1);
-  class jhcAliaOp *LastOp () const     {return((sel < 0) ? NULL : op[sel]);}
-  const jhcBindings *LastVars () const {return((sel < 0) ? NULL : &(match[sel]));}
+  class jhcAliaOp *LastOp () const      {return((sel < 0) ? NULL : op[sel]);}
+  const jhcBindings *LastVars () const  {return((sel < 0) ? NULL : &(match[sel]));}
+  const jhcBindings *StepScope () const {return step->Scope();}
 
   // file functions
   int Load (jhcNodePool& pool, jhcTxtLine& in); 

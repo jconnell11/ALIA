@@ -5,7 +5,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Parse/jhcGramStep.h"
 
@@ -625,7 +627,7 @@ const char *jhcVocab::NextGuess (const char *txt)
 {
   const char *s = txt;
   char *d = mark;
-  int i, n, emit = 0;
+  int i, emit = 0;
 
   // keep processing words in input string
   if (s == NULL)
@@ -647,7 +649,14 @@ const char *jhcVocab::NextGuess (const char *txt)
       strcat_s(mark, "(");
       strcat_s(mark, item[2]);
       strcat_s(mark, ")");
-
+  
+      // save the first unknown word
+      if (worst <= 0)     
+      {
+        strcpy_s(oov, item[2]);
+        worst = (int) strlen(item[2]);
+      }
+/*
       // save longest unknown word
       n = (int) strlen(item[2]);
       if (n > worst)
@@ -655,6 +664,7 @@ const char *jhcVocab::NextGuess (const char *txt)
         strcpy_s(oov, item[2]);
         worst = n;
       }
+*/
     }
 
     // shift pattern window one element to left
@@ -1008,7 +1018,7 @@ int jhcVocab::ListAll () const
   int i, j, n, cnt = 0;
 
   // try opening file
-  if (fopen_s(&out, "words.txt", "w") != 0)
+  if (fopen_s(&out, "dump/words.txt", "w") != 0)
     return -1;
 
   // go through all length buckets
@@ -1042,7 +1052,7 @@ int jhcVocab::WeedGram (const jhcGramRule *gram, int nt) const
   int i, n = 0, cnt = 0;
 
   // trying opening file then allocate arrays
-  if (fopen_s(&out, "orphans.txt", "w") != 0)
+  if (fopen_s(&out, "dump/orphans.txt", "w") != 0)
     return -1;
   any = new int [nt];
   nterm = new char * [nt];

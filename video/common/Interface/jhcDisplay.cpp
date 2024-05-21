@@ -353,6 +353,7 @@ void jhcDisplay::StatusText (const char *msg, ...)
 
   va_start(args, msg); 
   vsprintf_s(val.ch, msg, args);
+  va_end(args);
   val.C2W();
   if (win == NULL)
     return;
@@ -626,6 +627,7 @@ int jhcDisplay::Show (const jhcImg& src, int x, int y, int mode, const char *tit
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
     label(x, y, __max(cw, s->XDim()), msg);
   }
 
@@ -653,6 +655,7 @@ int jhcDisplay::ShowGrid (const jhcImg& src, int i, int j,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return Show(src, GridX(i, src.XDim()), GridY(j, src.YDim()), mode, msg);
 }
@@ -670,6 +673,7 @@ int jhcDisplay::ShowGrid (const jhcImg *src, int i, int j,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return Show(*src, GridX(i, src->XDim()), GridY(j, src->YDim()), mode, msg);
 }
@@ -689,6 +693,7 @@ int jhcDisplay::ShowNext (const jhcImg& src, int mode, const char *title, ...)
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   n++;
   return Show(src, GridX(i, src.XDim()), GridY(j, src.YDim()), mode, msg);
@@ -707,6 +712,7 @@ int jhcDisplay::ShowAdj (const jhcImg& src, int mode, const char *title, ...)
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return Show(src, x, y, mode, msg);
 }
@@ -724,6 +730,7 @@ int jhcDisplay::ShowBelow (const jhcImg& src, int mode, const char *title, ...)
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return Show(src, x, y, mode, msg);
 }
@@ -748,6 +755,7 @@ int jhcDisplay::Graph0 (int x, int y, const char *title, ...)
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
     label(x, y, __max(cw, gwid), msg);
   }
 
@@ -823,6 +831,7 @@ int jhcDisplay::Graph (const jhcArr& h, int x, int y, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
     label(x, y, __max(cw, gwid), msg);
   }
 
@@ -904,6 +913,7 @@ int jhcDisplay::GraphV (const jhcArr& h, int x, int y, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
     label(x, y, __max(cw, gwid), msg);
   }
 
@@ -936,6 +946,7 @@ int jhcDisplay::GraphGrid (const jhcArr& h, int i, int j, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return Graph(h, GridX(i, gwid), GridY(j, ght), maxval, col, msg);
 }
@@ -953,6 +964,7 @@ int jhcDisplay::GraphGrid (const jhcArr *h, int i, int j, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return Graph(*h, GridX(i, gwid), GridY(j, ght), maxval, col, msg);
 }
@@ -972,6 +984,7 @@ int jhcDisplay::GraphGridV (const jhcArr& h, int i, int j, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return GraphV(h, GridX(i, gwid), GridY(j, ght), maxval, col, msg);
 }
@@ -989,6 +1002,7 @@ int jhcDisplay::GraphGridV (const jhcArr *h, int i, int j, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return GraphV(*h, GridX(i, gwid), GridY(j, ght), maxval, col, msg);
 }
@@ -1009,6 +1023,7 @@ int jhcDisplay::GraphNext (const jhcArr& h, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   n++;
   return Graph(h, GridX(i, gwid), GridY(j, ght), maxval, col, msg);
@@ -1027,6 +1042,7 @@ int jhcDisplay::GraphNext (const jhcArr *h, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return GraphNext(*h, maxval, col, msg);
 }
@@ -1045,6 +1061,7 @@ int jhcDisplay::GraphAdj (const jhcArr& h, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return Graph(h, x, y, maxval, col, msg);
 }
@@ -1063,6 +1080,7 @@ int jhcDisplay::GraphAdjV (const jhcArr& h, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return GraphV(h, x, y, maxval, col, msg);
 }
@@ -1081,6 +1099,7 @@ int jhcDisplay::GraphBelow (const jhcArr& h, int maxval,
   {
     va_start(args, title); 
     vsprintf_s(msg, title, args);
+    va_end(args);
   }
   return Graph(h, x, y, maxval, col, msg);
 }
@@ -1251,6 +1270,7 @@ int jhcDisplay::String (int x, int y, const char *msg, ...)
     return -1;
   va_start(args, msg); 
   vsprintf_s(val.ch, msg, args);
+  va_end(args);
   cdc->SetBkMode(TRANSPARENT);
   cdc->TextOut(x, y, val.Txt(), val.Len());
   win->ReleaseDC(cdc);
@@ -1268,6 +1288,7 @@ int jhcDisplay::StringGrid (int i, int j, const char *msg, ...)
 
   va_start(args, msg); 
   vsprintf_s(val, msg, args);
+  va_end(args);
   imgx = GridX(i);
   imgy = GridY(j);
   imgh = 0;
@@ -1284,6 +1305,7 @@ int jhcDisplay::StringBelow (const char *msg, ...)
 
   va_start(args, msg); 
   vsprintf_s(val, msg, args);
+  va_end(args);
   if (imgh > 0)
     imgy += (imgh + 20);
   imgy += 20;
@@ -1304,6 +1326,7 @@ int jhcDisplay::StringNext (const char *msg, ...)
   n++;
   va_start(args, msg); 
   vsprintf_s(val, msg, args);
+  va_end(args);
   return label(GridX(i), GridY(j), cw, val);
 }
 
@@ -1320,6 +1343,7 @@ int jhcDisplay::StringAdj (const char *msg, ...)
   // put arguments into string
   va_start(args, msg); 
   vsprintf_s(val, msg, args);
+  va_end(args);
 
   // set up for next output using approximate size of most strings
   imgx = x;
@@ -1341,6 +1365,7 @@ int jhcDisplay::StringOff (int dx, int dy, const char *msg, ...)
 
   va_start(args, msg); 
   vsprintf_s(val, msg, args);
+  va_end(args);
   return label(x, y, cw, val);
 }
 

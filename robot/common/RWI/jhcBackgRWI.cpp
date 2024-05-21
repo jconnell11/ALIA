@@ -25,6 +25,7 @@
 #include <process.h>
 
 #include "Interface/jms_x.h"           // common video
+#include "Interface/jprintf.h" 
 
 #include "RWI/jhcBackgRWI.h"
 
@@ -290,7 +291,7 @@ int jhcBackgRWI::aux2_loop ()
 // NOTE: new sensor data accessible in this interval (no need for Readable/ReadDone)
 // NOTE: used in grounding fcns for volunteered events and physical position updates
 
-bool jhcBackgRWI::Accepting ()
+bool jhcBackgRWI::Accepting () const
 {
   return(WaitForSingleObject((HANDLE) xchg_ask, 0) != WAIT_OBJECT_0);
 }
@@ -301,7 +302,7 @@ bool jhcBackgRWI::Accepting ()
 // NOTE: used in grounding fcns for analyzing existing data (use Accepting for new data)
 // NOTE: make sure to call ReadDone at end to allow data acquisition to continue
 
-bool jhcBackgRWI::Readable ()
+bool jhcBackgRWI::Readable () const
 {
   return(WaitForSingleObject((HANDLE) rd_lock, 0) == WAIT_OBJECT_0);
 }

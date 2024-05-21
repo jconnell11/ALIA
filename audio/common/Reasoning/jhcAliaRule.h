@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIARULE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIARULE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -46,7 +43,7 @@
 // 
 // alteration mostly performed in jhcActionTree::CompareHalo
 
-class jhcAliaRule : public jhcSituation
+class jhcAliaRule final : public jhcSituation
 {
 friend class jhcAssocMem;              // collection
 friend class jhcGraphizer;             // creation
@@ -106,13 +103,14 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // creation and initialization
-  ~jhcAliaRule ();
+  ~jhcAliaRule ();                     // private dtor requires "final"
   jhcAliaRule ();
 
   // main functions (incl. virtual override)
   int match_found (jhcBindings *m, int& mc); 
   int same_result (const jhcBindings *m, int mc, int t0) const;
-  bool result_uses (const jhcNetNode *key) const;
+  bool result_node (const jhcNetNode *key) const;
+  bool result_lex (const char *key) const;
   void init_result (jhcBindings& b, int tval, int ver, int zero);
 
   // halo consolidation
@@ -127,10 +125,4 @@ private:
   int load_clauses (jhcTxtLine& in);
 
 };
-
-
-#endif  // once
-
-
-
 

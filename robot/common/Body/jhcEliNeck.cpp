@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,9 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include "Interface/jhcMessage.h"
+#include "Interface/jhcMessage.h"      // common video
 #include "Interface/jms_x.h"
+#include "Interface/jprintf.h"         
 
 #include "Body/jhcEliNeck.h"
 
@@ -625,6 +626,7 @@ void jhcEliNeck::HeadLoc (jhcMatrix& pos, double lift) const
 //= Compute pan and tilt angles to center given target in camera.
 // Y points forward, X to right, Z is upwards (origin = wheel midpoint)
 // needs to be told height of bottom of lift stage separately
+// NOTE: do not cache angles because camera position changes with gaze
 
 void jhcEliNeck::AimFor (double& p, double& t, const jhcMatrix& targ, double lift) const
 {
@@ -715,24 +717,22 @@ int jhcEliNeck::GazeFix (const jhcMatrix& targ, double lift, double secs, int bi
 ///////////////////////////////////////////////////////////////////////////
 
 //= Return error (in degs) between current pan and goal angle.
-// can optionally give absolute value and constrain pan to valid range
+// can optionally give absolute value
 
-double jhcEliNeck::PanErr (double pan, int abs, int lim) const   
+double jhcEliNeck::PanErr (double pan, int abs) const   
 {
-  double p = ((lim > 0) ? jt[0].Clamp(pan) : pan);
-  double err = norm_ang(Pan() - p); 
+  double err = norm_ang(Pan() - pan); 
 
   return((abs > 0) ? fabs(err) : err);
 }
 
 
 //= Return error (in degs) between current tilt and goal angle.
-// can optionally give absolute value and constrain tilt to valid range
+// can optionally give absolute value
 
-double jhcEliNeck::TiltErr (double tilt, int abs, int lim) const 
+double jhcEliNeck::TiltErr (double tilt, int abs) const 
 {
-  double t = ((lim > 0) ? jt[1].Clamp(tilt) : tilt);
-  double err = norm_ang(Tilt() - t); 
+  double err = norm_ang(Tilt() - tilt); 
   
   return((abs > 0) ? fabs(err) : err);
 }
@@ -759,7 +759,7 @@ double jhcEliNeck::GazeErr (const jhcMatrix& targ, double lift) const
   double pan, tilt;
 
   AimFor(pan, tilt, targ, lift);
-  return GazeErr(pan, tilt);
+  return GazeErr(pan, tilt);      
 }
 
 
@@ -820,7 +820,7 @@ int jhcEliNeck::SlewNeck (double pan, double tilt, double dps)
 
 
 //= Send angular command to neck servos (blocks).
-// NOTE: jhcEliGrok::Reset calls jhcEliBody::InitPose which calls SetNeck(0.0, gaze0) 
+// NOTE: jhcEliRWI::Reset calls jhcEliBody::InitPose which calls SetNeck(0.0, gaze0) 
 
 int jhcEliNeck::SetNeck (double pan, double tilt)
 {

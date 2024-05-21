@@ -21,10 +21,8 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIANOTE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIANOTE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
+
 
 #include "API/jhcAliaDesc.h"          
 
@@ -110,10 +108,4 @@ public:
   virtual int FinishNote (jhcAliaDesc *fail =NULL) =0;
 
 };
-
-
-#endif  // once
-
-
-
 

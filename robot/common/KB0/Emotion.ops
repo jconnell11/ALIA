@@ -1,0 +1,51 @@
+// Basic interface to "Emotion" kernel
+// ================================================
+
+OP 1 - "To check if you are in some emotional state ..."
+  trig:
+   CHK[  hq-1 -hq--> agt-1
+        agt-1 -lex-  me
+        ako-1 -lex-  emotion
+              -ako-> hq-1 ]
+---------------
+   GND[ call-1 -lex-  emo_test
+               -arg-> hq-1 ]
+
+
+OP 2 - "To find out how you are feeling ..."
+  trig:
+  FIND[ mod-1 -mod-> act-1
+        fcn-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -agt-> agt-1
+        agt-1 -lex-  me ]
+---------------
+   GND[ call-1 -lex- emo_list ]
+
+
+OP 3 - "To check if someone feels somehow check to see if they have that emotion"
+  trig:
+   CHK[ fcn-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -agt-> agt-1
+        mod-1 -lex-  ***-1
+              -mod-> act-1
+        ako-1 -lex-  emotion
+              -ako-> mod-1 ]
+---------------
+   CHK[  hq-1 -lex-  ***-1
+              -hq--> agt-1 ]
+
+
+OP 4 - "To check if someone has some emotion check to see if they feel that"
+  trig:
+   CHK[  hq-1 -lex-  ***-1
+              -hq--> agt-1 
+        ako-1 -lex-  emotion
+              -ako-> hq-1 ]
+---------------
+   CHK[ act-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -agt-> agt-1
+        mod-1 -lex-  ***-1
+              -mod-> act-1 ]

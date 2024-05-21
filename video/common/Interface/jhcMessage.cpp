@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2014 IBM Corporation
+// Copyright 2023 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,16 +24,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <conio.h>
 #include <stdarg.h>
 #include <ctype.h>
+
+#include "jhc_conio.h"
 
 #include "Interface/jhcMessage.h"
 
 
 // ==========================================================================
 
-#ifndef _CONSOLE
+#if !defined(__linux__) && !defined(_CONSOLE)    // pop-up message boxes
 
 #include <windows.h>
 
@@ -55,6 +57,7 @@ int Fatal (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val.ch, msg, args);
+    va_end(args);
     val.C2W();
   }
 
@@ -77,6 +80,7 @@ int Complain (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val.ch, msg, args);
+    va_end(args);
     val.C2W();
   }
 
@@ -98,6 +102,7 @@ int Tell (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val.ch, msg, args);
+    va_end(args);
     val.C2W();
   }
 
@@ -121,6 +126,7 @@ int Ask (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val.ch, msg, args);
+    va_end(args);
     val.C2W();
   }
 
@@ -146,6 +152,7 @@ int AskNot (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val.ch, msg, args);
+    va_end(args);
     val.C2W();
   }
 
@@ -171,6 +178,7 @@ int AskStop (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val.ch, msg, args);
+    va_end(args);
     val.C2W();
   }
 
@@ -197,6 +205,7 @@ int Pause (const char *msg, ...)
   {
     va_start(args, msg);
     vsprintf_s(val.ch, msg, args);
+    va_end(args);
     val.C2W();
   }
 
@@ -219,7 +228,7 @@ int Ignore (const char *msg, ...)
 
 // ==========================================================================
 
-#else   // _CONSOLE
+#else   // _CONSOLE (or Linux)
 
 #include "Interface/jprintf.h"
 
@@ -240,6 +249,7 @@ int Fatal (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val, msg, args);
+    va_end(args);
     jprint("*** ");
     jprint(val);
     jprint(" ! ***\n"); 
@@ -274,6 +284,7 @@ int Complain (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val, msg, args);
+    va_end(args);
     jprint(">>> ");
     jprint(val);
     jprint(" !\n");
@@ -301,6 +312,7 @@ int Tell (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val, msg, args);
+    va_end(args);
     jprint(val);
     jprint("\n");
   }
@@ -327,6 +339,7 @@ int Ask (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val, msg, args);
+    va_end(args);
     jprint(val);
   }
 
@@ -360,6 +373,7 @@ int AskNot (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val, msg, args);
+    va_end(args);
     jprint(val);
   }
 
@@ -394,6 +408,7 @@ int AskStop (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val, msg, args);
+    va_end(args);
     jprint(val);
   }
 
@@ -403,7 +418,7 @@ int AskStop (const char *msg, ...)
   jprint("  (y, n, or q): ");
 
   // interpret specific replies
-  c = tolower(_getch());
+  c = (char) tolower(_getch());
   if (c == 'n')
   {
     jprint("n\n");
@@ -433,6 +448,7 @@ int Pause (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(val, msg, args);
+    va_end(args);
     jprint(val);
     jprint("\n");
   }

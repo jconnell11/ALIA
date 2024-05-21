@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSOCIAL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSOCIAL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -34,7 +31,7 @@
 #include "Data/jhcParam.h"             // common video
 
 #include "Geometry/jhcMatrix.h"        // common robot
-#include "RWI/jhcEliGrok.h"           
+#include "RWI/jhcEliRWI.h"           
 
 #include "Kernel/jhcStdKern.h"         
 
@@ -55,8 +52,8 @@ private:
   jhcMatrix *cpos;     
 
   // link to hardware
-  jhcEliGrok *rwi;
-  jhcEliNeck *neck;
+  jhcEliRWI *rwi;
+  jhcGenNeck *neck;
 
   // reported events
   jhcAliaNote *rpt;
@@ -69,7 +66,7 @@ private:
 // PRIVATE MEMBER PARAMETERS
 private:
   // attention parameters
-  double pnear, alone, scare, ltol, lquit;
+  double pnear, alone, scare, ptol, ttol, btol, lquit, bquit;
 
   // sound localization parameters
   double pdist, rtime, sdev, aimed, gtime, side, btime;
@@ -81,8 +78,9 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int dbg;                   // control of diagnostic messages
   jhcParam aps, sps, mps;
+  int gok;                   // whether succeeds without body
+  int dbg;                   // control of diagnostic messages
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -111,8 +109,8 @@ private:
   int local_status (const jhcAliaDesc& desc, int i);
 
   // reported events
+  void bind_user (int sp);
   void vip_seen ();
-  void head_talk ();
   void dude_seen ();
   void dude_close ();
   void lost_dudes ();
@@ -122,7 +120,9 @@ private:
   JCMD_DEF(soc_talk);
 
   // orienting toward people
+  JCMD_DEF(soc_orient);
   JCMD_DEF(soc_look);
+  JCMD_DEF(soc_align);
 
   // moving toward people
   JCMD_DEF(soc_approach);
@@ -144,10 +144,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

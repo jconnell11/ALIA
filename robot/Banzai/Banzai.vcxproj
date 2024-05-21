@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -37,32 +37,32 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>Static</UseOfMfc>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -306,6 +306,14 @@
     <ClCompile Include="BanzaiDoc.cpp" />
     <ClCompile Include="BanzaiFrm.cpp" />
     <ClCompile Include="BanzaiView.cpp" />
+    <ClCompile Include="..\common\Body\jhcEliArm.cpp" />
+    <ClCompile Include="..\common\Body\jhcEliBase.cpp" />
+    <ClCompile Include="..\common\Body\jhcEliBody.cpp" />
+    <ClCompile Include="..\common\Body\jhcEliLift.cpp" />
+    <ClCompile Include="..\common\Body\jhcEliNeck.cpp" />
+    <ClCompile Include="..\common\Kernel\jhcEmotion.cpp" />
+    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSAPI.cpp" />
+    <ClCompile Include="..\common\RWI\jhcEliRWI.cpp" />
     <ClCompile Include="..\common\Action\jhcAliaChart.cpp" />
     <ClCompile Include="..\common\Kernel\jhcAliaTimer.cpp" />
     <ClCompile Include="..\common\Kernel\jhcAliaKudos.cpp" />
@@ -315,7 +323,6 @@
     <ClCompile Include="..\common\Kernel\jhcTalkFcn.cpp" />
     <ClCompile Include="..\common\RWI\jhcBackgRWI.cpp" />
     <ClCompile Include="..\common\RWI\jhcEliCoord.cpp" />
-    <ClCompile Include="..\common\RWI\jhcEliGrok.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp" />
     <ClCompile Include="..\common\Grounding\jhcSupport.cpp" />
@@ -358,7 +365,6 @@
     <ClCompile Include="..\common\People\jhcTrack3D.cpp" />
     <ClCompile Include="..\common\Grounding\jhcBallistic.cpp" />
     <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp" />
-    <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp" />
     <ClCompile Include="..\..\audio\common\Acoustic\jhcChatBox.cpp" />
     <ClCompile Include="..\..\audio\common\Acoustic\jhcChatHist.cpp" />
     <ClCompile Include="..\..\audio\common\Language\jhcDegrapher.cpp" />
@@ -433,11 +439,6 @@
     <ClCompile Include="..\..\audio\common\Acoustic\jhcSpRecoMS.cpp" />
     <ClCompile Include="..\..\audio\common\Acoustic\jhcSpTextMS.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcTxtSrc.cpp" />
-    <ClCompile Include="..\common\Body\jhcEliArm.cpp" />
-    <ClCompile Include="..\common\Body\jhcEliBase.cpp" />
-    <ClCompile Include="..\common\Body\jhcEliBody.cpp" />
-    <ClCompile Include="..\common\Body\jhcEliLift.cpp" />
-    <ClCompile Include="..\common\Body\jhcEliNeck.cpp" />
     <ClCompile Include="..\common\Peripheral\jhcAccelXY.cpp" />
     <ClCompile Include="..\common\Peripheral\jhcDirMic.cpp" />
     <ClCompile Include="..\common\Peripheral\jhcDynamixel.cpp" />
@@ -455,13 +456,14 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSAPI.h" />
     <ClInclude Include="..\..\audio\common\API\jhcAliaDesc.h" />
     <ClInclude Include="..\..\audio\common\API\jhcAliaKernel.h" />
     <ClInclude Include="..\..\audio\common\API\jhcAliaNote.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcVocab.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h" />
+    <ClInclude Include="..\..\video\common\jhc_conio.h" />
     <ClInclude Include="..\..\video\common\stdafx.h" />
-    <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSpeech.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcChatBox.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcChatHist.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcGenIO.h" />
@@ -516,6 +518,15 @@
     <ClInclude Include="..\common\Action\jhcAliaPlay.h" />
     <ClInclude Include="..\common\Action\jhcAliaStats.h" />
     <ClInclude Include="..\common\Action\jhcEchoFcn.h" />
+    <ClInclude Include="..\common\Body\jhcEliArm.h" />
+    <ClInclude Include="..\common\Body\jhcEliBase.h" />
+    <ClInclude Include="..\common\Body\jhcEliBody.h" />
+    <ClInclude Include="..\common\Body\jhcEliLift.h" />
+    <ClInclude Include="..\common\Body\jhcEliNeck.h" />
+    <ClInclude Include="..\common\Body\jhcGenArm.h" />
+    <ClInclude Include="..\common\Body\jhcGenBase.h" />
+    <ClInclude Include="..\common\Body\jhcGenLift.h" />
+    <ClInclude Include="..\common\Body\jhcGenNeck.h" />
     <ClInclude Include="..\common\Depth\jhcOverhead3D.h" />
     <ClInclude Include="..\common\Depth\jhcSurface3D.h" />
     <ClInclude Include="..\common\Environ\jhcLocalOcc.h" />
@@ -530,6 +541,7 @@
     <ClInclude Include="..\common\Grounding\jhcSupport.h" />
     <ClInclude Include="..\common\Kernel\jhcAliaKudos.h" />
     <ClInclude Include="..\common\Kernel\jhcAliaTimer.h" />
+    <ClInclude Include="..\common\Kernel\jhcEmotion.h" />
     <ClInclude Include="..\common\Kernel\jhcIntrospect.h" />
     <ClInclude Include="..\common\Kernel\jhcMemStore.h" />
     <ClInclude Include="..\common\Kernel\jhcStdKern.h" />
@@ -546,7 +558,8 @@
     <ClInclude Include="..\common\People\jhcTrack3D.h" />
     <ClInclude Include="..\common\RWI\jhcBackgRWI.h" />
     <ClInclude Include="..\common\RWI\jhcEliCoord.h" />
-    <ClInclude Include="..\common\RWI\jhcEliGrok.h" />
+    <ClInclude Include="..\common\RWI\jhcEliRWI.h" />
+    <ClInclude Include="..\common\RWI\jhcGenRWI.h" />
     <ClInclude Include="BanzaiDoc.h" />
     <ClInclude Include="Banzai.h" />
     <ClInclude Include="BanzaiFrm.h" />
@@ -603,11 +616,6 @@
     <ClInclude Include="..\..\audio\common\Acoustic\jhcSpRecoMS.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcSpTextMS.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcTxtSrc.h" />
-    <ClInclude Include="..\common\Body\jhcEliArm.h" />
-    <ClInclude Include="..\common\Body\jhcEliBase.h" />
-    <ClInclude Include="..\common\Body\jhcEliBody.h" />
-    <ClInclude Include="..\common\Body\jhcEliLift.h" />
-    <ClInclude Include="..\common\Body\jhcEliNeck.h" />
     <ClInclude Include="..\common\Peripheral\jhcAccelXY.h" />
     <ClInclude Include="..\common\Peripheral\jhcDirMic.h" />
     <ClInclude Include="..\common\Peripheral\jhcDynamixel.h" />
@@ -617,23 +625,13 @@
     <ClInclude Include="..\common\Geometry\jhcMotRamp.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
     <None Include="res\Banzai.ico" />
     <None Include="res\Banzai.rc2" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets" Condition="Exists('packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets')" />
-  </ImportGroup>
   <ProjectExtensions>
     <VisualStudio>
       <UserProperties RESOURCE_FILE="Banzai.rc" />
     </VisualStudio>
   </ProjectExtensions>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.CognitiveServices.Speech.1.15.0\build\native\Microsoft.CognitiveServices.Speech.targets'))" />
-  </Target>
 </Project>

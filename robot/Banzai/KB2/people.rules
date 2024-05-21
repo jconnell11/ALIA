@@ -22,11 +22,5 @@ RULE 2 - "If someone is visible then they are here"
               -loc-> dude-1
 
 
-RULE 3 - "If something has a name it is probably a person"
-    if: tag-1 -name-> obj-1
-  conf: 0.8
-  then: ako-1 -lex-   person
-              -ako--> obj-1
-
 
 

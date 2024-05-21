@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -178,7 +178,7 @@ const char *jhcDegrapher::pred_ref (char *txt, int ssz, jhcNetNode *n, int inf)
 
 const char *jhcDegrapher::full_pred (char *txt, int ssz, const jhcNetNode *n, int inf) 
 {
-  const jhcNetNode *multi, *fcn;
+  const jhcNetNode *multi, *deg, *fcn;
   jhcNetNode *targ;
 
   // sanity check
@@ -197,8 +197,13 @@ const char *jhcDegrapher::full_pred (char *txt, int ssz, const jhcNetNode *n, in
   else if (((targ = n->Val("hq"))  != NULL) || ((targ = n->Val("ako")) != NULL) || 
            ((targ = n->Val("loc")) != NULL))
     copula(txt, ssz, targ, n);
-  else if (n->Lex() != NULL)
-    strcpy_s(txt, ssz, n->Lex());                // e.g. "three" for cnt
+  else if (n->Lex() != NULL)                     // e.g. "three" for cnt
+  {
+    if ((deg = n->Fact("deg")) != NULL)
+      sprintf_s(txt, ssz, "%s %s", deg->Lex(), n->Lex());
+    else
+      strcpy_s(txt, ssz, n->Lex());                
+  }
   else if ((fcn = n->Fact("fcn")) != NULL)
     strcpy_s(txt, ssz, fcn->Lex());
   else
@@ -697,6 +702,7 @@ char *jhcDegrapher::strcatf_s (char *txt, int ssz, const char *fmt, ...) const
     n = (int) strlen(txt);
     va_start(args, fmt); 
     vsprintf_s(txt + n, ssz - n, fmt, args);
+    va_end(args);
   }
   return txt;
 }

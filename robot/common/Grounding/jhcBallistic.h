@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCBALLISTIC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCBALLISTIC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -34,7 +31,7 @@
 #include "Data/jhcParam.h"             // common video
 
 #include "Geometry/jhcMatrix.h"        // common robot
-#include "RWI/jhcEliGrok.h"            
+#include "RWI/jhcGenRWI.h"
 
 #include "Kernel/jhcStdKern.h"         
 
@@ -53,7 +50,7 @@ private:
   jhcMatrix *cpos, *cdir; 
 
   // link to hardware
-  jhcEliGrok *rwi;
+  jhcGenRWI *rwi;
 
   // reported events
   jhcAliaNote *rpt;
@@ -61,10 +58,6 @@ private:
 
 // PRIVATE MEMBER PARAMETERS
 private:
-  // event parameters
-  double hmin;
-  int hwait;
-
   // parameters for translation
   double stf, qtf, step, move, drive, ftime;
 
@@ -101,8 +94,9 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
+  jhcParam tps, rps, pps, lps, gps, aps, hps, wps, nps;
+  int gok;                   // whether succeeds without body
   int dbg;                   // control of diagnostic messages
-  jhcParam eps, tps, rps, pps, lps, gps, aps, hps, wps, nps;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -119,7 +113,6 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // processing parameters
-  int evt_params (const char *fname);
   int trans_params (const char *fname);
   int rot_params (const char *fname);
   int prog_params (const char *fname);
@@ -178,9 +171,6 @@ private:
   int err_hw (const char *sys);
 
 };
-
-
-#endif  // once
 
 
 

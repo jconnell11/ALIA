@@ -752,7 +752,7 @@ int jhcTxtAssoc::LoadList (const char *fname, int clean, int merge)
   while ((saved > 0) || (fgets(line, 100, in) != NULL))
     if (strncmp(line, "#include", 8) == 0)
     {
-     // load another file first
+      // load another file first
       if ((start = strchr(line, '\"')) != NULL)
         if ((end = strchr(start + 1, '\"')) != NULL)
         {

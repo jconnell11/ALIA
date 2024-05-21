@@ -1,0 +1,140 @@
+// Category definitions and rules for Emotion kernel
+// ========================================================
+
+RULE 1 - "Surprised is an emotion"
+    if:  hq-1 -lex-  surprised
+  then: ako-1 -lex-  emotion
+              -ako-> hq-1
+
+RULE 2 - "Angry is an emotion"
+    if:  hq-1 -lex-  angry
+  then: ako-1 -lex-  emotion
+              -ako-> hq-1
+
+RULE 3 - "Scared is an emotion"
+    if:  hq-1 -lex-  scared
+  then: ako-1 -lex-  emotion
+              -ako-> hq-1
+
+RULE 4 - "Happy is an emotion"
+    if:  hq-1 -lex-  happy
+  then: ako-1 -lex-  emotion
+              -ako-> hq-1
+
+RULE 5 - "Unhappy is an emotion"
+    if:  hq-1 -lex-  unhappy
+  then: ako-1 -lex-  emotion
+              -ako-> hq-1
+
+RULE 6 - "Bored is an emotion"
+    if:  hq-1 -lex-  bored
+  then: ako-1 -lex-  emotion
+              -ako-> hq-1
+
+RULE 7 - "Lonely is an emotion"
+    if:  hq-1 -lex-  lonely
+  then: ako-1 -lex-  emotion
+              -ako-> hq-1
+
+RULE 8 - "Tired is an emotion"
+    if:  hq-1 -lex-  tired
+  then: ako-1 -lex-  emotion
+              -ako-> hq-1
+
+// ------------------------------------------------
+
+RULE 9 - "If someone is happy then they are not unhappy"
+    if:  hq-1 -lex- happy
+              -hq-> agt-1
+  then:  hq-2 -lex- unhappy
+              -neg- 1
+              -hq-> agt-1
+
+RULE 10 - "If someone is unhappy then they are not happy"
+    if:  hq-1 -lex- unhappy
+              -hq-> agt-1
+  then:  hq-2 -lex- happy
+              -neg- 1
+              -hq-> agt-1
+
+// ------------------------------------------------
+
+RULE 11 - "If someone is feeling some emotion then they have that emotion"
+    if: fcn-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -agt-> agt-1
+        mod-1 -lex-  ***-1
+              -mod-> act-1
+        ako-1 -lex-  emotion
+              -ako-> mod-1
+  then:  hq-1 -lex-  ***-1
+              -hq--> agt-1
+
+RULE 12 - "If someone is not feeling some emotion then they do not have that emotion"
+    if: fcn-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -neg-  1
+              -agt-> agt-1
+        mod-1 -lex-  ***-1
+              -mod-> act-1
+        ako-1 -lex-  emotion
+              -ako-> mod-1
+  then:  hq-1 -lex-  ***-1
+              -neg-  1
+              -hq--> agt-1
+
+RULE 13 - "If someone has some feeling then they are feeling that way"
+    if:  hq-1 -lex-  ***-1
+              -hq--> agt-1
+        ako-1 -lex-  emotion
+              -ako-> hq-1
+  then: fcn-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -agt-> agt-1
+        mod-1 -lex-  ***-1
+              -mod-> act-1
+
+RULE 14 - "If someone does not have some feeling then they are not feeling that way"
+    if:  hq-1 -lex-  ***-1
+              -neg-  1
+              -hq--> agt-1
+        ako-1 -lex-  emotion
+              -ako-> hq-1
+  then: fcn-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -neg-  1
+              -agt-> agt-1
+        mod-1 -lex-  ***-1
+              -mod-> act-1
+
+// ------------------------------------------------
+
+RULE 15 - "If someone is feeling some emotion to some degree then they have that emotion to that degree"
+    if: fcn-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -agt-> agt-1
+        mod-1 -lex-  ***-1
+              -mod-> act-1
+        deg-1 -lex-  ***-2
+              -deg-> mod-1
+        ako-1 -lex-  emotion
+              -ako-> mod-1
+  then:  hq-1 -lex-  ***-1
+              -hq--> agt-1
+        deg-2 -lex-  ***-2
+              -deg-> hq-1
+
+RULE 16 - "If someone has some feeling to some degree then they are feeling that way to that degree"
+    if:  hq-1 -lex-  ***-1
+              -hq--> agt-1
+        deg-1 -lex-  ***-2
+              -deg-> hq-1
+        ako-1 -lex-  emotion
+              -ako-> hq-1
+  then: fcn-1 -lex-  feel
+              -fcn-> act-1
+        act-1 -agt-> agt-1
+        mod-1 -lex-  ***-1
+              -mod-> act-1
+        deg-2 -lex-  ***-2
+              -deg-> mod-1

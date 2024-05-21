@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSTDKERN_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSTDKERN_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -130,10 +127,4 @@ private:
 
   
 };
-
-
-#endif  // once
-
-
-
 

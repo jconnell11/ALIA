@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2019 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGENPARSE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGENPARSE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -69,17 +66,11 @@ public:
   // debugging
   virtual void PrintTree (int top =1) =0;
   void PrintResult (int lvl =2, int close =0);
-  void PrintInput (const char *utag =NULL, int sep =1);
+  void PrintInput (const char *utag =NULL, const char *canon =NULL, int sep =1);
   void PrintSlots (int sc =0, int close =0);
   char *NoTabs (char *alist) const;
   void PrintParse (int sc =0);
 
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -2,7 +2,6 @@
 // Microsoft Visual C++ generated include file.
 // Used by alia_txt.rc
 //
-#define IDR_AUX_FILES                   101
 
 // Next default values for new objects
 // 

@@ -58,7 +58,7 @@
 // 
 // alteration mostly performed in jhcAliaDir::alter_pref 
 
-class jhcAliaOp : public jhcSituation
+class jhcAliaOp final : public jhcSituation
 {
 friend class jhcProcMem;               // collection
 friend class jhcGraphizer;             // creation
@@ -117,14 +117,14 @@ public:
 
   // file functions
   int Load (jhcTxtLine& in); 
-  int Save (FILE *out);
-  int Print () {return Save(stdout);}
+  int Save (FILE *out, int src =1);
+  int Print (int src =1) {return Save(stdout, src);}
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // creation and initialization
-  ~jhcAliaOp ();
+  ~jhcAliaOp ();                       // private dtor requires "final"
   jhcAliaOp (JDIR_KIND k =JDIR_DO);
  
   // main functions

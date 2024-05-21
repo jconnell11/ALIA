@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -148,8 +148,8 @@ CMensEtDoc::CMensEtDoc()
   _getcwd(cwd, 200);
 
   // load configuration file(s)
-  sprintf_s(cdir, "%s\\config", cwd);
-  sprintf_s(ifile, "%s\\MensEt_vals.ini", cwd);
+  sprintf_s(cdir, "%s\\calib", cwd);
+  sprintf_s(ifile, "%s\\config\\MensEt_vals.ini", cwd);
   interact_params(ifile);
   tais.Defaults(ifile);
   mc.Defaults(ifile);        // load defaults on start
@@ -184,7 +184,7 @@ BOOL CMensEtDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = mc.Version(); 
-  LockAfter(11, 2023, 6, 2023);
+  LockAfter(10, 2024, 5, 2024);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -886,7 +886,6 @@ return;
 
   // reset all required components
   system("cls");
-  jprintf_open();
   if (tais.Init(tid, 1) <= 0)
     return;
   if (mic > 0)
@@ -977,10 +976,9 @@ void CMensEtDoc::OnDemoFilelocal()
 
   // reset all required components
   system("cls");
-  jprintf_open();
   if (mc.Reset(tid) <= 0)
     return;
-  chat.Reset(0, "log");
+  chat.Reset(0, "log", mc.body.rname);
   if (next_line(in, 200, f))
     chat.Inject(in);
 
@@ -1004,7 +1002,7 @@ void CMensEtDoc::OnDemoFilelocal()
 
       // show interaction
       if ((pic = mc.View()) != NULL)
-        d.ShowGrid(pic, 0, 0, 0, "%s - Robot view            %s", mc.RunTime(), (mc.disp).MoodTxt());
+        d.ShowGrid(pic, 0, 0, 0, "%s - Robot view            %s", mc.RunTime(), (mc.disp).ParamTxt());
       else
         d.StringGrid(0, 0, ">>> NO IMAGES - %s <<<", mc.RunTime());
       (mc.disp).Memory(d);
@@ -1071,10 +1069,9 @@ void CMensEtDoc::OnDemoInteract()
 
   // reset all required components
   system("cls");
-  jprintf_open();
   if (mc.Reset(tid) <= 0)
     return;
-  chat.Reset(0, "log");
+  chat.Reset(0, "log", mc.body.rname);
 
   // announce start and input mode
   if ((mc.spin) > 0)
@@ -1098,7 +1095,7 @@ void CMensEtDoc::OnDemoInteract()
 
       // show interaction
       if ((pic = mc.View()) != NULL)
-        d.ShowGrid(pic, 0, 0, 0, "%s - Robot view            %s", mc.RunTime(), (mc.disp).MoodTxt());
+        d.ShowGrid(pic, 0, 0, 0, "%s - Robot view            %s", mc.RunTime(), (mc.disp).ParamTxt());
       else
         d.StringGrid(0, 0, ">>> NO IMAGES - %s <<<", mc.RunTime());
       (mc.disp).Memory(d);

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2009-2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,9 +54,12 @@ jhcConsole::jhcConsole (const char *title, int x, int y)
   SetPosition(x, y);
 
   // redirect streams to the console
-  freopen_s(&fpstdin, "CONIN$", "r", stdin);
+  freopen_s(&fpstdin,  "CONIN$",  "r", stdin);
 	freopen_s(&fpstdout, "CONOUT$", "w", stdout);
 	freopen_s(&fpstderr, "CONOUT$", "w", stderr);
+
+  // save up printfs for speed - MUST call fflush() to emit
+  setvbuf(stdout, NULL, _IOFBF, 4096);
 
   // prevent application lock-up on mouse selection in window
   in = GetStdHandle(STD_INPUT_HANDLE);

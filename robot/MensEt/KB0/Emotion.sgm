@@ -1,0 +1,50 @@
+// terms associated with "Emotion" ops and rules
+// ================================================
+
+// singular nouns
+
+=[AKO]
+  emotion
+
+
+// adjectives
+
+=[HQ]
+  surprised
+  angry
+  scared
+  happy
+  unhappy
+  bored
+  lonely
+  tired
+  calm
+
+
+// -----------------------------------------
+
+// imperative verbs
+
+=[ACT]
+  feel
+
+
+// adverbial modifiers
+
+=[MOD]
+  surprised
+  angry
+  scared
+  happy
+  unhappy
+  bored
+  lonely
+  tired
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  feel * vpast = felt

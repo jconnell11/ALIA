@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCACTIONTREE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCACTIONTREE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -86,7 +83,7 @@ private:
 // PRIVATE MEMBER PARAMETERS
 private:
   // rule and operator adjustment parameters
-  double bth0, cinc, cdec, pth0, pinc, pdec, fresh;
+  double cinc, cdec, pth0, pinc, pdec, fresh, wsc0;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -119,15 +116,16 @@ public:
   int SaveCfg (const char *fname) const;
 
   // operator selection parameters
-  double Wild () const     {return wild;}
-  double MinPref () const  {return pess;}
-  double RestPref () const {return pth0;}
+  double Wild () const       {return wild;}
+  double RestWild () const   {return wsc0;}
+  void SetWild (double w)    {wild = __max(0.25, __min(w, 1.0));}
+  double MinPref () const    {return pess;}
+  double RestPref () const   {return pth0;}
   void SetMinPref (double p) {pess = __max(0.1, __min(p, 1.0));}
-  double RestBlf () const  {return bth0;}
 
   // rule and operator adjustment
   double AdjRuleConf (class jhcAliaRule *rule, double cf) const;
-  double AdjOpPref (class jhcAliaOp *op, int up) const;
+  double AdjOpPref (class jhcAliaOp *op, int up, int show =0) const;
 
   // list manipulation
   int NextFocus ();
@@ -235,10 +233,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

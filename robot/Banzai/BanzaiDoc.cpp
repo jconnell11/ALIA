@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,6 +48,8 @@ extern CBanzaiApp theApp;
 #include "Interface/jhcPickVals.h"
 #include "Interface/jhcString.h"
 #include "Interface/jms_x.h"
+#include "Interface/jprintf.h"
+#include "Interface/jtimer.h"
 #include "Processing/jhcFilter.h"
 
 
@@ -57,9 +59,9 @@ extern CBanzaiApp theApp;
 
 
 #ifdef _DEBUG
-#define new DEBUG_NEW
-#undef THIS_FILE
-static char THIS_FILE[] = __FILE__;
+  #define new DEBUG_NEW
+  #undef THIS_FILE
+  static char THIS_FILE[] = __FILE__;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
@@ -105,7 +107,6 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_DEMO_RESETROBOT, &CBanzaiDoc::OnDemoResetrobot)
   ON_COMMAND(ID_PARAMETERS_LIFTCMD, &CBanzaiDoc::OnParametersLiftcmd)
   ON_COMMAND(ID_PARAMETERS_LIFTRAMP, &CBanzaiDoc::OnParametersLiftramp)
-  ON_COMMAND(ID_PARAMETERS_BATTERYLEVEL, &CBanzaiDoc::OnParametersBatterylevel)
   ON_COMMAND(ID_PARAMETERS_GRABCMD, &CBanzaiDoc::OnParametersGrabcmd)
   ON_COMMAND(ID_PARAMETERS_GRABRAMP, &CBanzaiDoc::OnParametersGrabramp)
   ON_COMMAND(ID_PARAMETERS_ARMHOME, &CBanzaiDoc::OnParametersArmhome)
@@ -192,12 +193,15 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
   ON_COMMAND(ID_GRAB_SURFEVENTS, &CBanzaiDoc::OnGrabSurfevents)
   ON_COMMAND(ID_GRAB_SURFTRACKING, &CBanzaiDoc::OnGrabSurftracking)
   ON_COMMAND(ID_MOOD_LTMMATCH, &CBanzaiDoc::OnMoodLtmmatch)
-  ON_COMMAND(ID_MOOD_CONFADJUST, &CBanzaiDoc::OnMoodConfadjust)
-  ON_COMMAND(ID_MOOD_PREFADJUST, &CBanzaiDoc::OnMoodPrefadjust)
-  ON_COMMAND(ID_MOOD_RULEOPADJ, &CBanzaiDoc::OnMoodRuleopadj)
   ON_COMMAND(ID_DEMO_CYCLERATE, &CBanzaiDoc::OnDemoCyclerate)
-      ON_COMMAND(ID_GRAB_SURFMOTION, &CBanzaiDoc::OnGrabSurfmotion)
-      END_MESSAGE_MAP()
+  ON_COMMAND(ID_GRAB_SURFMOTION, &CBanzaiDoc::OnGrabSurfmotion)
+  ON_COMMAND(ID_MOOD_VALENCELEVEL,&CBanzaiDoc::OnMoodValencelevel)
+  ON_COMMAND(ID_MOOD_CONTROLLEVEL,&CBanzaiDoc::OnMoodControllevel)
+  ON_COMMAND(ID_MOOD_SURENESSLEVEL,&CBanzaiDoc::OnMoodSurenesslevel)
+  ON_COMMAND(ID_MOOD_ADJUSTMIX,&CBanzaiDoc::OnMoodAdjustmix)
+  ON_COMMAND(ID_MOOD_PREFERENCEMIX,&CBanzaiDoc::OnMoodPreferencemix)
+  ON_COMMAND(ID_MOOD_NAGTIMING,&CBanzaiDoc::OnMoodNagtiming)
+    END_MESSAGE_MAP()
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -223,7 +227,7 @@ CBanzaiDoc::CBanzaiDoc()
 
   // load configuration file(s)
   _getcwd(cwd, 200);
-  sprintf_s(ifile, "%s\\Banzai_vals.ini", cwd);
+  sprintf_s(ifile, "%s\\config\\Banzai_vals.ini", cwd);
   swing_params(ifile);
   interact_params(ifile);
   ec.Defaults(ifile);      // load defaults on start
@@ -277,7 +281,7 @@ BOOL CBanzaiDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = ec.Version();
-  LockAfter(11, 2023, 6, 2023);
+  LockAfter(10, 2024, 5, 2024);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -925,17 +929,6 @@ void CBanzaiDoc::OnParametersBaseramp()
 /////////////////////////////////////////////////////////////////////////////
 //                            Ballistic Grounding                          //
 /////////////////////////////////////////////////////////////////////////////
-
-
-// Set battery notification level, drop detection, etc. 
-
-void CBanzaiDoc::OnParametersBatterylevel()
-{
-	jhcPickVals dlg;
-
-  dlg.EditParams((ec.ball).eps); 
-}
-
 
 // Parameters for changing gaze direction of head
 
@@ -1711,17 +1704,26 @@ void CBanzaiDoc::OnAnimationIdle()
 //                          Internal Modulation                            //
 /////////////////////////////////////////////////////////////////////////////
 
-// Adjust thresholds for boredom and overwhelmed
+// Adjust thresholds for core indicators
+
+void CBanzaiDoc::OnMoodEnergylevel()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.mood).cps); 
+}
+
+// Adjust threshold for boredom
 
 void CBanzaiDoc::OnMoodActivitylevel()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((ec.mood).aps); 
+  dlg.EditParams((ec.mood).mps); 
 }
 
 
-// Adjust thresholds for loneliness
+// Adjust threshold for loneliness
 
 void CBanzaiDoc::OnMoodInteractionlevel()
 {
@@ -1731,43 +1733,63 @@ void CBanzaiDoc::OnMoodInteractionlevel()
 }
 
 
-// Adjust threshold for tiredness
+// Adjust threshold for happiness
 
-void CBanzaiDoc::OnMoodEnergylevel()
+void CBanzaiDoc::OnMoodValencelevel()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((ec.mood).tps); 
+  dlg.EditParams((ec.mood).vps); 
 }
 
 
-// Parameters for updating rule confidence and operator preference
+// Adjust threshold for anger
 
-void CBanzaiDoc::OnMoodRuleopadj()
+void CBanzaiDoc::OnMoodControllevel()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((ec.atree).aps); 
+  dlg.EditParams((ec.mood).ops); 
 }
 
 
-// Parameters for belief threshold servoing
+// Adjust threshold for scared
 
-void CBanzaiDoc::OnMoodConfadjust()
+void CBanzaiDoc::OnMoodSurenesslevel()
 {
 	jhcPickVals dlg;
 
-  dlg.EditParams((ec.mood).bps); 
+  dlg.EditParams((ec.mood).rps); 
 }
 
 
-// Parameters for selection threshold servoing
+// Tune wildness and belief threshold contributions
 
-void CBanzaiDoc::OnMoodPrefadjust()
+void CBanzaiDoc::OnMoodAdjustmix()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.mood).aps); 
+}
+
+
+// Tune preference threshold contributions
+
+void CBanzaiDoc::OnMoodPreferencemix()
 {
 	jhcPickVals dlg;
 
   dlg.EditParams((ec.mood).pps); 
+}
+
+
+// Rates for repeated emotional notifications
+
+void CBanzaiDoc::OnMoodNagtiming()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.emo).tps); 
 }
 
 
@@ -1899,7 +1921,6 @@ void CBanzaiDoc::OnDemoTextfile()
 
   // reset all required components
   system("cls");
-  jprintf_open();
   ec.spin = 0;
   d.StatusText("Initializing robot ...");
   if (ec.Reset(rob) <= 0)
@@ -1907,8 +1928,7 @@ void CBanzaiDoc::OnDemoTextfile()
     jprintf_close();
     return;
   }
-  ec.SetPeople("VIPs.txt");
-  chat.Reset(0, "log");
+  chat.Reset(0, "log", eb->rname);
   SetForegroundWindow(chat);
   if (next_line(in, 200, f))
     chat.Inject(in);
@@ -1938,10 +1958,10 @@ jtimer_clr();
       else
         d.StringGrid(0, 0, ">>> NO IMAGES - %s <<<", ec.RunTime());
       (ec.disp).Memory(d);
-      (ec.disp).Audio(d);
+      (ec.disp).Valence(d);
       if ((pic = ec.View(1)) != NULL)
         d.ShowGrid(pic, 1, 0, 2, "%s - Overhead navigation map  %s", ec.RunTime(), (ec.rwi).NavGoal());
-      (ec.disp).Mood(d);
+      (ec.disp).Parameters(d);
 
       // show any communication
       chat.Post(ec.NewInput(), 1);
@@ -1991,7 +2011,7 @@ bool CBanzaiDoc::next_line (char *txt, int ssz, FILE *f) const
     // erase from end until non-space found
     for (n = (int) strlen(txt) - 1; n >= 0; n--)
     {
-      if (strchr(" \n", txt[n]) == NULL)
+      if (strchr(" \n\r\x0A", txt[n]) == NULL)
         return true;
       txt[n] = '\0';
     }
@@ -2026,7 +2046,6 @@ void CBanzaiDoc::OnDemoInteractive()
 
   // reset all required components
   system("cls");
-  jprintf_open();
   d.StatusText("Initializing robot ...");
   if (ec.Reset(rob) <= 0)
   {
@@ -2037,8 +2056,7 @@ void CBanzaiDoc::OnDemoInteractive()
     d.StatusText("Failed.");
     return;
   }
-  ec.SetPeople("VIPs.txt");
-  chat.Reset(0, "log");
+  chat.Reset(0, "log", eb->rname);
   SetForegroundWindow(chat);
 
   // announce start and input mode
@@ -2067,10 +2085,10 @@ jtimer_clr();
       else
         d.StringGrid(0, 0, ">>> NO IMAGES - %s <<<", ec.RunTime());
       (ec.disp).Memory(d);
-      (ec.disp).Physical(d);
+      (ec.disp).Valence(d);
       if ((pic = ec.View(1)) != NULL)
         d.ShowGrid(pic,  1, 0, 2, "%s - Overhead navigation map  %s", ec.RunTime(), (ec.rwi).NavGoal());
-      (ec.disp).Mood(d);
+      (ec.disp).Parameters(d);
 
       // show any communication
       chat.Post(ec.NewInput(), 1);
@@ -2233,8 +2251,8 @@ void CBanzaiDoc::OnAttentionEnrollphoto()
   // find biggest face and try to enroll it
   ff->Reset();
   fr->Reset();
-  fr->LoadDB("VIPs.txt");
-  (ec.vip).Load("VIPs.txt");
+  fr->LoadDB("config/VIPs.txt");
+  (ec.vip).Load("config/VIPs.txt");
   src = Image4(mug4, mug);
   if (ff->FindBest(det, *src, 20, 400, 0.0) > 0)
   {
@@ -2255,7 +2273,7 @@ void CBanzaiDoc::OnAttentionEnrollphoto()
   fr->SaveDude(person);
   if ((ec.vip).Canonical(person) == NULL)
     if (Ask("Add to VIP list?") > 0)
-      if (fopen_s(&out, "VIPs.txt", "a") == 0)
+      if (fopen_s(&out, "config/VIPs.txt", "a") == 0)
       {
         fprintf(out, "%s\n", person);
         fclose(out);
@@ -2283,8 +2301,8 @@ void CBanzaiDoc::OnAttentionEnrolllive()
   v.SizeFor(now);
   ff->Reset();
   fr->Reset();
-  fr->LoadDB("VIPs.txt");
-  (ec.vip).Load("VIPs.txt");
+  fr->LoadDB("config/VIPs.txt");
+  (ec.vip).Load("config/VIPs.txt");
 
   // get ID to use
   if (pick.EditString(person, 0, "Person name") <= 0)
@@ -2333,7 +2351,7 @@ void CBanzaiDoc::OnAttentionEnrolllive()
   fr->SaveDude(person);
   if ((ec.vip).Canonical(person) == NULL)
     if (Ask("Add to VIP list?") > 0)
-      if (fopen_s(&out, "VIPs.txt", "a") == 0)
+      if (fopen_s(&out, "config/VIPs.txt", "a") == 0)
       {
         fprintf(out, "%s\n", person);
         fclose(out);
@@ -2442,7 +2460,7 @@ void CBanzaiDoc::OnDepthPersonmap()
 {
   jhcStare3D *s3 = &((ec.rwi).s3);
   jhcFaceName *fn = &((ec.rwi).fn);
-  jhcEliBase *b = (ec.rwi).base;
+  jhcEliBase *b = &(eb->base);
   jhcImg map, col;
   jhcMatrix pos(4), dir(4);
   const jhcBodyData *p;
@@ -2461,7 +2479,6 @@ void CBanzaiDoc::OnDepthPersonmap()
       return;
     }
   (ec.rwi).Reset(rob, 0);
-  ec.SetPeople("VIPs.txt");
   (eb->neck).Limp();
 
   // loop over selected set of frames  
@@ -2551,7 +2568,6 @@ void CBanzaiDoc::OnPeopleSpeaking()
       return;
     }
   ec.Reset(rob);
-  ec.SetPeople("VIPs.txt");
   (eb->neck).Limp();
 
   // loop over selected set of frames  
@@ -2689,7 +2705,7 @@ void CBanzaiDoc::OnUtilitiesChkgrammar()
   }
 
   // try regenerating base words from derived terms
-  if ((err = ((ec.net).mf).LexBase("derived.sgm", 1, sel.ch)) < 0)
+  if ((err = ((ec.net).mf).LexBase("dump/derived.sgm", 1, sel.ch)) < 0)
     return;
   if (err > 0)
     Tell("Adjust original =[XXX-morph] section to fix %d problems", err);
@@ -2706,7 +2722,6 @@ void CBanzaiDoc::OnUtilitiesWeedgrammar()
 
   ec.BindVideo(NULL);
   ec.Reset(0);
-  ec.SetPeople("VIPs.txt");
   n = (ec.vc).WeedGram((ec.gr).Expansions());
   Tell("%d unused non-terminals listed in file: orphans.txt", n);
 }
@@ -3574,7 +3589,7 @@ void CBanzaiDoc::OnVisualPrimarycolors()
 
 void CBanzaiDoc::OnSurfacePicktable()
 {
-  jhcEliGrok *rwi = &(ec.rwi);
+  jhcEliRWI *rwi = &(ec.rwi);
   jhcStare3D *s3 = &(rwi->s3);
   jhcTable *tab = &(rwi->tab);
   jhcImg surf, map2;
@@ -3680,7 +3695,7 @@ void CBanzaiDoc::OnSurfacePicktable()
 
 void CBanzaiDoc::OnDetectionGazesurface()
 {
-  jhcEliGrok *rwi = &(ec.rwi);
+  jhcEliRWI *rwi = &(ec.rwi);
   jhcSurfObjs *sobj = &(rwi->sobj);
   jhcTable *tab = &(rwi->tab);
   jhcImg omap, surf;
@@ -4780,7 +4795,6 @@ void CBanzaiDoc::OnManipulationMoveobj()
       return;
     }
 
-jprintf_open();
   // start vision routines
   (eb->neck).SetDef(tilt);
   man->Reset(ec.atree);
@@ -5202,7 +5216,6 @@ void CBanzaiDoc::OnUtilitiesTest()
 
   ec.BindVideo(NULL);
   ec.Reset(0);
-  ec.SetPeople("VIPs.txt");
 
 //  Tell("%d words in file: words.txt", (ec.vc).ListAll());
 

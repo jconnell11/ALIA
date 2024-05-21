@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIADESC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIADESC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 
 //= Simple external read interface to ALIA semantic networks.
@@ -90,10 +87,4 @@ public:
 
 
 };
-
-
-#endif  // once
-
-
-
 

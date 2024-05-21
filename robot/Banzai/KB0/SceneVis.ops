@@ -75,7 +75,7 @@ OP 7 - "To check if something has some location relative to another thing ..."
 
 // ================================================
 
-OP 8 - "To find out how many objects there are find a visible surface, look toward it, then ..."
+OP 8 - "To find out how many objects there are find a surface, look toward it, then ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1
         ako-1 -lex-  object
@@ -92,7 +92,7 @@ OP 8 - "To find out how many objects there are find a visible surface, look towa
    GND[ call-1 -lex-  vis_subit 
                -arg-> obj-1 ]
 
-OP 9 - "To find out how many things there are with some measurement find a visible surface, look toward it, then ..."
+OP 9 - "To find out how many things there are with some measurement find a surface, look toward it, then ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1 
          hq-1 -hq--> obj-1 
@@ -110,7 +110,7 @@ OP 9 - "To find out how many things there are with some measurement find a visib
    GND[ call-1 -lex-  vis_subit
                -arg-> obj-1 ] 
 
-OP 10 - "To find out how many things there are with some color find a visible surface, look toward it, then ..."
+OP 10 - "To find out how many things there are with some color find a surface, look toward it, then ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1 
          hq-1 -hq--> obj-1 
@@ -178,7 +178,7 @@ OP 13 - "To find out how many things there are with location relative to somethi
 
 // ================================================
 
-OP 14 - "To find some object find a visible surface, look toward it, then ..."
+OP 14 - "To find some object find a surface, look toward it, then ..."
   trig:
   FIND[ obj-1 
         ako-1 -lex-  object
@@ -195,7 +195,7 @@ OP 14 - "To find some object find a visible surface, look toward it, then ..."
    GND[ call-1 -lex-  vis_enum 
                -arg-> obj-1 ] 
     
-OP 15 - "To find something with some measurement find a visible surface, look toward it, then ..."
+OP 15 - "To find something with some measurement find a surface, look toward it, then ..."
   trig:
   FIND[ obj-1 
          hq-1 -hq--> obj-1 
@@ -213,7 +213,7 @@ OP 15 - "To find something with some measurement find a visible surface, look to
    GND[ call-1 -lex-  vis_enum 
                -arg-> obj-1 ]
 
-OP 16 - "To find something with some color find a visible surface, look toward it, then ..."
+OP 16 - "To find something with some color find a surface, look toward it, then ..."
   trig:
   FIND[ obj-1 
          hq-1 -hq--> obj-1 
@@ -248,7 +248,7 @@ OP 17 - "To find something with more something than something else look at the s
                -arg-> obj-1 ] 
 
 
-OP 18 - "To find something that is the most something find a visible surface, look toward it, then ..."
+OP 18 - "To find something that is the most something find a surface, look toward it, then ..."
   trig:
   FIND[ obj-1
          hq-1 -hq--> obj-1 

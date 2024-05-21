@@ -54,6 +54,7 @@
   sport
   rice
   baseball
+  favorite
 
 
 // mass noun plurals (cannot take "a" like "sand")
@@ -87,7 +88,6 @@
   brown
   furry
   little
-  favorite
   pretty
 
 
@@ -120,6 +120,8 @@
   walk
   like
   ask about
+  snarf
+  advance
 
 
 // imperative verbs requiring object and location or direction

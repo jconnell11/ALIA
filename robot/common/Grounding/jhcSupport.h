@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,16 +20,13 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSUPPORT_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSUPPORT_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
 #include "Environ/jhcTable.h"          // common robot   
 #include "Geometry/jhcMatrix.h"
-#include "RWI/jhcEliGrok.h"            
+#include "RWI/jhcEliRWI.h"            
 
 #include "Kernel/jhcStdKern.h"       
 
@@ -47,10 +44,10 @@ private:
   jhcMatrix *cpos;             
 
   // link to hardware and components
-  jhcEliGrok *rwi;                     // likely shared
+  jhcEliRWI *rwi;                      // likely shared
   jhcTable *tab;
-  jhcEliNeck *neck;
-  jhcEliLift *lift;
+  jhcGenNeck *neck;
+  jhcGenLift *lift;
 
   // semantic network input
   jhcAliaNote *rpt;                    // where to inject NOTEs
@@ -86,8 +83,9 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int dbg;                   // control of diagnostic messages
   jhcParam eps, mps, hps, lps, tps;
+  int gok;                   // whether succeeds without body
+  int dbg;                   // control of diagnostic messages
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -163,10 +161,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

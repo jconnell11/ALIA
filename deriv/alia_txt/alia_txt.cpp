@@ -1,10 +1,10 @@
-// alia_mind.cpp : text-based interface ALIA reasoning system
+// alia_txt.cpp : text-based interface ALIA reasoning system
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,8 +20,10 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include <windows.h>
-#include <direct.h>                    // for _getcwd in Windows
+#ifndef __linux__
+  #include <windows.h>
+  #include <direct.h>                  // for _getcwd in Windows
+#endif
 
 #include "Interface/jhcMessage.h"      // common video
 #include "Interface/jms_x.h"
@@ -50,41 +52,7 @@ static jhcAliaCore core;
 //                      Initialization and Locking                       //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Do all system initializations like unpacking auxiliary files.
-// make a new compressed folder in main then add all files needed
-// then do Add Resource / Import ... / as RCDATA and assign IDR_AUX_FILES
-
-BOOL init (HANDLE hModule)
-{
-  HMODULE mod = (HMODULE) hModule;
-  HRSRC rsrc;
-  HGLOBAL hres = NULL;
-  char *data;
-  FILE *out;
-  DWORD sz, n;
-
-  // try to locate embedded resource 
-  rsrc = FindResource(mod, MAKEINTRESOURCE(IDR_AUX_FILES), RT_RCDATA);
-  if (rsrc == NULL)
-    return TRUE;
-  if ((hres = LoadResource(mod, rsrc)) == NULL)
-    return TRUE;
-
-  // copy all data out to temporary file
-  if (fopen_s(&out, "jhc_temp.zip", "wb") != 0)
-    return TRUE;
-  data = (char *) LockResource(hres);
-  sz = SizeofResource(mod, rsrc);
-  n = (int) fwrite(data, 1, sz, out);
-  fclose(out);
-
-  // attempt to extarct all files then clean up
-  if (n == sz)
-    system("tar -xkf jhc_temp.zip");
-  remove("jhc_temp.zip");
-  return TRUE;
-}
-
+#ifndef __linux__
 
 //= Only allow DLL to be used for a while.
 // more of an annoyance than any real security
@@ -93,7 +61,7 @@ BOOL APIENTRY DllMain (HANDLE hModule,
                        DWORD ul_reason_for_call, 
                        LPVOID lpReserved)
 {
-  int mon = 11, yr = 2023, smon = 6, syr = 2023, strict = 0; 
+  int mon = 10, yr = 2024, smon = 5, syr = 2024, strict = 0; 
   char cwd[200];
   char *tail;
 
@@ -105,7 +73,7 @@ BOOL APIENTRY DllMain (HANDLE hModule,
 
   // see if within valid time interval
   if (!jms_expired(mon, yr, smon, syr))    
-    return init(hModule);
+    return TRUE;
   Complain("%s\nExpired as of %d/%d\njconnell@alum.mit.edu",
            alia_version(), mon, yr);           
 
@@ -113,13 +81,15 @@ BOOL APIENTRY DllMain (HANDLE hModule,
   _getcwd(cwd, 200);
   if ((tail = strrchr(cwd, '\\')) != NULL)
     if (strcmp(tail, "\\jhc") == 0)
-      return init(hModule);
+      return TRUE;
   
   // potentially prohibit use
   if (strict <= 0)
-    return init(hModule);
+    return TRUE;
   return FALSE;
 }
+
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -202,36 +172,35 @@ extern "C" DEXP class jhcAliaNote *alia_note ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Reset processing state at the start of a run.
+// dir: base directory for config, language, log, and KB subdirectories
 // rname: robot name (like "Jim Jones"), can be NULL if desired
 // quiet: 1 = no console printing (only log), 0 = copious status messages
 // returns 1 if successful, 0 for error
 
-extern "C" DEXP int alia_reset (const char *rname, int quiet)
+extern "C" DEXP int alia_reset (const char *dir, const char *rname, int quiet)
 {
-  // possibly suppress all console printout
-  if (quiet > 0)
-    jprintf_log(1);
-  jprintf_open();
-
-  // no speech
-  jprintf(1, core.noisy, "\nSPEECH -> OFF (text only)\n");
-  jprintf(1, core.noisy, "=========================\n\n");
-
   // set basic grammar for core then clear state
   core.acc = 1;
   core.vol = 1;
-  core.Reset(rname, 0);
+  core.SetDir(dir);
+  core.Reset(rname, ((quiet > 0) ? 1 : 3), 1);
+
+  // no speech
+  jprintf(1, core.noisy, "SPEECH -> OFF (text only)\n");
+  jprintf(1, core.noisy, "==========================================================\n");
   return 1;
 }
 
 
 //= Record current speeds of body and condition of battery.
-// base and arm speeds are inches per second, battery is percentage
+// base and arm speeds wrt nominal, battery is percentage
 // this data is needed for computing boredom and tiredness
 
 extern "C" DEXP void alia_motion (double base, double arm, int bat)
 {
-  (core.mood).Body(base, arm, bat);
+  (core.mood).Travel(base);
+  (core.mood).Reach(arm);
+  (core.mood).Battery(bat);
 }
 
 

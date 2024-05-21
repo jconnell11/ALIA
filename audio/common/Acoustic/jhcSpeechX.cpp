@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@
 #include "Data/jhcParam.h"             // common video
 #include "Interface/jhcMessage.h"
 #include "Interface/jms_x.h"
+#include "Interface/jprintf.h"         
 
 #include "Acoustic/jhcSpeechX.h"
 
@@ -144,7 +145,7 @@ int jhcSpeechX::Init (int dbg, int noisy)
   // TTS
   if (t_ok <= 0)
   {
-    LoadAlt("pronounce.map");
+    LoadAlt("config/pronounce.map");
     if (noisy > 0)
     {
       jprintf("\n--------- TTS --------\n");
@@ -174,7 +175,7 @@ int jhcSpeechX::InitTTS (int noisy)
   char info[80];
   int ans;
 
-  LoadAlt("pronounce.map");
+  LoadAlt("config/pronounce.map");
   ans = BindTTS(tfile, tcfg);
   if (noisy > 0)
   {
@@ -694,6 +695,7 @@ int jhcSpeechX::SuggestUser (const char *name, ...)
   // build requested name
   va_start(args, name); 
   vsprintf_s(user, name, args);
+  va_end(args);
 
   // see if already active (could be several in list)
   reco_list_users(all, 200);
@@ -868,6 +870,7 @@ void jhcSpeechX::SetGrammar (const char *fname, ...)
     return;
   va_start(args, fname); 
   vsprintf_s(gram, fname, args);
+  va_end(args);
   if (strchr(gram, '.') == NULL)
     strcat_s(gram, ".sgm");
 }
@@ -911,6 +914,7 @@ int jhcSpeechX::LoadSpGram (const char *fname, ...)
   {
     va_start(args, fname); 
     vsprintf_s(gf, 200, fname, args);
+    va_end(args);
     if (strchr(gf, '.') == NULL)
       strcat_s(gf, 200, ".sgm");
   }
@@ -1377,6 +1381,7 @@ int jhcSpeechX::Say (const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(qtext, msg, args);
+    va_end(args);
   }
   emit = qtext;
   return Utter();
@@ -1401,6 +1406,7 @@ int jhcSpeechX::Say (int bid, const char *msg, ...)
   {
     va_start(args, msg); 
     vsprintf_s(qtext, msg, args);
+    va_end(args);
   }
 
   // only start saying if bid is higher than what is in progress

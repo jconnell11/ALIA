@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 #include "Action/jhcAliaDir.h"         // common robot
 
 #include "Interface/jms_x.h"           // common video
+#include "Interface/jprintf.h"
 
 #include "Reasoning/jhcWorkMem.h"
 
@@ -63,7 +64,8 @@ jhcWorkMem::jhcWorkMem ()
   clr_ext();
 
   // fact belief threshold
-  skep = 0.5;    
+  bth0 = 0.5;
+  SetMinBlf(bth0);    
 
   // debugging
   noisy = 1;           // defaulted from jhcAliaCore
@@ -77,6 +79,7 @@ void jhcWorkMem::Reset ()
   clr_ext();
   PurgeAll();
   ClearHalo();
+  SetMinBlf(bth0);
 }
 
 
@@ -489,7 +492,7 @@ int jhcWorkMem::CleanMem (int dbg)
 
 
 //= Special mark spreader for conversational participants.
-// keeps only non-hypothetical HQ, AKO, and REF facts (others may get marked from foci)
+// keeps only non-hypothetical HQ, AKO, NAME, and REF facts (others may get marked from foci)
 // NOTE: assumes given anchor node is WMEM (not DMEM)
 
 void jhcWorkMem::keep_party (jhcNetNode *anchor) const
@@ -506,27 +509,30 @@ void jhcWorkMem::keep_party (jhcNetNode *anchor) const
   n = anchor->NumProps();  
   for (i = 0; i < n; i++)
   {
+    // always keep AKO and NAME but reject HQ and WRT for self
     prop = anchor->PropSurf(i);
-    if (!prop->Hyp() && InPool(prop) && anchor->RoleIn(i, "name", "ako", "hq", "wrt"))      
-    {
-      // keep this property and all arguments
-      prop->SetKeep(2);
-      n2 = prop->NumArgs();
-      for (j = 0; j < n2; j++)
+    if (!prop->Hyp() && InPool(prop))
+      if (anchor->RoleIn(i, "name", "ako") || 
+          ((anchor != self) && anchor->RoleIn(i, "hq", "wrt")))      
       {
-        arg = prop->ArgSurf(j);
-        arg->SetKeep(1);               // allow spreading from arg
-      }
+        // keep this property and all arguments
+        prop->SetKeep(2);
+        n2 = prop->NumArgs();
+        for (j = 0; j < n2; j++)
+        {
+          arg = prop->ArgSurf(j);
+          arg->SetKeep(1);             // allow spreading from arg
+        }
 
-      // retain degree for properties like "very smart"
-      n2 = prop->NumProps();
-      for (j = 0; j < n2; j++)
-      {
-        deg = prop->PropSurf(j);
-        if (!deg->Hyp() && InPool(deg) && prop->RoleMatch(j, "deg"))
-          deg->SetKeep(2);
+        // retain degree for properties like "very smart"
+        n2 = prop->NumProps();
+        for (j = 0; j < n2; j++)
+        {
+          deg = prop->PropSurf(j);
+          if (!deg->Hyp() && InPool(deg) && prop->RoleMatch(j, "deg"))
+            deg->SetKeep(2);
+        }
       }
-    }
   }
 }
 
@@ -727,7 +733,7 @@ int jhcWorkMem::ann_link (const jhcNetNode *obj, const jhcNetNode *former, int k
   else if (former == NULL)
     jprintf("  .. linking tracked %s to %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
   else
-    jprintf("  .. switching tracked %s for %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
+    jprintf("  .. switching tracked %s to %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
   return 1;
 }
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 
 #include "Interface/jhcMessage.h"      // common video
 #include "Interface/jms_x.h"
+#include "Interface/jprintf.h"
 
 #include "Parse/jhcTxtLine.h"          // common audio
 #include "Reasoning/jhcAliaOp.h"       // since only spec'd as class in header
@@ -70,9 +71,9 @@ jhcActionTree::jhcActionTree ()
   calm  = 1.0;         // standard surprise decay (sec)
 
   // thresholds and adjustment parameters
-  pess = 0.5;
-  wild = 0.5;
   LoadCfg();
+  pess = pth0;
+  wild = wsc0;
 }
 
 
@@ -138,6 +139,7 @@ int jhcActionTree::adj_params (const char *fname)
   ps->NextSpecF( &pdec,   0.1, "Failed op preference down");
 
   ps->NextSpecF( &fresh, 30.0, "Action lookback limit (sec)");
+  ps->NextSpecF( &wsc0,   0.5, "Wildness default value");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -222,7 +224,7 @@ double jhcActionTree::AdjRuleConf (jhcAliaRule *r, double cf) const
 //= Alter the preference of the given operator to be either higher or lower.
 // returns signed amount by which preference was changed 
 
-double jhcActionTree::AdjOpPref (jhcAliaOp *op, int up) const
+double jhcActionTree::AdjOpPref (jhcAliaOp *op, int up, int show) const
 {
   double chg;
 
@@ -230,8 +232,16 @@ double jhcActionTree::AdjOpPref (jhcAliaOp *op, int up) const
     return 0.0;
   chg = op->SetPref(op->Pref() + ((up > 0) ? pinc : -pdec));
   if ((noisy >= 1) && (chg != 0.0))
+  {
     jprintf("  ADJUST: operator %d --> %s pref to %4.2f\n", 
             op->OpNum(), ((chg > 0.0) ? "raise" : "lower"), op->Pref());
+    if (show > 0)
+    {
+      jprintf("\n.................................\n");
+      op->Print(0);
+      jprintf(".................................\n\n");
+    }
+  }
   return chg;
 }
 
@@ -358,6 +368,7 @@ void jhcActionTree::ResetFoci (const char *rname)
   now = 0;
   SetMinBlf(bth0);
   SetMinPref(pth0);
+  SetWild(wsc0);
 }
 
 
@@ -485,13 +496,14 @@ int jhcActionTree::Update (int gc)
 {
   int i;
 
-  // record current time
+  // record current time and clean up old foci
   now = jms_now();
+  prune_foci();
 
-  // clean up old foci and old nodes in main memory
+  // clean up old nodes in main memory
   if (gc > 0)
   {
-    prune_foci();
+//    prune_foci();
     for (i = 0; i < fill; i++)
     {
       focus[i]->MarkSeeds();           // make sure to keep these
@@ -587,11 +599,11 @@ void jhcActionTree::rem_compact (int n)
 
 double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
 {
-  jhcAliaDesc *evt;
+//  jhcAliaDesc *evt;
   const jhcNetNode *mate;
   jhcNetNode *focus;
   jhcAliaRule *r;
-  double s, blf, halo, chg, lo, hi = 0.0;
+  double s, blf, halo, chg, lo, surp = 0.0;
   int i, ni = key.NumItems(), hit = 0, miss = 0;
 
   // examine each non-object element of the situation 
@@ -616,6 +628,7 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
         lo = s;
       else
         lo = __min(s, lo);                       // unexpectedness of element
+      surp = __max(lo, surp);                    // combine across whole key
 
       // check if halo rule's prediction was correct or wrong (1-step or 2-step)
       r = mate->hrule;
@@ -640,7 +653,7 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
           chg = inc_conf(r, halo);               // tests halo against skep
         else  
           chg = dec_conf(r, halo);               // tests halo against skep
-        mood.Believe(chg);
+        mood.RuleAdj(chg);
         if ((chg != 0.0) && (noisy >= 1))
           jprintf("  ADJUST: rule %d --> %s conf to %4.2f\n", r->RuleNum(), 
                   ((chg > 0.0) ? "raise" : "lower"), r->Conf());
@@ -648,6 +661,7 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
     }
 
     // possibly generate a NOTE about this fact if highly unexpected
+/*
     if (lo > drill)
     {
       StartNote();
@@ -657,11 +671,12 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
       FinishNote();
     }
     hi = __max(lo, hi);                          // combine across whole key
+*/
   }
 
   // feedback to main belief threshold if it could have been used
-  mood.BumpMinBlf(hit, miss);
-  return hi;
+  mood.RuleEval(hit, miss, surp);
+  return surp;                                   // no longer needed
 }
 
 
@@ -917,7 +932,7 @@ jhcAliaOp *jhcActionTree::Motive (const jhcGraphlet& desc, const jhcNetNode **ma
     return NULL;
   op = src->LastOp();
   o2m = src->LastVars();
-  m2a = (act->step)->Scope();
+  m2a = act->StepScope();
   nb = d2a.NumPairs();
 
   // create mapping from description vars to operator vars

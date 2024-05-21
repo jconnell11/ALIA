@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@
 
 #include <ctype.h>
 #include <string.h>
+
+#include "Interface/jprintf.h"         // common video
 
 #include "Parse/jhcGenParse.h"         // common audio - since only spec'd as class in header
 
@@ -210,8 +212,7 @@ char *jhcMorphFcns::clean_line (char *ans, int ssz, FILE *in) const
   strcpy_s(ans, ssz, start);
 
   // remove final newline and anything after semicolon
-  if ((end = strchr(ans, '\n')) != NULL)
-    *end = '\0';
+  ans[strcspn(ans, "\n\r\x0A")] = '\0';
   if ((end = strchr(ans, ';')) != NULL)
     *end = '\0';
 
@@ -1283,7 +1284,7 @@ void jhcMorphFcns::cat_hdr (FILE *out, UL32 tags) const
 
 int jhcMorphFcns::LexBase (const char *deriv, int chk, const char *morph) 
 {
-  char fname[80] = "base_words.txt";
+  char fname[80] = "dump/base_words.txt";
   const char *n2, *name = morph;
   FILE *in, *out;
   int pat, cnt = 0;

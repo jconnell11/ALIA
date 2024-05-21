@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,9 @@
 #include <conio.h>
 #include <stdio.h>
 
-#include "Interface/jhcMessage.h"
+#include "Interface/jhcMessage.h"      // common video
 #include "Interface/jms_x.h"
+#include "Interface/jprintf.h"        
 
 #include "Body/jhcEliArm.h"
 
@@ -52,8 +53,8 @@ jhcEliArm::jhcEliArm ()
 
   // pose sensor vectors
   ang0.SetSize(7);
-  loc.SetSize(4);
-  aim.SetSize(4);
+//  loc.SetSize(4);
+//  aim.SetSize(4);
   fvec.SetSize(4);
   fsm.SetSize(4);
 
@@ -215,7 +216,7 @@ int jhcEliArm::iter_params (const char *fname)
 }
 
 
-//= Parameters used to define stowed arm postion.
+//= Parameters used to define stowed arm position.
 // nothing geometric that differs between bodies
 
 int jhcEliArm::stow_params (const char *fname)
@@ -1314,28 +1315,19 @@ int jhcEliArm::HandTarget (double sep, double rate, int bid)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Returns difference from given gripper opening width.
-// can optionally return absolute value 
+// always returns absolute value 
 
-double jhcEliArm::WidthErr (double sep, int abs) const
+double jhcEliArm::WidthErr (double sep) const
 {
-  double err = Width() - sep;
-
-  if (abs > 0)
-    return fabs(err);
-  return err;
+  return fabs(Width() - sep);
 }
 
 
-//= Returns difference from given gripper closing force.
-// can optionally return absolute value 
+//= Returns signed difference from given gripper closing force.
 
-double jhcEliArm::SqueezeErr (double f, int abs) const
+double jhcEliArm::SqueezeErr (double f) const
 {
-  double err = Squeeze() - f;
-
-  if (abs > 0)
-    return fabs(err);
-  return err;
+  return(Squeeze() - f);
 }
 
 
@@ -1392,26 +1384,26 @@ void jhcEliArm::ArmPose (jhcMatrix& pos, jhcMatrix& dir) const
 //= Get current position of finger crease using cached values.
 // x is to right, y is forward, z is up in global system
 // NOTE: coordinates relative to center of wheelbase and bottom of shelf
-
+/*
 void jhcEliArm::Position (jhcMatrix& pos) const
 {
   if (!pos.Vector(4))
     Fatal("Bad input to jhcEliArm::Position");
   pos.Copy(loc); 
 }
-
+*/
 
 //= Get current direction of fingers using cached values.
 // "dir" gets a vector of gripper yaw, pitch, and roll ANGLES plus opening width
 // Note: pan axis bisects finger creases, but hand shape not quite symmetric around this
-
+/*
 void jhcEliArm::Direction (jhcMatrix& dir) const
 {
   if (!dir.Vector(4))
     Fatal("Bad input to jhcEliArm::Direction");
   dir.Copy(aim);
 }
-
+*/
 
 //= Interpret wrist errors as a force through grip point.
 // computes direction of force (unit vec) scaled by magnitude (oz)
@@ -1526,6 +1518,22 @@ int jhcEliArm::CfgTarget (const jhcMatrix& ang, const jhcMatrix& rates, int bid)
   for (i = 0; i < 6; i++)
     jt[i].SetTarget(ang.VRef(i), rates.VRef(i));
   return 1;
+}
+
+
+//= Make sure arm is close to body by setting innermost joint angles.
+// rate is ramping speed relative to standard reorientation speed
+// negative rate does not scale acceleration (for snappier response)
+// returns 1 if newly set, 0 if pre-empted by higher priority
+
+int jhcEliArm::Tuck (double rate, int bid)
+{
+  jhcMatrix ang(6);
+
+  ang.Copy(ang0);
+  ang.VSet(0, rets);
+  ang.VSet(1, rete);
+  return CfgTarget(ang, rate, bid);
 }
 
 
@@ -1684,6 +1692,16 @@ void jhcEliArm::CfgErr (jhcMatrix& aerr, const jhcMatrix& ang, int abs) const
       diff += 360.0;   
     aerr.VSet(i, ((abs > 0) ? fabs(diff) : diff));
   } 
+}
+
+
+//= Determine max absolute angular error from shoulder-elbow tucked pose.
+
+double jhcEliArm::TuckErr () const
+{
+  double ds = fabs(ang0.VRef(0) - rets), de = fabs(ang0.VRef(1) - rete);
+ 
+  return __max(ds, de);
 }
 
 
@@ -2187,7 +2205,7 @@ int stab = 5, ms = 33;
 
   // wait until high enough force or fingers all the way closed
   WidthTarget(-0.5);
-  while (!SqueezeSome() || !WidthStop())
+  while ((Squeeze() < 8.0) || !WidthStop())
   {
     // reiterate command (only one finger moves so arm must compensate)
     ArmTarget(pos, dir);

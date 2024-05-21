@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,10 +30,7 @@
 #define AFX_JHCCHATBOX_H__A2753E01_3F81_11D3_9645_006094EB2F79__INCLUDED_
 /* CPPDOC_END_EXCLUDE */
 
-#if _MSC_VER >= 1000
 #pragma once
-#endif // _MSC_VER >= 1000
-
 
 #include "jhcGlobal.h"
 
@@ -57,7 +54,7 @@ public:
 
 // Main functions
 public:
-  void Reset (int disable =0, const char *dir =NULL);           
+  void Reset (int disable =0, const char *dir =NULL, const char *rname =NULL);           
   void Mute (int gray =1); 
   int Interact ();                             // message pump
   char *Get (char *input, int ssz);  

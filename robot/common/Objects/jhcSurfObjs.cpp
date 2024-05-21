@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 
 #include "Objects/jhcSurfObjs.h"
 
-
+#include "Interface/jtimer.h"
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -106,7 +106,7 @@ void jhcSurfObjs::dealloc ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Parameters used for depth-based segmentation.
-// "lrel" and "ppel" used by jhcEliGrok::body_update to guess surface
+// "lrel" and "ppel" used by jhcEliRWI::body_update to guess surface
 
 int jhcSurfObjs::tall_params (const char *fname)
 {
