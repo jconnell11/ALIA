@@ -5,7 +5,7 @@ The secret to AI is that there is no secret! It is all just programming, but the
 
 ![Stealing stuff](red_handed.jpg)
 
-Building an agent by incrementally uploading (as opposed to DNN batch training) allows many opportunities for debugging so that the finally product is not alien, but more like a probabitionary member of society. You can read about the basic system design [here](https://arxiv.org/abs/1911.09782), or try out a text-only version by downloading for [Windows](https://github.com/jconnell11/ALIA/releases/download/v5.40/alia_txt_v540.zip) (x64) or [Linux](https://github.com/jconnell11/ALIA/releases/download/v5.40/alia_txt_ix_v540.zip) (ARM64).
+Building an agent by incrementally uploading (as opposed to DNN batch training) allows many opportunities for debugging so that the finally product is not alien, but more like a probabitionary member of society. You can read about the basic system design [here](https://arxiv.org/abs/1911.09782), or try out a text-only version by downloading for [Windows](https://github.com/jconnell11/ALIA/releases/download/v5.40/txt_loop.zip) (x64) or [Linux](https://github.com/jconnell11/ALIA/releases/download/v5.40/txt_loop_ix.zip) (ARM64).
 
 ## Capabilities
 

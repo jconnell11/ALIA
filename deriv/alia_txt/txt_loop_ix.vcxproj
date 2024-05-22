@@ -97,7 +97,7 @@
     <TargetExt />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <TargetName>txt_loop_arm</TargetName>
+    <TargetName>txt_loop</TargetName>
     <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\loop\</IntDir>
     <RemoteCCompileToolExe>aarch64-linux-gnu-g++</RemoteCCompileToolExe>
     <RemoteCppCompileToolExe>aarch64-linux-gnu-g++</RemoteCppCompileToolExe>
