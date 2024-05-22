@@ -149,7 +149,7 @@ extern "C" DEXP int alia_reset (const char *dir, const char *rname, const char *
   int ok;
 
   // clear battery voltage (for final printout)
-  alia_batt = 0.0;
+  alia_batt = 100.0;
 
   // clear all speech information
   *sp_in  = '\0';
