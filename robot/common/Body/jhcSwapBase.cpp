@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,11 +42,30 @@ jhcSwapBase::~jhcSwapBase ()
 jhcSwapBase::jhcSwapBase ()
 {
   bok = 1;
-  msp = 12.0;                // nomimal move in/sec
-  tsp = 120.0;               // nominal turn deg/sec
-  mdone = 0.5;               // close enough in inches
-  tdone = 2.0;               // close enough in degrees
+  Defaults();
   Reset();
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                         Processing Parameters                         //
+///////////////////////////////////////////////////////////////////////////
+
+//= Parameters used for basic motion commands.
+
+int jhcSwapBase::ctrl_params (const char *fname)
+{
+  jhcParam *ps = &cps;
+  int ok;
+
+  ps->SetTag("base_ctrl", 0);
+  ps->NextSpecF( &msp,    12.0, "Nomimal move (in/sec)");  
+  ps->NextSpecF( &tsp,   120.0, "Nominal turn (deg/sec)");  
+  ps->NextSpecF( &mdone,   0.5, "Close enough move (in)");  
+  ps->NextSpecF( &tdone,   2.0, "Close enough turn (deg)");  
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
 }
 
 
@@ -55,13 +74,13 @@ jhcSwapBase::jhcSwapBase ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Initialize internal state for next run.
-// "rpt" is generally level of disgnostic printouts desired
-// returns 1 always
 
-int jhcSwapBase::Reset (int rpt) 
+void jhcSwapBase::Reset () 
 {
   Zero();
-  return def_cmd();
+  Update();
+  def_cmd();
+  Issue();
 }
 
 
@@ -69,14 +88,14 @@ int jhcSwapBase::Reset (int rpt)
 
 int jhcSwapBase::Zero ()
 {
-  // clear step changes, map position, and accumulated sums
+  // clear accumulated sums, map position, and step changes
+  trav = 0.0;
+  wind = 0.0;
+  xmap = 0.0;
+  ymap = 0.0;
   along = 0.0;
   ortho = 0.0;
   dr = 0.0;
-  xmap = 0.0;
-  ymap = 0.0;
-  trav = 0.0;
-  head = 0.0;
 
   // clear speed estimates
   ips = 0.0;
@@ -90,16 +109,57 @@ int jhcSwapBase::Zero ()
 //= Reset locks and specify default commands.
 // returns 1 always for convenience
 
-int jhcSwapBase::def_cmd ()
+void jhcSwapBase::def_cmd ()
 {
   // move command
+  mdir  = 0.0;
   mrate = 0.0;
   mlock = 0;
 
   // turn command
   trate = 0.0;
   tlock = 0;
-  return 1;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                             Data Exchange                             //
+///////////////////////////////////////////////////////////////////////////
+
+//= Cache new odometric input from robot sensors (call Update to transfer).
+// path is cumulative distance travelled, spin is cumulative rotation
+// spin 0 points along map x axis, spin 90 points along map y axis
+// mx, my is robot center in map
+
+void jhcSwapBase::Status (float path, float spin, float mx, float my)
+{
+  trav0 = path;
+  wind0 = spin;
+  xmap0 = mx;
+  ymap0 = my;
+}
+
+
+//= Report motion command for robot actuators (use Issue to refresh).
+// dist, ang are absolute stop values for cumulative travel and windup
+// mvel, rvel are motion rates relative to nominal speeds
+// skew is CCW angle of motion relative to centerline (0 = forward)
+// mbid and rbid are importance of move and turn commands
+
+void jhcSwapBase::Command (float& dist, float& ang, float& skew, float& mvel, float& rvel, int& mbid, int& rbid)
+{
+  // get translation command (incl. direction)
+  dist = (float) mstop0;
+  skew = (float) mdir0;                
+  mvel = (float) mrate0;
+  
+  // get rotation command
+  ang  = (float) tstop0;
+  rvel = (float) trate0;
+
+  // get importance of commands
+  mbid = mlock0;
+  rbid = tlock0;
 }
 
 
@@ -107,32 +167,30 @@ int jhcSwapBase::def_cmd ()
 //                            Core Interaction                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Get new odometric input from robot sensors (indirectly).
-// xmap, ymap is robot center in map, hmap is centerline CCW orientation
-// heading 0 points along map x axis, heading 90 points along map y axis
-// clears command priorites for next cycle
-// override this function to directly query robot (if available) 
-// returns 1 if sensors acquired, 0 or negative for problem
+//= Update odometric travel of body (load cache values with Status).
+// automatically resets "lock" for new bids
 
-int jhcSwapBase::Status (float mx, float my, float mh)
+void jhcSwapBase::Update ()
 {
-  double mmix = 0.5, rmix = 0.3, scoot = 1.0, swivel = 2.0;
-  double dx = mx - xmap, dy = my - ymap, dm = sqrt(dx * dx + dy * dy);
-  double cyc, dt, rads = D2R * head, s0 = sin(rads), c0 = cos(rads);
+  double mmix = 1.0, rmix = 1.0, scoot = 1.0, swivel = 15.0;    // mix was 0.3, swivel was 2
+  double dx = xmap0 - xmap, dy = ymap0 - ymap, dm = sqrt(dx * dx + dy * dy);
+  double dt, rads = D2R * wind, s0 = sin(rads), c0 = cos(rads);
   UL32 last = tupd;
 
   // incremental movement since last update
   along = dx * c0 + dy * s0;
   ortho = dx * s0 - dy * c0;
-  dr = mh - head;
-  cyc = 360.0 * ROUND(fabs(dr) / 360.0);
-  dr += ((dr < 0.0) ? cyc : -cyc);
+  dr = wind0 - wind;
+  if (dr > 180.0)
+    dr -= 360.0;
+  else if (dr <= -180.0)
+    dr += 360.0;
 
-  // new map position, total turn, and total travel 
-  xmap = mx;
-  ymap = my;
-  head += dr;
-  trav += ((along >= 0.0) ? dm : -dm);
+  // new total travel, total turn, and map position
+  trav = trav0;
+  wind = wind0;
+  xmap = xmap0;
+  ymap = ymap0;
 
   // mix new speed estimates into longer term averages
   tupd = jms_now();
@@ -150,33 +208,25 @@ int jhcSwapBase::Status (float mx, float my, float mh)
     parked = __max(1, parked + 1);
 
   // set up for next cycle of command arbitration
-  return def_cmd();
+  def_cmd();
 }
 
 
-//= Send motion command to robot actuators (indirectly).
-// dist, ang are SIGNED incremental stop values wrt current pose
-// mvel, rvel are motion rates relative to nominal speeds
-// skew is CCW angle of motion relative to centerline (0 = forward)
-// mbid and rbid are importance of move and turn commands
-// override this function to directly drive robot (if available) 
-// returns 1 if command sent, 0 or negative for problem
+//= Harvest final angle commands now that arbitration is done.
+// caches "cmd" into "cmd0" for Command
 
-int jhcSwapBase::Command (float& dist, float& ang, float& skew, float& mvel, float& rvel, int& mbid, int& rbid)
+void jhcSwapBase::Issue ()      
 {
-  // get translation command (incl. direction)
-  dist = (float)(mstop - trav);
-  skew = (float) mdir;                
-  mvel = (float) mrate;
+  // translation command
+  mstop0 = mstop;
+  mdir0  = mdir;                
+  mrate0 = mrate;
+  mlock0 = mlock;
   
-  // get rotation command
-  ang  = (float)(tstop - head);
-  rvel = (float) trate;
-
-  // get importance of commands
-  mbid = mlock;
-  rbid = tlock;
-  return 1;
+  // rotation command
+  tstop0 = tstop;
+  trate0 = trate;
+  tlock0 = tlock;
 }
 
 
@@ -263,5 +313,5 @@ int jhcSwapBase::TurnFix (double ang, double secs, double rmax, int bid)
 {
   double r = ang / (tsp * secs);
 
-  return TurnAbsolute(head + ang, __min(r, rmax), bid);
+  return TurnAbsolute(wind + ang, __min(r, rmax), bid);
 }

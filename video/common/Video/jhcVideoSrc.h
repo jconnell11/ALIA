@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2019 IBM Corporation
+// Copyright 2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCVIDEOSRC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCVIDEOSRC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -80,7 +78,7 @@ public:
   int Increment;     /** Used to play every Nth frame only.       */
   double DispRate;   /** Playback slowdown factor.                */
   int ByKey;         /** Play I-frames only (i.e. 15x for MPEG).  */
-  int Shift;         /** Amount to downshift pixels (for Kinect). */
+  double Shift;      /** Show avg +/- shift * sdev (for Kinect).  */
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -211,5 +209,3 @@ private:
 
 };
 
-
-#endif

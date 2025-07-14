@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCOCV3VSRC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCOCV3VSRC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -89,10 +86,4 @@ private:
 // part of mechanism for automatically associating class with file extensions
 
 extern int jvreg_jhcOcv3VSrc;
-
-
-#endif  // once
-
-
-
 

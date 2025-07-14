@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCJOINT_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCJOINT_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -152,10 +149,4 @@ private:
   void dh_matrix (double degs, int full);
 
 };
-
-
-#endif  // once
-
-
-
 

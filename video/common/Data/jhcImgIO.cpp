@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2017 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +23,8 @@
 
 #include <string.h>
 
-#ifndef _WIN32_WCE
-  #include <direct.h>    // path and directory manipulation in Windows
+#ifndef __linux__             // was _WIN32_WCE for UBIQ system
+  #include <direct.h>         // path and directory manipulation in Windows
 #endif
 
 #include "Data/jhcImgIO.h"
@@ -378,9 +379,9 @@ int jhcImgIO_0::ReadBmpHdr (int *w, int *h, int *f, FILE *in, UC8 *map)
   // read the bitmapinfo header (40 bytes)
   if (read32(in) != 40)                       // size of this header
     return -1;  
-  if ((*w = read32(in)) == 0)                 // image width
+  if ((*w = (int) read32(in)) == 0)           // image width
     return -2;
-  if ((*h = read32(in)) == 0)                 // image height (bottom up)
+  if ((*h = (int) read32(in)) == 0)           // image height (bottom up)
     return -2;
   if (read16(in) != 1)                        // number of planes
      return -2;
@@ -408,7 +409,7 @@ int jhcImgIO_0::ReadBmpHdr (int *w, int *h, int *f, FILE *in, UC8 *map)
   if (col > 0)
   {
     if (map == NULL)                          // just check if monochrome map
-      for (i = col; i > 0; i--)
+      for (i = (int) col; i > 0; i--)
       {
         val = getc(in);                       // blue
         if (getc(in) != val)                  // green
@@ -418,7 +419,7 @@ int jhcImgIO_0::ReadBmpHdr (int *w, int *h, int *f, FILE *in, UC8 *map)
         getc(in);                             // ignore 4th (should be zero)
       }
     else
-      for (i = col; i > 0; i--)               // make exact copy of color table
+      for (i = (int) col; i > 0; i--)         // make exact copy of color table
       {
         val = getc(in);
         *m++ = (UC8) val;                     // blue
@@ -434,7 +435,7 @@ int jhcImgIO_0::ReadBmpHdr (int *w, int *h, int *f, FILE *in, UC8 *map)
     *f = 3;
 
   // strip off any excess space in color table
-  for (i = hdr - 54 - (col << 2); i > 0; i--)  
+  for (i = (int)(hdr - 54 - (col << 2)); i > 0; i--)  
     getc(in);
   return((int)(col + 1));
 }
@@ -540,8 +541,8 @@ int jhcImgIO_0::ReadRasHdr (int *w, int *h, int *f, FILE *in)
 
   if (read32b(in) != 0x59A66A95)    // magic ID number
     return -1;
-  *w = read32b(in);                 // width
-  *h = read32b(in);                 // height
+  *w = (int) read32b(in);           // width
+  *h = (int) read32b(in);           // height
   switch ((int) read32b(in))        // bits per pixel
   {
     case 8:                         // monochrome images
@@ -560,7 +561,7 @@ int jhcImgIO_0::ReadRasHdr (int *w, int *h, int *f, FILE *in)
   read32b(in);                      // total number of pixels
   read32b(in);                      // format (generally 1)
   read32b(in);                      // number of colors (ignore)
-  cols = read32b(in);               // color table size
+  cols = (int) read32b(in);         // color table size
   while (cols-- > 0)                // ignore it all
     getc(in); 
   return 1;
@@ -569,6 +570,7 @@ int jhcImgIO_0::ReadRasHdr (int *w, int *h, int *f, FILE *in)
 
 //= Fill dest with image in Sun raster format.
 // assumes image size has already been checked
+// NOTE: 16 bit pixels are stored little-endian 
 
 int jhcImgIO_0::LoadRas (jhcImg& dest, FILE *in)
 {
@@ -594,6 +596,7 @@ int jhcImgIO_0::LoadRas (jhcImg& dest, FILE *in)
 
 
 //= Save image out in Sun raster format.
+// NOTE: 16 bit pixels are stored little-endian 
 
 int jhcImgIO_0::SaveRas (FILE *out, const jhcImg& src)
 {
@@ -606,7 +609,7 @@ int jhcImgIO_0::SaveRas (FILE *out, const jhcImg& src)
   write32b(out, w);
   write32b(out, h);
   write32b(out, 8 * n);
-  write32b(out, w * h);
+  write32b(out, w * h * n);
   write32b(out, 1);
   write32b(out, 0);
   write32b(out, 0);
@@ -860,10 +863,11 @@ UL32 jhcImgIO_0::read32 (FILE *in)
 
 US16 jhcImgIO_0::read16 (FILE *in)
 {
-  US16 val;
+  US16 val, msb;
 
   val = (US16) getc(in);
-  val |= (getc(in) << 8);
+  msb = (US16)(getc(in) << 8);
+  val |= msb;
   return val;
 }
 
@@ -906,10 +910,11 @@ UL32 jhcImgIO_0::read32b (FILE *in)
 
 US16 jhcImgIO_0::read16b (FILE *in)
 {
-  US16 val;
+  US16 val, lsb;
 
   val = (US16)(getc(in) << 8);
-  val |= getc(in);
+  lsb = (US16) getc(in);
+  val |= lsb;
   return val;
 }
 
@@ -940,7 +945,7 @@ void jhcImgIO_0::write16b (FILE *out, US16 val)
 
 int jhcImgIO_0::create_subdirs ()
 {
-#ifndef _WIN32_WCE        // Win CE does not have same file structure
+#ifndef __linux__             // _WIN32_WCE also does not have same file structure
 
   int i = 0;
   char old[250], sub[250], fname[250];

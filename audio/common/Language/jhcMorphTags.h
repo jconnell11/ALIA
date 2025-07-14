@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCMORPHTAGS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCMORPHTAGS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -174,5 +171,3 @@ const UL32 JTAG_VERB = (JTAG_VIMP | JTAG_VPRES | JTAG_VPAST | JTAG_VPROG | JTAG_
 
 const UL32 JTAG_PRON = (JTAG_FEM | JTAG_MASC | JTAG_ITEM | JTAG_HERE | JTAG_THERE);
 
-
-#endif  // once

@@ -387,7 +387,7 @@ int jhcSituation::consistent (const jhcNetNode *mate, const jhcNetNode *focus, c
     return -9;
 
   // sense of predicate should be the same and belief must be high enough (or hypothetical) 
-  if (!focus->ObjNode())  
+  if (!focus->ObjNode())                                       // allow "that" arity 0 to match action arity > 0
   {
     if ((chkmode <= 0) && (mate->Neg() != focus->Neg()))       // ignore "neg" for CHK 
       return -8;

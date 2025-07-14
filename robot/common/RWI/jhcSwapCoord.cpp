@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,11 +51,12 @@ jhcSwapCoord::jhcSwapCoord ()
 
   // attach grounding kernels
   kern.AddFcns(ball); 
-  kern.Platform(&rwi);
+  kern.Platform(&rwi, "jhcGenGrok");
 
   // default processing parameters and state
   noisy = 1;
   Defaults();
+  up = 0;                    // needs reset
 }
 
 
@@ -104,6 +105,7 @@ int jhcSwapCoord::Defaults (const char *fname)
 
   // component parameters
   ok &= arm0.Defaults(fname);
+  ok &= base0.Defaults(fname);
 
   // kernel parameters
   ok &= ball.Defaults(fname);
@@ -127,6 +129,7 @@ int jhcSwapCoord::SaveVals (const char *fname)
 
   // component parameters
   ok &= arm0.SaveVals(fname);
+  ok &= base0.SaveVals(fname);
   return ok;
 }
 
@@ -160,27 +163,43 @@ int jhcSwapCoord::Reset (const char *dir, const char *rname, int prt)
   jtimer_clr();
   if (jhcAliaSpeech::Reset(rname, prt) <= 0)
     return 0;
+  up = 1;                    // reset accomplished
   return 1;
+}
+
+
+//= Generate actions in response to update sensory information.
+// sets flag in rwi to indicate new sensors and command acceptance
+
+void jhcSwapCoord::Respond ()
+{
+  rwi.accept = 1;
+  Consider();
 }
 
 
 //= Call at end of run to put robot in stable state and possibly save knowledge.
 
-int jhcSwapCoord::Done (int face)
+int jhcSwapCoord::Done (int face, int batt)
 {
   char fname[80], date[80];
-  const char *me = Name();
+  const char *me;
 
-  // stop hardware subsystems
- 
+  // skip if system never reset
+  if (up <= 0)
+    return 0; 
 
   // save learned items
   DumpSession();                       // brand new rules and ops
-  jhcAliaSpeech::Done(1);              // incl. accumulated knowledge
+  jhcAliaSpeech::Done(1, batt);        // incl. accumulated knowledge
 
   // save call profiling
-  sprintf_s(fname, "timing/%s_%s.txt", ((me != NULL) ? me : "timing"), jms_date(date));
+  me = Name();
+  sprintf_s(fname, "timing/%s_%s.prof", ((me != NULL) ? me : "timing"), jms_date(date));
   jtimer_rpt(1, wrt(fname), 1);
+
+  // needs new reset
+  up = 0;                              
   return 1;
 }
 

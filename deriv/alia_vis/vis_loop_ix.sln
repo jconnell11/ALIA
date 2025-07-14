@@ -1,0 +1,51 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vis_loop_ix", "vis_loop_ix.vcxproj", "{2C4C2A33-7A68-486E-9C31-CA896E227C21}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Jet|ARM = Jet|ARM
+		Jet|ARM64 = Jet|ARM64
+		Jet|x64 = Jet|x64
+		Jet|x86 = Jet|x86
+		Rpi|ARM = Rpi|ARM
+		Rpi|ARM64 = Rpi|ARM64
+		Rpi|x64 = Rpi|x64
+		Rpi|x86 = Rpi|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|ARM.ActiveCfg = Jet|ARM
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|ARM.Build.0 = Jet|ARM
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|ARM.Deploy.0 = Jet|ARM
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|ARM64.ActiveCfg = Jet|ARM64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|ARM64.Build.0 = Jet|ARM64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|ARM64.Deploy.0 = Jet|ARM64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|x64.ActiveCfg = Jet|x64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|x64.Build.0 = Jet|x64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|x64.Deploy.0 = Jet|x64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|x86.ActiveCfg = Jet|x86
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|x86.Build.0 = Jet|x86
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Jet|x86.Deploy.0 = Jet|x86
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|ARM.ActiveCfg = Rpi|ARM
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|ARM.Build.0 = Rpi|ARM
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|ARM.Deploy.0 = Rpi|ARM
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|ARM64.ActiveCfg = Rpi|ARM64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|ARM64.Build.0 = Rpi|ARM64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|ARM64.Deploy.0 = Rpi|ARM64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|x64.ActiveCfg = Rpi|x64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|x64.Build.0 = Rpi|x64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|x64.Deploy.0 = Rpi|x64
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|x86.ActiveCfg = Rpi|x86
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|x86.Build.0 = Rpi|x86
+		{2C4C2A33-7A68-486E-9C31-CA896E227C21}.Rpi|x86.Deploy.0 = Rpi|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8601DD37-4EE1-498A-A681-AFFD11824555}
+	EndGlobalSection
+EndGlobal

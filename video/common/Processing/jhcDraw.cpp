@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,7 +110,7 @@ int jhcDraw::Scramble (jhcImg& dest, const jhcImg& src, int field) const
   {
     v = ((i % 14) + 1) << 4;    // no black or white
     v |= (i >> 4);
-    scr[i] = v & 0xFF;
+    scr[i] = (UC8)(v & 0xFF);
   }
 
   // apply table to image
@@ -147,7 +147,7 @@ int jhcDraw::ScrambleNZ (jhcImg& dest, const jhcImg& src, int field) const
   {
     v = ((i % 14) + 1) << 4;    // no black or white
     v |= (i >> 4);
-    scr[i] = v & 0xFF;
+    scr[i] = (UC8)(v & 0xFF);
   }
 
   // apply table to image

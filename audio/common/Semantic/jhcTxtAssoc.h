@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTXTASSOC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTXTASSOC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -128,12 +125,5 @@ private:
   // file operations
   char *trim_wh (char *src) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

@@ -47,15 +47,28 @@ jhcEliCoord::jhcEliCoord ()
   disp.Bind(stat);
   
   // connect processing to basic robot I/O
-  rwi.BindBody(body);
+  rwi.body = &body;
+  rwi.neck = &(body.neck);
+  rwi.arm  = &(body.arm);
+  rwi.lift = &(body.lift);
+  rwi.base = &(body.base);
 
+  // connect microphone (if any) to person finder
+  rwi.mic = &(body.mic);              
+  (rwi.tk).RemoteMic(rwi.mic);
+
+  // input images
+  rwi.rng = &(body.Range());
+  rwi.col = &(body.Color());
+  rwi.raw = &(body.Input());
+  
   // attach grounding kernels
   kern.AddFcns(ball);
   kern.AddFcns(soc);
   kern.AddFcns(svis);
   kern.AddFcns(man);
   kern.AddFcns(sup);
-  kern.Platform(&rwi);
+  kern.Platform(&rwi, "jhcVisGrok");
 
   // default processing parameters and state
   noisy = 1;
@@ -168,17 +181,30 @@ int jhcEliCoord::Reset (int bmode)
 {
   int rc = 0;
 
+  // do not batch up printfs for speed
+  jprintf_fflush = 1;                            
+
   // set graph scaling
   disp.hz = shz;
 
   // start up body (and get robot name)
   mech = bmode;
   if (mech > 0)
-    if ((rc = body.Reset(1, mech - 1)) <= 0)
+    if ((rc = body.Reset(1, mech - 1, mech)) <= 0)
       return -1;
 
+  // configure actuators
+  if (mech > 0)
+  {
+    (body.base).Zero();
+    body.InitPose();         // used to leave height unaltered (-1.0)
+    body.Update(-1, 1);      // sensor info will be waiting and need to be read
+  }
+  else
+    body.StaticPose();       // set neck angles and head height for static image
+
   // start background processing of video
-  rwi.Reset(mech);
+  rwi.Reset(mech, 1, body.choke);
   alert = 0;
 
   // initialize speech and reasoning and add user faces
@@ -230,7 +256,7 @@ int jhcEliCoord::Respond ()
   }
 
   // figure out what to do then issue action commands
-  if (jhcAliaSAPI::Respond(eye) <= 0)
+  if (jhcAliaSAPI::Consider(eye) <= 0)
     return 0;
   if (rwi.Issue() <= 0)
     return 0;
@@ -259,23 +285,163 @@ const jhcImg *jhcEliCoord::View (int num)
 
 int jhcEliCoord::Done (int face)
 {
-  // stop real time interaction
+  int batt = -1;
+
+  // stop real time interaction and get battery state
   if (mech > 0)
     body.Freeze();
   rwi.Stop();
   if ((body.vid) != NULL)
     (body.vid)->Prefetch(0);
+  if (!rwi.Ghost())
+    batt = body.Percent();
 
-  // save learned items
+  // save info from run
   DumpSession();                       // brand new rules and ops
-  jhcAliaSAPI::Done(1);                // incl. accumulated knowledge
+  jhcAliaSAPI::Done(1, batt);          // incl. accumulated knowledge
   if (face > 0)
     ((rwi.fn).fr).SaveDB("config/all_people.txt");
+  rwi.DumpImages(Dir());
 
-  // possibly report robot power level
-  if (!rwi.Ghost())
-    body.ReportCharge();
+  // extra battery warning (if needed)
+  if ((batt >= 0) && (batt <= 20))
+  {
+    jprintf("%3.1f volts - CONSIDER RECHARGING", body.Voltage());
+    body.Beep();
+  }
   return 1;
 }
 
+
+///////////////////////////////////////////////////////////////////////////
+//                           Debugging Graphics                          //
+///////////////////////////////////////////////////////////////////////////
+
+//= Overlay stick figure of arm onto camera image in some color.
+// optionally show ray of some length (inches) from grasp point
+// best if arm angles are not changing (i.e. don't call during update)
+// NOTE: this is only for the color camera view
+
+int jhcEliCoord::Skeleton (jhcImg& dest, double ray) const
+{
+  jhcMatrix pos(4), off(4);
+  int jt[5] = {1, 2, 3, 6, 7};
+  double px, py, ix, iy;
+  int i; 
+
+  if (!dest.Valid(1, 3))
+    return Fatal("Bad images to jhcEliCoord::Skeleton");
+
+  // draw links and grip location
+  ImgJt(px, py, 0);
+  for (i = 0; i < 5; i++)
+  {
+    ImgJt(ix, iy, jt[i]);
+    DrawLine(dest, px, py, ix, iy, 3, -5);
+    px = ix;
+    py = iy;
+  }
+  CircleEmpty(dest, px, py, 10, 3, -5);  
+
+  // ray in grip direction 
+  if (ray <= 0.0)
+    return 1;
+  off.SetVec3((body.arm).ToolX() + ray, 0.0, 0.0);
+  ((body.arm).jt[6]).GlobalMap(pos, off);
+  (rwi.s3).ImgPtZ(ix, iy, pos.X(), pos.Y(), pos.Z() + (body.lift).Height());
+  DrawLine(dest, px, py, ix, iy, 3, -3); 
+  return 1;
+}
+
+
+//= Overlay stick figure of arm onto overhead object map image.
+// optionally show ray of some length (inches) from grasp point
+// NOTE: this is only for the overhead map view (adjusts for neck pose)
+
+int jhcEliCoord::MapArm (jhcImg& dest, double ray) const
+{
+  jhcMatrix pos(4), off(4);
+  int jt[5] = {1, 2, 3, 6, 7};
+  double px, py, mx, my;
+  int i; 
+
+  if (!dest.Valid(1, 3))
+    return Fatal("Bad images to jhcEliCoord::MapArm");
+
+  // draw links from shoulder and circle grip location
+  (body.arm).JtPos(pos, 0);
+  (rwi.sobj).ViewPels(px, py, pos.X(), pos.Y());
+  for (i = 0; i < 5; i++)
+  {
+    // select some joint and get map coords
+    if (jt[i] == 7)
+      (body.arm).Position(pos);
+    else if (jt[i] == 2)
+      (body.arm).LiftBase(pos);        // looks better on screen
+    else
+      (body.arm).JtPos(pos, jt[i]);
+    (rwi.sobj).ViewPels(mx, my, pos.X(), pos.Y());
+
+    // draw segment
+    DrawLine(dest, px, py, mx, my, 3, -5);
+    px = mx;
+    py = my;
+  }
+  CircleEmpty(dest, px, py, 10, 3, -5);  
+
+  // ray in grip direction 
+  if (ray <= 0.0)
+    return 1;
+  off.SetVec3((body.arm).ToolX() + ray, 0.0, 0.0);
+  ((body.arm).jt[6]).GlobalMap(pos, off);
+  (rwi.sobj).ViewPels(mx, my, pos.X(), pos.Y());
+  DrawLine(dest, px, py, mx, my, 3, -3); 
+  return 1;
+}
+
+
+//= Find the pixel location of a particular arm joint.
+// jt: 0 = shoulder,   1 = elbow,     2 = FOREARM lift, 
+//     3 = wrist roll, 4 = wrist pan, 5 = wrist tilt, 
+//     6 = jaw axis,   7 = mid tips
+// returns non-scaled z coordinate (for use with jhcSurface3D::WorldPt)
+
+double jhcEliCoord::ImgJt (double& ix, double& iy, int jt) const
+{
+  jhcMatrix pos(4);
+
+  if ((jt < 0) || (jt > 7))
+    return 0;
+
+  if (jt == 7)
+    (body.arm).Position(pos);
+  else if (jt == 2)
+    (body.arm).LiftBase(pos);         // looks better on screen
+  else
+    (body.arm).JtPos(pos, jt);
+  return (rwi.s3).ImgPtZ(ix, iy, pos.X(), pos.Y(), pos.Z() + (body.lift).Height());
+}
+
+
+//= Get angle difference of the click location versus projected jt1 relative to projected jt0.
+// primarily used by arm calibration routines in jhcBanzaiDoc
+
+double jhcEliCoord::ImgVeer (int mx, int my, int jt1, int jt0) const
+{
+  double x0, y0, x1, y1, ang, click, diff;
+
+  // find interjoint angle and click angle
+  ImgJt(x0, y0, jt0);
+  ImgJt(x1, y1, jt1);
+  ang = R2D * atan2(y1 - y0, x1 - x0);
+  click = R2D * atan2(my - y0, mx - x0);
+
+  // normalize difference
+  diff = click - ang;
+  if (diff > 180.0)
+    diff -= 360.0;
+  else if (diff <= -180.0)
+    diff += 360.0;
+  return diff;
+}
 

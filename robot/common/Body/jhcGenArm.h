@@ -34,14 +34,14 @@ class jhcGenArm
 {
 // PROTECTED MEMBER VARIABLES
 protected:
-  jhcMatrix loc;                       // Current gripper position.    
-  jhcMatrix aim;                       // Current gripper orientation. 
+  jhcMatrix loc;             // current gripper position.    
+  jhcMatrix aim;             // current gripper orientation. 
 
 
 // PUBLIC MEMBER VARIABLES
 public:
   // arm stowed position
-  double retx, rety, retz, rdir, rtip;
+  double retx, rety, retz, rdir, rtip, wmax, wlax;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -50,8 +50,7 @@ public:
   virtual ~jhcGenArm () {}
   jhcGenArm () {loc.SetSize(4); aim.SetSize(4);}
   virtual int CommOK () {return 1;}
-  virtual double AngTol () const  {return 3.0;}
-  virtual double MaxWidth () const =0;
+  virtual double AngTol () const   {return 3.0;}
 
   // ---------------------- HAND MAIN ----------------------------
 
@@ -59,6 +58,7 @@ public:
   virtual double Width () const =0;
   virtual double Squeeze () const =0;
   virtual double SqueezeGoal () const =0;
+  virtual void JawOpen (double sep) {}
 
   // hand goal specification commands
   virtual int WidthTarget (double sep, double rate =1.0, int bid =10) =0;
@@ -76,12 +76,14 @@ public:
   const jhcMatrix *Direction () const   {return &aim;}     // values continually updated
   void Position (jhcMatrix& pos) const  {pos.Copy(loc);}
   void Direction (jhcMatrix& dir) const {dir.Copy(aim);}
+
+  // arm auxilliary information
   virtual double ObjectWt (double grav =4.0, double fsc =0.57) const {return 0.0;}
   virtual double ReachRate () const =0;
   virtual int Static () const =0;
 
   // arm Cartesian goal specification commands
-  virtual int PosTarget (double ax, double ay, double az, double rate =1.0, int bid =10, int mode =0x0) =0;
+  virtual int PosTarget (const jhcMatrix& pos, double rate =1.0, int bid =10, int mode =0x0) =0;
   virtual int PosTarget3D (const jhcMatrix& pos, double ht, double rate =1.0, int bid =10, int mode =0x0) =0;
   virtual int DirTarget (const jhcMatrix& dir, double rate =1.0, int bid =10, int mode =0x0) =0;
   virtual int ArmTarget (const jhcMatrix& pos, const jhcMatrix& dir, 

@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCPROCMEM_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCPROCMEM_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -92,12 +89,5 @@ private:
   // file functions
   int save_ops (FILE *out, int level) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

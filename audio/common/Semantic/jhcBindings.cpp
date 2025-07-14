@@ -121,7 +121,7 @@ jhcNetNode *jhcBindings::LookUp (const jhcNetNode *k) const
 }
 
 
-//= Retrive whatever auxilliary information with stored with this key.
+//= Retrieve whatever auxilliary information with stored with this key.
 // return -1 if key not found
 
 int jhcBindings::GetAux (const jhcNetNode *k) const

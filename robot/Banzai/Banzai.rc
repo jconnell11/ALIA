@@ -94,6 +94,14 @@ BEGIN
         MENUITEM "E&xit",                       ID_APP_EXIT
     END
     MENUITEM "|",                           0
+    POPUP "&Images"
+    BEGIN
+        MENUITEM "&Rangerfinder",               ID_IMAGES_RANGERFINDER
+        MENUITEM "&Color Camera",               ID_IMAGES_COLORCAMERA
+        MENUITEM SEPARATOR
+        MENUITEM "&Save Defaults",              ID_PARAMETERS_SAVEDEFAULTS
+        MENUITEM "Load &Defaults",              ID_PARAMETERS_LOADDEFAULTS
+    END
     POPUP "&Room"
     BEGIN
         MENUITEM "&Person Map",                 ID_ROOM_PERSONMAP
@@ -107,8 +115,6 @@ BEGIN
         MENUITEM "&Obstacle Sense",             ID_NAV_GUIDANCE
         MENUITEM "&Depth FOV",                  ID_NAV_DEPTHFOV
         MENUITEM SEPARATOR
-        MENUITEM "&Save Defaults",              ID_PARAMETERS_SAVEDEFAULTS
-        MENUITEM "Load &Defaults",              ID_PARAMETERS_LOADDEFAULTS
     END
     POPUP "&Table"
     BEGIN
@@ -190,6 +196,7 @@ BEGIN
     POPUP "&Manip"
     BEGIN
         MENUITEM "&Grasp Point",                ID_OBJECTS_GRASPPOINT
+        MENUITEM "&Finger Pose",                ID_MANIP_FINGERPOSE
         MENUITEM "&Empty Spot",                 ID_OBJECTS_EMPTYSPOT
         MENUITEM "&Trajectory Ctrl",            ID_OBJECTS_TRAJECTORYCTRL
         MENUITEM "&Motion Done",                ID_OBJECTS_MOTIONDONE
@@ -330,8 +337,8 @@ CAPTION "About Banzai"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,15,17,20,20
-    LTEXT           "Banzai Version 5.40",IDC_STATIC,47,11,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2015-2024, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
+    LTEXT           "Banzai Version 5.70",IDC_STATIC,47,11,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2015-2025, IBM + Etaoin Systems",IDC_STATIC,47,36,171,8
     DEFPUSHBUTTON   "OK",IDOK,176,7,50,14,WS_GROUP
     LTEXT           "Written by Jonathan H. Connell",IDC_STATIC,47,24,128,9
 END
@@ -420,8 +427,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 5,40,0,1
- PRODUCTVERSION 5,40,0,1
+ FILEVERSION 5,70,0,1
+ PRODUCTVERSION 5,70,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -437,12 +444,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "Banzai Robot Reasoner"
-            VALUE "FileVersion", "5.40.0.1"
+            VALUE "FileVersion", "5.70.0.1"
             VALUE "InternalName", "Banzai"
-            VALUE "LegalCopyright", "Copyright (C) 2024 Etaoin Systems"
+            VALUE "LegalCopyright", "Copyright (C) 2025 Etaoin Systems"
             VALUE "OriginalFilename", "Banzai.exe"
             VALUE "ProductName", "Banzai"
-            VALUE "ProductVersion", "5.40.0.1"
+            VALUE "ProductVersion", "5.70.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -804,7 +811,7 @@ BEGIN
     ID_DETECTION_GAZESURFACE "Optimize head angles for detected surface"
     ID_DETECTION_GAZEOBJECT "Look straight at middle of selected object"
     ID_MANIPULATION_ACQUIREFULL "Move body then arm to clutch object to chest"
-    ID_OBJECTS_GRASPPOINT   "Geometric parameters for generating grasp and via points "
+    ID_OBJECTS_GRASPPOINT   "Geometric parameters for generating grasp location "
     ID_OBJECTS_TRAJECTORYCTRL 
                             "Additional parameters governing execution of trajectories"
     ID_OBJECTS_MOTIONDONE   "Position and angle tolerances for successful completion"
@@ -845,6 +852,9 @@ BEGIN
     ID_MOOD_ADJUSTMIX       "Tune wildness and belief threshold contributions"
     ID_MOOD_PREFERENCEMIX   "Tune preference threshold contributions"
     ID_MOOD_NAGTIMING       "Rates for repeated emotional notifications"
+    ID_MANIP_FINGERPOSE     "Geometric parameters for finger angle and separation"
+    ID_IMAGES_RANGERFINDER  "Set depth focal length and scaling"
+    ID_IMAGES_COLORCAMERA   "Set color focal length, warping, and enhancement"
 END
 
 #endif    // English (United States) resources

@@ -65,7 +65,7 @@ jhcEliBase::jhcEliBase ()
   stiff = 0;
   ice = 0;
   ice2 = 0;
-  ms = 33;             // blocking update time (ms)
+  ms = 33;                   // blocking update time (ms)
 
   // current raw state
   lf  = 0;
@@ -84,6 +84,7 @@ jhcEliBase::jhcEliBase ()
   dy0 = 0.0;
   dx  = 0.0;
   dy  = 0.0;
+  parked = 30;               // assume stationary at start
 
   // processing parameters
   LoadCfg();
@@ -100,6 +101,7 @@ jhcEliBase::jhcEliBase ()
 // with I = D = 0, crank P up until robot starts pulsing
 // then with D = 0, crank I up until robot starts pulsing
 // nothing geometric that differs between bodies
+// NOTE: for 2016 controller iloop = 100, older boards = 8 (else very jerky!)
 
 int jhcEliBase::ctrl_params (const char *fname)
 {
@@ -110,7 +112,7 @@ int jhcEliBase::ctrl_params (const char *fname)
   ps->NextSpec4( &bport,     6,   "Serial port number");        // was 7
   ps->NextSpec4( &bbaud, 38400,   "Serial baud rate");
   ps->NextSpecF( &ploop,     1.0, "Proportional factor");       // was 12M, 512, then 32 (ignored?)
-  ps->NextSpecF( &iloop,   100.0, "Integral factor");           // was 4M, 256, then 8 (important!)
+  ps->NextSpecF( &iloop,     8.0, "Integral factor");           // was 4M, 256, then 8 (important!)
   ps->NextSpecF( &dloop,     0.0, "Derivative factor");         // was 128, 8, then 9 (not needed?)
   ps->NextSpec4( &pwm,       0,   "Use PWM mode instead");      // was 1 for old encoders
 
@@ -278,7 +280,7 @@ int jhcEliBase::Reset (int rpt, int chk)
   tvel = 0.0;
   imv  = 0.0;
   itv  = 0.0;
-  parked = 0;
+  parked = 30;               // assumed stationary at start
 
   // finished
   jprintf(1, rpt, "    ** good **\n");
@@ -299,7 +301,8 @@ int jhcEliBase::fail (int ans, int rpt)
 
 //= Send down PID control loop parameters for base motor controller.
 // PID values have 16 bit integer and 16 bit fractional parts
-// new (2106) 2x30 controller needs 4x higher PID values than older red boards
+// new (2016) 2x30 controller needs 4x higher PID values than older red boards
+// NOTE: for 2016 controller iloop = 100, older boards = 8 (else very jerky!)
 // NOTE: does not block, tx takes about 11.7ms = (7 + 2 * 19) * 10 / 38400
 // returns 1 if successful, 0 or negative for problem
 
@@ -763,6 +766,7 @@ int jhcEliBase::UpdateFinish ()
     parked = __min(0, parked - 1);
   else
     parked = __max(1, parked + 1);
+jprintf("   imv %4.2f, itv %4.2f -> base parked %d\n", imv, itv, parked);
 
   // set up to receive new round of commands and bids
   clr_locks(0);      

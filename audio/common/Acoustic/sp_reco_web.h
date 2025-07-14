@@ -1,4 +1,4 @@
-// jhcSpRecoWeb.h : speech recognition using Microsoft Azure web service
+// sp_reco_web.h : speech recognition using Microsoft Azure web service
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <stdlib.h>            // needed for NULL
+#include <stddef.h>            // needed for NULL
 
 
 // function declarations (possibly combined with other header files)
@@ -72,7 +72,7 @@ extern "C" DEXP int reco_start ();
 extern "C" DEXP void reco_listen (int doit);
 
 
-//= Check to see if any utterances are ready for harvesting (resets value).
+//= Check to see if any utterances are ready for harvesting.
 // return: 2 new result, 1 speaking, 0 silence, -1 unintelligible, -2 lost connection 
 
 extern "C" DEXP int reco_status ();
@@ -83,9 +83,14 @@ extern "C" DEXP int reco_status ();
 extern "C" DEXP const char *reco_partial ();
 
 
-//= Gives text string of last full recognition result.
+//= Gives text string of last full recognition result (changes status).
 
 extern "C" DEXP const char *reco_heard ();
+
+
+//= Gives approximate time (ms) that utterance started before notification.
+
+extern "C" DEXP int reco_delay ();
 
 
 //= Add a particular name to grammar to increase likelihood of correct spelling.

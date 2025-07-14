@@ -222,6 +222,9 @@
 #define ID_MOOD_ADJUSTMIX               32950
 #define ID_MOOD_PREFERENCEMIX           32951
 #define ID_MOOD_NAGTIMING               32952
+#define ID_MANIP_FINGERPOSE             32953
+#define ID_IMAGES_RANGERFINDER          32954
+#define ID_IMAGES_COLORCAMERA           32955
 
 // Next default values for new objects
 // 
@@ -229,7 +232,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32953
+#define _APS_NEXT_COMMAND_VALUE         32956
 #define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

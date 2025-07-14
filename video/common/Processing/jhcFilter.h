@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2003-2013 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCFILTER_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCFILTER_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -53,11 +51,9 @@ public:
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  int Flywheel0 (const jhcImg& src);
+  int fly_mono (const jhcImg& src, int init);
+  int fly_float (const jhcImg& src);
 };
-
-
-#endif
 
 
 /////////////////////////////////////////////////////////////////////////////

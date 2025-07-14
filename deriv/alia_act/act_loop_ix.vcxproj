@@ -85,7 +85,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\loop\</IntDir>
-    <TargetName>act_loop</TargetName>
+    <TargetName>act_loop_x64</TargetName>
     <TargetExt />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">

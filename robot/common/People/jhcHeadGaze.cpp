@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -154,6 +155,21 @@ int jhcHeadGaze::SaveCfg (const char *fname) const
 
 
 ///////////////////////////////////////////////////////////////////////////
+//                            Frontal Camera                             //
+///////////////////////////////////////////////////////////////////////////
+
+//= Set the frontal view camera pose relative to the input camera pose.
+// needed since projection is normalized with cx = 0, cy = 0, and cpan = 90
+
+void jhcHeadGaze::SetFront (int view, const jhcMatrix& vpos, const jhcMatrix& vdir,
+                            const jhcMatrix& cpos, const jhcMatrix& cdir)
+{
+  s3->SetAlt(view, vpos.X() - cpos.X(), vpos.Y() - cpos.Y(), vpos.Z(), 
+                   vdir.P() - cdir.P() + 90.0, vdir.T(), vdir.R());
+}
+
+
+///////////////////////////////////////////////////////////////////////////
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
@@ -178,7 +194,7 @@ void jhcHeadGaze::Reset ()
 // assumes composite floor map has been processed with "Analyze"
 // needs corrected depthmap in order to extract face distance
 
-void jhcHeadGaze::ScanRGB (const jhcImg& src, const jhcImg& d16, int cam, int trk)
+void jhcHeadGaze::ScanRGB (const jhcImg& src, const jhcImg& d16, int view, int trk)
 {
   jhcRoi probe;
   jhcMatrix mid(4), rel(4), fc(4), dir(4);
@@ -188,26 +204,26 @@ void jhcHeadGaze::ScanRGB (const jhcImg& src, const jhcImg& d16, int cam, int tr
 
   if (s3 == NULL)
     Fatal("Unbound person detector in jhcHeadGaze::ScanRGB");
-  if ((cam < 0) || (cam >= cmax) || !src.Valid(1, 3))
+  if ((view < 0) || (view >= cmax) || !src.Valid(1, 3))
     Fatal("Bad input to jhcHeadGaze::ScanRGB");
     
   // consider all potential people as viewed from this camera
-  s3->AdjGeometry(cam);
+  s3->SetColorGeom(view);
   n = s3->PersonLim(trk);
   for (p = 0; p < n; p++)
     if (s3->PersonOK(p, trk))
     {
       // set search area around rotational midpoint of head
       guy = s3->RefPerson(p, trk);
-      head_mid(mid, *guy, cam);
+      head_mid(mid, *guy, 0);                        // wrt main depth sensor
       if (search_area(probe, rot, mid, src) <= 0)
         continue;
 
       // look for face in search area
-      if (FaceChk(p, src, probe, rot, cam) >= 0)
+      if (FaceChk(p, src, probe, rot, view) >= 0)
       {
         // get realworld face center location
-        FaceMid(fx, fy, p, cam, sc);                 // was 0.5 * sc ?
+        FaceMid(fx, fy, p, view, sc);                // was 0.5 * sc ?
         if (face_pt(fc, fx, fy, d16, sc) > 0)
         {
           // accumulate vector sum of estimates
@@ -221,7 +237,7 @@ void jhcHeadGaze::ScanRGB (const jhcImg& src, const jhcImg& d16, int cam, int tr
 
 //= Adjust nominal head position for more accurate results.
 // "hadj" shifts expected eye position relative to head center
-// "dadj" moves center back from front shell (mostly for single camera) 
+// "dadj" moves center back from front shell (mostly for single sensor) 
 
 void jhcHeadGaze::head_mid (jhcMatrix& mid, const jhcMatrix& head, int cam) const
 {
@@ -375,7 +391,7 @@ int jhcHeadGaze::GazeID (int id, int trk) const
 
 int jhcHeadGaze::GazeNew (int trk, int gmin) const
 {
-  int i, best, win = -1;
+  int i, best = 0, win = -1;
 
   for (i = 0; i < pmax; i++)
     if (s3->PersonOK(i, trk) && (gcnt[i] >= gmin))

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCDISPLAY_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCDISPLAY_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 // order of includes is important
 #include "jhcGlobal.h"
@@ -59,7 +56,7 @@ private:
   RGBQUAD *ctables[4];
 
   // image conversion and placement
-  DWORD tdisp;
+  UL32 tdisp;
   jhcImg tmp;
   int imgx, imgy, imgw, imgh, gcnt, gmax;
 
@@ -249,11 +246,4 @@ private:
   int peek_no_menu (MSG *msg);
 
 };
-
-
-#endif
-
-
-
-
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,8 +38,10 @@
 #include "Body/jhcEliLift.h"
 #include "Body/jhcEliNeck.h"
 #include "Peripheral/jhcAccelXY.h"
-#include "Peripheral/jhcDirMic.h"
+#include "Peripheral/jhcVt2Mic.h"
 #include "Peripheral/jhcDynamixel.h"
+
+#include "Body/jhcGenBody.h"
 
 
 //= Controls all mechanical aspects of Eli Robot (arm, neck, base, lift).
@@ -78,20 +80,20 @@
 // 
 // </pre>
 
-class jhcEliBody : private jhcHist, private jhcLUT, private jhcResize
+class jhcEliBody : public jhcGenBody, private jhcHist, private jhcLUT, private jhcResize
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  jhcImg col, rng, col2;                   // images from Kinect sensor
+  jhcImg raw, col, rng;                // images from Kinect sensor
   DWORD tcmd[10];
   char cfile[80];
   double vmax0;
   UL32 ntime, ltime, atime, gtime, ttime, mtime;
-  int bnum, cw, ch, iw, ih, kin, mok, tstep, tfill;
+  int bnum, cw, ch, iw, ih, kin, mok, tstep, tfill, seen;
 
   // battery data
   double volts;
-  int vsamp;
+  int vsamp, batt;
 
 
 // PRIVATE MEMBER PARAMETERS
@@ -109,6 +111,7 @@ private:
 // PUBLIC MEMBER VARIABLES
 public:
   jhcParam bps, ips, sps;
+  int choke;
 
   // default robot name and TTS voice
   char rname[80], vname[80], errors[200];
@@ -126,8 +129,7 @@ public:
 
   // sound direction - Kinect (or video) plus audio is external
   jhcVideoSrc *vid;
-  jhcDirMic mic;
-  int enh;
+  jhcVt2Mic mic;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -156,11 +158,11 @@ public:
   // configuration
   void BindVideo (jhcVideoSrc *v);
   int SetKinect (int rpt =1);
-  int Reset (int rpt =0, int full =0);
+  int Reset (int rpt =0, int full =0, int phy =1);
   int BodyNum (int chk =0);
   int CfgFile (char *fname, int chk, int ssz); 
   const char *LastCfg () const {return cfile;}
-  int CommOK (int rpt =1, int bad =0) const;
+  int CommOK (int rpt =1) const;
   int VideoOK () const {if ((vid == NULL) || !vid->Valid()) return 0; return 1;}
   const char *Problems ();
   double MegaReport ();
@@ -208,24 +210,40 @@ public:
   double FrameTime () const {return(0.001 * tstep);}
 
   // access to Kinect images
-  const jhcImg& Color () const {return col;}     /** Returns native resolution RGB image. */
-  const jhcImg& Range () const {return rng;}     /** Returns native (8 or 16) depth map.  */
-  int ImgSmall (jhcImg& dest);
+  jhcImg& Color () {return col;}       /** Returns native resolution RGB image. */
+  jhcImg& Range () {return rng;}       /** Returns native (8 or 16) depth map.  */
+  jhcImg& Input () {return raw;}       /** Color image before enhancement.      */
   int ImgBig (jhcImg& dest); 
+  int ImgSmall (jhcImg& dest);
+  int InputSmall (jhcImg& dest);
   int Depth8 (jhcImg& dest) const; 
   int Depth16 (jhcImg& dest) const; 
 
   // image acquisition 
   bool NewFrame () const {return(vid != NULL);}
   const jhcImg *View () const {return &col;}
-  
+  int RngReady () const {return seen;}
+  int RngStatic () const {return __min(base.Static(), neck.Stare());}
+  void RngPose (jhcMatrix& pos, jhcMatrix& dir) const
+    {neck.HeadPose(pos, dir, lift.Height());}
+/*
+// synthetic Ganbei adjustment
+void ColPose (jhcMatrix& pos, jhcMatrix& dir) const
+{
+  RngPose(pos, dir);
+  dir.IncVec3(-5.0, 6.0, 4.5);
+  double fwd = 0.87, up = -1.14;       // lens (f = 384.5)
+  double trads = D2R * dir.T(), c = cos(trads), s = sin(trads); 
+  pos.IncVec3(0.0, fwd * c - up * s, up * c + fwd * s);
+}
+*/  
   // basic actions
   int Freeze (int led =0);
   int Limp ();
 
   // main functions
   int UpdateImgs ();
-  int Update (int voice =0, int imgs =1, int bad =0);
+  int Update (int voice =0, int imgs =1);
   void UpdateBat () {Sample(neck.Voltage());}
   void CamPose (double& pan, double& tilt, double& ht);
   int Issue (double lead =3.0);

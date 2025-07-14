@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTXTLINE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTXTLINE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -96,12 +93,5 @@ private:
     {return((in == NULL) || (head == NULL));}
   char *strip_wh ();
 
-
 };
-
-
-#endif  // once
-
-
-
 

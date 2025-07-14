@@ -20,8 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCVIDEOSINK_
-#define _JHCVIDEOSINK_
+#pragma once 
 
 #include "jhcGlobal.h"
 
@@ -69,10 +68,4 @@ protected:
   virtual int iPut (const jhcImg& src) =0;  /** Data recording implemented by subtype. */
 
 };
-
-
-#endif
-
-
-
 

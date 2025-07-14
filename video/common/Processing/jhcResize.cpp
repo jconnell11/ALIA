@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1080,7 +1080,8 @@ int jhcResize::Resample (jhcImg& dest, const jhcImg &src, double cx, double cy, 
   double dy0, dy1, dx0, dx1, sx0, sy0, sx, sy, xstep = 1.0 / magx, ystep = 1.0 / magy;
   int dw = dest.XDim(), dh = dest.YDim(), dsk = dest.Skip(), nf = dest.Fields();
   int sw = src.XDim(), sh = src.YDim(), sln = src.Line();
-  int y0, y1, x0, x1, cnt0, cnt1, x0b, x1b, y0b, y1b, n, i, j, cnt = dw * nf;
+  int y0, y1, x0, x1, cnt0, cnt1, n, i, j, cnt = dw * nf;
+//  int x0b, x1b, y0b, y1b;
   int x, y, ix, iy, up, dn, lf, rt, swf, sef, nwf, nef, v;
   UC8 *d = dest.PxlDest();
   const UC8 *s0, *s;
@@ -1099,13 +1100,13 @@ int jhcResize::Resample (jhcImg& dest, const jhcImg &src, double cx, double cy, 
   x1 = __min((int) floor(dx1), dw - 1); 
   cnt0 = x0 * nf;
   cnt1 = (x1 + 1) * nf;
-
+/*
   // find border regions of image
   y0b = __max(0, y0 - ROUND(0.5 * magy));
   y1b = __min(y1 + ROUND(0.5 * magy), dh - 1);
   x0b = __max(0, x0 - ROUND(0.5 * magx));
   x1b = __min(x1 + ROUND(0.5 * magx), dw - 1);
-
+*/
   // allocate arrays for sampling control
   n = x1 - x0 + 1;
   pos = (int *) new int[n];
@@ -1212,7 +1213,8 @@ int jhcResize::Resample_16 (jhcImg& dest, const jhcImg &src, double cx, double c
   double dy0, dy1, dx0, dx1, sx0, sy0, sx, sy, xstep = 1.0 / magx, ystep = 1.0 / magy;
   int dw = dest.XDim(), dh = dest.YDim(), dsk = dest.Skip() >> 1;
   int sw = src.XDim(), sh = src.YDim(), sln = src.Line() >> 1;
-  int y0, y1, x0, x1, cnt0, cnt1, x0b, x1b, y0b, y1b, n, i; 
+  int y0, y1, x0, x1, cnt0, cnt1, n, i; 
+//  int x0b, x1b, y0b, y1b; 
   int x, y, ix, iy, up, dn, lf, rt, swf, sef, nwf, nef, v;
   US16 *d = (US16 *) dest.PxlDest();
   const US16 *s0, *s;
@@ -1231,13 +1233,13 @@ int jhcResize::Resample_16 (jhcImg& dest, const jhcImg &src, double cx, double c
   x1 = __min((int) floor(dx1), dw - 1); 
   cnt0 = x0;
   cnt1 = (x1 + 1);
-
+/*
   // find border regions of image
   y0b = __max(0, y0 - ROUND(0.5 * magy));
   y1b = __min(y1 + ROUND(0.5 * magy), dh - 1);
   x0b = __max(0, x0 - ROUND(0.5 * magx));
   x1b = __min(x1 + ROUND(0.5 * magx), dw - 1);
-
+*/
   // allocate arrays for sampling control
   n = x1 - x0 + 1;
   pos = (int *) new int[n];
@@ -1517,7 +1519,8 @@ int jhcResize::Bicubic_BW (jhcImg& dest, const jhcImg& src, int conform)
   double stepx, stepy, xf, yf;
   int dw = dest.XDim(), dh = dest.YDim(), sw = src.XDim(), sh = src.YDim();
   int dsk = dest.Skip(), sln = src.Line(), xlim = sw - 2, ylim = sh - 2;
-  int x, y, v, xi, yi, xp, yp, dx, dy, p0, p1, p2, p3, a, b, c, d;
+  int a = 0, b = 0, c = 0, d = 0;
+  int x, y, v, xi, yi, xp, yp, dx, dy, p0, p1, p2, p3;
   int *t, *t0;
   const UC8 *s, *s0 = src.PxlSrc();
   UC8 *r = dest.PxlDest();
@@ -1661,7 +1664,8 @@ int jhcResize::Bicubic_16 (jhcImg& dest, const jhcImg& src, int conform)
   double stepx, stepy, xf, yf;
   int dw = dest.XDim(), dh = dest.YDim(), sw = src.XDim(), sh = src.YDim();
   int dsk = dest.Skip() >> 1, sln = src.Line() >> 1, xlim = sw - 2, ylim = sh - 2;
-  int x, y, v, xi, yi, xp, yp, dx, dy, p0, p1, p2, p3, a, b, c, d;
+  int a = 0, b = 0, c = 0, d = 0;
+  int x, y, v, xi, yi, xp, yp, dx, dy, p0, p1, p2, p3;
   int *t, *t0;
   const US16 *s, *s0 = (const US16 *) src.PxlSrc();
   US16 *r = (US16 *) dest.PxlDest();
@@ -1802,7 +1806,8 @@ int jhcResize::Bicubic_16 (jhcImg& dest, const jhcImg& src, int conform)
 
 int jhcResize::Bicubic_RGB (jhcImg& dest, const jhcImg& src, int conform)
 {
-  int p0[3], p1[3], p2[3], p3[3], a[3], b[3], c[3], d[3];
+  int a[3] = {0, 0, 0}, b[3] = {0, 0, 0}, c[3] = {0, 0, 0}, d[3] = {0, 0, 0};
+  int p0[3], p1[3], p2[3], p3[3];
   double stepx, stepy, xf, yf;
   int dw = dest.XDim(), dh = dest.YDim(), sw = src.XDim(), sh = src.YDim();
   int dsk = dest.Skip(), sln = src.Line(), tln = 3 * sw, xlim = sw - 2, ylim = sh - 2;
@@ -3971,7 +3976,7 @@ int jhcResize::GetAvgOE (jhcImg& odd, jhcImg& even, const jhcImg& src) const
     for (x = rw2; x > 0; x--)
     {
       for (i = 0; i < f; i++)
-        o[i] = (s[i] + s[i + f]) / 2;
+        o[i] = (UC8)((s[i] + s[i + f]) >> 1);
       s += f2;
       o += f;
     }
@@ -3980,7 +3985,7 @@ int jhcResize::GetAvgOE (jhcImg& odd, jhcImg& even, const jhcImg& src) const
     for (x = rw2; x > 0; x--)
     {
       for (i = 0; i < f; i++)
-        e[i] = (s[i] + s[i + f]) / 2;
+        e[i] = (UC8)((s[i] + s[i + f]) >> 1);
       s += f2;
       e += f;
     }

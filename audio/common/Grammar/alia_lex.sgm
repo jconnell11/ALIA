@@ -65,6 +65,7 @@
   on the right
   in front
   in back
+  nearby
 
 
 // locations requiring two references
@@ -107,6 +108,7 @@
   around
   in
   away
+  ahead
 
 
 // -----------------------------------------

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2023-2024 Etaoin Systems
+// Copyright 2023-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,10 @@
 // NOTE: "inline" needed for GCC to accept definitions in header file
 
 #pragma once
+
+#if __GNUC__ > 8
+  #pragma GCC diagnostic ignored "-Wstringop-truncation"   // for strncpy
+#endif
 
 #include <string.h>
 #include <stdio.h>

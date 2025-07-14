@@ -378,17 +378,21 @@ int jhcAliaSAPI::UpdateSpeech ()
 //= Generate actions in response to update sensory information.
 // if "stare" > 0 then forces system to pay attention to input
 // should mark all seed nodes to retain before calling this
-// returns 1 always for convenienace
+// returns 1 always for convenience
 // NOTE: should call UpdateSpeech before this and DayDream after this
 
-int jhcAliaSAPI::Respond (int stare)
+int jhcAliaSAPI::Consider (int stare)
 {
   int bid;
 
-jtimer(16, "Respond");
+jtimer(21, "Consider");
   // possibly wake up system then evaluate any language input
   if (stare > 0)
+  {
+    if ((amode > 0) && (awake == 0))
+      jprintf(1, noisy, "\n  ... STARE ... verbal attention ON\n\n");
     awake = now;
+  }
   xfer_input();
 
   // process current foci to generate commands for body
@@ -405,7 +409,7 @@ jtimer_x(22);
   }
   else
     sp.Blurt((bid > 0) ? 1 : 0);
-jtimer_x(16);
+jtimer_x(21);
   return 1;
 }
 
@@ -442,13 +446,21 @@ void jhcAliaSAPI::xfer_input ()
     hear = 0;
   m = ((typing > 0) ? -1 : amode);
   typing = 0;
+
+  // compensate for batch processing of speech over web
+  if ((attn <= 0) && (spin == 2) && (hear >= 2))
+    if (jms_secs(now, awake) <= (stretch + web.Delay()))
+    {
+      awake = now;
+      attn = 1;                                  // same as Attending()
+    }
     
   // pass input (if any) to semantic network generator
   if (hear < 0)
     perk = Interpret(NULL, attn, 0);             // for "huh?" response
   else if (hear >= 2)
     perk = Interpret(sent, attn, m);
-  if (perk >= 2)                                 // attention word heard
+  if (perk > 0)                                  // parseable and/or attention word
     attn = 1;
   if ((attn > 0) && (hear != 0))
     awake = now;
@@ -507,13 +519,13 @@ int jhcAliaSAPI::syllables (const char *txt) const
 
 //= Call at end of run to put robot in stable state and possibly save knowledge.
 
-void jhcAliaSAPI::Done (int save)
+void jhcAliaSAPI::Done (int save, int batt)
 {
   if (spin == 2)
     web.Close();
   else if (spin == 1)
     sp.Listen(0);
-  jhcAliaCore::Done(save);
+  jhcAliaCore::Done(save, batt);
 }
 
 

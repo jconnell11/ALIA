@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ typedef const char * (*nfcn)();
 
 //= The DLL platform function is equivalent to this type.
 
-typedef void (*pfcn)(void *body);
+typedef void (*pfcn)(void *body, const char *tag);
 
 
 //= The DLL reset function is equivalent to this type.
@@ -171,14 +171,15 @@ void jhcAliaDLL::AddFcns (jhcAliaKernel& pool)
 
 
 //= Generally need to connect routines to some physical body.
-// needs pointer (*soma) instead of pass by refernce (&soma) with void
+// needs pointer (*soma) instead of pass by reference (&soma) with void
+// passes "kind" string for run-time type checking of "soma"
 
-void jhcAliaDLL::Platform (void *soma)
+void jhcAliaDLL::Platform (void *soma, const char *kind)
 {
   if (local_platform != NULL)
-    (*local_platform)(soma);
+    (*local_platform)(soma, kind);
   if (next != NULL) 
-    next->Platform(soma);
+    next->Platform(soma, kind);
 }
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,18 +21,14 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSPEAKER_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSPEAKER_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
 #include "People/jhcStare3D.h"          // common robot
-#include "Peripheral/jhcDirMic.h"
+#include "Peripheral/jhcGenMic.h"
 
-#include "Interface/jhcSerial.h"        // common video
-#include "Processing/jhcDraw.h"         
+#include "Processing/jhcDraw.h"         // common video
 
 
 //= Determines which person is speaking using mic array(s).
@@ -46,13 +42,13 @@ private:
   static const int amax = 6;   /** Maximum number of microphones. */
 
   jhcStare3D *s3;              /** Person finder and tracker. */
-  const jhcDirMic *m0;         /** Mic part of some robot.    */
+  const jhcGenMic *m0;         /** Mic part of some robot.    */
   int vth, det, vcnt, spk;               
 
 
 // PUBLIC MEMBER VARIABLES
 public:
-  jhcDirMic mic[amax];         /** Collection of microphones. */
+  jhcGenMic mic[amax];         /** Collection of microphones. */
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -61,9 +57,9 @@ public:
   ~jhcSpeaker ();
   jhcSpeaker ();
   void Bind (jhcStare3D *stare) {s3 = stare;}
-  void RemoteMic (const jhcDirMic *m) {m0 = m;}
+  void RemoteMic (const jhcGenMic *m) {m0 = m;}
   int NumMic () const {return amax;}
-  jhcSerial *AttnLED ();
+//  jhcSerial *AttnLED ();
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -85,29 +81,23 @@ public:
   // debugging graphics
   int MicsMap (jhcImg& dest, int invert =0) const;
   int SoundMap (jhcImg& dest, int invert =0, int src =0) const;
-  int SoundCam (jhcImg& dest, int cam =0, int rev =0, int src =0) const;
+  int SoundCam (jhcImg& dest, int view =0, int rev =0, int src =0) const;
   int OffsetsMap (jhcImg& dest, int trk =1, int invert =0, int src =0, int style =0) const;
-  int OffsetsCam (jhcImg& dest, int cam =0, int trk =1, int rev =0, int src =0, int style =0) const;
+  int OffsetsCam (jhcImg& dest, int view =0, int trk =1, int rev =0, int src =0, int style =0) const;
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
   // main functions
-  int pick_dude (const jhcDirMic& m, double& best) const;
+  int pick_dude (const jhcGenMic& m, double& best) const;
 
   // debugging graphics
-  void draw_mic (jhcImg& dest, const jhcDirMic& m, int invert) const;
-  void map_beam (jhcImg& dest, const jhcDirMic& m, int invert, int src) const;
-  void front_beam (jhcImg& dest, const jhcDirMic& m, int rev, int src) const;
-  void map_off (jhcImg& dest, const jhcDirMic& m, int trk, int invert, int src, int style) const;
-  void front_off (jhcImg& dest, const jhcDirMic& m, int trk, int rev, int src, int style) const;
+  void draw_mic (jhcImg& dest, const jhcGenMic& m, int invert) const;
+  void map_beam (jhcImg& dest, const jhcGenMic& m, int invert, int src) const;
+  void front_beam (jhcImg& dest, const jhcGenMic& m, int rev, int src) const;
+  void map_off (jhcImg& dest, const jhcGenMic& m, int trk, int invert, int src, int style) const;
+  void front_off (jhcImg& dest, const jhcGenMic& m, int trk, int rev, int src, int style) const;
 
 
 };
-
-
-#endif  // once
-
-
-
 

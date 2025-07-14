@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2018 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -554,7 +554,7 @@ double jhcSmTrack::get_d2i (int i, const double *item, const double *shp) const
 void jhcSmTrack::greedy_pair (const double * const *detect, int n, int solid)
 {
   double best, best2, r2 = rival * rival;
-  int i, j, jwin, iwin, alt, th = ((solid > 0) ? 1 : 0);
+  int i, j, jwin = 0, iwin = 0, alt = 0, th = ((solid > 0) ? 1 : 0);
 
   while (1)
   {
@@ -963,7 +963,7 @@ const double *jhcSmTrack::Coords (int i) const
 
 //= Tell planar XY distance of detection from origin of coordinate system.
 
-double jhcSmTrack::DistXY (int i) const
+double jhcSmTrack::RadiusXY (int i) const
 {
   if ((i < 0) || (i >= valid))
     return 0.0;

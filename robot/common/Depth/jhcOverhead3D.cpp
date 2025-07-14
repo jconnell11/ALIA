@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,13 +38,14 @@
 
 jhcOverhead3D::~jhcOverhead3D ()
 {
-  dealloc();
+  dealloc_view();
+  dealloc_cam();
 }
 
 
 //= Get rid of all current camera structures.
 
-void jhcOverhead3D::dealloc ()
+void jhcOverhead3D::dealloc_cam ()
 {
   // mark no arrays
   if (smax <= 0)
@@ -59,6 +60,11 @@ void jhcOverhead3D::dealloc ()
   // interpretation elements
   delete [] used;
 
+  // mouting parameters
+  delete [] crf;
+  delete [] ctf;
+  delete [] cpf;
+
   // camera parameters
   delete [] dev;
   delete [] rmax;
@@ -72,14 +78,43 @@ void jhcOverhead3D::dealloc ()
 }
 
 
+//= Get rid of all current alternate view structures.
+
+void jhcOverhead3D::dealloc_view ()
+{
+  // mark no arrays
+  if (vmax <= 0)
+    return;
+  vmax = 0;
+
+  // mouting parameters
+  delete [] vrf;
+  delete [] vtf;
+  delete [] vpf;
+
+  // view parameters
+  delete [] vs;
+  delete [] vf;
+  delete [] vr;
+  delete [] vt;
+  delete [] vp;
+  delete [] vz;
+  delete [] vy;
+  delete [] vx;
+  delete [] vps;
+}
+
+
 //= Default constructor initializes certain values.
 
-jhcOverhead3D::jhcOverhead3D (int ncam)
+jhcOverhead3D::jhcOverhead3D (int ncam, int nview)
 {
-  // determine how many cameras will be used
-  smax = 0;
-  AllocCams(ncam);
+  // determine how many cameras and views will be used
   strcpy_s(name, "ov3");
+  smax = 0;
+  vmax = 0;
+  AllocCams(ncam);
+  AllocViews(ncam);
 
   // set up processing parameters (make sure some sensor is valid)
   SetMap(144.0, 144.0, 72.0, 72.0, 0.0, 8.0, 0.2, 42.0);
@@ -99,7 +134,7 @@ void jhcOverhead3D::AllocCams (int ncam)
   // clear out old stuff then save new size
   if (ncam == smax) 
     return;
-  dealloc();
+  dealloc_cam();
   smax = __max(1, __min(ncam, 12));
   s4 = 4 * smax;
 
@@ -114,12 +149,20 @@ void jhcOverhead3D::AllocCams (int ncam)
   rmax = new double [smax];
   dev  = new int [smax];
 
+  // mounting parameters
+  cpf = new double[smax];
+  ctf = new double[smax];
+  crf = new double[smax];
+
   // interpretation elements
   used = new int[smax];
 
-  // fill in cameras with default values
+  // fill in camera defaults ("Mesa" ceiling-mounted Kinect2's)
   for (i = 0; i < smax; i++, n--)
+  {
     SetCam(i, -66.0, 0.0, 90.0, 0.0, -18.0, 180.0, 192.0, n);
+    SetCamFix(i, 0.0, 0.0, 0.0);
+  }
 
   // calibration adjustment regions
   rps = new jhcParam[smax];
@@ -131,6 +174,43 @@ void jhcOverhead3D::AllocCams (int ncam)
   {
     rx[i] = -1;
     ry[i] = -1;
+  }
+}
+
+
+//= Make structures for however many alternate views will be used.
+
+void jhcOverhead3D::AllocViews (int nview)
+{
+  int i;
+
+  // clear out old stuff then save new size
+  if (nview == vmax) 
+    return;
+  dealloc_view();
+  vmax = __max(1, __min(nview, 12));
+
+  // mounting parameters
+  vpf = new double[smax];
+  vtf = new double[smax];
+  vrf = new double[smax];
+
+  // camera parameters
+  vps = new jhcParam[vmax];
+  vx  = new double [vmax];
+  vy  = new double [vmax];
+  vz  = new double [vmax];
+  vp  = new double [vmax];
+  vt  = new double [vmax];
+  vr  = new double [vmax];
+  vf  = new double [vmax];
+  vs  = new double [vmax];
+
+  // fill in views with default values
+  for (i = 0; i < smax; i++)
+  {
+    SetCam(i, -66.0, 0.0, 90.0, 0.0, -18.0, 180.0, 525.0);
+    SetAltFix(i, 0.0, 0.0, 0.0);
   }
 }
 
@@ -164,6 +244,37 @@ int jhcOverhead3D::cam_params (int n, const char *fname)
 
   ps->NextSpecF( rmax + n, "Max range to plot (in)");
   ps->NextSpec4( dev + n,  "Device number");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters used for alternate view analysis.
+
+int jhcOverhead3D::view_params (int n, const char *fname)
+{
+  char tag[40];
+  jhcParam *ps = vps + n;
+  int ok;
+
+  // customize for some camera
+  if ((n < 0) || (n >= vmax))
+    return 0;
+  ps->SetTitle("View %d Geometry", n);
+  sprintf_s(tag, "%s_view%d", name, n);
+
+  // set up parameters
+  ps->SetTag(tag, 0);
+  ps->NextSpecF( vx + n, "X position (in)");  
+  ps->NextSpecF( vy + n, "Y position (in)");  
+  ps->NextSpecF( vz + n, "Height above floor (in)");  
+  ps->NextSpecF( vp + n, "Pan wrt X axis (deg)");  
+  ps->NextSpecF( vt + n, "Tilt wrt ceiling (deg)");  
+  ps->NextSpecF( vr + n, "Roll wrt floor (deg)");  
+
+  ps->NextSpecF( vf + n, "Focal length (pel)");
+  ps->NextSpecF( vs + n, "Depth scaling factor");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -245,7 +356,7 @@ int jhcOverhead3D::plane_params (const char *fname)
   ps->NextSpecF( &dr,    "Max surface roll (deg)");  
   ps->NextSpecF( &dh,    "Max surface offset (in)");  
 
-  ps->NextSpec4( &wfit, "Long term average (cycles)");
+  ps->NextSpec4( &wfit,  "Long term average (cycles)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -263,10 +374,10 @@ int jhcOverhead3D::beam_params (const char *fname)
 
   sprintf_s(tag, "%s_beam", name);
   ps->SetTag(tag, 0);
-  ps->NextSpecF( &dlf,    3.0, "Trim beam left (deg)");
-  ps->NextSpecF( &drt,    5.5, "Trim beam right (deg)");
-  ps->NextSpecF( &dtop,   4.5, "Trim beam top (deg)");
-  ps->NextSpecF( &dbot,   1.0, "Trim beam bot (deg)");
+  ps->NextSpecF( &dlf,  3.0, "Trim beam left (deg)");
+  ps->NextSpecF( &drt,  5.5, "Trim beam right (deg)");
+  ps->NextSpecF( &dtop, 4.5, "Trim beam top (deg)");
+  ps->NextSpecF( &dbot, 1.0, "Trim beam bot (deg)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -308,6 +419,7 @@ void jhcOverhead3D::SetFit (double d, int n, double e, double t, double r, doubl
 
 
 //= Set all parameters of a camera in order that they appear in configuration file.
+// position and orientation often vary over time with neck pose
 
 void jhcOverhead3D::SetCam (int n, double x, double y, double z, double pan, double tilt, 
                             double roll, double rng, int dnum)
@@ -322,6 +434,77 @@ void jhcOverhead3D::SetCam (int n, double x, double y, double z, double pan, dou
   r0[n]   = roll;
   rmax[n] = rng;
   dev[n]  = dnum;
+}
+
+
+//= Set BODY-SPECIFIC mounting adjustments for camera.
+
+void jhcOverhead3D::SetCamFix (int n, double pcal, double tcal, double rcal)
+{
+  if ((n < 0) || (n >= smax))
+    return;
+  cpf[n] = pcal;
+  ctf[n] = tcal;
+  crf[n] = rcal;
+}
+
+
+//= Set all parameters of an alternate view in order that they appear in configuration file.
+// position and orientation often vary over time with neck pose
+
+void jhcOverhead3D::SetAlt (int n, double x, double y, double z, 
+                            double pan, double tilt, double roll)
+{
+  if ((n < 0) || (n >= vmax))
+    return;
+  vx[n] = x;
+  vy[n] = y;
+  vz[n] = z;
+  vp[n] = pan;
+  vt[n] = tilt;
+  vr[n] = roll;
+}
+
+
+//= Set the focal length and depth scaling for some alternate view.
+// generally static over time
+
+void jhcOverhead3D::AltFlen (int n, double f, double sc)
+{
+  if ((n < 0) || (n >= vmax))
+    return;
+  vf[n] = f;
+  vs[n] = sc;
+}
+
+
+//= Set BODY-SPECIFIC mounting adjustments for alternate view.
+
+void jhcOverhead3D::SetAltFix (int n, double pcal, double tcal, double rcal)
+{
+  if ((n < 0) || (n >= vmax))
+    return;
+  vpf[n] = pcal;
+  vtf[n] = tcal;
+  vrf[n] = rcal;
+}
+
+
+//= Make views correspond to color cameras registered with input sensors.
+// call once during Reset for legacy apps with static sensors (like "Mesa")
+
+void jhcOverhead3D::CamViews ()
+{
+  int i;
+
+  if (vmax != smax)
+    AllocViews(smax);
+  for (i = 0; i < smax; i++)
+  {
+    SetAlt(i, cx[i], cy[i], cz[i], p0[i], t0[i], r0[i]);
+    SetAltFix(i, cpf[i], ctf[i], crf[i]);
+    AltFlen(i, kf, ksc);
+  }
 }
 
 
@@ -355,11 +538,17 @@ int jhcOverhead3D::LoadCfg (const char *fname)
     rx[4 * i] = -1;
   }
 
+  // invalidate all alternate views
+  for (i = 0; i < vmax; i++)
+    vs[i] = 0.0;
+
   // get new values from file
   for (i = 0; i < smax; i++)
     cam_params(i, fname);            // may be fewer than smax
   for (i = 0; i < smax; i++)
     ok &= flat_params(i, fname);
+  for (i = 0; i < vmax; i++)
+    ok &= view_params(i, fname);
   ok &= map_params(fname);
   return ok;
 }
@@ -401,6 +590,13 @@ int jhcOverhead3D::SaveCfg (const char *fname, int geom) const
         ok &= rps[i].SaveVals(fname);    
       else
         rps[i].RemVals(fname);
+
+    // store valid alternate views but erase other lines
+    for (i = 0; i < vmax; i++)
+      if (vs[i] > 0.0)
+        ok &= vps[i].SaveVals(fname);   
+      else
+        vps[i].RemVals(fname); 
   }
   ok &= mps.SaveVals(fname);
   return ok;
@@ -627,12 +823,8 @@ jhcImg *jhcOverhead3D::Correct (jhcImg& dest, const jhcImg& src, int cam, int bi
 
 //= Normalize roll for upside down and sideways cameras.
 
-double jhcOverhead3D::ImgRoll (int cam) const
+double jhcOverhead3D::norm_roll (double roll) const
 {
-  double roll;
-  int n = __max(0, __min(cam, smax - 1));
-
-  roll = r0[n];
   if (roll > 135.0)
     roll -= 180.0;
   else if (roll >= 45.0)
@@ -713,7 +905,8 @@ int jhcOverhead3D::Ingest (const jhcImg& d16, double bot, double top, int cam, i
 
   // set static camera parameters
   SetCamera(cx[n] + x0 - 0.5 * mw, cy[n] + y0, cz[n]);
-  SetView(p0[n] - 90.0, t0[n], ImgRoll(n));
+  SetView(p0[n] - 90.0, t0[n], norm_roll(r0[n]));
+  SetFix(cpf[n], ctf[n], crf[n]);
 
   // get projection from this camera 
   SetProject(ztab + bot, ztab + top, zcut, ipp, rmax[n]);  // zcut was ztab + top
@@ -746,7 +939,9 @@ int jhcOverhead3D::Reproject (jhcImg& dest, const jhcImg& d16, double bot, doubl
 
   // set static camera parameters
   SetCamera(cx[n] + x0 - 0.5 * mw, cy[n] + y0, cz[n]);
-  SetView(p0[n] - 90.0, t0[n], ImgRoll(n));
+  SetView(p0[n] - 90.0, t0[n], norm_roll(r0[n]));
+  SetFix(cpf[n], ctf[n], crf[n]);
+// SetOptics()
 
   // get projection from this camera 
   SetProject(ztab + bot, ztab + top, zcut, ipp, rmax[n]);  // zcut was ztab + top
@@ -773,7 +968,8 @@ int jhcOverhead3D::Reproject2 (jhcImg& rgb, jhcImg& hts, const jhcImg& col, cons
 
   // set static camera parameters
   SetCamera(cx[n] + x0 - 0.5 * mw, cy[n] + y0, cz[n]);
-  SetView(p0[n] - 90.0, t0[n], ImgRoll(n));
+  SetView(p0[n] - 90.0, t0[n], norm_roll(r0[n]));
+  SetFix(cpf[n], ctf[n], crf[n]);
 
   // get projection from this camera 
   SetProject(ztab + bot, ztab + top, zcut, ipp, rmax[n]);  // zcut was ztab + top
@@ -1059,16 +1255,34 @@ double jhcOverhead3D::MapZ (int mx, int my, int sz, double def) const
 //                          Debugging Graphics                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Set up geometric transform from a particular sensor.
-// useful for higher-level graphics functions
+//= Set up geometric transform from a particular depth sensor to map.
+// basic tool for generation of overhead depth maps
 
-void jhcOverhead3D::AdjGeometry (int cam)
+void jhcOverhead3D::SetDepthGeom (int cam)
 {
   int n = __max(0, __min(cam, smax - 1));
 
   SetCamera(cx[n] + x0 - 0.5 * mw, cy[n] + y0, cz[n]);
-  SetView(p0[n] - 90.0, t0[n], ImgRoll(n));
-  BuildMatrices();
+  SetView(p0[n] - 90.0, t0[n], norm_roll(r0[n]));
+  SetFix(cpf[n], ctf[n], crf[n]);
+  RngToMap();
+}
+
+
+//= Set up geometric transform from map to a particular color camera.
+// if view < 0 then uses the most recent sensor parameters to yield an inverse
+// useful for higher-level graphics functions like ImgPt()
+
+void jhcOverhead3D::SetColorGeom (int view)
+{
+  int n = __min(view, vmax - 1);
+
+  if (view < 0)
+    MapToRng();
+  else
+    MapToCol(vp[n] - 90.0, vt[n] + 90.0, norm_roll(vr[n]), 
+             vx[n] + x0 - 0.5 * mw, vy[n] + y0, vz[n], vf[n], vs[n],
+             vpf[n], vtf[n], vrf[n]);
 }
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCBUMPS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCBUMPS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -38,7 +35,6 @@
 
 #include "Depth/jhcOverhead3D.h"       // common robot
 #include "Geometry/jhcSmTrack.h"
-
 
 //= Finds and tracks objects on table.
 // all "raw" and "shp" info is in actual inches (not pixels)
@@ -75,7 +71,8 @@
 //
 // </pre>
 
-class jhcBumps : public jhcOverhead3D, protected jhcGroup, protected jhcLabel, protected jhcStats
+class jhcBumps : /*public jhcGenObjects,*/ public jhcOverhead3D, 
+                 protected jhcGroup, protected jhcLabel, protected jhcStats
 {
 friend class CMesaDoc;       // for debugging
 friend class CBanzaiDoc;
@@ -101,6 +98,7 @@ private:
 
 // PROTECTED MEMBER VARIABLES
 protected:
+public:
   // object detection
   jhcBlob blob;
   jhcBlob *alt_blob;
@@ -130,7 +128,7 @@ public:
   // shape estimate parameters
   jhcParam sps;
   int pcnt;
-  double xyf, zf, xymix, zmix, amix;
+  double xyf, zf, xymix, zmix, amix, gmax, smin;
 
   // special object detection
   jhcParam tps;
@@ -191,12 +189,17 @@ public:
   double MapY (int i, int trk =1) const {return W2Y(PosY(i, trk));}
   int Flat (int i) const;
   int Component (int i) const;
+  double MidDist (int i) const;
   void CamBox (jhcRoi& box, int i, int ydim =480) const;
+  void CamMid (double& ix, double& iy, int i, int ydim =480) const;
   void Retain (int i) {pos.NoMiss(i);}
   void RetainAll ();
   void KeepShape (int i);
+  void OnTable (int i);
 
   // display helpers
+  void SetFront (int view, const jhcMatrix& vpos, const jhcMatrix& vdir,
+                 const jhcMatrix& cpos, const jhcMatrix& cdir);
   void SetTag (int i, const char *txt);
   const char *GetTag (int i) const;
   int SetState (int i, int val);
@@ -227,7 +230,7 @@ public:
   int TrackBox (jhcImg& dest, int i, int num =1, int invert =0, int style =2);
   int RawBox (jhcImg& dest, int i, int num =1, int invert =0);
   int FatEllipse (jhcImg& dest, int t, double mag =1.5, int col =4) const;
-  int ObjsCam (jhcImg& dest, int cam, int trk =1, int rev =0, int style =2);
+  int ObjsCam (jhcImg& dest, int view =0, int trk =1, int rev =0, int style =2);
   int DetPels (jhcImg& dest, int t, int col =255) const;
 
 
@@ -268,10 +271,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

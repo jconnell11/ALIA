@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2018 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -186,7 +187,7 @@ int jhcGray::MonoAvg16 (jhcImg& dest, const jhcImg& red, const jhcImg& grn, cons
   // compute averages
   for (y = rh; y > 0; y--, d += dsk, r += ssk, g += ssk, b += ssk)
     for (x = rw; x > 0; x--, d++, r++, g++, b++)
-      *d = ((int)(*r) + *g + *b) / 3;
+      *d = (US16)((*r + *g + *b) / 3);
   return 1;
 }
 
@@ -293,7 +294,7 @@ int jhcGray::PseudoInt (jhcImg& dest, const jhcImg& src) const
   // convert all pixels in scan order
   for (y = rh; y > 0; y--, s += ssk, d += dsk)
     for (x = rw; x > 0; x--, s += 3, d++)
-      d[0] = ((s[0] << 1) + (s[1] << 3) + s[1] + (s[2] << 2) + s[2]) >> 4;
+      d[0] = (UC8)(((s[0] << 1) + (s[1] << 3) + s[1] + (s[2] << 2) + s[2]) >> 4);
   return 1;
 }
 

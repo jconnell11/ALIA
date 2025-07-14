@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCLISTVSRC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCLISTVSRC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -82,10 +79,4 @@ protected:
 // part of mechanism for automatically associating class with file extensions
 
 extern int jvreg_jhcListVSrc;
-
-
-#endif
-
-
-
 

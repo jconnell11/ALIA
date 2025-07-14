@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCNETNODE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCNETNODE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -251,12 +248,5 @@ private:
   int save_tags (FILE *out, int lvl, int r, int detail) const;
   const char *bfmt (char *txt, double val) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@
 
 #include "Geometry/jhcMatrix.h"        // common robot
 #include "Objects/jhcSurfObjs.h"       
-#include "RWI/jhcEliRWI.h"            
+#include "RWI/jhcVisGrok.h"            
 
 #include "Kernel/jhcStdKern.h"      
 
@@ -65,22 +65,24 @@ private:
 
   // instance control variables
   jhcMatrix *cpos;                 /** Position goal for action.     */
-  jhcMatrix *cend;                 /** Final position for action.    */     
   jhcMatrix *cdir;                 /** Direction goal for action.    */
-  double *caux2;                   /** More extra act information.   */
+  jhcMatrix *cvia;                 /** Intermediate trajectory pt.   */
   int *citem;                      /** Track num of target object.   */
   int *cref;                       /** Track number of reference.    */
   int *cref2;                      /** Track for second reference.   */
-  int *cflag;                      /** Exceptions in progress.       */
+  int *cflag;                      /** Workspace fixes in progress.  */
   int *ccnt2;                      /** Secondary counter for action. */
 
   // link to hardware and processing
-  jhcEliRWI *rwi;
+  jhcVisGrok *rwi;
 
   // useful subparts of platform
   jhcSurfObjs *sobj;
-  jhcGenLift *lift;
+  jhcGenBody *body;
+  jhcGenNeck *neck;
   jhcGenArm *arm;
+  jhcGenLift *lift;
+  jhcGenBase *base;
   const jhcMatrix *pos, *dir;
 
   // reported events
@@ -88,8 +90,8 @@ private:
 
   // relation of gripper to object and surface (can only be one)
   jhcAliaDesc *held;
-  double nose, left, hang, skew, wt;
-  int fcnt, htrk, drop;
+  double slope, nose, left, hang, skew, wt;
+  int thin, fcnt, htrk, drop;
 
   // ground path of trajectory
   jhcImg path, mtns;
@@ -101,20 +103,26 @@ private:
   int xpick, ypick;
 
   // currently selected action parameters (for convenience)
-  jhcMatrix end, aim;
-  double wid, sp, tim;
-  int inst, pmode, dmode, worksp, target, keep;
+  double wid, sp;
+  int inst, bid, pmode, dmode, stare;
 
   // error measurement and reporting (for convenience)
   jhcMatrix perr, derr;
   char txt[40], txt2[40];
   int msg;
 
+  // debugging utility state
+  jhcMatrix dest;
+  int half;
+
 
 // PRIVATE MEMBER PARAMETERS
 private:
-  // grab geometric parameters
-  double knob, mesa, choke, ecc0, down, gulp, loose, tip; 
+  // hand grip parameters
+  double knob, mesa, choke, ecc0, down, gulp;
+
+  // finger grip parameters
+  double loose, stip, otip, oht, olen, hys; 
 
   // deposit spot parameters
   double swell, fuzz, iwid, bias, sdev, tween, buddy, hood;
@@ -136,7 +144,7 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  jhcParam hps, sps, cps, dps, wps, ips;
+  jhcParam gps, tps, sps, cps, dps, wps, ips;
   int gok;                   // whether succeeds without body
   int dbg;                   // control of diagnostic messages
 
@@ -163,7 +171,8 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // processing parameters
-  int hold_params (const char *fname);
+  int grip_params (const char *fname);
+  int tip_params (const char *fname);
   int ctrl_params (const char *fname);
   int done_params (const char *fname);
   int spot_params (const char *fname);
@@ -171,7 +180,7 @@ private:
   int into_params (const char *fname);
 
   // overridden virtuals
-  void local_platform (void *soma);
+  void local_platform (void *soma, const char *kind);
   void local_reset (jhcAliaNote& top);
   void local_volunteer ();
   int local_start (const jhcAliaDesc& desc, int i);
@@ -180,6 +189,9 @@ private:
   // recurring functions
   void set_size (const jhcImg& ref);
   int update_held ();
+
+  // hand information
+  JCMD_DEF(man_held);
 
   // motion sequences 
   JCMD_DEF(man_wrap);
@@ -190,7 +202,8 @@ private:
 
   // take phases
   int assess_obj ();
-  int goto_via ();
+  int jockey (int dest);
+  int goto_via (int pt);
   int goto_grasp ();
   int close_fingers ();
   int lift_off ();
@@ -200,32 +213,27 @@ private:
   int xfer_over ();
   int place_on ();
   int release_obj ();
-  int stow_arm ();
-  int tuck_elbow (int rc);
+  int stow_arm (int rc);
 
   // sequence helpers
-  void init_vals (int i);
-  int chk_hand (jhcAliaDesc *expect);
-  int chk_stuck (double err);
+  void init_vals (int i, int keep);
+  int chk_stuck (double err, double tim);
   int final_pose (int xyz);
-  int fail_clean ();
+  int fail_clean (jhcAliaDesc *obj);
 
   // coordinated motion
+  double pose_err (double& dp, double& da, int via);
   int command_bot (int rc);
   int chk_outside (int& old, double gx, double gy, double gz);
-  int adj_workspace (int fix, double gx, double gy, double gz);
-  double surf_gap () const;
-  double diff_workspace (int fix) const;
+  double adj_workspace (int fix, double gx, double gy, double gz);
 
   // object acquisition
-  double src_full (jhcMatrix& full, int up);
-  void src_rel (jhcMatrix& rel, const jhcMatrix& full) const;
-  bool update_src (int& cnt) const;
-  int compute_src (double& grip, jhcMatrix& rel, jhcMatrix& dir);
+  int src_visible () const;
+  int update_src (double& sep, jhcMatrix& hand, jhcMatrix& orient, jhcMatrix& via);
   int pick_grasp (double& w, double& ang, jhcMatrix& grab, int t) const;
   double corner_ang (double tx, double ty) const;
   double easy_grip (double pan, double ecc, double grip) const;
-  int clear_grip ();
+  int clear_grip (int dn);
   void record_grip (int t);
 
   // trajectory utilities
@@ -234,12 +242,11 @@ private:
 
   // destination determination
   void anchor_loc (jhcMatrix& loc) const;
-  void dest_full (jhcMatrix& full, int up);
-  void dest_rel (jhcMatrix& rel, const jhcMatrix& full) const;
-  bool update_dest (int& cnt) const;
+  int dest_visible () const;
+  int update_dest (jhcMatrix& hand, jhcMatrix& orient, jhcMatrix& via, int adj);
   int compute_dest (jhcMatrix& rel, double& pan, int& eflag, int adj);
-  void adjust_dest (jhcMatrix& full, double& pan, int any);
   int dest_bottom (jhcMatrix& loc, double& pan);
+  void adjust_dest (jhcMatrix& full, double& pan, int any);
 
   // open space finding
   void free_space (int exc);

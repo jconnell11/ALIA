@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -104,7 +104,8 @@ public:
   jhcNetNode *CloneNode (const jhcNetNode& n, int bset =1);
   jhcNetNode *MakeAct (const char *word, int neg =0, double def =1.0, int done =0);
   jhcNetNode *CloneAct (const jhcNetNode *src, int neg =0);
-  jhcNetNode *MakePoss (jhcNetNode *owner, jhcNetNode *obj, int neg =0, double def =1.0, int done =0);
+  jhcNetNode *MakeHave (jhcNetNode *owner, jhcNetNode *obj, int neg =0, double def =1.0, int done =0);
+  jhcNetNode *MakePoss (jhcNetNode *owner, jhcNetNode *obj, double def =1.0);
   jhcNetNode *AddProp (jhcNetNode *head, const char *role, const char *word,
                        int neg =0, double def =1.0, int chk =0, int args =1);
   jhcNetNode *AddDeg (jhcNetNode *head, const char *role, const char *word, const char *amt, 

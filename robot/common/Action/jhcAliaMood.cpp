@@ -68,8 +68,8 @@ int jhcAliaMood::core_params (const char *fname)
   ps->NextSpecF( &surp,     0.7, "Surprised level");
   ps->NextSpecF( &vsurp,    1.3, "Very surprised level");
 
-  ps->NextSpecF( &low,     30.0, "Tired battery (pct)");  
-  ps->NextSpecF( &vlow,    20.0, "Very tired battery (pct)");  
+  ps->NextSpecF( &low,     20.0, "Tired battery (pct)");       // was 30
+  ps->NextSpecF( &vlow,    15.0, "Very tired battery (pct)");  // was 20
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -86,13 +86,13 @@ int jhcAliaMood::motion_params (const char *fname)
   ps->SetTag("mood_mot", 0);
   ps->NextSpecF( &fhand,  10.0,  "Hand idle wrt motion");
   ps->NextSpecF( &fbase,  10.0,  "Base idle wrt motion");
-  ps->NextSpecF( &ftalk,   0.0,  "Talk idle wrt motion");
+  ps->NextSpecF( &faddr,  15.0,  "Address idle wrt motion");
   ps->NextSpecF( &noise,   0.15, "Low motion squelch");
   ps->NextSpecF( &mtime,  30.0,  "Motion smoothing (sec)");  
   ps->NextSpecF( &mok,     0.5,  "Adequate motion level");  
 
-  ps->NextSpecF( &bore,   40.0,  "Bored time (sec)");
-  ps->NextSpecF( &vbore,  90.0,  "Very bored time (sec)");
+  ps->NextSpecF( &bore,   80.0,  "Bored time (sec)");
+  ps->NextSpecF( &vbore, 180.0,  "Very bored time (sec)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -107,15 +107,15 @@ int jhcAliaMood::social_params (const char *fname)
   int ok;
 
   ps->SetTag("mood_soc", 0);
-  ps->NextSpecF( &fhear,  15.0, "Speech idle wrt hearing");
+  ps->NextSpecF( &fhear,  15.0, "Hearing idle wrt hearing");
   ps->NextSpecF( &fdude,   0.3, "Boost per face");
   ps->NextSpecF( &lps,    12.0, "Letters per second");
   ps->NextSpecF( &stime,  60.0, "Social smoothing (sec)");  
   ps->NextSpecF( &sok,     0.5, "Adequate social level");  
   ps->Skip();
 
-  ps->NextSpecF( &lone,   30.0, "Lonely time (sec)");
-  ps->NextSpecF( &vlone,  60.0, "Very lonely time (sec)");
+  ps->NextSpecF( &lone,   60.0, "Lonely time (sec)");
+  ps->NextSpecF( &vlone, 120.0, "Very lonely time (sec)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -286,7 +286,8 @@ void jhcAliaMood::Reset ()
   now  = 0;
   mtim = 0.0;
   itim = 0.0;
-
+  atim = 0.0;
+ 
   // drive values
   energy = 100.0;
   motion = mok;
@@ -445,10 +446,10 @@ void jhcAliaMood::sm_motion (double dt)
   m = fhand * fspeed + fbase * bspeed;           // physical action
   if (m < noise)                                 // squelch jitter
     m = 0.0;
-  if (mtim > 0.0)                                // stretched output
+  if (atim > 0.0)                                // stretched input
   {
-    m += ftalk;                                  
-    mtim = __max(0.0, mtim - dt);
+    m += faddr;
+    atim = __max(0.0, atim - dt);
   }
   motion += (m - motion) * dt / mtime;           // IIR filter
 }
@@ -620,7 +621,7 @@ void jhcAliaMood::adj_pref () const
 
 void jhcAliaMood::Speak (int len, double hz)
 {
-  mtim += len / lps;
+//  mtim += len / lps;         // not used currently
 }
 
 
@@ -630,6 +631,7 @@ void jhcAliaMood::Speak (int len, double hz)
 void jhcAliaMood::Hear (int len, double hz)
 {
   itim += len / lps;
+  atim += len / lps;         // robot-directed speech
 }
 
 

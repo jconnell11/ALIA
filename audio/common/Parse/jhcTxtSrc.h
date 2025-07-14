@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTXTSRC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTXTSRC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -101,10 +98,4 @@ private:
   UC8 peek_c ();
 
 };
-
-
-#endif  // once
-
-
-
 

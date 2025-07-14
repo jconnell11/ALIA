@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2016 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -582,7 +583,7 @@ int jhcVect::WtdSumRGB (jhcImg& dest, const jhcImg& src, double rsc, double gsc,
   {
     for (x = rw; x > 0; x--)
     {
-      v = (bval[s[0]] + gval[s[1]] + rval[s[2]] + 32768) >> 16;
+      v = (int)((bval[s[0]] + gval[s[1]] + rval[s[2]] + 32768) >> 16);
       *d++ = BOUND(v);
       s += 3;
     }

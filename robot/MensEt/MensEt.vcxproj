@@ -294,6 +294,9 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\Objects\jhcGenObjects.cpp" />
+    <ClCompile Include="..\common\RWI\jhcBgndGrok.cpp" />
+    <ClCompile Include="..\common\RWI\jhcManusGrok.cpp" />
     <ClCompile Include="MensEt.cpp" />
     <!-- JHC: this should come first -->
     <ClCompile Include="MensEtDoc.cpp" />
@@ -310,9 +313,7 @@
     <ClCompile Include="..\common\Kernel\jhcMemStore.cpp" />
     <ClCompile Include="..\common\Kernel\jhcStdKern.cpp" />
     <ClCompile Include="..\common\Kernel\jhcTalkFcn.cpp" />
-    <ClCompile Include="..\common\RWI\jhcBackgRWI.cpp" />
     <ClCompile Include="..\common\RWI\jhcInteractFSM.cpp" />
-    <ClCompile Include="..\common\RWI\jhcManusRWI.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp" />
     <ClCompile Include="..\common\Action\jhcAliaMood.cpp" />
@@ -455,6 +456,7 @@
     <ClInclude Include="..\..\video\common\Processing\jhcTools.h" />
     <ClInclude Include="..\..\video\common\Processing\jhcVect.h" />
     <ClInclude Include="..\..\video\common\Processing\jhcWarp.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhc_font.h" />
     <ClInclude Include="..\common\Action\jhcAliaChart.h" />
     <ClInclude Include="..\common\Action\jhcAliaMood.h" />
     <ClInclude Include="..\common\Action\jhcAliaStats.h" />
@@ -469,12 +471,13 @@
     <ClInclude Include="..\common\Kernel\jhcMemStore.h" />
     <ClInclude Include="..\common\Kernel\jhcStdKern.h" />
     <ClInclude Include="..\common\Kernel\jhcTalkFcn.h" />
+    <ClInclude Include="..\common\Objects\jhcGenObjects.h" />
     <ClInclude Include="..\common\Objects\jhcPatchProps.h" />
     <ClInclude Include="..\common\Objects\jhcStackSeg.h" />
-    <ClInclude Include="..\common\RWI\jhcBackgRWI.h" />
+    <ClInclude Include="..\common\RWI\jhcBgndGrok.h" />
     <ClInclude Include="..\common\RWI\jhcInteractFSM.h" />
     <ClInclude Include="..\common\RWI\jhcManusCoord.h" />
-    <ClInclude Include="..\common\RWI\jhcManusRWI.h" />
+    <ClInclude Include="..\common\RWI\jhcManusGrok.h" />
     <ClInclude Include="MensEtDoc.h" />
     <ClInclude Include="MensEt.h" />
     <ClInclude Include="MensEtFrm.h" />

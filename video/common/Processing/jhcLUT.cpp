@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -666,7 +667,7 @@ int jhcLUT_0::BitMask (jhcImg& dest, const jhcImg& src, int bits) const
 
   for (y = rh; y > 0; y--, d += rsk, s += rsk)
     for (x = rw; x > 0; x--, d++, s++)
-      *d = *s & bits;
+      *d = (UC8)(*s & bits);
   return 1;
 }
 
@@ -722,13 +723,9 @@ int jhcLUT_0::Complement (jhcImg& dest, const jhcImg& src) const
   const UC8 *s = src.PxlSrc() + roff;
   
   // apply function to image
-  for (y = rh; y > 0; y--)
-  {
-    for (x = rcnt; x > 0; x--)
-      *d++ = ~(*s++);
-    d += rsk;
-    s += rsk;
-  }
+  for (y = rh; y > 0; y--, s += rsk, d += rsk)
+    for (x = rcnt; x > 0; x--, s++, d++)
+      *d = (UC8)(~(*s));
   return 1;
 }
 
@@ -1001,7 +998,7 @@ int jhcLUT_0::CycOffset (jhcImg& dest, const jhcImg& src, int val) const
   // apply function to image
   for (y = rh; y > 0; y--, d += rsk, s += rsk)
     for (x = rcnt; x > 0; x--, d++, s++)
-      *d = (*s + val) & 0xFF;
+      *d = (UC8)((*s + val) & 0xFF);
   return 1;
 }
 
@@ -1023,7 +1020,7 @@ int jhcLUT_0::AndVal (jhcImg& dest, const jhcImg& src, int val) const
   // apply function to image
   for (y = rh; y > 0; y--, d += sk, s += sk)
     for (x = cnt; x > 0; x--, d++, s++)
-      *d = *s & val;
+      *d = (UC8)(*s & val);
   return 1;
 }
 
@@ -1143,14 +1140,14 @@ int jhcLUT_0::Replace (jhcImg& dest, int targ, int subst) const
 // can optionally shift down by 1 or 2 bits to get full range
 // 0 = unknown, 1 = beyond range, else 2-255 = 8.1, 14.8, or 28.1 ft to 17.3"
 
-int jhcLUT_0::Night8 (jhcImg& d8, const jhcImg& d16, int sh) const
+int jhcLUT_0::Night8 (jhcImg& d8, const jhcImg& d16, int sh, int choke) const
 {
   if (!d8.Valid(1) || !d8.SameSize(d16, 2))
     return Fatal("Bad images to jhcLUT::Night8");
   d8.CopyRoi(d16);
 
   // general ROI case
-  int x, y, v, n = __max(0, __min(sh, 2)) + 5;
+  int x, y, v, n = __max(0, sh + 5);             // allow sh = -2 --> n = 3
   int w = d8.RoiW(), h = d8.RoiH(), ssk2 = d16.Skip() >> 1, dsk = d8.Skip();
   const US16 *s = (US16 *) d16.RoiSrc();
   UC8 *d = d8.RoiDest();
@@ -1158,12 +1155,12 @@ int jhcLUT_0::Night8 (jhcImg& d8, const jhcImg& d16, int sh) const
   // convert pixels
   for (y = h; y > 0; y--, d += dsk, s += ssk2)
     for (x = w; x > 0; x--, d++, s++)
-      if ((*s < 1760) || (*s > 40000))
+      if ((*s < choke) || (*s > 40000))
         *d = 0;
       else
       {
         // scale range (sh 0 = 8.1' max, 1 = 14.8' max, 2 = 28.1' max)
-        v = 255 - ((*s - 1760) >> n);
+        v = 255 - ((*s - choke) >> n);
         if (v <= 0)
           *d = 1;
         else
@@ -1173,6 +1170,87 @@ int jhcLUT_0::Night8 (jhcImg& d8, const jhcImg& d16, int sh) const
   // possibly brighten further
   if (sh < 0)
     ClipScale(d8, d8, 1 << (-sh));
+  return 1;
+}
+
+
+//= Convert 16 bit pixels in range avg +/- k * sdev to 8 bits (hi vals -> dark).
+
+int jhcLUT_0::NightSD (jhcImg& d8, const jhcImg& d16, double sdf, int choke) const
+{
+  if (!d8.Valid(1) || !d8.SameSize(d16, 2))
+    return Fatal("Bad images to jhcLUT::NightSD");
+  d8.CopyRoi(d16);
+
+  // general ROI case
+  UL64 sum = 0, ssq = 0;
+  double avg, sdev;
+  int x, y, lo16, hi16, bot = 65535, top = 0;
+  int rw = d16.RoiW(), rh = d16.RoiH(), sk2 = d16.RoiSkip() >> 1, n = 0;
+  const US16 *v = (const US16 *) d16.RoiSrc();
+
+  // gather statistical data (ignores over 40000)
+  for (y = rh; y > 0; y--, v += sk2)
+    for (x = rw; x > 0; x--, v++)
+      if ((*v >= choke) && (*v <= 40000))
+      {
+        top = __max(top, *v);
+        bot = __min(bot, *v);
+        sum += *v;
+        ssq += (*v) * (*v);
+        n++;
+      }
+
+  // crunch into average and standard deviation 
+  if (n <= 0)
+    return d8.FillArr(0);
+  avg = (double) sum;
+  avg /= (double) n;
+  sdev = (double) ssq;
+  sdev /= (double) n;
+  sdev = sqrt(sdev - avg * avg);
+
+  // linearly scale pixels (ignore very high sdf values)
+  lo16 = ROUND(avg - sdf * sdev);
+  hi16 = ROUND(avg + sdf * sdev);
+  return Remap16(d8, d16, __max(bot, lo16), __min(hi16, top), 1, 255, choke);
+}
+
+   
+//= Convert full 4xmm depth image into monochrome version (dark = far).
+// linearly maps value so lo16 goes to hi8, hi16 goes to lo8
+// 0 = unknown, else 1-255 = grayscale depth in range (saturates)
+
+int jhcLUT_0::Remap16 (jhcImg& d8, const jhcImg& d16, int lo16, int hi16, int lo8, int hi8, int choke) const
+{
+  if (!d8.Valid(1) || !d8.SameSize(d16, 2))
+    return Fatal("Bad images to jhcLUT::Remap16");
+  d8.CopyRoi(d16);
+
+  // general ROI case
+  int rw = d8.RoiW(), rh = d8.RoiH(), ssk2 = d16.Skip() >> 1, dsk = d8.Skip();
+  int bot, top, x, y, f, vsc;
+  const US16 *s = (US16 *) d16.RoiSrc();
+  UC8 *d = d8.RoiDest();
+
+  // get integer conversion coefficient
+  bot = __max(0, __min(lo16, 65535));
+  top = __max(0, __min(hi16, 65535));
+  if (top == bot)
+    return d8.FillArr(0);
+  f = ((hi8 - lo8) << 16) / (top - bot);
+
+  // convert pixels
+  for (y = rh; y > 0; y--, d += dsk, s += ssk2)
+    for (x = rw; x > 0; x--, d++, s++)
+      if ((*s < choke) || (*s > 40000))
+        *d = 0;
+      else
+      {
+        vsc = (f * (*s - bot) + 32768) >> 16;
+        vsc = __max(0, __min(vsc, 254));
+        *d = (UC8)(255 - vsc);
+      }
   return 1;
 }
 
@@ -1198,39 +1276,8 @@ int jhcLUT_0::Fog16 (jhcImg& d16, const jhcImg& d8) const
       else if (*s == 1)
         *d = 40000;                  // max range
       else
-        *d = 9920 - (*s << 5);
+        *d = (US16)(9920 - (*s << 5));
   return 1;
 }
 
 
-//= Convert full 4xmm depth image into monochrome version (dark = far).
-// linearly maps value so lo16 goes to hi8, hi16 goes to lo8
-// 0 = unknown, else 1-255 = grayscale depth in range (saturates)
-
-int jhcLUT_0::Remap16 (jhcImg& d8, const jhcImg& d16, int lo16, int hi16, int lo8, int hi8) const
-{
-  if (!d8.Valid(1) || !d8.SameSize(d16, 2))
-    return Fatal("Bad images to jhcLUT::Night8");
-  d8.CopyRoi(d16);
-
-  // general ROI case
-  int x, y, f, w = d8.RoiW(), h = d8.RoiH(), ssk2 = d16.Skip() >> 1, dsk = d8.Skip();
-  UC8 v;
-  const US16 *s = (US16 *) d16.RoiSrc();
-  UC8 *d = d8.RoiDest();
-
-  // get integer conversion coefficient
-  f = ((hi8 - lo8) << 16) / (hi16 - lo16);
-
-  // convert pixels
-  for (y = h; y > 0; y--, d += dsk, s += ssk2)
-    for (x = w; x > 0; x--, d++, s++)
-      if ((*s < 1760) || (*s > 40000))
-        *d = 0;
-      else
-      {
-        v = (UC8)(255 - ((f * (*s - lo16) + 32768) >> 16));
-        *d = __max(0, __min(v, 254)) + 1;
-      }
-  return 1;
-}

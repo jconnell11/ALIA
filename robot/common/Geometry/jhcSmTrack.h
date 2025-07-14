@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2018 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSMTRACK_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSMTRACK_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -117,9 +114,11 @@ public:
   double TX (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][0]);}
   double TY (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][1]);}
   double TZ (int i) const {return(((i < 0) || (i >= valid)) ? 0.0 : pos[i][2]);}
-  double DistXY (int i) const;
+  double RadiusXY (int i) const;
   void ForceXYZ (int i, double x, double y, double z) 
     {if ((i < 0) || (i >= valid)) return; pos[i][0] = x; pos[i][1] = y; pos[i][2] = z;}
+  void ForceZ (int i, double z)
+    {if ((i < 0) || (i >= valid)) return; pos[i][2] = z;}
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -144,10 +143,4 @@ private:
   void rem_item (int i);
 
 };
-
-
-#endif  // once
-
-
-
 

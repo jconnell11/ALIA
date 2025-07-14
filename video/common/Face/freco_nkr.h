@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018 IBM Corporation
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,25 +21,29 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _FRECO_NKR_DLL_
-#define _FRECO_NKR_DLL_
+#pragma once
 
 
-// function declarations (possibly combined with other header files)
+// define DEXP_R (uses other DLLs whose header files define DEXP)
 
-#ifndef DEXP
-  #ifdef FRECO_NKR_EXPORTS
-    #define DEXP __declspec(dllexport)
-  #else
-    #define DEXP __declspec(dllimport)
+#ifdef __linux__
+  #define DEXP_R               // nothing special needed for Linux shared lib
+#else 
+
+  // function declarations
+  #ifndef DEXP_R
+    #ifdef FRECO_NKR_EXPORTS
+      #define DEXP_R __declspec(dllexport)
+    #else
+      #define DEXP_R __declspec(dllimport)
+    #endif
   #endif
-#endif
 
+  // link to library stub
+  #ifndef FRECO_NKR_EXPORTS
+    #pragma comment(lib, "freco_nkr.lib")
+  #endif
 
-// link to library stub
-
-#ifndef FRECO_NKR_EXPORTS
-  #pragma comment(lib, "freco_nkr.lib")
 #endif
 
 
@@ -48,40 +53,40 @@
 
 //= String with version number of DLL and possibly other information.
 
-extern "C" DEXP const char *freco_version ();
+extern "C" DEXP_R const char *freco_version ();
 
 
 //= Sets up DNN for processing a series of cropped mugshots.
 // if file name is NULL then default values will be used
-// can use either main CPU or GPU (if compatible)
-// does the time-consuming loading of GPU once ahead of time
+// can request either main CPU or GPU (if compatible)
 // returns 2 if running GPU mode, 1 for CPU mode, 0 or negative for failure
 
-extern "C" DEXP int freco_setup (const char *fname =0, int gpu =1);
+extern "C" DEXP_R int freco_setup (const char *fname =0, int gpu =1);
 
 
 //= Loads comparison metric derived from training samples.
 // returns 1 if successful, 0 or negative for error 
 
-extern "C" DEXP int freco_metric (const char *fname);
+extern "C" DEXP_R int freco_metric (const char *fname);
 
 
 //= Start the face recognition system for training or identification.
 // takes a debugging level specification and log file designation
-// use this to initially fire up the system 
+// use this to initially fire up the system (not required)
+// does the time-consuming loading of GPU once ahead of time
 // returns 1 if successful, 0 or negative for some error
 
-extern "C" DEXP int freco_start (int level =0, const char *log_file =NULL);
+extern "C" DEXP_R int freco_start (int level =0, const char *log_file =NULL);
 
 
 //= Call at end of run to close log file or before loading a new configuration.
 
-extern "C" DEXP void freco_done ();
+extern "C" DEXP_R void freco_done ();
 
 
 //= Releases any allocated resources (call at end of run).
 
-extern "C" DEXP void freco_cleanup ();
+extern "C" DEXP_R void freco_cleanup ();
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -90,12 +95,12 @@ extern "C" DEXP void freco_cleanup ();
 
 //= Returns width of representative color face image.
 
-extern "C" DEXP int freco_mug_w ();
+extern "C" DEXP_R int freco_mug_w ();
 
 
 //= Returns height of representative color face image.
 
-extern "C" DEXP int freco_mug_h ();
+extern "C" DEXP_R int freco_mug_h ();
 
 
 //= Convert input region of interest into normalized color face image.
@@ -106,21 +111,21 @@ extern "C" DEXP int freco_mug_h ();
 // potentially rotates and enhances some portion of input image
 // returns 1 if successful, 0 or negative if error
 
-extern "C" DEXP int freco_mug (unsigned char *gray, 
-                               const unsigned char *src, int iw, int ih, 
-                               int lf, int rt, int bot, int top);
+extern "C" DEXP_R int freco_mug (unsigned char *mug, 
+                                 const unsigned char *src, int iw, int ih, 
+                                 int lf, int rt, int bot, int top);
 
 
 //= Reports coordinates of left eye (wrt person) in original input image.
 // returns 1 if found, 0 if missing or not computed
 
-extern "C" DEXP int freco_eye_lf (double& x, double& y);
+extern "C" DEXP_R int freco_eye_lf (double& x, double& y);
 
 
 //= Reports coordinates of right eye (wrt person) in original input image.
 // returns 1 if found, 0 if missing or not computed
 
-extern "C" DEXP int freco_eye_rt (double& x, double& y);
+extern "C" DEXP_R int freco_eye_rt (double& x, double& y);
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -129,7 +134,7 @@ extern "C" DEXP int freco_eye_rt (double& x, double& y);
 
 //= Returns the number of elements in an example signature vector. 
 
-extern "C" DEXP int freco_vsize ();
+extern "C" DEXP_R int freco_vsize ();
 
 
 //= Analyze "src" image to generate "feat" vector (blocks until complete).
@@ -140,8 +145,8 @@ extern "C" DEXP int freco_vsize ();
 // about 67 ms on 2.7 GHz CPU, 12.5 ms on Quadro M1000M
 // returns 1 if successful, 0 or negative for some error
 
-extern "C" DEXP int freco_vect (double *feat, const unsigned char *src, 
-                                int iw, int ih, int lf, int rt, int bot, int top);
+extern "C" DEXP_R int freco_vect (double *feat, const unsigned char *src, 
+                                  int iw, int ih, int lf, int rt, int bot, int top);
 
 
 //= Request that a face in an image be analyzed in the background.
@@ -152,15 +157,15 @@ extern "C" DEXP int freco_vect (double *feat, const unsigned char *src,
 // typically 0.3 ms on 2.7 GHz CPU - src image can change after return
 // returns 1 if successfully queued, 0 or negative for some error
 
-extern "C" DEXP int freco_submit (const unsigned char *src, int iw, int ih, 
-                                  int lf, int rt, int bot, int top);
+extern "C" DEXP_R int freco_submit (const unsigned char *src, int iw, int ih, 
+                                    int lf, int rt, int bot, int top);
 
 
 //= Wait a certain amount to see if face analysis request has completed.
 // passed feature array must have 256 elements for DNN output
 // returns 1 if done (and sets vector), 0 if not ready yet, negative for error
 
-extern "C" DEXP int freco_check (double *feat, int ms =0);
+extern "C" DEXP_R int freco_check (double *feat, int ms =0);
 
 
 //= Computes a distance between two signature vectors (small is good).
@@ -168,9 +173,5 @@ extern "C" DEXP int freco_check (double *feat, int ms =0);
 // passed arrays must have 256 elements each
 // return value between 0 and 1 (ID threshold around 0.2)
 
-extern "C" DEXP double freco_dist (const double *f1, const double *f2);
+extern "C" DEXP_R double freco_dist (const double *f1, const double *f2);
 
-
-///////////////////////////////////////////////////////////////////////////
-
-#endif  // once

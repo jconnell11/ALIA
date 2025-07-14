@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCVIDREG_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCVIDREG_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -60,6 +57,7 @@
 
 
 /////////////////////////////////////////////////////////////////////////////
+
 /* CPPDOC_BEGIN_EXCLUDE */
 
 // maximum number of extensions that can be registered
@@ -110,11 +108,4 @@ private:
 //= Global variable embodying unique registry for video classes.
 
 extern jhcVidReg jvreg;
-
-
-
-#endif
-
-
-
 

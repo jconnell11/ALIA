@@ -112,6 +112,12 @@
     <Filter Include="Source Files\common robot\Geometry">
       <UniqueIdentifier>{5fff7870-f784-45e5-93f5-c2e1c1cc8308}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\common robot\Peripheral">
+      <UniqueIdentifier>{60de4e9d-7100-4b8a-89c1-e84dd3a45891}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Peripheral">
+      <UniqueIdentifier>{b0e22666-0f80-4295-95ef-02b7f0135156}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\video\common\Interface\jhcMessage.h">
@@ -282,9 +288,6 @@
     <ClInclude Include="..\..\audio\common\API\alia_act.h">
       <Filter>Header Files\common audio\API</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\video\common\jhc_pthread.h">
       <Filter>Header Files\common video</Filter>
     </ClInclude>
@@ -330,17 +333,20 @@
     <ClInclude Include="..\..\robot\common\Body\jhcSwapNeck.h">
       <Filter>Header Files\common robot\Body</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\robot\common\RWI\jhcGenRWI.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\robot\common\RWI\jhcSwapCoord.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\robot\common\RWI\jhcSwapRWI.h">
       <Filter>Header Files\common robot\RWI</Filter>
     </ClInclude>
     <ClInclude Include="..\..\robot\common\Kernel\jhcEmotion.h">
       <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\robot\common\RWI\jhcGenGrok.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\robot\common\Body\jhcGenBody.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\robot\common\Peripheral\jhcGenMic.h">
+      <Filter>Header Files\common robot\Peripheral</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -518,11 +524,11 @@
     <ClCompile Include="..\..\robot\common\RWI\jhcSwapCoord.cpp">
       <Filter>Source Files\common robot\RWI</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\robot\common\RWI\jhcSwapRWI.cpp">
-      <Filter>Source Files\common robot\RWI</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\robot\common\Kernel\jhcEmotion.cpp">
       <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\robot\common\Peripheral\jhcGenMic.cpp">
+      <Filter>Source Files\common robot\Peripheral</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

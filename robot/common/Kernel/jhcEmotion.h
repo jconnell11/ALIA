@@ -1,4 +1,4 @@
-// jhcEmotion.h : autonomous nagging and conscious acess to feelings
+// jhcEmotion.h : autonomous nagging and conscious access to feelings
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
@@ -96,6 +96,5 @@ private:
   void freak_out ();
   void mark_onset ();
   void auto_nag ();
-
 
 };

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022-2023 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -97,6 +97,27 @@ int jhcIntrospect::why_run (const jhcAliaDesc& desc, int i)
   const jhcAliaDesc *act = desc.Val("arg");
   jhcNetNode *act2;
 
+  // only respond if known to be doing or did something (else unknown)
+  if (!atree->Recent(atree->nkey, act->Done()))
+    return 1;
+
+  // generate positive NOTE
+  atree->StartNote();
+  act2 = atree->CloneAct(dynamic_cast<const jhcNetNode *>(desc.Val("arg")));
+  act2->AddArg("agt", atree->Robot());           // restore after search
+  if ((act->Done()) > 0)
+    act2->SetDone(1);
+  atree->FinishNote();
+  return 1;
+}
+
+/*
+// version that will deny robot is doing something (incl. "looking good")
+int jhcIntrospect::why_run (const jhcAliaDesc& desc, int i)
+{
+  const jhcAliaDesc *act = desc.Val("arg");
+  jhcNetNode *act2;
+
   atree->StartNote();
   act2 = atree->CloneAct(dynamic_cast<const jhcNetNode *>(desc.Val("arg")));
   if (!atree->Recent(atree->nkey, act->Done()))
@@ -107,7 +128,7 @@ int jhcIntrospect::why_run (const jhcAliaDesc& desc, int i)
   atree->FinishNote();
   return 1;
 }
-
+*/
 
 ///////////////////////////////////////////////////////////////////////////
 //                        Failure Determination                          //

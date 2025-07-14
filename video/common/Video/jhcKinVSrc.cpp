@@ -216,7 +216,7 @@ int jhcKinVSrc::iGet (jhcImg& dest, int *advance, int src, int block)
 //= Get the color image (dest) and the depth image (dest2) from the sensor.
 // returns 4x depth (z offset, not ray length) with depth and color pixels aligned
 // raw depth = 440-10000mm (17.3"-32.8ft) ==> values 1760-40000, invalid = 65535
-// use jhcLUT::Night8 for convenient viewing
+// use jhcLUT::NightSD for convenient viewing
 
 int jhcKinVSrc::iDual (jhcImg& dest, jhcImg& dest2)
 {

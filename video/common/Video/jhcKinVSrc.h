@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCKINVSRC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCKINVSRC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -61,10 +58,4 @@ private:
   int fill_depth (jhcImg& dest);
 
 };
-
-
-#endif  // once
-
-
-
 

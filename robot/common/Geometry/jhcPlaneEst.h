@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCPLANEEST_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCPLANEEST_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -75,10 +72,4 @@ private:
   void find_err ();
 
 };
-
-
-#endif  // once
-
-
-
 

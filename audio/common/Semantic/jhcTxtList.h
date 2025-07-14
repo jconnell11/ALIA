@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTXTLIST_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTXTLIST_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -70,12 +67,5 @@ public:
   void SetNext (jhcTxtList *v) {next = v;}
   jhcTxtList *GetNext () {return next;}
 
-
 };
-
-
-#endif  // once
-
-
-
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCECHOFCN_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCECHOFCN_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -49,7 +46,7 @@ public:
   ~jhcEchoFcn ();
   jhcEchoFcn ();
   void AddFcns (class jhcAliaKernel& pool);
-  void Platform (void *soma);
+  void Platform (void *soma, const char *kind);
   void Reset (jhcAliaNote& attn);                    
 
   // main functions
@@ -66,10 +63,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -55,7 +55,7 @@ private:
   double bspeed, fspeed, mtim;
 
   // user interaction (once every cycle)
-  double itim;
+  double itim, atim;
   int people;
 
   // --------------------- state variables ---------------------
@@ -78,7 +78,7 @@ private:
   double btime, engaged, frantic, wtime, surp, vsurp, low, vlow;
 
   // motion drive parameters
-  double fhand, fbase, ftalk, noise, mtime, mok, bore, vbore;
+  double fhand, fbase, faddr, noise, mtime, mok, bore, vbore;
 
   // social drive parameters
   double fhear, fdude, lps, stime, sok, lone, vlone;
@@ -136,8 +136,8 @@ public:
 
   // details for charting
   double Active () const {return mok;}
-  double BodyData (double& bsp, double& fsp, double& mt) const
-    {bsp = bspeed; fsp = fspeed; mt = mtim; return energy;}
+  double BodyData (double& bsp, double& fsp, double& at) const
+    {bsp = bspeed; fsp = fspeed; at = atim; return energy;}
   int SocialData (double& it) const
     {it = itim; return people;}
 

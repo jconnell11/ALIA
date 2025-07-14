@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018 IBM Corporation
+// Copyright 2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,10 +78,17 @@ int jhcFaceVect::Copy (const jhcFaceVect *ref)
 int jhcFaceVect::Load (FILE *in)
 {
   char hdr[20], sep[20];
-  int i;
+  int n, i;
 
-  // read header giving image number and utility
-  if (fscanf_s(in, "%s %d %d %s", hdr, 20, &inum, &util, sep, 20) != 4)
+  // read instance header 
+#ifndef __linux__
+  n = fscanf_s(in, "%s %d %d %s", hdr, 20, &inum, &util, sep, 20);
+#else
+  n = fscanf(in, "%s %d %d %s", hdr, &inum, &util, sep);
+#endif
+
+  // verify format with number of images and utility value
+  if (n != 4)
     return -1;
   if ((strcmp(hdr, "inst") != 0) || (strcmp(sep, "=") != 0))
     return -1;

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2006-2012 IBM Corporation
-// Copyright 2022-2024 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@
 
 #else  // **** FOR PORTING (Linux mostly) ****
 
-  #include <stdlib.h>                  // for NULL
+  #include <stddef.h>                  // for NULL               
   #include <unistd.h>
   #include <sys/stat.h>
   #include <sys/types.h>
@@ -65,13 +65,15 @@
 
 ///////////////////////////////////////////////////////////////////////////
 
+#include <stdint.h>
+
 // these datatypes are for pixels and packed pixels (bytes)
 // some DSPs define long as 40 bits rather than 32 bits
 
-typedef unsigned char  UC8;
-typedef unsigned short US16;
-typedef unsigned long  UL32;
-typedef unsigned long long UL64; 
+typedef uint8_t  UC8;
+typedef uint16_t US16;
+typedef uint32_t UL32;
+typedef uint64_t UL64; 
 
 
 //= The standard value for pi.

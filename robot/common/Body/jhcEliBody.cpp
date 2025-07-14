@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,10 +53,6 @@ jhcEliBody::jhcEliBody ()
   neck.Bind(dyn);
   acc.Bind(dyn);
 
-  // default battery status
-  volts = 13.8;
-  vsamp = 0;
-
   // starting values
   iw = 640;
   ih = 480;
@@ -64,7 +60,7 @@ jhcEliBody::jhcEliBody ()
   ch = 960;
   kin = 0;
   vid = NULL;
-  enh = 1;                             // automatically enhance color
+  seen = 0;
   bnum = -1;
   tfill = 0;
 
@@ -72,6 +68,11 @@ jhcEliBody::jhcEliBody ()
   strcpy_s(rname, "Banzai");
   *vname = '\0';
   loud = 0;
+
+  // default battery status
+  volts = 13.8;
+  vsamp = 0;
+  batt = 0;
 
   // get standard processing values
   *cfile = '\0';
@@ -136,9 +137,10 @@ int jhcEliBody::static_params (const char *fname)
   int ok;
 
   ps->SetTag("body_static", 0);
-  ps->NextSpecF( &pdef,   0.0, "Default neck pan (deg)");
-  ps->NextSpecF( &tdef, -51.2, "Default neck tilt (deg)");
-  ps->NextSpecF( &hdef,  30.4, "Default lift height (in)");  // was 31.8
+  ps->NextSpecF( &pdef,     0.0, "Default neck pan (deg)");
+  ps->NextSpecF( &tdef,   -51.2, "Default neck tilt (deg)");
+  ps->NextSpecF( &hdef,    30.4, "Default lift height (in)");   // was 31.8
+  ps->NextSpec4( &choke, 1760,   "Closest valid depth reading");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -430,15 +432,21 @@ int jhcEliBody::SetKinect (int rpt)
 // needs to be called at least once before using robot
 // if rpt > 0 then prints to log file
 // if full > 0 then clears all communications and tests hardware
+// if phy <= 0 then assumes no physical body
 
-int jhcEliBody::Reset (int rpt, int full) 
+int jhcEliBody::Reset (int rpt, int full, int phy) 
 {
   UL32 neg5 = jms_now() - 300000;      // idle 5 minutes
   int i;
 
-  // announce entry
-  jprintf(1, rpt, "BODY reset ...\n");
-  if ((full > 0) || (CommOK(0) <= 0))
+  // announce entry and always load some configuration file
+  if (phy > 0)
+    jprintf(1, rpt, "BODY reset ...\n");
+  if (CfgFile(cfile, 1, 80) > 0)
+    LoadCfg(cfile);
+  if (phy <= 0)
+    StaticPose();
+  else if ((full > 0) || (CommOK(0) <= 0))
   {
     // connect to proper serial port if needed (does not unwedge) 
     if (mok < 0)
@@ -469,14 +477,14 @@ int jhcEliBody::Reset (int rpt, int full)
     neck.Reset(rpt, 1);
     base.Reset(rpt, 1);
     lift.Reset(rpt, 1);
-    mic.SetPort(8);                    // serial port for sound direction
+    mic.UsePort(8);                    // serial port for sound direction
     mic.Reset(rpt);
   }
   
   // finished with actuators
-  if (rpt > 0)
+  if ((phy > 0) && (rpt > 0))
   {
-    jprintf("\nBODY -> %s\n", ((CommOK(0) > 0) ? "OK" : "FAILED !!!"));
+    jprintf("\nBODY -> %s\n", ((CommOK() > 0) ? "OK" : "FAILED !!!"));
     jprintf("=========================\n");
     jprintf("\n");
   }
@@ -489,13 +497,18 @@ int jhcEliBody::Reset (int rpt, int full)
   ttime = neg5;
   mtime = neg5;
 
+  // default battery state
+  volts = 13.8;
+  vsamp = 0;
+  batt = 0;
+
   // clear performance timer and report overall status
   for (i = 0; i < 10; i++)
     tcmd[i] = 0;
   tfill = 0;
 //  dyn.Reset();
   chk_vid(1);
-  return CommOK();
+  return((phy > 0) ? CommOK() : 1);
 }
 
 
@@ -524,8 +537,7 @@ void jhcEliBody::chk_vid (int start)
   // make up receiving images
   vid->SizeFor(col, 0);
   vid->SizeFor(rng, 1);
-  if (cw > iw)
-    col2.SetSize(iw, ih, 3);
+  raw.SetSize(col);
 
   // possible start source
   if (start > 0)
@@ -549,15 +561,15 @@ int jhcEliBody::CfgFile (char *fname, int chk, int ssz)
   BodyNum(chk);
 
   // look in current directory first
-  sprintf_s(fname, ssz, "robot-%d.cfg", __max(0, bnum));
+  sprintf_s(fname, ssz, "robot-%d.cal", __max(0, bnum));
   if (fopen_s(&in, fname, "r") != 0)
   {
     // else look in subdirectory of current
-    sprintf_s(fname, ssz, "calib/robot-%d.cfg", __max(0, bnum));
+    sprintf_s(fname, ssz, "config/robot-%d.cal", __max(0, bnum));
     if (fopen_s(&in, fname, "r") != 0)
     {
       // else look in parallel directory
-      sprintf_s(fname, ssz, "../calib/robot-%d.cfg", __max(0, bnum));
+      sprintf_s(fname, ssz, "../config/robot-%d.cal", __max(0, bnum));
       if (fopen_s(&in, fname, "r") != 0)
       {
         *fname = '\0';
@@ -594,7 +606,7 @@ int jhcEliBody::BodyNum (int chk)
 //= Tell if all communications seem to be working properly.
 // generally -1 = not open, 0 = protocol error, 1 = okay
 
-int jhcEliBody::CommOK (int rpt, int bad) const
+int jhcEliBody::CommOK (int rpt) const
 {
   int ok = mok;
 
@@ -603,7 +615,7 @@ int jhcEliBody::CommOK (int rpt, int bad) const
   ok = __min(ok, neck.CommOK());
   ok = __min(ok, base.CommOK());
   ok = __min(ok, lift.CommOK());
-  ok = __min(ok, mic.CommOK(bad));
+  ok = __min(ok, mic.CommOK());
 
   // tell reason for failure (if any)
   if ((ok <= 0) && (rpt > 0))
@@ -612,7 +624,7 @@ int jhcEliBody::CommOK (int rpt, int bad) const
             ((neck.CommOK() <= 0) ? " neck" : ""), 
             ((base.CommOK() <= 0) ? " base" : ""), 
             ((lift.CommOK() <= 0) ? " lift" : ""), 
-            ((mic.CommOK(bad)  <= 0) ? " mic" : ""));
+            ((mic.CommOK()  <= 0) ? " mic" : ""));
   return ok;
 }
 
@@ -703,17 +715,6 @@ double jhcEliBody::BodyIdle (UL32 now) const
 //                           Kinect Image Access                         //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Get color image that matches the size of the depth image (640 480).
-// will downsample if hi-res Kinect mode selected
-
-int jhcEliBody::ImgSmall (jhcImg& dest) 
-{
-  if (!dest.SameFormat(col))
-    return Smooth(dest, col);
-  return dest.CopyArr(col);
-}
-
-
 //= Get color image in the highest resolution available.
 // will upsample if low-res Kinect mode selected
 
@@ -725,6 +726,28 @@ int jhcEliBody::ImgBig (jhcImg& dest)
 } 
 
 
+//= Get color image that matches the size of the depth image (640 480).
+// will downsample if hi-res Kinect mode selected
+
+int jhcEliBody::ImgSmall (jhcImg& dest) 
+{
+  if (!dest.SameFormat(col))
+    return Smooth(dest, col);
+  return dest.CopyArr(col);
+}
+
+
+//= Get raw color image before enhancement.
+// will downsample if hi-res Kinect mode selected
+
+int jhcEliBody::InputSmall (jhcImg& dest) 
+{
+  if (!dest.SameFormat(raw))
+    return Smooth(dest, raw);
+  return dest.CopyArr(raw);
+}
+
+
 //= Get depth image as an 8 bit gray scale rendering.
 // generally better for display purposes
 
@@ -733,7 +756,7 @@ int jhcEliBody::Depth8 (jhcImg& dest) const
   if (!rng.Valid())
     return dest.FillArr(0);
   if (!dest.Valid(2))
-    return Night8(dest, rng, vid->Shift);
+    return NightSD(dest, rng, vid->Shift, choke);    // was Night8
   return dest.CopyArr(rng);
 }
 
@@ -786,21 +809,28 @@ int jhcEliBody::Limp ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Load new images from video source (e.g. Kinect).
+// returns seen: 2 = new, 1 = processable, 0 = none
 // Note: BLOCKS until frame(s) become available
 
 int jhcEliBody::UpdateImgs ()
 {
-  int ans;
-
   if (vid == NULL)
     return -1;
+
+  // get new images if available 
   if (vid->Dual() > 0)
-    ans = vid->DualGet(col, rng);
+    seen = vid->DualGet(col, rng);              
   else
-    ans = vid->Get(col);               // sometimes useful (e.g. face enroll) 
-  if ((ans > 0) && (enh > 0))
-    Enhance3(col, col, 2.0);
-  return ans;
+    seen = vid->Get(col);                        // sometimes useful (e.g. face enroll) 
+  if (seen > 0)
+    raw.CopyArr(col);                            // for dump
+
+  // mark if actually new or at least fresh enough to process
+  if (seen > 0)
+    seen = 2;
+  else if (vid->IsClass("jhcListVSrc") > 0)      // static images
+    seen = 1;                                    
+  return seen;
 }
 
 
@@ -808,8 +838,10 @@ int jhcEliBody::UpdateImgs ()
 // NOTE: if voice < 0 then mic.Update should be called separately
 // useful since mic depends on voice while nothing else does
 
-int jhcEliBody::Update (int voice, int imgs, int bad)
+int jhcEliBody::Update (int voice, int imgs)
 {
+  int bsamp = 150;                     // roughly every 5 sec
+ 
   // possibly skip getting new images (for timing usually)
   if (imgs > 0)
     if (UpdateImgs() <= 0)
@@ -835,9 +867,14 @@ int jhcEliBody::Update (int voice, int imgs, int bad)
   neck.Update();
   arm.Update(0);             // mega already called if applicable
 
-  // collect second base value
+  // collect second base value then refresh battery voltage
   base.UpdateFinish();
-  return CommOK(1, bad);
+  if (batt++ >= bsamp)               
+  {
+    UpdateBat();             // requires extra communication
+    batt = 0;
+  }   
+  return CommOK(1);
 }
 
 

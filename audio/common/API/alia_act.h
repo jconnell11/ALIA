@@ -1,10 +1,10 @@
-// alia_act.h : interface to ALIA reasoner as a passive resource
+// alia_act.h : interface to ALIA language and actuators
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
   #define DEXP               // nothing special needed for Linux shared lib
 #else 
 
-  // function declarations (possibly combined with other header files)
+  // function declarations 
   #ifndef DEXP
     #ifdef ALIAACT_EXPORTS
       #define DEXP __declspec(dllexport)
@@ -37,27 +37,18 @@
 
   // link to library stub
   #ifndef ALIAACT_EXPORTS
-    #ifdef _DEBUG
-      #pragma comment(lib, "alia_act_d.lib")
-    #else
-      #pragma comment(lib, "alia_act.lib")
-    #endif
+    #pragma comment(lib, "alia_act.lib")
   #endif
 
 #endif
 
 ///////////////////////////////////////////////////////////////////////////
-
-//= Interface to ALIA reasoner as a passive resource.
+ 
+//= Interface to ALIA language and actuators.
 // basically dumps a big pile of variables on the floor
 
 extern "C" 
 {
-  //= Specify which hardware susbsystems are present and working.
-  // set to 1 or 0: nok = neck, aok = arm, fok = fork lift, bok = base
-  // call before alia_reset, can also be called if something breaks
-  DEXP void alia_body (int nok, int aok, int fok, int bok);
-
   //= Configure reasoning system and load knowledge base.
   // dir: base directory for config, language, log, and KB subdirectories
   // rname: robot name (like "Jim Jones"), can be NULL if desired
@@ -67,6 +58,7 @@ extern "C"
   DEXP int alia_reset (const char *dir, const char *rname, const char *prog);
 
   //= Exchange command and sensor data then start reasoning a bit.
+  // alia_XXX variables only read/written while this function is blocking
   // returns 2 if okay, 1 if not ready, 0 for quit, negative for problem
   // NOTE: can take up to 100ms to finish on Raspberry Pi 4
   DEXP int alia_think ();
@@ -75,19 +67,25 @@ extern "C"
   // returns 1 if okay, 0 or negative for problem
   DEXP int alia_done (int save); 
 
-  //= Text output from reasoner for TTS (enforces const).
+  // -------------------------- SPEECH ----------------------------------
+
+  //= Text output from reasoner for TTS (beware of overrun).
   DEXP const char *alia_spout ();
 
-  //= Text input to reasoner from speech recognition (prevents overrun).
-  DEXP void alia_spin (const char *reco);
-
-  // -------------------------- SPEECH ----------------------------------
+  //= Text input to reasoner from speech recognition (copies argument).
+  // optionally records delay (ms) from start of speech to recognition 
+  DEXP void alia_spin (const char *reco, int ms =0);
 
   DEXP int alia_attn;                        // paying attention (no wake)
 
   DEXP int alia_hear, alia_talk;             // hearing speech or talking now
 
-  // --------------------------- BODY -----------------------------------
+  // =========================== BODY ===================================
+
+  //= Specify which hardware susbsystems are present and working.
+  // set to 1 or 0: nok = neck, aok = arm, fok = fork lift, bok = base
+  // call before alia_reset, can also be called if something breaks
+  DEXP void alia_body (int nok, int aok, int fok, int bok);
 
   DEXP int alia_mood;                        // mood bit vector (happy, angry)
 
@@ -96,12 +94,12 @@ extern "C"
 
   // --------------------------- NECK -----------------------------------
 
-  DEXP float alia_npt, alia_ntt;             // desired camera orientation
-  DEXP float alia_npv, alia_ntv;             // pan and tilt rates wrt normal
-  DEXP int alia_npi, alia_nti;               // pan and tilt cmd importance
+  DEXP float alia_rpt, alia_rtt;             // desired range-finder orientation
+  DEXP float alia_rpv, alia_rtv;             // range-finder pan and tilt rates 
+  DEXP int alia_rpi, alia_rti;               // range-finder command importance
 
-  DEXP float alia_nx, alia_ny, alia_nz;      // camera location now
-  DEXP float alia_np, alia_nt, alia_nr;      // camera orientation now
+  DEXP float alia_rx, alia_ry, alia_rz;      // range-finder location now
+  DEXP float alia_rp, alia_rt, alia_rr;      // range-finder orientation now
 
   // ---------------------------- ARM -----------------------------------
 
@@ -131,11 +129,12 @@ extern "C"
 
   // --------------------------- BASE -----------------------------------
 
-  DEXP float alia_bmt, alia_brt;             // incremental motion amounts
+  DEXP float alia_bmt, alia_brt;             // cumulative motion targets
   DEXP float alia_bsk;                       // move direction wrt forward
   DEXP float alia_bmv, alia_brv;             // move and rotation rates
   DEXP int alia_bmi, alia_bri;               // move and rotation cmd importance
 
-  DEXP float alia_bx, alia_by, alia_bh;      // map location and heading
+  DEXP float alia_bt, alia_bw;               // cumulative displacements
+  DEXP float alia_bx, alia_by;               // Cartesian map location
 
 }

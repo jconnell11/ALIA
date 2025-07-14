@@ -62,12 +62,13 @@ void jhcEchoFcn::AddFcns (jhcAliaKernel& pool)
 
 
 //= Bind all function pools to a real-world interface for a body.
+// passes "kind" string for run-time type checking of "soma"
 // automatically chains to "next" pool
 
-void jhcEchoFcn::Platform (void *soma)  
+void jhcEchoFcn::Platform (void *soma, const char *kind)  
 {
   if (next != NULL) 
-    next->Platform(soma);
+    next->Platform(soma, kind);
 }
 
 

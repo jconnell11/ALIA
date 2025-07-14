@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -370,7 +370,8 @@ void jhcDisplay::StatusText (const char *msg, ...)
 
 void jhcDisplay::Pace (int ms, int grid)
 {
-  DWORD tnext, tprev = tdisp;
+  int early = 2;
+  UL32 twait, tprev = tdisp;
 
   // possibly reset screen
   if (grid > 0)
@@ -382,12 +383,11 @@ void jhcDisplay::Pace (int ms, int grid)
     return;
 
   // if not close enough to next frame time then sleep a while
-  // have to test tnext and tdisp explicitly since DWORD
-  tnext = tprev + (DWORD) ms;
-  if (tnext > tdisp)
+  twait = tprev + (UL32)(ms - early);
+  if (twait > tdisp)
   {
-    jms_sleep(tnext - tdisp); 
-    tdisp = jms_now();
+    jms_sleep(twait - tdisp); 
+    tdisp = jms_now();                  // record exit from wait
   }
 }
 
@@ -455,7 +455,7 @@ int jhcDisplay::ClearGrid (int i, int j, int txt)
   int x = GridX(i), y = GridY(j);
 
   if (txt > 0)
-    return clear_rect(x, y - hfont, cw, rh);
+    return clear_rect(x, y - hfont, cw, rh + hfont);
   return clear_rect(x, y, cw, rh);
 }
 
@@ -1612,32 +1612,33 @@ int jhcDisplay::WaitHit (int ms)
 int jhcDisplay::PaceOrHit (int ms, int grid)
 {
   int hit, left, early = 2, chunk = 100;
-  DWORD tnext, tprev = tdisp;
+  UL32 twait, tprev = tdisp;
 
-  // get current time and remember then possibly reset screen
-  // assumes only one major loop, so this is last time fcn was called
-  tdisp = jms_now();
+  // possibly reset grid placement defaults
   if (grid > 0)
     ResetGrid(grid, 0, 0);
 
-  // return immediately if already hit 
-  // or if this is first call or if interval already elapsed
+  // return immediately if key already hit or first call ever
+  tdisp = jms_now();
   if ((hit = AnyHit()) != 0)
     return hit;
   if ((tprev == 0) || (ms <= 0))
     return 0;
-  tnext = tprev + (DWORD)(ms - early);
-  if (tnext <= tdisp)
+
+  // determine ideal time to exit (accounting for loop processing)
+  twait = tprev + (UL32)(ms - early);
+  if (twait <= tdisp)
     return 0;
 
   // otherwise sample mouse and keyboard at a regular interval
-  left = jms_diff(tnext, tdisp);
+  left = jms_diff(twait, tdisp);
   while (left > 0)
   {
     jms_sleep(__min(left, chunk));
     if ((hit = AnyHit()) != 0)
       return hit;
-    left = jms_diff(tnext, jms_now());
+    tdisp = jms_now();                 // record exit from wait
+    left = jms_diff(twait, tdisp);
   }
   return 0;
 }

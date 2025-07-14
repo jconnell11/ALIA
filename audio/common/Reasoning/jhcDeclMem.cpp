@@ -26,7 +26,7 @@
 
 #include "Reasoning/jhcDeclMem.h"
 
-#include "Interface/jtimer.h"
+
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -509,7 +509,6 @@ int jhcDeclMem::DejaVu ()
   jhcNetNode *mate, *n = NULL;
   int ret0 = ret, cnt = 0;
 
-jtimer(15, "DejaVu");
   // set up for surface node scan
   if (atree == NULL)
     return 0;
@@ -536,7 +535,6 @@ jtimer(15, "DejaVu");
   if ((mate = Recognize(n, bth)) != NULL)
     cnt += tether(n, mate);
   jprintf(1, ret, "\n");
-jtimer_x(15);
   return cnt;
 }
 

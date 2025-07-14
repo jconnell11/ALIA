@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1150,7 +1150,7 @@ int jhcGroup::thresh_dual (jhcImg& dest, const jhcImg& marks, int n,
   // general ROI case
   int x, y, rw = dest.RoiW(), rh = dest.RoiH();
   int dsk = dest.RoiSkip(), ssk2 = marks.RoiSkip() >> 1;
-  int i, label, old, big, hbig, win, cnt = 0;
+  int i, label, old, big, hbig, win = 0, cnt = 0;
   UC8 *d = dest.RoiDest();
   const US16 *s = (US16 *) marks.RoiSrc();
 

@@ -21,12 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_MensEtDOC_H__88A3963D_AA79_44B8_ADD0_FFB56CC99566__INCLUDED_)
-#define AFX_MensEtDOC_H__88A3963D_AA79_44B8_ADD0_FFB56CC99566__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 
 // JHC: definitions of added member variables
@@ -186,9 +181,9 @@ public:
   afx_msg void OnDemoCyclerate();
 };
 
+
 /////////////////////////////////////////////////////////////////////////////
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_MensEtDOC_H__88A3963D_AA79_44B8_ADD0_FFB56CC99566__INCLUDED_)

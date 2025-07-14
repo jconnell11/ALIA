@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -698,7 +698,7 @@ int jhcLocalOcc::LocalMap (jhcImg &dest, int rot) const
   double xc = 0.5 * dest.XLim(), yc = 0.5 * dest.YLim();
 
   if (!dest.Valid(1))
-    return Fatal("Bad image to jhcLocalOcc::MapRot");
+    return Fatal("Bad image to jhcLocalOcc::LocalMap");
   if (rot <= 0)
     return dest.CopyArr(obst);
   return Rigid(dest, obst, -raim, xc, yc, rx0, ry0);
@@ -814,7 +814,7 @@ int jhcLocalOcc::Paths (jhcImg& dest, int half, int rot) const
   const jhcImg *ref = ((rot > 0) ? &dest : NULL);
   double d, c, s, len, off = rside / ipp, dr = D2R * 180.0 / ndir;
   double rx0, ry0, rads, rads0 = robot_pose(rx0, ry0, ref);
-  int i, dev, dev2, f0 = rt0, f1 = lf1, b0 = f0, b1 = f1, nd2 = 2 * ndir, fcol = 230;
+  int i, dev, f0 = rt0, f1 = lf1, b0 = f0, b1 = f1, nd2 = 2 * ndir, fcol = 230;
 
   if (!dest.Valid(1, 3))
     return Fatal("Bad images to jhcLocalOcc::Paths");
@@ -836,7 +836,7 @@ int jhcLocalOcc::Paths (jhcImg& dest, int half, int rot) const
   for (dev = b0; dev <= b1; dev++, rads += dr)
   {
     i = (nd2 + dev) % nd2;
-    dev2 = i - ndir;
+//    dev2 = i - ndir;
     if ((d = dist[i]) >= 0.0)
     {
       c = cos(rads);

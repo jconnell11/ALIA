@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,11 +84,11 @@ int jhcTable::cand_params (const char *fname)
   int ok;
 
   ps->SetTag("tab_cand", 0);
-  ps->NextSpecF( &ztol,  2.0,  "Band around table ht (in)");
+  ps->NextSpecF( &tdef,  28.0, "Default table height (in)");
+  ps->NextSpecF( &ztol,   2.0, "Band around table ht (in)");
   ps->NextSpec4( &wsc,    9,   "Table mask smoothing (pel)");
   ps->NextSpec4( &wth,   80,   "Smooth region threshold");
   ps->NextSpec4( &wmin, 500,   "Min table area (pel)");
-  ps->Skip();
   ps->NextSpecF( &pmix,   0.2, "Smooth estimate blending");
 
   ps->NextSpecF( &pn,     1.0, "Lateral estimate noise (in)");
@@ -157,7 +157,7 @@ void jhcTable::Reset ()
   dpref = 0.0;               // any distance
   xpref = 0.0;               // robot origin
   ypref = 0.0;
-  hpref = 28.0;              // table height
+  hpref = tdef;              // table height
 
   // results
   tsel = -1; 
@@ -188,7 +188,7 @@ double jhcTable::PickPlane (const jhcImg& hts, double res, double z0, double z1)
   zbot = z0;
   zrng = z1 - z0;
 
-  // get smoothed histogram of heights at some distance range 
+  // get smoothed histogram of heights within some range of distances
   if ((dpref <= 0.0) || (dpref >= 240.0))
     hist_range(hhist0, wmap, 0.0, 240.0);
   else
@@ -374,7 +374,7 @@ double jhcTable::BestSurf (double x, double y)
 
 double jhcTable::NextSurf ()
 {
-  double cx, cy, dx, out2, best2, mx = wmap.RoiAvgX(), ref2 = 0.0;
+  double cx, cy, dx, out2, mx = wmap.RoiAvgX(), best2 = 0.0, ref2 = 0.0;
   int i, t0 = tsel, n = wlob.Active();
 
   // find distance of current surface from origin

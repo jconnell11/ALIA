@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,29 +49,29 @@
 
 /////////////////////////////////////////////////////////////////////////////
 
-#ifndef _FFIND_OCV_
-#define _FFIND_OCV_
+#pragma once
 
 
-// function declarations (possibly combined with other header files)
+// define DEXP_F (uses other DLLs whose header files define DEXP)
 
-#ifndef DEXP
-  #ifndef STATIC_LIB
+#ifdef __linux__
+  #define DEXP_F               // nothing special needed for Linux shared lib
+#else 
+
+  // function declarations
+  #ifndef DEXP_F
     #ifdef FFIND_OCV_EXPORTS
-      #define DEXP __declspec(dllexport)
+      #define DEXP_F __declspec(dllexport)
     #else
-      #define DEXP __declspec(dllimport)
+      #define DEXP_F __declspec(dllimport)
     #endif
-  #else
-    #define DEXP
   #endif
-#endif
 
+  // link to library stub
+  #ifndef FFIND_OCV_EXPORTS
+    #pragma comment(lib, "ffind_ocv.lib")
+  #endif
 
-// link to library stub (for DLL or static library)
-
-#ifndef FFIND_OCV_EXPORTS
-  #pragma comment(lib, "ffind_ocv.lib")
 #endif
 
 
@@ -81,14 +82,14 @@
 //= Fills string with version number of processing code.
 // returns pointer to input string for convenience
 
-extern "C" DEXP const char *ffind_version (char *spec, int ssz =80);
+extern "C" DEXP_F const char *ffind_version (char *spec, int ssz =80);
 
 
 //= Loads all configuration and calibration data from a file.
 // if this function is not called, default values will be used for all parameters
 // returns positive if successful, 0 or negative for failure
 
-extern "C" DEXP int ffind_setup (const char *fname);
+extern "C" DEXP_F int ffind_setup (const char *fname);
 
 
 //= Start the face finder system running and await input.
@@ -96,17 +97,17 @@ extern "C" DEXP int ffind_setup (const char *fname);
 // use this to initially fire up the system (REQUIRED)
 // returns 1 if successful, 0 or negative for some error
 
-extern "C" DEXP int ffind_start (int level =0, const char *log_file =NULL);
+extern "C" DEXP_F int ffind_start (int level =0, const char *log_file =NULL);
 
 
 //= Call at end of run to close log file or before loading new configuration.
 
-extern "C" DEXP void ffind_done ();
+extern "C" DEXP_F void ffind_done ();
 
 
 //= Releases any allocated resources (call at very end of program before exit).
 
-extern "C" DEXP void ffind_cleanup ();
+extern "C" DEXP_F void ffind_cleanup ();
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -121,8 +122,8 @@ extern "C" DEXP void ffind_cleanup ();
 // sc is the minimum face detection score to accept
 // returns number of face detections for later examination (i = 0 to n-1)
 
-extern "C" DEXP int ffind_run (const unsigned char *img, int w, int h, int f, 
-                               int wmin =20, int wmax =0, double sc =0.0);
+extern "C" DEXP_F int ffind_run (const unsigned char *img, int w, int h, int f, 
+                                 int wmin =20, int wmax =0, double sc =0.0);
 
 
 //= Do face finding in a region of interest with lower left corner (rx ry).
@@ -135,23 +136,18 @@ extern "C" DEXP int ffind_run (const unsigned char *img, int w, int h, int f,
 // returns number of face detections for later examination (i = 0 to n-1)
 // Note: Can pass a subimage based on other properties like skintone or depth
 
-extern "C" DEXP int ffind_roi (const unsigned char *img, int w, int h, int f, 
-                               int rx, int ry, int rw, int rh,
-                               int wmin =20, int wmax =0, double sc =0.0); 
+extern "C" DEXP_F int ffind_roi (const unsigned char *img, int w, int h, int f, 
+                                 int rx, int ry, int rw, int rh,
+                                 int wmin =20, int wmax =0, double sc =0.0); 
 
 
 //= Extract bounding box lower left corner and dimensions for some face.
 // returns negative if bad index, else score for this face
 
-extern "C" DEXP double ffind_box (int& x, int& y, int& w, int &h, int i);
+extern "C" DEXP_F double ffind_box (int& x, int& y, int& w, int &h, int i);
 
 
 //= Tell number of faces found by last analysis.
 
-extern "C" DEXP int ffind_cnt ();
+extern "C" DEXP_F int ffind_cnt ();
 
-
-
-///////////////////////////////////////////////////////////////////////////
-
-#endif  // once

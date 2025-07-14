@@ -148,7 +148,7 @@ CMensEtDoc::CMensEtDoc()
   _getcwd(cwd, 200);
 
   // load configuration file(s)
-  sprintf_s(cdir, "%s\\calib", cwd);
+  sprintf_s(cdir, "%s\\config", cwd);
   sprintf_s(ifile, "%s\\config\\MensEt_vals.ini", cwd);
   interact_params(ifile);
   tais.Defaults(ifile);
@@ -184,7 +184,7 @@ BOOL CMensEtDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = mc.Version(); 
-  LockAfter(10, 2024, 5, 2024);
+  LockAfter(12, 2025, 7, 2025);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -478,7 +478,8 @@ int CMensEtDoc::ChkStream (int dw, int dh)
   if (!v.Valid() || v.IsClass("jhcOcv3VSrc"))
   {
     d.StatusText("Configuring camera ...");
-    if ((ans = v.SetSource("http://192.168.25.1:8080/?action=stream.ocv3")) <= 0)
+    if ((ans = v.SetSource("http://192.168.25.1:8080/?action=stream.ocv3")) <= 0)  // SQ13: 12345678
+//   if ((ans = v.SetSource("http://192.168.5.1:81/stream.ocv3")) <= 0)             // ESP32: no pwd
     {
       d.StatusText("");
       return ans;
@@ -665,7 +666,7 @@ void CMensEtDoc::OnManusGripparams()
 }
 
 
-// Save current configuration data to a file
+// Save current calibration data to a file
 
 void CMensEtDoc::OnEnvironmentSavegeom()
 {
@@ -675,7 +676,7 @@ void CMensEtDoc::OnEnvironmentSavegeom()
   sprintf_s(cfg.ch, "%s\\%s", cdir, (mc.body).CfgName());
   cfg.C2W();
   (dlg.m_ofn).lpstrFile = cfg.Txt();
-  (dlg.m_ofn).lpstrFilter = _T("Configuration Files\0*.cfg\0Text Files\0*.txt\0All Files (*.*)\0*.*\0");
+  (dlg.m_ofn).lpstrFilter = _T("Calibration Files\0*.cal\0Text Files\0*.txt\0All Files (*.*)\0*.*\0");
   if (dlg.DoModal() == IDOK)
   {
     sel.Set((dlg.m_ofn).lpstrFile);
@@ -694,7 +695,7 @@ void CMensEtDoc::OnEnvironmentLoadgeom()
   sprintf_s(cfg.ch, "%s\\%s", cdir, (mc.body).CfgName());
   cfg.C2W();
   (dlg.m_ofn).lpstrFile = cfg.Txt();
-  (dlg.m_ofn).lpstrFilter = _T("Configuration Files\0*.cfg\0Text Files\0*.txt\0All Files (*.*)\0*.*\0");
+  (dlg.m_ofn).lpstrFilter = _T("Calibration Files\0*.cal\0Text Files\0*.txt\0All Files (*.*)\0*.*\0");
   if (dlg.DoModal() == IDOK)
   {
     sel.Set((dlg.m_ofn).lpstrFile);
@@ -1583,6 +1584,7 @@ void CMensEtDoc::OnVisionStackgrow()
 {
   jhcBlob blob(100);
   jhcImg proto, mask, cc, p2, s2, gate, pass, both, g2;
+  const jhcBlob *det;
   const jhcImg *src = NULL;
   int i, n, a, run = 1;
 
@@ -1620,9 +1622,10 @@ void CMensEtDoc::OnVisionStackgrow()
 
       // do basic processing
       ss->Analyze(*src);
+      det = &(ss->bblob);
 
       // possibly nothing to show
-      if ((ss->bblob).CountOver() <= 0)
+      if (det->CountOver() <= 0)
       {
         both.FillArr(0);
         d.ShowGrid(both,    0, 0, 2, "No bays");
@@ -1631,13 +1634,13 @@ void CMensEtDoc::OnVisionStackgrow()
       }
 
       // mark top section of each blob and try to extend
-       n = (ss->bblob).Active();
+      n = det->Active();
       for (i = 1; i < n; i++)
-        if ((ss->bblob).GetStatus(i) > 0)
+        if (det->GetStatus(i) > 0)
         {
           // get top part for color matching
-          a = (ss->bblob).BlobArea(i);
-          (ss->bblob).HighestPels(mask, ss->bcc, i, ROUND(0.3 * a));
+          a = det->BlobArea(i);
+          det->HighestPels(mask, ss->bcc, i, ROUND(0.3 * a));
           HistOver8(ss->ohist[0], ss->rg, mask, 127, 100); 
           HistOver8(ss->ohist[1], ss->yb, mask, 127, 100); 
           HistOver8(ss->ohist[2], ss->wk, mask, 127, 100); 
@@ -2302,7 +2305,24 @@ void CMensEtDoc::OnUtilitiesTestgraphizer()
 
 void CMensEtDoc::OnUtilitiesTest()
 { 
+  jhcImgIO jio;
+  jhcImg foo;
 
+  jio.LoadResize(foo, "blocks_t512_z.ras");
+  jio.Save("blocks_t512_z.bmp", foo);
+  Tell("Converted 16 bit RAS to 16 bit BMP");
+  return;
+
+
+/*
+  jhcLabel_t lab;
+
+  lab.Cache("font_bold.dat", -16);
+  Tell("Made font file");
+  return;
+*/
+
+  Tell("No current function");
 }
 
 

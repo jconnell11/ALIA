@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 
 //= Control interface for external robot forklift stage.
 // no actual control code -- merely exchanges variable values
+// provides support for double buffering (if desired)
 
 class jhcSwapLift : public jhcGenLift
 {
@@ -40,9 +41,16 @@ private:
   double ht;                 // current height above floor
 
   // command info
-  int llock;                 // current command importance
   double lstop;              // desired end height
   double lrate;              // desired motion speed
+  int llock;                 // current command importance
+
+  // double buffered input
+  double ht0;
+
+  // double buffered output
+  double lstop0, lrate0;
+  int llock0;
 
 
 // PROTECTED MEMBER VARIABLES
@@ -65,11 +73,15 @@ public:
   double LiftTol () const {return ldone;}
 
   // configuration
-  int Reset (int rpt =0);
+  void Reset ();
+
+  // data exchange
+  void Status (float lvl);
+  void Command (float& hdes, float& sp, int& bid);
 
   // core interaction
-  int Status (float lvl);
-  int Command (float& hdes, float& sp, int& bid);
+  void Update ();
+  void Issue ();       
 
   // current lift information
   double Height () const {return ht;}
@@ -88,6 +100,6 @@ public:
 // PROTECTED MEMBER FUNCTIONS
 protected:
   // configuration
-  int def_cmd ();
+  void def_cmd ();
 
 };

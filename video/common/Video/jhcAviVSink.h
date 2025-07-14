@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCAVIVSINK_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCAVIVSINK_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 
 // order of includes is important
@@ -85,8 +82,6 @@ private:
 };
 
 
-
-
 /////////////////////////////////////////////////////////////////////////////
 
 // part of mechanism for automatically associating class with file extensions
@@ -94,12 +89,10 @@ private:
 extern int jvreg_jhcAviVSink;
 
 
-
 // patch for legacy code
 
 typedef jhcAviVSink jhcAviSave;
 
-#endif
 
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTHRESH_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTHRESH_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -120,12 +117,8 @@ protected:
 private:
   // ROI utilities
   void adj_lims (int v, int& lo, int& hi, int& n) const;
-
   
 };
-
-
-#endif
 
 
 /////////////////////////////////////////////////////////////////////////////

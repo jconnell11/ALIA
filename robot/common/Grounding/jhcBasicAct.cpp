@@ -178,9 +178,11 @@ int jhcBasicAct::SaveVals (const char *fname) const
 
 //= Attach physical enhanced body and make pointers to some pieces.
 
-void jhcBasicAct::local_platform (void *soma) 
+void jhcBasicAct::local_platform (void *soma, const char *kind) 
 {
-  rwi = (jhcManusRWI *) soma;
+  if (strcmp(kind, "jhcManusGrok") != 0)         // type check
+    return;
+  rwi = (jhcManusGrok *) soma;
 }
 
 

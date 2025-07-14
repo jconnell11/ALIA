@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSERIALFTDI_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSERIALFTDI_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -77,10 +74,4 @@ private:
   int ftdi_close ();
 
 };
-
-
-#endif  // once
-
-
-
 

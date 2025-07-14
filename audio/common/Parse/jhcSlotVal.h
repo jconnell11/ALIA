@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSLOTVAL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSLOTVAL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -186,10 +183,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

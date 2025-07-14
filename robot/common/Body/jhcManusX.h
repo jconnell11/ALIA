@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCMANUSX_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCMANUSX_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -123,12 +120,5 @@ protected:
   void clr_odom ();
   double norm_ang (double a) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

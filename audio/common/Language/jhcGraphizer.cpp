@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1251,13 +1251,13 @@ jhcNetNode *jhcGraphizer::build_query (const char *alist, jhcNodePool& pool)
     if ((obj2 = build_obj(NULL, FragStart(tail), pool)) != NULL)
     {
       acc = pool.BuildIn(skolem->LastKey());
-      act = pool.MakePoss(obj, obj2);
+      act = pool.MakeHave(obj, obj2);
       pool.BuildIn(acc);
       return obj;                                          // return owner
     }
 
     // else make up new owner and require him to possess the original object
-    act = nr.MakePoss(nr.MakeNode("agt"), obj);
+    act = nr.MakeHave(nr.MakeNode("agt"), obj);
     return nr.FindMake(pool, 0, NULL, (core->atree).MinBlf(), &skolem);
   }
 
@@ -1761,9 +1761,10 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
   if ((find == 0) || (find == 1))
   {
     FindSlot(spec, "ENUM", word, 1);
-    if (match_any(word, "each", "every") ||
-        (((obj->tags & JTAG_NPL) != 0) && (strcmp(word, "any of the") != 0)))
-      find = 3;
+    if (*word != '\0')
+      if (match_any(word, "each", "every") ||
+          (((obj->tags & JTAG_NPL) != 0) && (strcmp(word, "any of the") != 0)))
+        find = 3;
   }
 
   // possibly link to existing node else create new graph
@@ -1798,9 +1799,9 @@ void jhcGraphizer::obj_poss (jhcNetNode *obj, jhcNetNode *kind, const char *alis
   if ((ref = obj_owner(alist, pool)) != NULL)
   {
     if (kind != NULL)
-      kind->AddArg("wrt", ref);                                // possible role function
+      pool.MakePoss(ref, kind);                                // possible role function
     else
-      pool.MakePoss(ref, obj);
+      pool.MakeHave(ref, obj);
   }
 }
 
@@ -2049,7 +2050,7 @@ jhcNetNode *jhcGraphizer::obj_has (const char **after, jhcNetNode *obj, const ch
   // build required relation
   if (after != NULL)
    *after = tail;
-  return pool.MakePoss(obj, part, neg, blf);
+  return pool.MakeHave(obj, part, neg, blf);
 }
 
 
@@ -2136,10 +2137,10 @@ jhcNetNode *jhcGraphizer::add_cop (const char **after, jhcNetNode *obj, const ch
     {
       fact = pool.MakeNode("kind", kind->LexStr(), neg, blf);  // never change original  
       fact->AddArg("ako", obj);
-      fact->AddArg("wrt", f2);                             
+      pool.MakePoss(f2, fact);
     }
     else
-      fact = pool.MakePoss(f2, obj, neg, blf);
+      fact = pool.MakeHave(f2, obj, neg, blf);
     if (after != NULL)
       *after = FragClose(tail, 0);
     return fact;
@@ -2227,7 +2228,7 @@ jhcNetNode *jhcGraphizer::obj_owner (const char *alist, jhcNodePool& pool)
   char next[200], poss[200];
   const char *tail = alist;
   jhcNetNode *item, *spec, *owner = NULL;
-  jhcGraphlet *old;
+  jhcGraphlet *current;
 
   call_list(3, "obj_owner", alist);
 
@@ -2238,15 +2239,15 @@ jhcNetNode *jhcGraphizer::obj_owner (const char *alist, jhcNodePool& pool)
       {
         if (owner != NULL)
         {
-          // add to description owner from previous possessive
-          if ((spec = item->Fact("ako")) != NULL)
-            spec->AddArg("wrt", owner);          // possible role function
+          // add owner from previous possessive (skolem nodes are always in wmem)
+          current = univ->BuildIn(skolem->LastKey());
+          if ((spec = item->AnyFact("ako")) != NULL)
+            univ->MakePoss(owner, spec);                   
+          else if ((spec = item->AnyFact("name")) != NULL)     // for "Gwen's Ken"
+            univ->MakePoss(owner, spec);                   
           else
-          {
-            old = pool.BuildIn(skolem->LastKey());
-            pool.MakePoss(owner, item);
-            pool.BuildIn(old);
-          }
+            univ->MakeHave(owner, item);
+          univ->BuildIn(current);
         }
         owner = item;                            // becomes owner of next item
       }

@@ -21,12 +21,8 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_CHATHIST_H__BF8E1EC2_833B_11D2_8BE7_A813DF000000__INCLUDED_)
-#define AFX_CHATHIST_H__BF8E1EC2_833B_11D2_8BE7_A813DF000000__INCLUDED_
-
-#if _MSC_VER >= 1000
 #pragma once
-#endif // _MSC_VER >= 1000
+
 
 /////////////////////////////////////////////////////////////////////////////
 // CChatHist
@@ -82,9 +78,9 @@ protected:
 	DECLARE_MESSAGE_MAP()
 };
 
+
 /////////////////////////////////////////////////////////////////////////////
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_CHATHIST_H__BF8E1EC2_833B_11D2_8BE7_A813DF000000__INCLUDED_)

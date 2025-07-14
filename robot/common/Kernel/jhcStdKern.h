@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ public:
   void AddFcns (jhcAliaKernel& pool);
 
   // main functions
-  void Platform (void *soma);
+  void Platform (void *soma, const char *kind);
   void Reset (jhcAliaNote& atree);                
   void Volunteer ();
   int Start (const jhcAliaDesc& desc, int bid);
@@ -118,7 +118,7 @@ private:
   void dealloc ();
 
   // virtuals to override
-  virtual void local_platform (void *soma) {};
+  virtual void local_platform (void *soma, const char *kind) {};
   virtual void local_reset (jhcAliaNote& top) {};
   virtual void local_volunteer () {};
   virtual int local_start (const jhcAliaDesc& desc, int i)  {return -2;}

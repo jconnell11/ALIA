@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 
 #include "Interface/jhcMessage.h"
 
-#include "jhcPatchProps.h"
+#include "Objects/jhcPatchProps.h"
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -277,6 +277,7 @@ void jhcPatchProps::Reset ()
 {
   int i;
 
+  shrink.FillMax(0);
   for (i = 0; i < cmax; i++)
   {
     cols[i]  = 0;
@@ -311,9 +312,9 @@ int jhcPatchProps::FindColors (const jhcImg& mask, const jhcImg& src)
 
 
 //= Process image fragment to yield hue histogram and coarse hue distribution.
-// largely borrowed from jhcVisPart
+// largely borrowed from jhcVisPart, removes extremely black areas from gate
 
-void jhcPatchProps::color_bins (const jhcImg& src, const jhcImg& gate) 
+void jhcPatchProps::color_bins (const jhcImg& src, jhcImg& gate) 
 {
   int i, wcnt, hcnt, bcnt, area2; 
 
@@ -325,6 +326,7 @@ void jhcPatchProps::color_bins (const jhcImg& src, const jhcImg& gate)
   UnderGate(hmsk, hmsk, wht, imax);    // very bright = white not colored
 
   // separate achromatic parts into white and black parts
+  OverGate(gate, gate, wht, 0);        // remove extreme black
   Threshold(blk, wht, -dark);         
   Threshold(wht, wht, white);         
 

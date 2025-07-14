@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2002-2019 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSERIAL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSERIAL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include <windows.h>
 
@@ -48,14 +46,17 @@ public:
 
 // PUBLIC MEMBER FUNCTIONS
 public:
+  // creation and destruction
   ~jhcSerial ();
   jhcSerial ();
   jhcSerial (int port, int baud =9600, int bits =8, int stop =1, int parity =0);
 
+  // configuration
   int SetSource (int port, int baud =9600, int bits =8, int stop =1, int parity =0);
   void SetTimeouts (double wait =0.1, double barf =0.2);
   int Close ();
 
+  // report properties
   int Valid ();
   int PortNum ();
   int Baud ();
@@ -63,6 +64,7 @@ public:
   int StopBits ();
   int Parity ();
 
+  // basic operations
   int Rcv ();
   int Xmit (int val);
   int RxLine (char *dest, int len =40, char end ='\0', int mask =0xFF); 
@@ -81,10 +83,4 @@ private:
   void init_vals ();
 
 };
-
-
-#endif
-
-
-
 

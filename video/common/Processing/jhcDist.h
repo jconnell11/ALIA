@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCDIST_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCDIST_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include <stdlib.h>
@@ -54,10 +51,4 @@ public:
                 jhcImg *xrng =NULL, jhcImg *yrng =NULL, jhcImg *rng2 =NULL);
 
 };
-
-
-#endif
-
-
-
 

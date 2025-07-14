@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022-2023 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCINTROSPECT_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCINTROSPECT_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -75,10 +72,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

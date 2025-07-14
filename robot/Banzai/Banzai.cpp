@@ -59,6 +59,15 @@ BOOL CBanzaiApp::InitInstance()
 
 	LoadStdProfileSettings(8);  // Load standard INI file options (including MRU)
 
+	// Parse command line for standard shell commands, DDE, file open
+	CCommandLineInfo cmdInfo;
+	ParseCommandLine(cmdInfo);
+
+  // JHC: warn of GPU slowness (manual invocation)
+//  if (cmdInfo.m_strFileName.IsEmpty())
+//    MessageBox(NULL, _T("Blinks several times before\neventually starting (10 sec) ..."), 
+//               _T("Banzai"), MB_OK | MB_ICONEXCLAMATION);
+
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views.
 
@@ -69,10 +78,6 @@ BOOL CBanzaiApp::InitInstance()
 		RUNTIME_CLASS(CMainFrame),       // main SDI frame window
 		RUNTIME_CLASS(CBanzaiView));
 	AddDocTemplate(pDocTemplate);
-
-	// Parse command line for standard shell commands, DDE, file open
-	CCommandLineInfo cmdInfo;
-	ParseCommandLine(cmdInfo);
 
 	// Dispatch commands specified on the command line
 	if (!ProcessShellCommand(cmdInfo))

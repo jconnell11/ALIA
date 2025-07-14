@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCDYNAMIXEL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCDYNAMIXEL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -158,10 +155,4 @@ private:
   void print_pod (UC8 pod[], int n =0, const char *tag =NULL);
 
 };
-
-
-#endif  // once
-
-
-
 

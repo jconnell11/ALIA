@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ public:
   virtual double Tilt () const =0;
   virtual void HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift =0.0) const =0;
   virtual bool Saccade (double plim =3.5, double tlim =1.0) const =0;
+  virtual int Stare () const =0;
 
   // goal specifying commands for view
   virtual int PanTarget (double pan, double rate =1.0, int bid =10) =0;

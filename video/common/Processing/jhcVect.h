@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2016 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCVECT_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCVECT_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -59,11 +57,6 @@ private:
   int MaxAll_3 (jhcImg& dest, const jhcImg& src) const;
   int MinAll_3 (jhcImg& dest, const jhcImg& src) const;
   int AllWithin_3 (jhcImg& dest, const jhcImg& src, int lo, int hi) const;
+
 };
-
-
-#endif
-
-
-
 

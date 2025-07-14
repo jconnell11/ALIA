@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{95128040-3ede-479e-8880-28f4a0ef6fbb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{71e824be-67d4-4b73-99ea-522032d39374}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video">
+      <UniqueIdentifier>{d769c8de-9010-4085-9885-44c135da8264}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\Data">
+      <UniqueIdentifier>{c0496a2f-b2d2-48f2-b662-ebd9ad3840b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\Face">
+      <UniqueIdentifier>{ee0e2e77-ec51-491d-94fe-4a5ef18f4352}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common video\Interface">
+      <UniqueIdentifier>{f8765221-659b-4eea-b4f0-fee766c6f675}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video">
+      <UniqueIdentifier>{64bf3bcd-36b1-4018-a4ee-15614af1b8c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\Data">
+      <UniqueIdentifier>{beb5929f-1f63-4e1c-89dd-ee054a76eb4d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\Face">
+      <UniqueIdentifier>{d4ad7548-d831-497f-b680-1eff659bf67b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\common video\Interface">
+      <UniqueIdentifier>{f268907d-8688-4d09-b255-e9ca8780e24c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{d9d31f5c-f6da-461e-b5cb-710fabac6eb5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="ffind_ocv.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\jhc_conio.cpp">
+      <Filter>Source Files\common video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcImg.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcRoi.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Data\jhcParam.cpp">
+      <Filter>Source Files\common video\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Face\jhcFFind.cpp">
+      <Filter>Source Files\common video\Face</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Face\jhcFFindOCV.cpp">
+      <Filter>Source Files\common video\Face</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Interface\jprintf.cpp">
+      <Filter>Source Files\common video\Interface</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\video\common\jhc_conio.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\jhc_str_s.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\jhcGlobal.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcBitMacros.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcImg.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcParam.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Data\jhcRoi.h">
+      <Filter>Header Files\common video\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\ffind_ocv.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\jhcFFind.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Face\jhcFFindOCV.h">
+      <Filter>Header Files\common video\Face</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jhcMessage.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Interface\jprintf.h">
+      <Filter>Header Files\common video\Interface</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\ffind.casc.arm64">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>

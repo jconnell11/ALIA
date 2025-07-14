@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIADIR_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIADIR_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -296,6 +293,7 @@ private:
   int pick_method ();
   int match_ops (int& sel);
   int max_spec (int& sel);
+  int min_proc (int& sel);
   int wtd_rand (double wild) const;
   void get_context (jhcGraphlet *ctx, jhcNetNode *focus, const jhcBindings& b) const;
 
@@ -324,10 +322,4 @@ private:
   
 
 };
-
-
-#endif  // once
-
-
-
 

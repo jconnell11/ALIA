@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGENVSRC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGENVSRC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -118,8 +115,5 @@ private:
   int iDual (jhcImg& dest, jhcImg& dest2);
   int iAGet (US16 *snd, int n, int ch);
 
-
 };
 
-
-#endif

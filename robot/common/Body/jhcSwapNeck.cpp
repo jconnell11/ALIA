@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ jhcSwapNeck::jhcSwapNeck ()
   Reset();
   p0 = 0.0;
   t0 = 0.0;
+  stable = 30;
 }
 
 
@@ -53,40 +54,92 @@ jhcSwapNeck::jhcSwapNeck ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Reset state for the beginning of a sequence.
-// "rpt" is generally level of disgnostic printouts desired
-// returns 1 always
 
-int jhcSwapNeck::Reset (int rpt)
+void jhcSwapNeck::Reset ()
 {
   // previous gaze direction
   p0 = 0.0;
   t0 = 0.0;
+  stable = 0;
 
-  // current gaze direction
-  pang = 0.0;
-  tang = 0.0;
+  // current gaze direction and camera location
+  Status(0.0, 0.0, 0.0, 0.0, 0.0);
+  Update();
 
-  // current camera location
-  xcam = 0.0;
-  ycam = 0.0;
-  zcam = 0.0;
-  return def_cmd();
+  // desired neck angles
+  def_cmd();
+  Issue();  
 }
 
 
 //= Reset locks and specify default commands.
-// returns 1 always for convenience
 
-int jhcSwapNeck::def_cmd ()
+void jhcSwapNeck::def_cmd ()
 {
-  // pan command
   prate = 0.0;
-  plock = 0;
-
-  // tilt command
   trate = 0.0;
+  grate = 0.0;
+  plock = 0;
   tlock = 0;
-  return 1;
+  glock = 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                             Data Exchange                             //
+///////////////////////////////////////////////////////////////////////////
+
+//= Cache new gaze angles from robot sensors (call Update to transfer).
+// p is pan angle (horizontal), t is tilt angle (vertical)
+// pan is measured clockwise from overhead with pan = 0 as FORWARD
+// cx, cy, cz is current location of camera optical center
+
+void jhcSwapNeck::Status (float p, float t, float cx, float cy, float cz)
+{
+  pang0 = p;
+  tang0 = t;
+  xcam0 = cx;
+  ycam0 = cy;
+  zcam0 = cz;
+}
+
+
+//= Report target position command to set sensor orientation (use Issue to refresh).
+// xcmd, ycmd, zcmd are the location to point the sensor at
+// gvel is the angular speeds wrt nominal
+// gbid is the importance of the various commands 
+
+void jhcSwapNeck::PosCmd (float& xcmd, float& ycmd, float& zcmd, float& gvel, int& gbid)
+{
+  // get target location
+  xcmd = (float) gazex0;
+  ycmd = (float) gazey0;
+  zcmd = (float) gazez0;
+
+  // get speed and importance
+  gvel = (float) grate0;
+  gbid = glock0;
+}
+
+
+//= Report individual angular commands for sensor orientation (use Issue to refresh).
+// pan, tilt are the desired orientation for the sensor
+// pvel, tvel are the angular speeds wrt nominal
+// pbid, tbid are the importance of the various commands 
+
+void jhcSwapNeck::DirCmd (float& pcmd, float& tcmd, float& pvel, float& tvel, int& pbid, int& tbid)
+{
+  // get aiming command 
+  pcmd = (float) pstop0;
+  tcmd = (float) tstop0;
+
+  // get speeds
+  pvel = (float) prate0;
+  tvel = (float) trate0;
+
+  // get command importance
+  pbid = plock0;
+  tbid = tlock0;
 }
 
 
@@ -94,45 +147,57 @@ int jhcSwapNeck::def_cmd ()
 //                            Core Interaction                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Get new gaze angles from robot sensors (indirectly).
-// p is pan angle (horizontal), t is tilt angle (vertical)
-// cx, cy, cz is current location of camera optical center
-// clears command priorites for next cycle
-// override this function to directly query robot (if available) 
-// returns 1 if sensors acquired, 0 or negative for problem
+//= Update pan and tilt angles of the head (load cache values with Status).
+// retrieves "data" from "data0", automatically resets "lock" for new bids
 
-int jhcSwapNeck::Status (float p, float t, float cx, float cy, float cz)
+void jhcSwapNeck::Update ()
 {
+  double ndone = 1.0, atol = 5.0;
+
+  // save previous neck angles
   p0 = pang;
   t0 = tang;
-  pang = p;
-  tang = t;
-  xcam = cx;
-  ycam = cy;
-  zcam = cz;
-  return def_cmd();
+
+  // copy new values from hardware
+  pang = pang0;
+  tang = tang0;
+  xcam = xcam0;
+  ycam = ycam0;
+  zcam = zcam0;
+
+  // update stable count (extra test if pan implemented via base rotation)
+  if ((fabs(pang - p0) <= ndone) && (fabs(tang - t0) <= ndone) &&
+      ((plock <= 0) || (prate == 0.0) || (fabs(pstop) <= atol)))
+    stable = __max(0, stable) + 1;
+  else
+    stable = __min(0, stable) - 1;
+
+  // set up for new target arbitration
+  def_cmd();
 }
 
 
-//= Send angular command to robot actuators (indirectly).
-// pan, tilt are the desired angles for the head
-// pvel, tvel are the angular speeds wrt nominal
-// pbid, tbid are the importance of the pan and tilt commands 
-// override this function to directly drive robot (if available) 
-// returns 1 if command sent, 0 or negative for problem
+//= Harvest final angle commands now that arbitration is done.
+// caches "cmd" into "cmd0" for Command
 
-int jhcSwapNeck::Command (float& pan, float& tilt, float& pvel, float& tvel, int& pbid, int& tbid)
+void jhcSwapNeck::Issue ()      
 {
-  // get aiming command and speed
-  pan = (float) pstop;
-  tilt = (float) tstop;
-  pvel = (float) prate;
-  tvel = (float) trate;
+  // angles or coords
+  pstop0 = pstop;
+  tstop0 = tstop;
+  gazex0 = gazex;
+  gazey0 = gazey;
+  gazez0 = gazez;
 
-  // get command importance
-  pbid = plock;
-  tbid = tlock;
-  return 1;
+  // speeds
+  prate0 = prate;
+  trate0 = trate;
+  grate0 = grate;
+
+  // bids
+  plock0 = plock;
+  tlock0 = tlock;
+  glock0 = glock;
 }
 
 
@@ -142,6 +207,7 @@ int jhcSwapNeck::Command (float& pan, float& tilt, float& pvel, float& tvel, int
 
 //= Compute position and true gazing angle of camera.
 // Y points forward, X to right, Z is upwards (origin = wheel midpoint)
+// pan is clockwise from overhead with forward = 0
 // can be modified by height of bottom of lift stage separately
 
 void jhcSwapNeck::HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift) const
@@ -164,13 +230,31 @@ void jhcSwapNeck::HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift) const
 
 void jhcSwapNeck::AimFor (double& p, double& t, const jhcMatrix& targ, double lift) const
 {
-  jhcMatrix cam(4);
+/*
+  jhcMatrix diff(4);
 
   if (!targ.Vector(4))
     Fatal("Bad input to jhcSwapNeck::AimFor");
+
+  // get difference vector from camera location
+  diff.Copy(targ);
+  diff.IncVec3(-xcam, -ycam, -(zcam + lift));
+
+  // rotate difference by current viewing direction
+  diff.RotPan3(-pang);
+  diff.RotTilt3(-tang);
+
+  // resolve into angles RELATIVE to camera axis
+  t = diff.TiltVec3();
+  p = diff.PanVec3(); 
+*/
+  jhcMatrix cam(4);
+
   cam.SetVec3(xcam, ycam, zcam + lift);
   cam.PanTilt3(p, t, targ);
-  p -= 90.0;                           // forward = 90 degs
+  p -= 90.0;                           // adjust so forward -> pan = 0
+  if (p <= -180.0)
+    p += 360.0;
 }
 
 
@@ -225,15 +309,19 @@ int jhcSwapNeck::GazeTarget (double pan, double tilt, double p_rate, double t_ra
 
 
 //= Set pan and tilt targets to look at given position.
-// only approximate at start since head position changes
-// does NOT coordinate pan and tilt speeds for straight arc
+// bid value must be greater than previous command to take effect
+// returns 1 if newly set, 0 if pre-empted by higher priority
 
 int jhcSwapNeck::GazeAt (const jhcMatrix& targ, double lift, double rate, int bid)
 {
-  double pan, tilt;
-
-  AimFor(pan, tilt, targ, lift);
-  return GazeTarget(pan, tilt, rate, rate, bid);
+  if (bid <= glock)
+    return 0;
+  glock = bid;
+  gazex = targ.X();
+  gazey = targ.Y();
+  gazez = targ.Z();
+  grate = rate;
+  return 1;
 }
 
 
@@ -242,7 +330,7 @@ int jhcSwapNeck::GazeAt (const jhcMatrix& targ, double lift, double rate, int bi
 ///////////////////////////////////////////////////////////////////////////
 
 //= Rotate to traverse some angle in a specific amount of time.
-// pan and tilt moves should end at the same time
+// pan and tilt moves should end at the same time, assumes 90 dps max
 
 int jhcSwapNeck::GazeFix (double pan, double tilt, double secs, int bid)
 {
@@ -263,10 +351,11 @@ int jhcSwapNeck::GazeFix (double pan, double tilt, double secs, int bid)
 
 int jhcSwapNeck::GazeFix (const jhcMatrix& targ, double lift, double secs, int bid)
 {
-  double pan, tilt;
+  double r, dps = 90.0, slew = dps * secs;
 
-  AimFor(pan, tilt, targ, lift);
-  return GazeFix(pan, tilt, secs, bid);
+  r = GazeErr(targ, lift) / slew;
+  r = __min(r, 1.0);
+  return GazeAt(targ, lift, r, bid);
 }
 
 
@@ -309,14 +398,29 @@ double jhcSwapNeck::norm_ang (double degs) const
   return a;
 }
 
+
 //= Gives the max absolute pan or tilt error between current gaze and target position.
 
 double jhcSwapNeck::GazeErr (const jhcMatrix& targ, double lift) const
 {
-  double pan, tilt;
+  jhcMatrix diff(4);
+  double cp, ct;
 
-  AimFor(pan, tilt, targ, lift);
-  return GazeErr(pan, tilt);      
+  if (!targ.Vector(4))
+    Fatal("Bad input to jhcSwapNeck::GazeErr");
+
+  // get difference vector from camera location
+  diff.Copy(targ);
+  diff.IncVec3(-xcam, -ycam, -(zcam + lift));
+
+  // make z point outwards along camera optical axis
+  diff.RotPan3(-pang);
+  diff.RotTilt3(tang - 90.0);
+
+  // resolve into angles RELATIVE to camera axis
+  cp = R2D * atan2(diff.X(), diff.Z());
+  ct = R2D * atan2(diff.Y(), diff.Z());
+  return __max(fabs(cp), fabs(ct)); 
 }
 
 

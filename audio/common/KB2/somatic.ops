@@ -1,22 +1,7 @@
 // Homeostasis actions for somatic states
 // ================================================
 
-OP 1 - "Before announcing that you are awake look around"
-  trig:
-  ANTE[ fcn-1 -lex-  announce
-              -fcn-> act-1
-        act-1 -obj-> hq-1 
-         hq-1 -lex-  awake
-              -hq--> obj-1
-        obj-1 -lex-  me ]
------------------
-    DO[ fcn-2 -lex-  look
-              -fcn-> act-2
-        dir-1 -lex-  around
-              -dir-> act-2 ]
-
-
-OP 2 - "Before announcing that you are lonely then announce look around"
+OP 1 - "Before announcing that you are lonely then announce look around"
   trig:
   ANTE[ fcn-1 -lex-  announce
               -fcn-> act-1
@@ -33,7 +18,7 @@ OP 2 - "Before announcing that you are lonely then announce look around"
 
 // ----------------------------------------
 
-OP 3 - "If you are lonely and someone becomes visible then hail them and approach them."
+OP 2 - "If you are lonely and someone becomes visible then hail them and approach them."
   trig:   
   NOTE[  hq-1 -lex-  lonely
               -hq--> agt-1
@@ -51,7 +36,7 @@ OP 3 - "If you are lonely and someone becomes visible then hail them and approac
         act-3 -obj-> agt-2 ] 
 
 
-OP 4 - "To hail someone say finally, someone to play with"
+OP 3 - "To hail someone say finally, someone to play with"
   trig:
     DO[ fcn-1 -lex-  hail
               -fcn-> act-1
@@ -66,7 +51,7 @@ OP 4 - "To hail someone say finally, someone to play with"
         txt-1 -str-   finally, someone to play with ]
 
 
-OP 5 - "To hail someone say hey there whoever"
+OP 4 - "To hail someone say hey there whoever"
   trig:
     DO[ fcn-1 -lex-  hail
               -fcn-> act-1
@@ -81,7 +66,7 @@ OP 5 - "To hail someone say hey there whoever"
         txt-1 -str-   hey there ?0 ]
 
 
-OP 6 - "To hail someone say good to see you whoever"
+OP 5 - "To hail someone say good to see you whoever"
   trig:
     DO[ fcn-1 -lex-  hail
               -fcn-> act-1
@@ -94,7 +79,3 @@ OP 6 - "To hail someone say good to see you whoever"
               -dest-> act-3
               -ref--> agt-1
         txt-1 -str-   good to see you ?0 ]
-
-
-
-

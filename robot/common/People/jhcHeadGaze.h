@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCHEADGAZE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCHEADGAZE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -97,9 +95,17 @@ public:
   int SaveVals (const char *fname, int geom =0) const;
   int SaveCfg (const char *fname) const;
 
+  // frontal camera 
+  void SetFront (int view, const jhcMatrix& vp, const jhcMatrix& vd,
+                 const jhcMatrix& cp, const jhcMatrix& cd);
+  void AltFlen (int n, double f =525.0, double sc =1.0)
+    {s3->AltFlen(n, f, sc);}
+  void SetAltFix (int n, double pcal =0.0, double tcal =0.0, double rcal =0.0)
+    {s3->SetAltFix(n, pcal, tcal, rcal);}
+
   // main functions
   void Reset ();
-  void ScanRGB (const jhcImg& src, const jhcImg& d16, int cam =0, int trk =1);
+  void ScanRGB (const jhcImg& src, const jhcImg& d16, int view =0, int trk =1);
   void DoneRGB (int trk =1); 
   int GazeMax () const;
   int AnyGaze (int th =1) const {return((GazeMax() >= th) ? 1 : 0);}
@@ -131,10 +137,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -20,10 +20,8 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCDXVSRC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCDXVSRC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
+
 
 // Note: to compile this you need to download the DirectX SDK from Microsoft
 //   known to work with the December 2002 version (233,197,112 bytes)
@@ -130,10 +128,4 @@ public:
 // part of mechanism for automatically associating class with file extensions
 
 extern int jvreg_jhcDxVSrc;
-
-
-#endif  // once
-
-
-
 

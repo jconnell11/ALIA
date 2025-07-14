@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSITUATION_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSITUATION_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -98,12 +95,5 @@ private:
   // virtuals to override
   virtual int match_found (jhcBindings *m, int& mc) {mc--; return 1;}
 
-
 };
-
-
-#endif  // once
-
-
-
 

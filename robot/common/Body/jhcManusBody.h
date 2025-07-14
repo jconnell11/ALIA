@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCMANUSBODY_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCMANUSBODY_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -191,12 +188,5 @@ private:
   void set_speed (int ch, int inc_t, int imm);
   void set_accel (int ch, int inc_v);
 
-
 };
-
-
-#endif  // once
-
-
-
 

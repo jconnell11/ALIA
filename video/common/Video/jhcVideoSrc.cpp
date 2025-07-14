@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2019 IBM Corporation
+// Copyright 2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,7 +60,7 @@ jhcVideoSrc::jhcVideoSrc ()
   dsc2  = 1.0;
 
   // depth image conversion
-  Shift = 0;
+  Shift = 2.0;
 
   // frame stepping parameters
   ByKey = 0;

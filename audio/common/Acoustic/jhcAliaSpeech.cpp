@@ -25,6 +25,7 @@
 
 #include "Acoustic/jhcAliaSpeech.h"
 
+
 #include "Interface/jtimer.h"
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
@@ -58,11 +59,11 @@ int jhcAliaSpeech::time_params (const char *fname)
   int ok;
 
   ps->SetTag("asp_time", 0);
-  ps->NextSpecF( &stretch, 3.5, "Attention window (sec)");       // was 2.5 (local)
+  ps->NextSpecF( &stretch, 4.5, "Attention window (sec)");       // was 2.5 (local)
   ps->NextSpecF( &splag,   0.5, "Post speech delay (sec)");      // was 0.1 (local)
   ps->NextSpecF( &wait,    0.3, "Text out delay (sec)");         // was 0.15
   ps->NextSpecF( &early,   0.5, "Signal early turn off (sec)");
-  ps->NextSpec4( &amode,   2,   "Wake (on, any, front, solo)");
+  ps->NextSpec4( &amode,   1,   "Wake (on, ends, front, solo)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -78,7 +79,7 @@ int jhcAliaSpeech::time_params (const char *fname)
 // assumes base directory for configuration and log files already recorded
 // returns 1 if okay, 0 or negative for error
 
-int jhcAliaSpeech::Reset (const char *rname, int prt)
+int jhcAliaSpeech::Reset (const char *rname, int prt, int cvt)
 {
   // clear attention and TTS timing
   conv  = 0;
@@ -101,7 +102,7 @@ int jhcAliaSpeech::Reset (const char *rname, int prt)
   *tts  = '\0';
     
   // initialize underlying reasoning system and dump all name phrases 
-  jhcAliaCore::Reset(rname, prt, 1);
+  jhcAliaCore::Reset(rname, prt, cvt);
   jprintf(" %3d name phrases for speech recognition\n", gr.SaveNames(wrt("config/all_names.txt")));   
 
   // initialize speech patches and announce start
@@ -136,22 +137,35 @@ int jhcAliaSpeech::SelectSrc (const char *msg, const char *reco)
 
 //= Decide whether to require verbal attention word or not.
 // hear = incoming speech, talk = TTS busy, eye = direct gaze
+// delay = seconds (not ms) since start of recognized speech
 // amode: -1 text, 0 not needed, 1 anywhere, 2 front, 3 by itself
 // needs to be called after SelectSrc() for correct "src" value 
+// member variables:
+//   "gate" > 0 means pay attention to speech input in jhcAliaCore::Interpret()
+//   "conv" = ms since any speech heard, TTS active, or eye contact
+//   "awake" = ms since gate > 0 and full recognition or TTS active
 // returns 2 if listening, 1 if almost timed out, 0 if wake word needed
 
-int jhcAliaSpeech::UpdateAttn (int hear, int talk, int eye)
+int jhcAliaSpeech::UpdateAttn (int hear, int talk, int eye, double delay)
 {
-  double gap;
   UL32 now = jms_now();
+  double gap = jms_secs(now, awake);       // time since interaction
 
   // always refresh time since last interaction
   if ((hear > 0) || (talk > 0) || (eye > 0))
     conv = now;
   
   // renew time out if eye contact, name heard, or new typing
-  if ((amode <= 0) || (eye > 0) || (perk >= 2) || (src == 2))
+  if ((amode <= 0) || (eye > 0) || (perk >= 2) || (src == 2))  
   {
+    if ((eye > 0) && (amode > 0) && (gate < 2))
+      jprintf(1, noisy, "\n  ... STARE ... verbal attention ON\n\n");
+    awake = now;
+    gate = 2;                // green
+  }
+  else if ((hear >= 2) && (delay > 0.0) && (gap <= (stretch + delay)))
+  {
+    // restore time out if recognition delayed but start of speech was okay
     awake = now;
     gate = 2;                // green
   }
@@ -165,13 +179,12 @@ int jhcAliaSpeech::UpdateAttn (int hear, int talk, int eye)
     }
     else if (jms_secs(now, conv) > splag)  // long time since I/O
     {
-      gap  = jms_secs(now, awake);         // time since interaction    
       if (gap > stretch) 
       {
         jprintf(1, noisy, "\n  ... timeout ... verbal attention off\n\n");
         gate = 0;            // red
       } 
-      else if (gap > (stretch - early))
+      else if ((gate > 1) && (gap > (stretch - early)))
         gate = 1;            // yellow    
     }
   }
@@ -182,7 +195,7 @@ int jhcAliaSpeech::UpdateAttn (int hear, int talk, int eye)
 }
 
 
-//= Generate actions in response to update sensory information.
+//= Generate actions in response to updated sensory information.
 // <pre>
 // text I/O string transformations:
 //
@@ -201,8 +214,8 @@ void jhcAliaSpeech::Consider ()
 {
   UL32 tcyc;
   int n;
-jtimer(16, "Consider");
 
+jtimer(16, "Consider");
   // mark time that call was initiated
   tcyc = jms_now();
 

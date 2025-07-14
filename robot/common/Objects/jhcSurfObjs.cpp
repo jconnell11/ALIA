@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "Objects/jhcSurfObjs.h"
 
 #include "Interface/jtimer.h"
+#include "Interface/jprintf.h"
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -115,7 +116,7 @@ int jhcSurfObjs::tall_params (const char *fname)
 
   ps->SetTag("sobj_tall", 0);
   ps->NextSpecF( &sfar,  96.0, "Max intersect dist (in)");  
-  ps->NextSpecF( &wexp,   1.0, "Map width expansion factor");        // was 1.2 then 0.8
+  ps->NextSpecF( &wexp,   0.7, "Map width expansion factor");        // was 1.2, 0.8, then 1.0
   ps->NextSpec4( &pth,   40,   "Surface shape threshold");
   ps->Skip();
   ps->NextSpec4( &cup,  150,   "Occlusion fill width (pel)");        // was 100
@@ -220,13 +221,14 @@ void jhcSurfObjs::Reset ()
 
   // color analysis
   pat.FillArr(100);          // in case no color analysis
+  rbox.ClearRoi();
   pp.Reset();
 }
 
 
 //= Alter tracked object parameters to compensate for robot base motion.
 // dx0 is the shift to the right in the old frame and dy0 is the shift forward
-// origin is at center of wheel base, dr is rotation around this (degs)
+// origin is at center of wheel base, dr is CCW rotation around this (degs)
 // NOTE: odometry only provides coarse adjustment, true tracking is more accurate
 
 void jhcSurfObjs::AdjBase (double dx0, double dy0, double dr)
@@ -315,22 +317,31 @@ int jhcSurfObjs::FindObjects (const jhcImg& col, const jhcImg& d16, const jhcImg
 
   // find radial distance and width of beam at table
   dz = ztab - sz;
-  yhit = dz / tan(D2R * tilt);
+  yhit = dz / tan(D2R * tilt);             // center ray planar distance
   yhit = __max(0.0, __min(yhit, sfar));
-  rhit = sqrt(dz * dz + yhit * yhit);
+  rhit = sqrt(dz * dz + yhit * yhit);      // center ray 3D hypotenuse
 
   // adjust resolution and map offset
   mw = rhit * d16.XDim() / (kf * wexp);
-  x0 = 0.5 * mw;
+  x0 = 0.5 * mw;                           // map left wrt camera location          
   ipp = mw / map.XDim();
   mh = ipp * map.YDim();
-  y0 = 0.5 * mh - yhit;
+  y0 = 0.5 * mh - yhit;                    // map bottom wrt camera location
 
   // get heights (map) relative to ztab and surface markings (pat)
   if (kdrop >= 0.0)
     Reproject2(pat, map, col, d16);
   else
+{
     Reproject(map, d16);
+/*
+// fill in sparse areas
+jhcImg foo;
+foo.SetSize(map);
+NZBoxAvg(foo, map, 9);           // was 25
+SubstUnder(map, foo, map, 1);
+*/
+}
 
   // possibly remove detections in invalid regions
   kill = mask;
@@ -358,6 +369,8 @@ double jhcSurfObjs::FullTop (double& wx, double& wy, double& wid, double& len, i
     high.CopyRoi(*(glob.ReadRoi(lab)));
   else
     high.CopyRoi(*(blob.ReadRoi(lab)));
+  if (high.RoiArea() <= 0)                       // bad object blob
+    return -1.0;
   high.GrowRoi(1, 1);
   obj_slice(high, lab, __max(0.0, cut));
 
@@ -399,23 +412,21 @@ void jhcSurfObjs::obj_slice (jhcImg& dest, int lab, double up) const
 }
 
 
-//= Find real-world table point closest to given object.
+//= Find real-world table point closest to given planar location.
 // object does not have to be in table image (e.g. held offscreen)
-// returns 1 if okay, 0 if no table found, -1 if bad object
+// returns 1 if okay, 0 if no table found
 
-int jhcSurfObjs::NearTable (jhcMatrix& tpt, int i) const
+int jhcSurfObjs::NearTable (jhcMatrix& tpt, double wx, double wy) const
 {
-  double wx, wy, tx, ty;
+  double tx, ty;
   int ix, iy, nx, ny;
-
-  // find equivalent image location of tracked object
-  if (World(wx, wy, i) < 0.0)
-    return -1;
+   
+  // convert real world coords to image location for search
   ViewPels(ix, iy, wx, wy);
-
-  // convert nearest table point into real-world coordinate vector
   if (NearPt(nx, ny, top, ix, iy, 50) < 0.0)
     return 0;
+
+  // convert target image location back to real world coords
   PelsXY(tx, ty, nx, ny);
   tpt.SetVec3(tx, ty, ztab);
   return 1;
@@ -434,7 +445,6 @@ int jhcSurfObjs::NearTable (jhcMatrix& tpt, int i) const
 
 void jhcSurfObjs::raw_objs (int trk)
 {
-jtimer(13, "raw_objs (tall + flat)");
   if (kdrop < 0.0)
     tall_objs();                       // depth only
   else if (phase < 0)
@@ -446,7 +456,6 @@ jtimer(13, "raw_objs (tall + flat)");
     phase += tall_objs();               
   else
     phase = flat_objs();               // zeroes phase after running once
-jtimer_x(13);
 }
 
 
@@ -458,7 +467,7 @@ int jhcSurfObjs::tall_objs ()
 {
   int dev = ROUND(50.0 * htol / hobj);
 
-jtimer(11, "tall_objs (bg2)");
+jtimer(12, "tall_objs");
   // find deviations from best plane fit (uses srng)
   PlaneDev(det, map, 2.0 * hobj);               
 
@@ -467,6 +476,7 @@ jtimer(11, "tall_objs (bg2)");
   BoxAvg(obj, obj, sc, sc);
   CComps4(cc, obj, amin, sth);
   blob.FindParams(cc);
+  blob.RemBorder(cc, 1);               // not touching edges
 
   // clean up basic planar surface
 //  InRange(top, det, 78, 178, dev);
@@ -480,7 +490,7 @@ jtimer(11, "tall_objs (bg2)");
   blob.PoisonOver(cc, top, -50);
   if (kill != NULL)
     blob.PoisonOver(cc, *kill);
-jtimer_x(11);
+jtimer_x(12);
   return 1;
 }
 
@@ -494,7 +504,7 @@ int jhcSurfObjs::flat_objs ()
   jhcArr hist(256);
   int pk, shrink = 4 * (csm - 1) + 1, hsm = 13;
 
-jtimer(12, "flat_objs (bg2)");
+jtimer(13, "flat_objs");
   // get grayscale pattern on surface
   Intensity(gray, pat);
   BandGate(gray, gray, det, 78, 178);
@@ -530,7 +540,7 @@ jtimer(12, "flat_objs (bg2)");
   // ignore detection from invalid regions
   if (kill != NULL)
     glob.PoisonOver(gcc, *kill);
-jtimer_x(12);
+jtimer_x(13);
   return 0;
 }
 
@@ -565,15 +575,17 @@ double jhcSurfObjs::find_hmax (int i, const jhcRoi *area)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Find tracked object closest to robot center in XY plane.
+// can restrict object to just those currently detected (vis > 0)
 // returns index (not id) if successful, negative if none suitable
 
-int jhcSurfObjs::Closest () const
+int jhcSurfObjs::Closest (int vis) const
 {
   double dist, best;
   int i, n = pos.Limit(), win = -1;
 
   for (i = 0; i < n; i++)
-    if (pos.Valid(i) > 0)
+    if ((pos.Valid(i) > 0) && 
+        ((vis <= 0) || (Component(i) >= 0)))
     {
       dist = DistXY(i);
       if ((win < 0) || (dist < best))
@@ -582,6 +594,51 @@ int jhcSurfObjs::Closest () const
         best = dist;
       }
     }
+  return win;
+}
+
+
+//= Find tracked object with the most volume.
+// returns index (not id) if successful, negative if none suitable
+
+int jhcSurfObjs::Largest () const
+{
+  double vol, best = 0;
+  int i, n = pos.Limit(), win = -1;
+
+  for (i = 0; i < n; i++)
+    if (pos.Valid(i) > 0)
+    {
+      vol = Major(i) * Minor(i) * SizeZ(i);
+      if (vol > best)
+      {
+        win = i;
+        best = vol;
+      }
+    }
+  return win;
+}
+
+
+//= Find currently detected and tracked object nearest to middle of overhead map.
+// returns index (not id) if successful, negatibe if nothing suitable
+
+int jhcSurfObjs::MidMap () const
+{
+  double dist, best;
+  int i, n = pos.Limit(), win = -1;
+
+  for (i = 0; i < n; i++)
+    if (pos.Valid(i) > 0) 
+      if (Component(i) >= 0)
+      {
+        dist = MidDist(i);
+        if ((win < 0) || (dist < best))
+        {
+          win = i;
+          best = dist;
+        }
+      }
   return win;
 }
 
@@ -650,11 +707,12 @@ double jhcSurfObjs::DistXY (int i) const
 // results stay with object track so okay unless never run before or lighting changes
 // returns number of main colors found (zero or negative for error)
 
-int jhcSurfObjs::Spectralize (const jhcImg& col, const jhcImg& d16, int i, int clr)
+int jhcSurfObjs::Spectralize (const jhcImg& col, const jhcImg& d16, int i, int clr, int view)
 {
   double *wlh, *f;
   int *v;
-  int side = 5, bot = -5, top = 15;
+  double wx, wy, wz, len, wid, ht, ang;
+  int side = 5, bot = 0, top = 20, dots = 35;    // was 5, -5, 15  
   int lab, cnum, cmax = pp.NumCols(), n = 0; 
 
   // sanity check then find connected component number
@@ -665,19 +723,28 @@ int jhcSurfObjs::Spectralize (const jhcImg& col, const jhcImg& d16, int i, int c
   if ((lab = Component(i)) < 0)
     return -2;
 
-  // set initial front projection ROI to be tracked box plus a little bit
+  // backproject object blob to ORIGINAL range image to find input pixel patch
   if (clr > 0)
     cmsk.FillMax(0);
+  SetColorGeom(-1);                        // rangefinder
   wlh = shp[i];
-  if (ImgPrism(cmsk, pos.TX(i) + MDX(), pos.TY(i) + MY0(), pos.TZ(i), wlh[5], wlh[3], wlh[4], wlh[2]) <= 0)
+  ht  = wlh[2] / zf;                       // original height
+  len = wlh[3] / xyf;                      // original major
+  wid = wlh[4] / xyf;                      // original minor
+  ang = wlh[5];
+  wx = pos.TX(i) + MDX();  
+  wy = pos.TY(i) + MY0();
+  wz = pos.TZ(i) + 0.5 * (ht - wlh[2]);    // for original height
+  if (ImgPrism(cmsk, wx, wy, wz, ang, len, wid, ht) <= 0)
     return -1;
   cmsk.PadRoi(side, bot, side, top);
+  rbox.CopyRoi(cmsk);                      // for debugging
 
-  // make up pixel mask for object, ringed by black, and set tight ROI
-  if (FrontMask(cmsk, d16, ztab - 2.0 * hobj, zmax, ((Flat(i) > 0) ? gcc : cc), lab) <= 0)
+  // make up pixel mask for object (incl. sides) in color view and fill in between dots
+  SetColorGeom(view);
+  if (ViewMask(cmsk, d16, ztab - 2.0 * hobj, zmax, ((Flat(i) > 0) ? gcc : cc), lab) <= 0)
     return 0;
-  cmsk.GrowRoi(1, 1);
-  Border(cmsk, 1, 0);
+  Convexify(cmsk, cmsk, dots);
 
   // analyze color for this object and cache results
   pp.FindColors(cmsk, col);
@@ -864,14 +931,14 @@ void jhcSurfObjs::CamPels (int& ix, int &iy, const jhcMatrix& wpt, int ydim) con
 // objects labelled by node nicknames (in "tag"), nothing if just enumerated
 // assumes destination image is frontal camera 0 view at some scale
 
-int jhcSurfObjs::AttnCam (jhcImg& dest, int pick, int known, int all)
+int jhcSurfObjs::AttnCam (jhcImg& dest, int pick, int known, int all, int view)
 {
   int i, n = pos.Limit();
 
   // set up projection from main camera
   if (!dest.Valid(1, 3))
     return Fatal("Bad images to jhcSurfObjs::AttnCam");
-  AdjGeometry(0);
+  SetColorGeom(view);
 
   // show all detected objects (tall and flat)
   if (all >= 0)
@@ -910,14 +977,14 @@ void jhcSurfObjs::attn_obj (jhcImg& dest, int i, int t, int col)
 
 //= Mark the camera image approximately where a 3D point would be (inches).
 
-int jhcSurfObjs::MarkCam (jhcImg& dest, const jhcMatrix& wpt, int col)
+int jhcSurfObjs::MarkCam (jhcImg& dest, const jhcMatrix& wpt, int col, int view)
 {
   double mx, my, ix, iy;
 
   // set up projection from main camera
   if (!dest.Valid(1, 3))
     return Fatal("Bad images to jhcSurfObjs::MarkCam");
-  AdjGeometry(0);
+  SetColorGeom(view);
 
   // find projection of point from robot-centric coordinates
   ViewXY(mx, my, wpt.X(), wpt.Y());

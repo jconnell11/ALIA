@@ -52,7 +52,7 @@ public:
   virtual void AddFcns (jhcAliaKernel& pool) =0;
 
   // main functions
-  virtual void Platform (void *soma) =0;         // be careful of casts
+  virtual void Platform (void *soma, const char *kind) =0;     // be careful of casts
   virtual void Reset (jhcAliaNote& attn) =0;                    
   virtual void Volunteer () =0;
   virtual int Start (const jhcAliaDesc& desc, int bid) =0;

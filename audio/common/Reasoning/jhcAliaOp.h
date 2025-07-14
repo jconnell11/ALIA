@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIAOP_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIAOP_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -78,6 +75,7 @@ private:
 
   // action appropriateness
   double pref0, pref;
+  int steps;
 
   // matching state
   jhcAliaDir *d;
@@ -109,6 +107,7 @@ public:
   const char *KindTag () const 
     {jhcAliaDir dcvt; return dcvt.CvtTag(kind);}
   void SetGist (const char *sent);
+  int NumSteps ();
 
   // main functions
   int FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth, int fcn);
@@ -126,6 +125,7 @@ private:
   // creation and initialization
   ~jhcAliaOp ();                       // private dtor requires "final"
   jhcAliaOp (JDIR_KIND k =JDIR_DO);
+  void cnt_steps ();
  
   // main functions
   int try_mate (const jhcNetNode *focus, jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f);
@@ -138,10 +138,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

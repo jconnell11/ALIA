@@ -90,9 +90,9 @@ public:
   int Reset (const char *rname =NULL, const char *vname =NULL, int cvt =1);
   int VoiceInit ();
   int UpdateSpeech ();
-  int Respond (int stare =0);
+  int Consider (int stare =0);
   void Listen () {if (spin > 0) sp.Update();}
-  void Done (int save =0);
+  void Done (int save =0, int batt =-1);
 
   // intercepted I/O
   bool Accept (const char *in, int quit =0);
@@ -123,7 +123,6 @@ private:
   // speech overrides for new words 
   void sp_listen (int doit);
   void gram_add (const char *cat, const char *wd, int lvl);
-
 
 };
 

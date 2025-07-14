@@ -142,8 +142,6 @@ void jhcAliaChart::Valence (jhcDisplay& d)
 
 void jhcAliaChart::Modulation (jhcDisplay& d)
 {
-double pth0 = 0.5;
-
   if (stat == NULL)
     return;
   resize(d);

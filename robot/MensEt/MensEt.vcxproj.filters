@@ -447,12 +447,6 @@
     <ClCompile Include="..\common\RWI\jhcInteractFSM.cpp">
       <Filter>Source Files\common robot\RWI</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\RWI\jhcManusRWI.cpp">
-      <Filter>Source Files\common robot\RWI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\RWI\jhcBackgRWI.cpp">
-      <Filter>Source Files\common robot\RWI</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Kernel\jhcAliaKudos.cpp">
       <Filter>Source Files\common robot\Kernel</Filter>
     </ClCompile>
@@ -485,6 +479,15 @@
     </ClCompile>
     <ClCompile Include="..\common\Kernel\jhcEmotion.cpp">
       <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Objects\jhcGenObjects.cpp">
+      <Filter>Source Files\common robot\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcBgndGrok.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcManusGrok.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -830,13 +833,7 @@
     <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h">
       <Filter>Header Files\common audio\Reasoning</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\RWI\jhcManusRWI.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\RWI\jhcInteractFSM.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\RWI\jhcBackgRWI.h">
       <Filter>Header Files\common robot\RWI</Filter>
     </ClInclude>
     <ClInclude Include="..\common\Kernel\jhcAliaKudos.h">
@@ -883,6 +880,18 @@
     </ClInclude>
     <ClInclude Include="..\common\Kernel\jhcEmotion.h">
       <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Objects\jhcGenObjects.h">
+      <Filter>Header Files\common robot\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcBgndGrok.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcManusGrok.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhc_font.h">
+      <Filter>Header Files\common video\Processing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

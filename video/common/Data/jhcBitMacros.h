@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCBITMACROS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCBITMACROS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -100,10 +97,6 @@
 
 
 #endif
-
-
-#endif
-
 
 
 

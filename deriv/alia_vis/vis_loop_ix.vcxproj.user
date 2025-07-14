@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <RemoteDebuggerWorkingDirectory>/mnt/c/user/code/deriv/alia_vis</RemoteDebuggerWorkingDirectory>
+    <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Jet|ARM64'">
+    <RemoteDebuggerWorkingDirectory>/mnt/c/user/code/deriv/alia_vis</RemoteDebuggerWorkingDirectory>
+    <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
+    <RemoteTarget>1292679620;Benny (username=, port=22, authentication=Password)</RemoteTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Rpi|ARM64'">
+    <RemoteDebuggerWorkingDirectory>/mnt/c/user/code/deriv/alia_vis</RemoteDebuggerWorkingDirectory>
+    <DebuggerFlavor>LinuxDebugger</DebuggerFlavor>
+    <RemoteTarget>-2098624113;Herbie (username=, port=22, authentication=Password)</RemoteTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DebuggerWorkingDirectory>/mnt/c/user/code/deriv/alia_vis</DebuggerWorkingDirectory>
+    <DebuggerFlavor>LinuxWSLDebugger</DebuggerFlavor>
+    <PreLaunchCommand>export LD_LIBRARY_PATH=/mnt/c/user/code/deriv/alia_vis/bin/$(Platform)/$(Configuration)/</PreLaunchCommand>
+    <RemoteDebuggerCommandArguments>standing_t4.bmp</RemoteDebuggerCommandArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Jet|x64'">
+    <DebuggerWorkingDirectory>/mnt/c/user/code/deriv/alia_vis</DebuggerWorkingDirectory>
+    <DebuggerFlavor>LinuxWSLDebugger</DebuggerFlavor>
+    <PreLaunchCommand>export LD_LIBRARY_PATH=/mnt/c/user/code/deriv/alia_vis/bin/$(Platform)/$(Configuration)/</PreLaunchCommand>
+    <RemoteDebuggerCommandArguments>standing_t4.bmp</RemoteDebuggerCommandArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Rpi|x64'">
+    <DebuggerWorkingDirectory>/mnt/c/user/code/deriv/alia_vis</DebuggerWorkingDirectory>
+    <DebuggerFlavor>LinuxWSLDebugger</DebuggerFlavor>
+    <PreLaunchCommand>export LD_LIBRARY_PATH=/mnt/c/user/code/deriv/alia_vis/bin/$(Platform)/$(Configuration)/</PreLaunchCommand>
+    <RemoteDebuggerCommandArguments>standing_t4.bmp</RemoteDebuggerCommandArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebuggerWorkingDirectory>/mnt/c/user/code/deriv/alia_vis</DebuggerWorkingDirectory>
+    <DebuggerFlavor>LinuxWSLDebugger</DebuggerFlavor>
+    <PreLaunchCommand>export LD_LIBRARY_PATH=/mnt/c/user/code/deriv/alia_vis/bin/$(Platform)/$(Configuration)/</PreLaunchCommand>
+  </PropertyGroup>
+</Project>

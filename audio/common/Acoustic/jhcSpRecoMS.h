@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSPRECOMS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSPRECOMS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -262,12 +259,5 @@ private:
   void add_jump (void *n0, void *n1);
   void end_phrase (void *n);
 
-
 };
-
-
-#endif  // once
-
-
-
 

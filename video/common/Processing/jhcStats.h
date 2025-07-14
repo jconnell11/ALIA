@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSTATS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSTATS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -107,12 +104,5 @@ public:
     {return NearPt(px, py, src, src.XDim() >> 1, src.YDim() >> 1, th);}
   double NearSect (int& px, int& py, const jhcImg& src, double ang, double dev, int th =0) const;
 
-
 };
-
-
-#endif
-
-
-
 

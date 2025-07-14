@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGENIO_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGENIO_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "jhc_conio.h"
@@ -84,10 +81,4 @@ public:
   virtual const char *LastOut () const            {return emit;}
 
 };
-
-
-#endif  // once
-
-
-
 

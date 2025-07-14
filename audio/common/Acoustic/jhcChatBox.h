@@ -25,11 +25,6 @@
 // use the commands in the "edit" menu to "copy" dialog IDC_JHCCHATBOX, then 
 // "paste" it into the Dialog folder on the ResourceView tab of current project. 
 
-#if !defined(AFX_JHCCHATBOX_H__A2753E01_3F81_11D3_9645_006094EB2F79__INCLUDED_)
-/* CPPDOC_BEGIN_EXCLUDE */
-#define AFX_JHCCHATBOX_H__A2753E01_3F81_11D3_9645_006094EB2F79__INCLUDED_
-/* CPPDOC_END_EXCLUDE */
-
 #pragma once
 
 #include "jhcGlobal.h"
@@ -113,7 +108,9 @@ public:
   afx_msg void OnBnClickedQuit();
 };
 
+
+/////////////////////////////////////////////////////////////////////////////
+
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_JHCCHATBOX_H__A2753E01_3F81_11D3_9645_006094EB2F79__INCLUDED_)

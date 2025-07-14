@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -185,14 +185,15 @@ int jhcBumps::shape_params (const char *fname)
 
   sprintf_s(tag, "%s_size", name);
   ps->SetTag(tag, 0);
-  ps->NextSpecF( &xyf,   0.85, "Shrink lateral sizes");
-  ps->NextSpecF( &zf,    0.96, "Shrink height");           // was 0.9
-  ps->Skip();
-  ps->NextSpecF( &xymix, 0.1,  "Lateral update rate");
-  ps->NextSpecF( &zmix,  0.1,  "Height update rate");
-  ps->NextSpecF( &amix,  0.1,  "Angle update rate");
+  ps->NextSpecF( &xyf,    0.85, "Shrink lateral sizes");
+  ps->NextSpecF( &zf,     0.96, "Shrink height");           // was 0.9
+  ps->NextSpecF( &xymix,  0.1,  "Lateral update rate");
+  ps->NextSpecF( &zmix,   0.1,  "Height update rate");
+  ps->NextSpecF( &amix,   0.1,  "Angle update rate");
+  ps->NextSpec4( &pcnt,  20,    "Points in height peak");
 
-  ps->NextSpec4( &pcnt,   20,  "Points in height peak");
+  ps->NextSpecF( &gmax,   4.0,  "Max grabbable width (in)");
+  ps->NextSpecF( &smin,   0.5,  "Min object dimension (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -200,6 +201,7 @@ int jhcBumps::shape_params (const char *fname)
 
 
 //= Parameters used for detecting special class of objects.
+// originally for finding dial control on DataSpace table
 
 int jhcBumps::target_params (const char *fname)
 {
@@ -361,7 +363,7 @@ int jhcBumps::AnyTouch () const
 
 int jhcBumps::Analyze (int trk)
 {
-  // detect clearly separated objects
+  // detect clearly separated objects (obj_boxes set nr)
   raw_objs(trk);
   nr = 0;
   obj_boxes(&blob, 0);                 // depth
@@ -410,6 +412,7 @@ void jhcBumps::raw_objs (int trk)
   BoxAvg(obj, obj, sc);
   CComps4(cc, obj, amin, 180);
   blob.FindParams(cc);
+//  blob.RemBorder(cc, 1);               // no touching image edges (redundant)
 
   // suppress components extending beyond table
   if (surf > 0)
@@ -424,7 +427,7 @@ void jhcBumps::raw_objs (int trk)
 void jhcBumps::obj_boxes (jhcBlob *b, int flat)
 {
   double *xyz;
-  double ht, hdef = 0.5 * (hobj - htol);
+  double len, wid, ht, sz, hdef = 0.5 * (hobj - htol);
   int i, n;
 
   // assumes nr set to zero outside
@@ -447,11 +450,20 @@ void jhcBumps::obj_boxes (jhcBlob *b, int flat)
         continue;
       }
 
+      // get dimensions in inches, veto if not grabbable or too big 
+      wid = xyf * P2I(b->BlobWidth(i));
+      if ((gmax > 0.0) && (wid > gmax))
+        continue;
+      len = xyf * P2I(b->BlobLength(i));
+      sz = __min(__min(len, wid), ht);
+      if ((smin > 0.0) && (sz < smin))           // was smax = 10"
+        continue;
+
       // make new entry and record position (bounding box center, not centroid)
       xyz = raw[nr];
       xyz[0] = P2I(b->BoxAvgX(i)) - x0;
       xyz[1] = P2I(b->BoxAvgY(i)) - y0;
-      xyz[2] = 0.5 * ht + ztab;                 // accurate for jhcSurfObjs also
+      xyz[2] = 0.5 * ht + ztab;                  // accurate for jhcSurfObjs also
 
       // record dimensions (compensate for bloat)
       xyz[3] = xyf * P2I(b->BoxW(i));
@@ -459,8 +471,8 @@ void jhcBumps::obj_boxes (jhcBlob *b, int flat)
       xyz[5] = ht;
 
       // record equivalent ellipse (compensate for bloat)
-      xyz[6] = xyf * P2I(b->BlobLength(i));
-      xyz[7] = xyf * P2I(b->BlobWidth(i));
+      xyz[6] = len;
+      xyz[7] = wid;
       xyz[8] = b->BlobAngle(i, 1);        
 
       // assume no fingertip point needed
@@ -884,7 +896,7 @@ int jhcBumps::mark_targets (const char *name, int trk)
           wid = Minor(i, trk);
           ht  = SizeZ(i, trk);
 
-          // punt if does not satisfies size ranges
+          // punt if does not satisfy size ranges
           if ((len < tlen0) || (wid < twid0) || (ht < tht0) ||
               (len > tlen1) || (wid > twid1) || (ht > tht1))
             continue;
@@ -1157,7 +1169,9 @@ bool jhcBumps::Contact (int i, int trk) const
 
 int jhcBumps::Flat (int i) const
 {
-  return((ObjOK(i, 1)) ? ralt[i] : -1);
+  int det = pos.DetectFor(i);
+
+  return((det >= 0) ? ralt[det] : -1);
 }
 
 
@@ -1171,6 +1185,21 @@ int jhcBumps::Component (int i) const
 }
 
 
+//= Find distance of middle of bounding box from middle of map image.
+// returns 0 if bad track index, 1 if successful
+
+double jhcBumps::MidDist (int i) const
+{
+  double dx, dy;
+
+  if (pos.Valid(i) <= 0)
+    return 0;
+  dx = ((pos.TX(i) + x0) / ipp) - 0.5 * XDim();
+  dy = ((pos.TY(i) + y0) / ipp) - 0.5 * YDim();
+  return sqrt(dx * dx + dy * dy);
+}
+
+
 //= For specified tracked object find bounding box in color camera image.
 // assumes camera image has height "ydim"
 // NOTE: must call AdjGeometry(cam) before this
@@ -1181,6 +1210,16 @@ void jhcBumps::CamBox (jhcRoi& box, int i, int ydim) const
 
   ImgPrism(box, pos.TX(i) + x0 - 0.5 * mw, pos.TY(i) + y0, pos.TZ(i), 
            wlh[5], wlh[3], wlh[4], wlh[2], ydim / (double) InputH()); 
+}
+
+
+//= For specified tracked object find centroid in color camera image.
+// assumes camera image has height "ydim"
+// NOTE: must call AdjGeometry(cam) before this
+
+void jhcBumps::CamMid (double& ix, double& iy, int i, int ydim) const
+{
+  ImgPt(ix, iy, pos.TX(i) + x0 - 0.5 * mw, pos.TY(i) + y0, pos.TZ(i), ydim / (double) InputH()); 
 }
 
 
@@ -1206,9 +1245,34 @@ void jhcBumps::KeepShape (int i)
 }
 
 
+//= After dropping something assume that it lands on the table.
+
+void jhcBumps::OnTable (int i) 
+{
+  if (ObjOK(i)) 
+   pos.ForceZ(i, ztab + 0.5 * SizeZ(i));
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                            Display Helpers                            //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Set the frontal view camera pose relative to the input camera pose.
+// needed since projection is normalized with cx = 0, cy = 0, and cpan = 90
+
+void jhcBumps::SetFront (int view, const jhcMatrix& vpos, const jhcMatrix& vdir,
+                         const jhcMatrix& cpos, const jhcMatrix& cdir)
+{
+  double rads = D2R * (90.0 - cdir.P()), c = cos(rads), s = sin(rads);
+  double vx, vy, dx = vpos.X() - cpos.X(), dy = vpos.Y() - cpos.Y();
+
+  // rotate view position around camera position (0 0) to make camera point along y
+  vx = dx * c - dy * s;
+  vy = dx * s + dy * c;
+  SetAlt(view, vx, vy, vpos.Z(), vdir.P() - cdir.P() + 90.0, vdir.T(), vdir.R());
+}
+
 
 //= Set the display string for the object with the given index.
 
@@ -1726,11 +1790,11 @@ int jhcBumps::FatEllipse (jhcImg& dest, int t, double mag, int col) const
 }
 
 
-//= Show current object locations and numbers on color or depth input image.
+//= Show current object locations and numbers on thru-lens frontal image.
 // needs to know which sensor input to plot relative to
 // can optionally show raw or tracked version (trk < 0 is multi-color tracked)
 
-int jhcBumps::ObjsCam (jhcImg& dest, int cam, int trk, int rev, int style)
+int jhcBumps::ObjsCam (jhcImg& dest, int view, int trk, int rev, int style)
 {
   jhcRoi box;
   double *xyz, *wlh;
@@ -1741,7 +1805,7 @@ int jhcBumps::ObjsCam (jhcImg& dest, int cam, int trk, int rev, int style)
     return Fatal("Bad images to jhcBumps::ObjsCam");
 
   // set up projection from a particular camera
-  AdjGeometry(cam);
+  SetColorGeom(view);
 
   // find projection of oriented flat rectangle for detection
   // then draw box on image, red if touched

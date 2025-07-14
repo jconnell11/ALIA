@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2017 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCBBOX_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCBBOX_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcRoi.h"
@@ -190,10 +187,4 @@ protected:
   int bd_touch (const jhcRoi& box);
 
 };
-
-
-#endif
-
-
-
 

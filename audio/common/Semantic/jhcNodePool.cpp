@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -604,19 +604,34 @@ void jhcNodePool::copy_mods (jhcNetNode *dest, const jhcNetNode *src)
 }
 
 
-//= Make up suitable fact about some owner possessing some object.
+//= Make up suitable fact about some owner actively "having" something.
 // convenience function primarily for jhcGraphizer
 
-jhcNetNode *jhcNodePool::MakePoss (jhcNetNode *owner, jhcNetNode *obj, int neg, double def, int done)
+jhcNetNode *jhcNodePool::MakeHave (jhcNetNode *owner, jhcNetNode *obj, int neg, double def, int done)
 {
   jhcNetNode *fact;
 
   if ((owner == NULL) || (obj == NULL))
     return NULL;
-  fact = MakeNode("has", NULL, neg, def, done);
-  AddProp(fact, "fcn", "have");
+  fact = MakeAct("have", neg, def, done);
   fact->AddArg("agt", owner);
   fact->AddArg("obj", obj);
+  return fact;
+}
+
+
+//= Make up suitable fact about some owner simply possessing something currently.
+// convenience function primarily for jhcGraphizer
+
+jhcNetNode *jhcNodePool::MakePoss (jhcNetNode *owner, jhcNetNode *obj, double def)
+{
+  jhcNetNode *fact;
+
+  if ((owner == NULL) || (obj == NULL))
+    return NULL;
+  fact = MakeNode("wrt", "of", 0, def, 0);
+  fact->AddArg("wrt", obj);
+  fact->AddArg("ref", owner);
   return fact;
 }
 

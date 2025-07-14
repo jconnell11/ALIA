@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,10 @@
 // limitations under the License.
 // 
 ///////////////////////////////////////////////////////////////////////////
+
+#ifndef __linux__
+  #include <Windows.h>                 // for WinExec
+#endif
 
 #include <string.h>
 
@@ -223,7 +227,7 @@ void jhcListVSrc::make_list ()
 
   // create a new script file which will append name list
   sprintf_s(script, "dir /ON/B/-W/-P/A:-D \"%s\" >> %s", clean, list);
-  system(script);
+  WinExec(script, SW_HIDE);
   strcpy_s(list_name, list);
   ParseName(list_name);
 }

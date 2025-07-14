@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2019 IBM Corporation
-// Copyright 2023-2024 Etaoin Systems
+// Copyright 2023-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -194,8 +194,11 @@ void jtimer_x (int n)
   if ((n < TIMERS) && (val64(start[n]) != 0))
   {
     QPC(&now);
-    len = (int)(val64(now) - val64(start[n]));
-    maxtime[n] = __max(maxtime[n], len);
+    if (count[n] > 0)                  // ignore very first call for max
+    {
+      len = (int)(val64(now) - val64(start[n]));
+      maxtime[n] = __max(maxtime[n], len);
+    }
     set64(total[n], val64(total[n]) + val64(now) - val64(start[n]));
     set64(start[n], 0);
     count[n] += 1;
@@ -209,7 +212,7 @@ void jtimer_x (int n)
 // this is all wall-clock time, so if system is loaded these are longer
 // if tree > 0 then orders by call tree else simply creates a flat list
 // if no name is given then uses current directory and "timing"
-// unless full > 0 then tacks on "_MMDDYY_HHMM.txt"
+// unless full > 0 then tacks on "_MMDDYY_HHMM.prof"
 // Note: does not automatically close calls, use j_timer() instead
 
 int jtimer_rpt (int tree, const char *fname, int full)
@@ -281,7 +284,7 @@ static FILE *jtimer_file (const char *fname, int full)
       return NULL;
 
     // make up name based on time
-    sprintf_s(fn, "timing/%s_%s.txt", ((fname != NULL) ? fname : "timing"), jms_date(tmp));
+    sprintf_s(fn, "timing/%s_%s.prof", ((fname != NULL) ? fname : "timing"), jms_date(tmp));
   }
   if (fopen_s(&out, fn, "w") != 0)
     out = NULL;

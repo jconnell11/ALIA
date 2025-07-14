@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCNAMELIST_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCNAMELIST_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -57,12 +54,5 @@ public:
   const char *Canonical (const char *name) const;
   const char *LongName (const char *given) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

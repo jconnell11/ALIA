@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCLOCALOCC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCLOCALOCC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -103,6 +100,7 @@ public:
   jhcLocalOcc ();
   double Nose () const {return rfwd;}
   double Hip () const  {return rside;}
+  const jhcImg& Deviations () const {return dev;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -118,6 +116,7 @@ public:
   double Step () const {return(180.0 / ndir);}
   bool Blind (double umat =0.5) const {return(known < umat);}
   bool Tight (double hem =6.0) const;
+  double Forward () const {return dist[ndir];}
 
   // navigation
   void Swerve (double& trav, double& head, double td, double ta, double stop =0.0);
@@ -163,10 +162,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

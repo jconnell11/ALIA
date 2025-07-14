@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTABLE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTABLE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -73,7 +70,7 @@ private:
   int hsm, ppel;
 
   // surface candidate parameters
-  double ztol, pmix, pn, hn;
+  double tdef, ztol, pmix, pn, hn;
   int wsc, wth, wmin;
 
 
@@ -91,6 +88,7 @@ public:
   ~jhcTable ();
   jhcTable ();
   double MidX () const {return wmap.RoiAvgX();}
+  const jhcImg *Heights () const {return &wmap;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -143,10 +141,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2017 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -677,15 +677,11 @@ int jhcBBox::CountOver (int sth, int shrink)
 
 int jhcBBox::CountOver (int sth) const
 {
-  int i, last = -1, ans = 0;
+  int i, ans = 0;
 
   for (i = 1; i < valid; i++)
-  {
     if (status[i] >= sth)
       ans++;
-    if (status[i] > 0)
-      last = i;
-  }
   return ans;
 }
 
@@ -1099,6 +1095,7 @@ void jhcBBox::MatchTo (jhcBBox& xtra, double close, double fmv, double fsz)
 
   for (i = 1; i < valid; i++, entry++)
     if (status[i] > 0)
+    {
       if ((best = xtra.BestOverlap(*entry, close)) < 0)
       {
         // if no match, start decrementing count
@@ -1121,6 +1118,7 @@ void jhcBBox::MatchTo (jhcBBox& xtra, double close, double fmv, double fsz)
         // remove new blob from further matching (and leave linkage tag)
         (xtra.status)[best] = -i;
       }
+    }
 }
 
 
@@ -1264,7 +1262,7 @@ void jhcBBox::ClipAll (int xdim, int ydim)
 void jhcBBox::ShapeAll (double alo, double ahi)
 {
   int i;
-  int rw, rh, ry, dh0, dh1;
+  int rw, rh, dh0, dh1;
   jhcRoi *entry = items + 1;
 
   for (i = 1; i < valid; i++, entry++)
@@ -1277,7 +1275,6 @@ void jhcBBox::ShapeAll (double alo, double ahi)
   
       // symmetrically stretch box vertically to nearest limit 
       rh = entry->RoiH();
-      ry = entry->RoiY();
       if (rh > dh1)
         entry->ResizeRoi(-1, dh1);
       else if (rh < dh0)

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -180,14 +180,13 @@ int jhcStats::MaxCentH (int *mx, int *my, const jhcImg& src, const jhcRoi& area)
   jhcRoi a2;
   const UC8 *s;
   UL32 roff;
-  int x, y, rw, rh, rw2, rh2, rsk, poff, boff, wx = 0, wy = 0, big = -1;
+  int x, y, rw, rh, rw2, rsk, poff, boff, wx = 0, wy = 0, big = -1;
 
   a2.CopyRoi(area);
   a2.RoiClip(src);
   rw = a2.RoiW();
   rh = a2.RoiH();
   rw2 = rw >> 1;
-  rh2 = rh >> 1;
   src.RoiParams(&roff, &rsk, a2);
   s = src.PxlSrc() + roff;
   for (y = rh; y > 0; y--)
@@ -392,7 +391,7 @@ double jhcStats::AvgVal (const jhcImg& src, const jhcRoi& patch, int th) const
   }
   if (cnt == 0)
     return -1.0;
-  return(sum / (double) cnt);
+  return((double) sum / (double) cnt);
 }
 
 
@@ -428,7 +427,7 @@ double jhcStats::AvgVal_16 (const jhcImg& src, const jhcRoi& patch, int th) cons
   // derive average from sum and count
   if (cnt == 0)
     return -1.0;
-  return(sum / (double) cnt);
+  return((double) sum / (double) cnt);
 }
 
 
@@ -466,7 +465,7 @@ double jhcStats::AvgOver (const jhcImg& src, const jhcImg& mask, int th) const
   }
   if (cnt == 0)
     return -1.0;
-  return(sum / (double) cnt);
+  return((double) sum / (double) cnt);
 }
 
 
@@ -504,7 +503,7 @@ double jhcStats::AvgUnder (const jhcImg& src, const jhcImg& mask, int th) const
   }
   if (cnt == 0)
     return -1.0;
-  return(sum / (double) cnt);
+  return((double) sum / (double) cnt);
 }
 
 
@@ -541,7 +540,7 @@ double jhcStats::AvgDiff (jhcImg& imga, jhcImg& imgb) const
   // handle case of zero area ROI (avoids divide by zero also)
   if (sum == 0)
     return 0.0;
-  return(sum / (double)(rcnt * rh));
+  return((double) sum / (rcnt * rh));
 }
 
 
@@ -623,9 +622,9 @@ int jhcStats::AvgRGB (double *r, double *g, double *b, const jhcImg& src, const 
   }
   else
   {
-    *b = sum[0] / area;
-    *g = sum[1] / area;
-    *r = sum[2] / area;
+    *b = (double) sum[0] / area;
+    *g = (double) sum[1] / area;
+    *r = (double) sum[2] / area;
   }
   return 1;
 }
@@ -673,9 +672,9 @@ int jhcStats::AvgOverRGB (double *r, double *g, double *b, const jhcImg& src,
   }
   else
   {
-    *b = sum[0] / area;
-    *g = sum[1] / area;
-    *r = sum[2] / area;
+    *b = (double) sum[0] / area;
+    *g = (double) sum[1] / area;
+    *r = (double) sum[2] / area;
   }
   return 1;
 }
@@ -817,7 +816,7 @@ int jhcStats::CountOver4 (const jhcImg& src, int th) const
 }
 
 
-//= Count number of pixels in a 16 bit image that are above give threshold.
+//= Count number of pixels in a 16 bit image that are above given threshold.
 
 int jhcStats::CountOver_16 (const jhcImg& src, int th) const 
 {
@@ -1124,9 +1123,9 @@ int jhcStats::Shape (double *xc, double *yc, double *ecc, double *ang,
   // digest raw data into central moments
   xmid = xsum / (double) area;
   ymid = ysum / (double) area;
-  mxx = x2sum - (area * xmid * xmid);
-  myy = y2sum - (area * ymid * ymid);
-  mxy = xysum - (area * xmid * ymid);
+  mxx = (double) x2sum - (area * xmid * xmid);
+  myy = (double) y2sum - (area * ymid * ymid);
+  mxy = (double) xysum - (area * xmid * ymid);
 
   // save middle
   if (xc != NULL)
@@ -1137,7 +1136,7 @@ int jhcStats::Shape (double *xc, double *yc, double *ecc, double *ang,
   // find angle of orientation (degrees)
   if (ang != NULL)
   {
-    if ((mxy == 0) && (mxx == mxy))
+    if ((mxy == 0.0) && (mxx == mxy))
       *ang = 0.0;
     else
       *ang = 0.5 * R2D * atan2(-2.0 * mxy, mxx - myy);
@@ -1212,8 +1211,8 @@ double jhcStats::Cloud (double *xc, double *yc, double *sdx, double *sdy,
   // find means and variances E[(x - E[x])^2] = E[x^2] - E[x]^2
   xmid = xsum / (double) area;
   ymid = ysum / (double) area;
-  *sdx = sqrt((x2sum / (double) area) - (xmid * xmid));
-  *sdy = sqrt((y2sum / (double) area) - (ymid * ymid));
+  *sdx = sqrt(((double) x2sum / area) - (double)(xmid * xmid));
+  *sdy = sqrt(((double) y2sum / area) - (double)(ymid * ymid));
 
   // convert centroid to full image coordinates
   *xc = xmid + p.RoiX();
@@ -1275,9 +1274,9 @@ double jhcStats::Ellipse (double *xc, double *yc, double *wid, double *len,
   // digest raw data into central moments
   xmid = xsum / (double) area;
   ymid = ysum / (double) area;
-  mxx = x2sum - (area * xmid * xmid);
-  myy = y2sum - (area * ymid * ymid);
-  mxy = xysum - (area * xmid * ymid);
+  mxx = (double) x2sum - (area * xmid * xmid);
+  myy = (double) y2sum - (area * ymid * ymid);
+  mxy = (double) xysum - (area * xmid * ymid);
 
   // save middle
   if (xc != NULL)
@@ -1286,7 +1285,7 @@ double jhcStats::Ellipse (double *xc, double *yc, double *wid, double *len,
     *yc = ymid + p.RoiY();
 
   // find angle of orientation (degrees)
-  if ((mxy == 0) && (mxx == mxy))
+  if ((mxy == 0.0) && (mxx == mxy))
     ang = 0.0;
   else
     ang = 0.5 * R2D * atan2(-2.0 * mxy, mxx - myy);

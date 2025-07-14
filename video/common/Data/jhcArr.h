@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCARR_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCARR_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include <stdlib.h>
@@ -134,6 +131,7 @@ public:
   double AvgRegion (int lo, int hi) const;
   int MaxVal (int all =0) const;
   int MaxRegion (int lo, int hi) const;
+  int MaxUnder (int th =255, int none =0) const;
   int MinVal (int all =0) const;
   int MinRegion (int lo, int hi) const;
   int MinNZ (int all =0) const;
@@ -223,6 +221,7 @@ public:
   int PadNZ (const jhcArr& src, int left, int right, int val =1);
   int NormBy (const jhcArr& src, int cnt, int total =255);
   int Normalize (int total =255);
+  void Remap (int lo, int hi, int bot =0, int top =255);
   int Smooth (const jhcArr &src, int passes =1, int cyc = 0);
   int Smooth (int passes, int cyc =0) {return Smooth(*this, passes, cyc);};  /** Smooth in-place multiple times. */
   int Boxcar (const jhcArr &src, int sc, int cyc =0);
@@ -252,10 +251,4 @@ private:
   void amin0 (int n, int val) {arr[n] = __min(arr[n], val);}   /** Primitive min of array values. */
 
 };
-
-
-#endif
-
-
-
 

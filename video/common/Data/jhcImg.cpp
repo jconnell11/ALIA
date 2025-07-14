@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -670,7 +670,7 @@ int jhcImg::RoiOff (int cx, int cy) const
     ex = rx;
   if (ey < 0)
     ey = ry;
-  return((UL32) ey * line_len + ex * nf);
+  return(ey * line_len + ex * nf);
 }
 
 
@@ -962,7 +962,7 @@ void jhcImg::DumpFlip (UC8 *dest) const
 
 //= Loads up image with data from some other buffer.
 // ignores ROI of image (hopefully there are enough src pixels)
-// assumes source is not swizzled
+// assumes source is not swizzled, terminologically "LoadLfBot"
 
 void jhcImg::LoadAll (const UC8 *src)
 {
@@ -975,7 +975,7 @@ void jhcImg::LoadAll (const UC8 *src)
 
 //= Like LoadAll but converts from top down to bottom up.
 // ignores ROI of image (hopefully there are enough src pixels)
-// assumes source is not swizzled
+// assumes source is not swizzled, terminologically "LoadLfTop"
 
 void jhcImg::LoadFlip (const UC8 *src)
 {
@@ -989,6 +989,30 @@ void jhcImg::LoadFlip (const UC8 *src)
       memcpy(d, s, line_len);
       s += line_len;
       d -= line_len;
+    }
+  norm = 1;
+  sep = 0;
+}
+
+
+//= Load columns of pixels scanned top-to-bottom, rightmost row first.
+// buffer pixel order: (xn yn), (xn yn-1) ... (xn-1 yn), (xn-1, yn-1) ... 
+// ignores ROI of image (hopefully there are enough src pixels)
+// assumes source is monochrome and not swizzled
+// terminologically "LoadLfBot" = LoadAll, "LoadLfTop" = LoadFlip
+
+void jhcImg::LoadTopRt (const UC8 *src)
+{
+  const UC8 *s = src;
+  UC8 *d, *d0 = Buffer + (h - 1) * line_len + (w - 1);      // NE corner
+  int x, y;
+
+  if (Valid(1) && (Buffer != src))                // cannot do in place
+    for (x = w; x > 0; x--, d0--)
+    {
+      d = d0;
+      for (y = h; y > 0; y--, s++, d -= line_len)
+        *d = *s;
     }
   norm = 1;
   sep = 0;
@@ -1322,7 +1346,7 @@ int jhcImg::fill_arr_4 (UC8 val)
 }
 
 
-//= Fill whole image with given value irrespective of ROI.
+//= Fill whole image with given value irrespective of ROI (retained).
 
 int jhcImg::FillAll (int v)
 {

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,13 +35,14 @@
 
 //= Control interface for external robot arm.
 // no actual control code -- merely exchanges variable values
+// provides support for double buffering (if desired)
 
 class jhcSwapArm : public jhcGenArm
 {
 // PRIVATE MEMBER VARIABLES
 private:
   // hand sensor data
-  double w0, sqz;            // finger separation & force
+  double wid, sqz;           // finger separation & force
 
   // pose sensor data
   double terr;               // offset from tucked pose
@@ -66,15 +67,20 @@ private:
   int pmode, dmode;          // goal coordinate importance
   int plock, dlock;          // current command importance
 
+  // double buffered input
+  jhcMatrix loc0, aim0;
+  double wid0, sqz0, terr0;
+
+  // double buffered output
+  jhcMatrix pdes0, ddes0;
+  double wstop0, prate0, drate0, wrate0, trate0;
+  int pmode0, dmode0, plock0, dlock0, wlock0, tlock0;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
   // arm stowing position
   jhcParam sps;              
-  double rgap, rets, rete;
-
-  // max finger opening
-  double wmax;               
 
   // hardware status
   int aok;
@@ -86,27 +92,32 @@ public:
   ~jhcSwapArm ();
   jhcSwapArm ();
   int CommOK () {return aok;}
-  double MaxWidth () const {return wmax;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL) {return stow_params(fname);}
   int SaveVals (const char *fname) const {return sps.SaveVals(fname);}
 
   // configuration
-  int Reset (int rpt =0);
+  void Reset ();
+
+  // data exchange
+  void Status (float x, float y, float z, float p, float t, float r, 
+               float w, float f, float e);
+  void PosCmd (float& x, float& y, float& z, float& vel, int& mode, int& bid);
+  void DirCmd (float& pan, float& tilt, float& roll, float& vel, int& mode, int& bid);
+  void AuxCmd (float& wf, float& wvel, float& svel, int& wbid, int& sbid);       
 
   // core interaction
-  int Status (float x, float y, float z, float p, float t, float r, float w, float f, float e);
-  int PosCmd (float& x, float& y, float& z, float& vel, int& mode, int& bid);
-  int DirCmd (float& pan, float& tilt, float& roll, float& vel, int& mode, int& bid);
-  int AuxCmd (float& wf, float& wvel, float& svel, int& wbid, int& sbid);              
+  void Update ();
+  void Issue ();       
 
   // ---------------------- HAND MAIN ----------------------------
 
   // current hand information
-  double Width () const   {return w0;}
+  double Width () const   {return wid;}
   double Squeeze () const {return sqz;}
   double SqueezeGoal () const {return __max(0.0, -wstop);}
+  void JawOpen (double sep) {wid = __max(wid, sep);}
 
   // hand goal specification commands
   int WidthTarget (double sep, double rate =1.0, int bid =10)
@@ -116,12 +127,12 @@ public:
   int HandTarget (double wf, double rate =1.0, int bid =10);
 
   // hand motion progress
-  double WidthErr (double sep) const {return fabs(sep - w0);}
+  double WidthErr (double sep) const {return fabs(sep - wid);}
   double SqueezeErr (double f) const {return(sqz - f);}
 
   // ---------------------- ARM MAIN ----------------------------
 
-  // current arm information
+  // arm auxilliary information
   double ReachRate () const {return prate;}
   int Static () const {return parked;}
 
@@ -146,7 +157,7 @@ public:
 // PROTECTED MEMBER FUNCTIONS
 protected:
   // configuration
-  int def_cmd ();
+  void def_cmd ();
 
 
 // PRIVATE MEMBER FUNCTIONS

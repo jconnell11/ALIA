@@ -21,6 +21,7 @@
   lift
   grab
   snatch
+  announce
 
 
 // imperative verbs requiring object and location or direction

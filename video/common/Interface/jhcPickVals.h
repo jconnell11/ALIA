@@ -24,15 +24,7 @@
 // use the commands in the "edit" menu to "copy" dialog IDC_JHCARGS, then 
 // "paste" it into the Dialog folder on the ResourceView tab of current project. 
 
-#if !defined(AFX_JHCPICKVALS_H__1D6401A0_2042_11D3_A6D8_829F75309203__INCLUDED_)
-/* CPPDOC_BEGIN_EXCLUDE */
-#define AFX_JHCPICKVALS_H__1D6401A0_2042_11D3_A6D8_829F75309203__INCLUDED_
-/* CPPDOC_END_EXCLUDE */
-
-#if _MSC_VER >= 1000
 #pragma once
-#endif // _MSC_VER >= 1000
-
 
 #include "jhcGlobal.h"
 #include "stdafx.h"
@@ -114,8 +106,7 @@ protected:
   DECLARE_MESSAGE_MAP()
 };
 
+
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.
 
-
-#endif // !defined(AFX_JHCPICKVALS_H__1D6401A0_2042_11D3_A6D8_829F75309203__INCLUDED_)

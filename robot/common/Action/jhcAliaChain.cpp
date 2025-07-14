@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -210,6 +210,42 @@ void jhcAliaChain::RefSteps (jhcNetNode *src, const char *slot, jhcNodePool& poo
 }
 
 
+//= Count total number of (possibly parallel) directives but ignore loops.
+
+int jhcAliaChain::NumSteps (int init)
+{
+  int i, n, cnt = 0;
+
+  // mark all steps for one time use (in case of loops)
+  if (init > 0)
+    clr_labels(1);
+  if (idx > 0)
+    return 0;
+
+  // add payload of step (never checks same node twice)
+  if (d != NULL)
+    cnt++;
+  else if (p != NULL)
+  {
+    n = p->NumReq();
+    for (i = 0; i < n; i++)
+      cnt += p->ReqN(i)->NumSteps();
+    n = p->NumSimul();
+    for (i = 0; i < n; i++)
+      cnt += p->SimulN(i)->NumSteps();
+  }
+    
+  // add in lengths for all sorts of continuations
+  if (cont != NULL)
+    cnt += cont->NumSteps();
+  if (alt != NULL)
+    cnt += alt->NumSteps();
+  if (fail != NULL)
+    cnt += fail->NumSteps();
+  return cnt;
+}
+
+
 //= Add some sequence of actions to the play contained in this step.
 // mode: 0 = main activity, 1 = guard activity, 2 = looping guard activity
 // returns 1 if successful, 0 for problem
@@ -256,10 +292,12 @@ jhcAliaChain *jhcAliaChain::Penult ()
 {
   jhcAliaChain *prev = NULL, *step = this;
 
-  while (step->cont != NULL)
+  while (step->cont != NULL) 
   {
     prev = step;
     step = step->cont;
+    if (step == this)
+      break;
   }
   return prev;
 }
@@ -703,7 +741,15 @@ int jhcAliaChain::Status ()
       done = p->Status();
 
     // if payload fails, unwind to most recent FIND (if not too far committed yet)
-    if ((done == -2) && (backstop != NULL) && (jms_elapsed(mt0) <= core->Dither()))
+    if ((done == -2) && (backstop != NULL))
+{
+if (jms_elapsed(mt0) > core->Dither())
+{
+  if ((core != NULL) && ((d0 = backstop->d) != NULL))
+    jprintf(1, core->noisy, "\n%*s@@@ forego retry of %s[ %s ] - %3.1f secs\n", level, "", d0->KindTag(), d0->KeyTag(), jms_elapsed(mt0));
+}
+else
+//    if ((done == -2) && (backstop != NULL) && (jms_elapsed(mt0) <= core->Dither()))    <== single original line
     {
       if ((core != NULL) && ((d0 = backstop->d) != NULL))
       {
@@ -712,6 +758,7 @@ int jhcAliaChain::Status ()
       }
       return backstop->Start(NULL);
     }
+}
 
     // if method for FIND/BIND can be restarted, use as a generator/enumerator
     if ((d != NULL) && ((d->kind == JDIR_FIND) || (d->kind == JDIR_BIND)))     

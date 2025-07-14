@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCFFIND_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCFFIND_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -76,7 +73,7 @@ public:
   // configuration (override these)
   virtual const char *ffind_version (char *spec, int ssz) const {*spec = '\0'; return spec;}
   virtual int ffind_setup (const char *fname) {return 0;}
-  virtual int ffind_start (int level =0, const char *log_file =NULL) {return 1;}
+  virtual int ffind_start (int level =0, const char *log_file =NULL) {return 2;}
   virtual void ffind_done () {}
   virtual void ffind_cleanup () {}
 
@@ -96,12 +93,5 @@ public:
   virtual double ffind_box (int& x, int& y, int& w, int &h, int i) const {return 0.0;}
   virtual int ffind_cnt () const {return 0;}
 
-
 };
-
-
-#endif  // once
-
-
-
 

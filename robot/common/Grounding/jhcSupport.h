@@ -1,4 +1,4 @@
-// jhcSupport.h : interface to ELI surface finder kernel for ALIA system
+// jhcSupport.h : interface to robot surface finder kernel for ALIA system
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
@@ -26,7 +26,7 @@
 
 #include "Environ/jhcTable.h"          // common robot   
 #include "Geometry/jhcMatrix.h"
-#include "RWI/jhcEliRWI.h"            
+#include "RWI/jhcVisGrok.h"            
 
 #include "Kernel/jhcStdKern.h"       
 
@@ -44,7 +44,7 @@ private:
   jhcMatrix *cpos;             
 
   // link to hardware and components
-  jhcEliRWI *rwi;                      // likely shared
+  jhcVisGrok *rwi;                      // likely shared
   jhcTable *tab;
   jhcGenNeck *neck;
   jhcGenLift *lift;
@@ -109,7 +109,7 @@ private:
   int track_params (const char *fname);
 
   // overridden virtuals
-  void local_platform (void *soma);
+  void local_platform (void *soma, const char *kind);
   void local_reset (jhcAliaNote& top);
   void local_volunteer ();
   int local_start (const jhcAliaDesc& desc, int i);

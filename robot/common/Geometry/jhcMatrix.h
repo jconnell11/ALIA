@@ -56,7 +56,7 @@ public:
   void Load (const double *v);
   void Copy (const jhcMatrix& src);
   void Clone (const jhcMatrix& src);
-  void Zero (double homo =0.0);
+  double Zero (double homo =0.0);
   void Identity ();
   void Scale (double sc);
   void Abs ();

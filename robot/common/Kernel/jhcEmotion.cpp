@@ -1,4 +1,4 @@
-// jhcEmotion.cpp : autonomous nagging and conscious acess to feelings
+// jhcEmotion.cpp : autonomous nagging and conscious access to feelings
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
@@ -59,14 +59,14 @@ int jhcEmotion::time_params (const char *fname)
   int ok;
 
   ps->SetTag("emo_time", 0);
-  ps->NextSpecF( delay,      45.0, "Bored nag (sec)");  
-  ps->NextSpecF( urge,       30.0, "Very bored nag (sec)");  
-  ps->NextSpecF( delay + 1,  60.0, "Lonely nag (sec)");  
-  ps->NextSpecF( urge  + 1, 120.0, "Very lonely nag (sec)"); 
-  ps->NextSpecF( delay + 2,  30.0, "Tired nag (sec)");  
-  ps->NextSpecF( urge  + 2,  15.0, "Very tired nag (sec)"); 
+  ps->NextSpecF( delay,     135.0, "Bored nag (sec)");  
+  ps->NextSpecF( urge,       90.0, "Very bored nag (sec)");  
+  ps->NextSpecF( delay + 1, 180.0, "Lonely nag (sec)");  
+  ps->NextSpecF( urge  + 1, 360.0, "Very lonely nag (sec)"); 
+  ps->NextSpecF( delay + 2,  60.0, "Tired nag (sec)");  
+  ps->NextSpecF( urge  + 2,  30.0, "Very tired nag (sec)"); 
 
-  ps->NextSpecF( &suffer,     1.0, "Delay per goal (sec)");
+  ps->NextSpecF( &suffer,     2.0, "Delay per goal (sec)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;

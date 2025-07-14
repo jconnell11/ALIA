@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSPTEXTMS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSPTEXTMS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -83,11 +80,8 @@ public:
     int tts_status (char (&rest)[ssz])
       {return tts_status(rest, ssz);}
 
-
 };
 
-
-#endif  // once
 
 
 

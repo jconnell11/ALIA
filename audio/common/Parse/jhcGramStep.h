@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGRAMSTEP_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGRAMSTEP_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -45,12 +42,7 @@ public:
   // creation and configuration
   jhcGramStep () {*symbol = '\0'; non = 0; back = NULL; tail = NULL;}
 
-
 };
-
-
-#endif  // once
-
 
 
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -988,10 +988,12 @@ int jhcRuns::ConvexUp (jhcImg& dest, const jhcImg& src, int maxgap, int fill)
         n = 0;                             // mark as anchored    
       }
       else if (n >= 0)
+      {
         if ((y == rh) || (d[-ln] == 0))
           n = -1;                          // unsupported below
         else
           n++;                             // outside mask so measure
+      }
   }
   return 1;
 }
@@ -2504,7 +2506,7 @@ void jhcRuns::nz_avg (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb) cons
       else if (*b == 0)
         *d = *a;
       else
-        *d = (*a + *b + 1) >> 1;
+        *d = (UC8)((*a + *b + 1) >> 1);
 }
 
 

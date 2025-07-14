@@ -138,7 +138,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>/mnt/c/user/code/deriv/alia_txt/bin/$(Platform)/$(Configuration)/;%(Link.AdditionalLibraryDirectories);%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <LibraryDependencies>alia_txt_x64</LibraryDependencies>
+      <LibraryDependencies>alia_txt</LibraryDependencies>
       <AdditionalOptions>-Wl,-R -Wl,./ %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>

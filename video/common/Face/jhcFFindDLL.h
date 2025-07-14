@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCFFINDDLL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCFFINDDLL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -38,12 +35,12 @@ class jhcFFindDLL : public jhcFFind
 {
 // PUBLIC MEMBER FUNCTIONS - LOW LEVEL
 public:
-  // configuration 
+  // configuration (override arg lists must match base!)
   const char *ffind_version (char *spec, int ssz) const 
     {return ::ffind_version(spec, ssz);}
   int ffind_setup (const char *fname) 
     {return ::ffind_setup(fname);}
-  int ffind_start (int level =0, const char *log_file =NULL) 
+  int ffind_start (int level =0, const char *log_file =NULL)
     {return ::ffind_start(level, log_file);}
   void ffind_done () 
     {::ffind_done();}
@@ -61,10 +58,4 @@ public:
     {return ::ffind_cnt();}
 
 };
-
-
-#endif  // once
-
-
-
 

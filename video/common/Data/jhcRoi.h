@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCROI_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCROI_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -182,5 +179,3 @@ private:
 
 };
 
-
-#endif

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCDRAW_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCDRAW_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -143,12 +140,5 @@ private:
 
   bool chk_hood (const UC8 *s, int sln, int th) const;
 
-
 };
-
-
-#endif
-
-
-
 

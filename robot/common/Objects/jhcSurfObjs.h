@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSURFOBJS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSURFOBJS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -84,6 +81,9 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
+  // range image object area
+  jhcRoi rbox;
+
   // depth segmentation parameters
   jhcParam zps;
   double sfar, wexp;
@@ -101,6 +101,10 @@ public:
   ~jhcSurfObjs ();
   jhcSurfObjs (int n =50);
   void SetCnt (int n);
+  const jhcImg *Swatch () const 
+    {return((cmsk.Valid()) ? pp.Mask() : NULL);}
+  void Colors (char *list, int ssz) const
+    {pp.MainColors(list, ssz);}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -113,14 +117,16 @@ public:
   int FindObjects (const jhcImg& col, const jhcImg& d16, const jhcImg *mask =NULL);
 
   // object properties
-  int Closest () const;
+  int Closest (int vis =0) const;
+  int Largest () const;
+  int MidMap () const;
   double DistXY (int i) const;
   double World (jhcMatrix& loc, int i) const;
   double World (double& wx, double& wy, int i) const;
   double FullTop (double& wx, double& wy, double& wid, double& len, int i, double slice =0.3);
-  int NearTable (jhcMatrix& tpt, int i) const;
+  int NearTable (jhcMatrix& tpt, double wx, double wy) const;
   void ForcePose (int i, double wx, double wy, double wz, double ang);
-  int Spectralize (const jhcImg& col, const jhcImg& d16, int i, int clr =0);
+  int Spectralize (const jhcImg& col, const jhcImg& d16, int i, int clr =0, int view =0);
   int DegColor (int i, int cnum) const;
   double AmtColor (int i, int cnum) const;
 
@@ -137,8 +143,8 @@ public:
   void CamPels (int& ix, int &iy, const jhcMatrix& wpt, int ydim =480) const;
 
   // debugging graphics
-  int AttnCam (jhcImg& dest, int pick =2, int known =3, int all =5);
-  int MarkCam (jhcImg& dest, const jhcMatrix& wpt, int col =6);
+  int AttnCam (jhcImg& dest, int pick =2, int known =3, int all =5, int view =0);
+  int MarkCam (jhcImg& dest, const jhcMatrix& wpt, int col =6, int view =0);
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -167,10 +173,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

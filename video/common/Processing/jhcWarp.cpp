@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2013-2019 IBM Corporation
+// Copyright 2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -198,7 +199,7 @@ void jhcWarp::map_color (jhcImg& dest, const jhcImg& src, int r0, int g0, int b0
 {
   int x, y, fx, fy, lo, hi, val;
   int msk = mix.Skip() >> 1, dsk = dest.Skip();
-  UL32 zlim = src.Line() * src.YDim();
+  UL32 zlim = src.Line() * src.YLim();
   const UL32 *z = (UL32 *) off.PxlSrc();
   const US16 *m = (US16 *) mix.PxlSrc();
   const UC8 *bot, *top, *s = src.PxlSrc();
@@ -221,7 +222,7 @@ void jhcWarp::map_color (jhcImg& dest, const jhcImg& src, int r0, int g0, int b0
         fy = (*m) & 0xFF;
         bot = s + (*z);
         top = bot + sln;
-
+        
         // interpolate blue pixel
         lo  = (256 - fx) * bot[0] + fx * bot[3];
         hi  = (256 - fx) * top[0] + fx * top[3];
@@ -338,7 +339,7 @@ void jhcWarp::Rotate (double degs)
 
 //= Remove barrel distortion of lens given transform coefficients.
 // coefs are wrt src which is 4:3 in true FOV aspect (not pels)
-// assumes optical center is center of image
+// assumes optical center is center of image (flen = 1000 pels)
 
 void jhcWarp::Flatten (double r2f, double r4f, double mag)
 {
@@ -367,6 +368,42 @@ void jhcWarp::Flatten (double r2f, double r4f, double mag)
       SetWarp(x, y, wx, wy);          
     }
   }
+}
+
+
+//= Remove barrel distortion of lens as characterized by 5 parameters.
+// sx0 and sy0 are source lens center (in pels), flen0 is raw focal length (in pels)
+// f2 and f4 are distortion coefficients for flen normalized radial distances 
+// recenters to middle of output image, mag < 1.0 shows more black borders
+// returns altered focal length for destination image
+
+double jhcWarp::Flatten5 (double sx0, double sy0, double flen0, double f2, double f4, double mag)
+{
+  double dx0 = 0.5 * (dw - 1), dy0 = 0.5 * (dh - 1);
+  double sc = sh / (dh * mag), norm2 = 1.0 / (flen0 * flen0);
+  double dx, dy, r2, r4, warp, wx, wy;
+  int x, y;
+
+  // assumes square pixels (hflen = vflen)
+  for (y = 0; y < dh; y++)
+  {
+    // get central offset adjusted for pixel aspect ratio
+    dy = sc * (y - dy0);
+    for (x = 0; x < dw; x++)
+    {
+      // compute radial offset from center
+      dx = sc * (x - dx0);
+      r2 = norm2 * (dx * dx + dy * dy);
+      r4 = r2 * r2;
+
+      // determine lens warped coordinates
+      warp = 1.0 + f2 * r2 + f4 * r4;
+      wx = sx0 + warp * dx;
+      wy = sy0 + warp * dy;
+      SetWarp(x, y, wx, wy);          
+    }
+  }
+  return(mag * flen0);
 }
 
 

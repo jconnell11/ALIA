@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSTACKSEG_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSTACKSEG_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -44,12 +42,15 @@
 #include "Processing/jhcStats.h"
 #include "Processing/jhcThresh.h"
 
+//#include "Objects/jhcGenObjects.h"     // common robot
+
 
 //= Object and freespace locator for Manus robot.
 
-class jhcStackSeg : private jhcALU,    private jhcArea,   private jhcColor, private jhcDraw, 
-                    private jhcEdge,   private jhcFilter, private jhcGray,  private jhcGroup, 
-                    private jhcHist,   private jhcLUT,    private jhcRuns,  private jhcStats, 
+class jhcStackSeg : /*public jhcGenObjects, */
+                    private jhcALU,   private jhcArea,   private jhcColor, private jhcDraw,      
+                    private jhcEdge,  private jhcFilter, private jhcGray,  private jhcGroup,     
+                    private jhcHist,  private jhcLUT,    private jhcRuns,  private jhcStats,     
                     private jhcThresh
 {
 friend class CMensEtDoc;     // for debugging
@@ -165,10 +166,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

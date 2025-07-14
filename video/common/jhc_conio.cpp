@@ -26,7 +26,7 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <termios.h>
-#include <stropts.h>
+//#include <stropts.h>
 #include <unistd.h>
 
 #include "jhc_conio.h"

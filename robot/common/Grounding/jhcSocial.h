@@ -31,7 +31,7 @@
 #include "Data/jhcParam.h"             // common video
 
 #include "Geometry/jhcMatrix.h"        // common robot
-#include "RWI/jhcEliRWI.h"           
+#include "RWI/jhcVisGrok.h"           
 
 #include "Kernel/jhcStdKern.h"         
 
@@ -52,7 +52,7 @@ private:
   jhcMatrix *cpos;     
 
   // link to hardware
-  jhcEliRWI *rwi;
+  jhcVisGrok *rwi;
   jhcGenNeck *neck;
 
   // reported events
@@ -102,7 +102,7 @@ private:
   int move_params (const char *fname);
 
   // overridden virtuals
-  void local_platform (void *soma);
+  void local_platform (void *soma, const char *kind);
   void local_reset (jhcAliaNote& top);
   void local_volunteer ();
   int local_start (const jhcAliaDesc& desc, int i);

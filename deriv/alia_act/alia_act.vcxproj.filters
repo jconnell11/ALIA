@@ -112,6 +112,12 @@
     <Filter Include="Header Files\common robot\Geometry">
       <UniqueIdentifier>{1f386e36-eed3-4711-b558-3df6bf87c174}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\common robot\Peripheral">
+      <UniqueIdentifier>{acea2eeb-9e4e-4b52-adac-2d86ef002c23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\common robot\Peripheral">
+      <UniqueIdentifier>{bff7637c-a67b-4be1-bfb9-9c45f54cf1e7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\video\common\Interface\jhcMessage.h">
@@ -330,17 +336,23 @@
     <ClInclude Include="..\..\robot\common\Body\jhcSwapNeck.h">
       <Filter>Header Files\common robot\Body</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\robot\common\RWI\jhcGenRWI.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\robot\common\RWI\jhcSwapCoord.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\robot\common\RWI\jhcSwapRWI.h">
       <Filter>Header Files\common robot\RWI</Filter>
     </ClInclude>
     <ClInclude Include="..\..\robot\common\Kernel\jhcEmotion.h">
       <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\jhc_str_s.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\robot\common\RWI\jhcGenGrok.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\robot\common\Body\jhcGenBody.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\robot\common\Peripheral\jhcGenMic.h">
+      <Filter>Header Files\common robot\Peripheral</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -518,11 +530,11 @@
     <ClCompile Include="..\..\robot\common\RWI\jhcSwapCoord.cpp">
       <Filter>Source Files\common robot\RWI</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\robot\common\RWI\jhcSwapRWI.cpp">
-      <Filter>Source Files\common robot\RWI</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\robot\common\Kernel\jhcEmotion.cpp">
       <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\robot\common\Peripheral\jhcGenMic.cpp">
+      <Filter>Source Files\common robot\Peripheral</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

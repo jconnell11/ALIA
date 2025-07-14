@@ -19,31 +19,21 @@ OP 2 - "To check if something has some measurement ..."
    GND[ call-1 -lex-  vis_val_ok
                -arg-> hq-1 ]
 
-OP 3 - "To find the color of something look toward it then ..."
+OP 3 - "To find the color of something ..."
   trig:
   FIND[  hq-1 -hq--> obj-1
         ako-1 -lex-  color
               -ako-> hq-1 ]
 -----------------
-    DO[ fcn-1 -lex-  look
-              -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-1 ]
    GND[ call-1 -lex-  vis_color
                -arg-> obj-1 ]
 
-OP 4 - "To check if something is some color look toward it then ..."
+OP 4 - "To check if something is some color ..."
   trig:
    CHK[  hq-1 -hq--> obj-1
         ako-1 -lex-  color
               -ako-> hq-1 ]
 -----------------
-    DO[ fcn-1 -lex-  look
-              -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-1 ]
    GND[ call-1 -lex-  vis_col_ok
                -arg-> hq-1 ]
 
@@ -75,62 +65,38 @@ OP 7 - "To check if something has some location relative to another thing ..."
 
 // ================================================
 
-OP 8 - "To find out how many objects there are find a surface, look toward it, then ..."
+OP 8 - "To find out how many objects there are ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1
         ako-1 -lex-  object
               -ako-> obj-1 ]
 ----------
-  FIND[ obj-2 
-        ako-2 -lex-  surface
-              -ako-> obj-2 ]
-    DO[ fcn-1 -lex-  look
-              -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-2 ]
    GND[ call-1 -lex-  vis_subit 
                -arg-> obj-1 ]
 
-OP 9 - "To find out how many things there are with some measurement find a surface, look toward it, then ..."
+OP 9 - "To find out how many things there are with some measurement ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1 
          hq-1 -hq--> obj-1 
         ako-1 -lex-  measurement
               -ako-> hq-1 ]
 ----------
-  FIND[ obj-2 
-        ako-2 -lex-  surface
-              -ako-> obj-2 ]
-    DO[ fcn-1 -lex-  look
-              -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-2 ]
    GND[ call-1 -lex-  vis_subit
                -arg-> obj-1 ] 
 
-OP 10 - "To find out how many things there are with some color find a surface, look toward it, then ..."
+OP 10 - "To find out how many things there are with some color ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1 
          hq-1 -hq--> obj-1 
         ako-1 -lex-  color
               -ako-> hq-1 ]
 ----------
-  FIND[ obj-2 
-        ako-2 -lex-  surface
-              -ako-> obj-2 ]
-    DO[ fcn-1 -lex-  look
-              -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-2 ]
    GND[ call-1 -lex-  vis_subit
                -arg-> obj-1 ] 
 
 // ------------------------------------------------
 
-OP 11 - "To find out how many things there are with some measurement relative to something look at the something ..."
+OP 11 - "To find out how many things there are with some measurement relative to something ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1 
          hq-1 -hq--> obj-1
@@ -138,15 +104,10 @@ OP 11 - "To find out how many things there are with some measurement relative to
         ako-1 -lex-  measurement
               -ako-> hq-1 ]
 ----------
-    DO[ fcn-1 -lex-  look
-              -fcn-> act-1
-        loc-1 -lex-  at
-              -loc-> act-1
-              -ref-> obj-2 ]
    GND[ call-1 -lex-  vis_subit
                -arg-> obj-1 ] 
 
-OP 12 - "To find out how many things there are with some color relative to something look at the something ..."
+OP 12 - "To find out how many things there are with some color relative to something ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1 
          hq-1 -hq--> obj-1 
@@ -154,151 +115,122 @@ OP 12 - "To find out how many things there are with some color relative to somet
         ako-1 -lex-  color
               -ako-> hq-1 ]
 ----------
-    DO[ fcn-1 -lex-  look
-              -fcn-> act-1
-        loc-1 -lex-  at
-              -loc-> act-1
-              -ref-> obj-2 ]
    GND[ call-1 -lex-  vis_subit
                -arg-> obj-1 ] 
  
-OP 13 - "To find out how many things there are with location relative to something look at the something ..."
+OP 13 - "To find out how many things there are with location relative to something ..."
   trig:
   FIND[ cnt-1 -cnt-> obj-1 
         loc-1 -loc-> obj-1 
               -ref-> obj-2 ]
 ----------
-    DO[ fcn-1 -lex-  look
-              -fcn-> act-1
-        loc-1 -lex-  at
-              -loc-> act-1
-              -ref-> obj-2 ]
    GND[ call-1 -lex-  vis_subit 
                -arg-> obj-1 ] 
 
 // ================================================
 
-OP 14 - "To find some object find a surface, look toward it, then ..."
+OP 14 - "To find some object locate it"
   trig:
   FIND[ obj-1 
         ako-1 -lex-  object
               -ako-> obj-1 ]
 ----------
-  FIND[ obj-2 
-        ako-2 -lex-  surface
-              -ako-> obj-2 ]
-    DO[ fcn-1 -lex-  look
+    DO[ fcn-1 -lex-  locate
               -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-2 ]
+        act-1 -obj-> obj-1 ]
+
+OP 15 - "To locate something visually search for it"
+  trig:
+    DO[ fcn-1 -lex-  locate
+              -fcn-> act-1
+        act-1 -obj-> obj-1 ]
+-----------------
+    DO[ fcn-2 -lex-  search for
+              -fcn-> act-2
+        act-2 -obj-> obj-1
+        mod-1 -lex-  visually
+              -mod-> act-2 ]
+
+OP 16 - "To visually search for something ..."
+  trig:
+    DO[ fcn-1 -lex-  search for
+              -fcn-> act-1
+        act-1 -obj-> obj-1
+        mod-1 -lex-  visually
+              -mod-> act-1 ]
+-----------------
    GND[ call-1 -lex-  vis_enum 
                -arg-> obj-1 ] 
-    
-OP 15 - "To find something with some measurement find a surface, look toward it, then ..."
+
+// ------------------------------------------------    
+
+OP 17 - "To find something with some measurement find a surface locate it"
   trig:
   FIND[ obj-1 
          hq-1 -hq--> obj-1 
         ako-1 -lex-  measurement
               -ako-> hq-1 ]
 ----------
-  FIND[ obj-2 
-        ako-2 -lex-  surface
-              -ako-> obj-2 ]
-    DO[ fcn-1 -lex-  look
+    DO[ fcn-1 -lex-  locate
               -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-2 ]
-   GND[ call-1 -lex-  vis_enum 
-               -arg-> obj-1 ]
+        act-1 -obj-> obj-1 ]
 
-OP 16 - "To find something with some color find a surface, look toward it, then ..."
+OP 18 - "To find something with some color locate it"
   trig:
   FIND[ obj-1 
          hq-1 -hq--> obj-1 
         ako-1 -lex-  color
               -ako-> hq-1 ]
 ----------
-  FIND[ obj-2 
-        ako-2 -lex-  surface
-              -ako-> obj-2 ]
-    DO[ fcn-1 -lex-  look
+    DO[ fcn-1 -lex-  locate
               -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-2 ]
-   GND[ call-1 -lex-  vis_enum 
-               -arg-> obj-1 ]
+        act-1 -obj-> obj-1 ]
 
-// ------------------------------------------------
-
-OP 17 - "To find something with more something than something else look at the something else ..."
+OP 19 - "To find something with more something than something else locate it"
   trig:
   FIND[ obj-1
          hq-1 -hq--> obj-1 
               -alt-> obj-2 ]
 ----------
-    DO[ fcn-1 -lex-  look
+    DO[ fcn-1 -lex-  locate
               -fcn-> act-1
-        loc-1 -lex-  at
-              -loc-> act-1
-              -ref-> obj-2 ]
-   GND[ call-1 -lex-  vis_enum 
-               -arg-> obj-1 ] 
+        act-1 -obj-> obj-1 ]
 
-
-OP 18 - "To find something that is the most something find a surface, look toward it, then ..."
+OP 20 - "To find something that is the most something locate it"
   trig:
   FIND[ obj-1
          hq-1 -hq--> obj-1 
               -alt-> alt-1 
         alt-1 -lex-  all ]
 ----------
-  FIND[ obj-2 
-        ako-2 -lex-  surface
-              -ako-> obj-2 ]
-    DO[ fcn-1 -lex-  look
+    DO[ fcn-1 -lex-  locate
               -fcn-> act-1
-        loc-1 -lex-  toward
-              -loc-> act-1
-              -ref-> obj-2 ]
-   GND[ call-1 -lex-  vis_enum 
-               -arg-> obj-1 ] 
+        act-1 -obj-> obj-1 ]
 
-
-OP 19 - "To find something with a location relative to something else look at the something else ..."
+OP 21 - "To find something with a location relative to something else locate it"
   trig:
   FIND[ obj-1
         loc-1 -loc-> obj-1 
               -ref-> obj-2 ]
 ----------
-    DO[ fcn-1 -lex-  look
+    DO[ fcn-1 -lex-  locate
               -fcn-> act-1
-        loc-1 -lex-  at
-              -loc-> act-1
-              -ref-> obj-2 ]
-   GND[ call-1 -lex-  vis_enum 
-               -arg-> obj-1 ] 
+        act-1 -obj-> obj-1 ]
 
-OP 20 - "To find a thing with a location relative to something and some other thing look at the something ..."
+OP 22 - "To find a thing with a location relative to something and some other thing locate it"
   trig:
   FIND[ obj-1
         loc-1 -loc-> obj-1 
               -ref-> obj-2
               -ref-> obj-3 ]
 ----------
-    DO[ fcn-1 -lex-  look
+    DO[ fcn-1 -lex-  locate
               -fcn-> act-1
-        loc-1 -lex-  at
-              -loc-> act-1
-              -ref-> obj-2 ]
-   GND[ call-1 -lex-  vis_enum 
-               -arg-> obj-1 ] 
+        act-1 -obj-> obj-1 ]
 
 // ================================================
 
-OP 21 - "To look at something ..."
+OP 23 - "To look at something ..."
   trig:
     DO[ fcn-1 -lex-  look
               -fcn-> act-1
@@ -309,8 +241,7 @@ OP 21 - "To look at something ..."
    GND[ call-1 -lex-  vis_look
                -arg-> obj-1 ] 
 
-
-OP 22 - "To look toward something ..."
+OP 24 - "To look toward something ..."
   trig:
     DO[ fcn-1 -lex-  look
               -fcn-> act-1

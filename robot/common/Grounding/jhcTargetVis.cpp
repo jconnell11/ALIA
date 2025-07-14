@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,9 +77,11 @@ int jhcTargetVis::SaveVals (const char *fname) const
 
 //= Attach physical enhanced body and make pointers to some pieces.
 
-void jhcTargetVis::local_platform (void *soma) 
+void jhcTargetVis::local_platform (void *soma, const char *kind) 
 {
-  rwi = (jhcManusRWI *) soma;
+  if (strcmp(kind, "jhcManusGrok") != 0)         // type check
+    return;
+  rwi = (jhcManusGrok *) soma;
   seg  = rwi->seg;
   ext  = rwi->ext;
   body = rwi->body;

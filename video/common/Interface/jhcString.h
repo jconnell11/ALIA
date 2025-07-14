@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSTRING_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSTRING_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -68,12 +65,5 @@ public:
   void Sync ()    {W2C();}
 #endif
 
-
 };
-
-
-#endif  // once
-
-
-
 

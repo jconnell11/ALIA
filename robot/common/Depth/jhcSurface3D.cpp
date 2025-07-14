@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@
 
 #include "Depth/jhcSurface3D.h"     // common robot
 
-
+#include "Processing/jhcStats.h"
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -36,14 +36,16 @@
 
 jhcSurface3D::jhcSurface3D ()
 {
-  i2m.SetSize(4, 4);
-  xform.SetSize(4, 4);
-  m2i.SetSize(4, 4);
+  s2m.SetSize(4, 4);
+  s2f.SetSize(4, 4);
+  m2v.SetSize(4, 4);
   SetSize();
   SetCamera();
   SetView();
+  SetFix();
   SetOptics();
   SetProject();
+  choke = 1760;
 }
 
 
@@ -57,7 +59,7 @@ void jhcSurface3D::SetSize (const jhcImg& ref, int full)
 
 //= Set sizes of internal images directly.
 
-void jhcSurface3D::SetSize (int x, int y, int full)
+void jhcSurface3D::SetSize (int x, int y, int full, double f, double sc)
 {
   // save input size
   iw = x;
@@ -67,6 +69,10 @@ void jhcSurface3D::SetSize (int x, int y, int full)
   hw = ((full > 0) ? x : x / 2);
   hh = ((full > 0) ? y : y / 2);
   wxyz.SetSize(hw, hh, 6);
+
+  // possibly set optical parameters of sensor (for convenience)
+  if (f > 0.0)
+    SetOptics(f, sc);
 }
 
 
@@ -146,7 +152,7 @@ double jhcSurface3D::LineTilt (const jhcImg& d16, double x0, double y0, double x
   while (ir < stop)
   {
     iz = d16.ARefChk16(ROUND(ix), ROUND(iy), 0);
-    if ((iz >= 1760) && (iz <= 40000))
+    if ((iz >= choke) && (iz <= 40000))
     {
       // find actual 3D coordinates and get planar distance from start
       WorldPt(x, y, z, ix, iy, iz);
@@ -188,9 +194,11 @@ double jhcSurface3D::LineTilt (const jhcImg& d16, double x0, double y0, double x
 //                         Standard Overhead Map                         //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Set up basic coordinate transform matrices for camera pose.
+//= Set up basic coordinate transform matrix for depth sensor pose to overhead map.
 
-void jhcSurface3D::BuildMatrices (double cpan, double ctilt, double croll, double x0, double y0, double z0)
+void jhcSurface3D::RngToMap (double cpan, double ctilt, double croll, 
+                             double x0, double y0, double z0, 
+                             double pcal, double tcal, double rcal)
 {
   double dsc = ksc / 101.6, finv = 2.0 * dsc / kf;    // 101.6 = 4 * 25.4 mm/in
 
@@ -199,20 +207,55 @@ void jhcSurface3D::BuildMatrices (double cpan, double ctilt, double croll, doubl
     finv *= 0.5;
 
   // convert image coordinates to real distances (in inches)
-  i2m.Magnification(finv, finv, -dsc);
+  s2m.Magnification(finv, finv, -dsc);          
+
+  // adjust for camera mounting errors
+  s2m.RotateZ(rcal);
+  s2m.RotateY(pcal);
+  s2m.RotateX(tcal);
 
   // build up coordinate transform for surface
-  i2m.RotateZ(croll);
-  i2m.RotateX(ctilt);
-  i2m.RotateZ(cpan);
-  i2m.Translate(x0, y0, z0);
+  s2m.RotateZ(croll);                  // view along -z axis
+  s2m.RotateX(ctilt);                  // view along y axis
+  s2m.RotateZ(cpan);
+  s2m.Translate(x0, y0, z0);
 
   // change everything to inches x 50 and make zero be 32768
-  i2m.Magnify(50.0);
-  i2m.Translate(32768.0, 32768.0, 32768.0);
+  s2m.Magnify(50.0);
+  s2m.Translate(32768.0, 32768.0, 32768.0);
+}
 
-  // save inverse also
-  m2i.Invert(i2m);
+
+//= Set up basic coordinate transform matrix for overhead map to color camera pose.
+// makes up z coordinate for each pixel which is in 0.25mm steps away from camera
+
+void jhcSurface3D::MapToCol (double cpan, double ctilt, double croll, 
+                             double x0, double y0, double z0, double f, double sc,
+                             double pcal, double tcal, double rcal)
+{
+  double psc = 101.6 / sc, fsc = (f * psc) / 2.0;          // 101.6 = 4 * 25.4 mm/in    
+
+  // check if cached image is full sized (not half)
+  if (hw == iw)
+    fsc *= 2.0;
+
+  // remove 32768 offset and change everything back to inches
+  m2v.Translation(-32768.0, -32768.0, -32768.0);
+  m2v.Magnify(0.02);
+
+  // normalize positions for camera orientation
+  m2v.Translate(-x0, -y0, -z0);
+  m2v.RotateZ(-cpan);                  // view along y axis
+  m2v.RotateX(-ctilt);                 // view along -z axis
+  m2v.RotateZ(-croll);
+
+  // adjust for camera mounting errors
+  m2v.RotateX(-tcal);
+  m2v.RotateY(-pcal);
+  m2v.RotateZ(-rcal);
+
+  // convert to depth sensor pixels and 0.25 mm steps
+  m2v.Magnify(fsc, fsc, -psc);
 }
 
 
@@ -220,7 +263,8 @@ void jhcSurface3D::BuildMatrices (double cpan, double ctilt, double croll, doubl
 // generally need to call SetMap first to describe destination image
 
 int jhcSurface3D::FloorMap0 (jhcImg& dest, const jhcImg& d16, int clr, 
-                             double pan, double tilt, double roll, double xcam, double ycam, double zcam)
+                             double pan, double tilt, double roll, double xcam, double ycam, double zcam,
+                             double pcal, double tcal, double rcal)
 {
   SetCamera(xcam, ycam, zcam);
   CacheXYZ(d16, pan, tilt, roll);
@@ -238,7 +282,8 @@ int jhcSurface3D::FloorMap0 (jhcImg& dest, const jhcImg& d16, int clr,
 
 int jhcSurface3D::FloorMap (jhcImg& dest, const jhcImg& d16, int clr,
                             double pan, double tilt, double roll, 
-                            double xcam, double ycam, double zcam)
+                            double xcam, double ycam, double zcam,
+                            double pcal, double tcal, double rcal)
 {
   double a0, b0, c0, d0, a1, b1, c1, d1, a2, b2, c2, d2, abc0, abc1, abc2;
   int zlim = __min(ROUND(dmax * 101.6 / ksc), 40000);  // max = 10m (32.8')    
@@ -256,31 +301,31 @@ int jhcSurface3D::FloorMap (jhcImg& dest, const jhcImg& d16, int clr,
 
   // figure out transform (enables coordinate mapping functions)
   // 0 degs is camera horizontal
-  BuildMatrices(pan, tilt + 90.0, roll, xcam, ycam, zcam);           
+  RngToMap(pan, tilt + 90.0, roll, xcam, ycam, zcam, pcal, tcal, rcal);           
 
   // add in conversion to overhead map with x = 0 in middle and z0 -> 1
-  xform.Copy(i2m);
-  xform.Translate(-32768.0, -32768.0, -32768.0 - 50.0 * z0);
-  xform.Magnify(0.02 / ipp, 0.02 / ipp, 0.02 * 253.0 / (z1 - z0));
-  xform.Translate(0.5 * dest.XDim(), 0.0, 1.0);
+  s2f.Copy(s2m);
+  s2f.Translate(-32768.0, -32768.0, -32768.0 - 50.0 * z0);
+  s2f.Magnify(0.02 / ipp, 0.02 / ipp, 0.02 * 253.0 / (z1 - z0));
+  s2f.Translate(0.5 * dest.XDim(), 0.0, 1.0);
 
   // extract factors: ix = (a0 * x + b0 * y + c0) * z + d0
-  a0 = xform.MRef(0, 0);
-  b0 = xform.MRef(1, 0);
-  c0 = xform.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
-  d0 = xform.MRef(3, 0);
+  a0 = s2f.MRef(0, 0);
+  b0 = s2f.MRef(1, 0);
+  c0 = s2f.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
+  d0 = s2f.MRef(3, 0);
 
   // extract factors: iy = (a1 * x + b1 * y + c1) * z + d1
-  a1 = xform.MRef(0, 1);
-  b1 = xform.MRef(1, 1);
-  c1 = xform.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
-  d1 = xform.MRef(3, 1);
+  a1 = s2f.MRef(0, 1);
+  b1 = s2f.MRef(1, 1);
+  c1 = s2f.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
+  d1 = s2f.MRef(3, 1);
 
   // extract factors: iz = (a2 * x + b2 * y + c2) * z + d2
-  a2 = xform.MRef(0, 2);
-  b2 = xform.MRef(1, 2);
-  c2 = xform.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
-  d2 = xform.MRef(3, 2);
+  a2 = s2f.MRef(0, 2);
+  b2 = s2f.MRef(1, 2);
+  c2 = s2f.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
+  d2 = s2f.MRef(3, 2);
 
   // apply coordinate transform to depth pixels
   for (y = 0; y < hh; y++, zrow += zln)
@@ -293,7 +338,7 @@ int jhcSurface3D::FloorMap (jhcImg& dest, const jhcImg& d16, int clr,
 
     // remap pixels in a row of the depth image
     for (x = 0; x < hw; x++, z += zstep, abc0 += a0, abc1 += a1, abc2 += a2)
-      if ((*z >= 1760) && (*z <= zlim))
+      if ((*z >= choke) && (*z <= zlim))
       {
         // find map location for pixel
         ix = (int)(abc0 * (*z) + d0);
@@ -325,7 +370,8 @@ int jhcSurface3D::FloorMap (jhcImg& dest, const jhcImg& d16, int clr,
 
 int jhcSurface3D::FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr,
                              double pan, double tilt, double roll, 
-                             double xcam, double ycam, double zcam, int n)
+                             double xcam, double ycam, double zcam, int n,
+                             double pcal, double tcal, double rcal)
 {
   double a0, b0, c0, d0, a1, b1, c1, d1, a2, b2, c2, d2, abc0, abc1, abc2;
   double sc = 7.1e-7, sc2 = 0.5 * sc, grid = 101.6 * ipp, gr2 = 0.5 * grid + 0.5;
@@ -341,37 +387,37 @@ int jhcSurface3D::FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr,
   if (!dest.Valid(1) || !d16.SameFormat(iw, ih, 2))
     return Fatal("Bad images to jhcSurface3D::FloorMap2");
   if (n <= 0)
-    return FloorMap(dest, d16, clr, pan, tilt, roll, xcam, ycam, zcam);
+    return FloorMap(dest, d16, clr, pan, tilt, roll, xcam, ycam, zcam, pcal, tcal, rcal);           
   if (clr > 0)
     dest.FillArr(0);
 
   // figure out transform (enables coordinate mapping functions)
   // 0 degs is camera horizontal
-  BuildMatrices(pan, tilt + 90.0, roll, xcam, ycam, zcam);           
+  RngToMap(pan, tilt + 90.0, roll, xcam, ycam, zcam, pcal, tcal, rcal);                     
 
   // add in conversion to overhead map with x = 0 in middle and z0 -> 1
-  xform.Copy(i2m);
-  xform.Translate(-32768.0, -32768.0, -32768.0 - 50.0 * z0);
-  xform.Magnify(0.02 / ipp, 0.02 / ipp, 0.02 * 253.0 / (z1 - z0));
-  xform.Translate(0.5 * dest.XDim(), 0.0, 1.0);
+  s2f.Copy(s2m);
+  s2f.Translate(-32768.0, -32768.0, -32768.0 - 50.0 * z0);
+  s2f.Magnify(0.02 / ipp, 0.02 / ipp, 0.02 * 253.0 / (z1 - z0));
+  s2f.Translate(0.5 * dest.XDim(), 0.0, 1.0);
 
   // extract factors: ix = (a0 * x + b0 * y + c0) * z + d0
-  a0 = xform.MRef(0, 0);
-  b0 = xform.MRef(1, 0);
-  c0 = xform.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
-  d0 = xform.MRef(3, 0);
+  a0 = s2f.MRef(0, 0);
+  b0 = s2f.MRef(1, 0);
+  c0 = s2f.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
+  d0 = s2f.MRef(3, 0);
 
   // extract factors: iy = (a1 * x + b1 * y + c1) * z + d1
-  a1 = xform.MRef(0, 1);
-  b1 = xform.MRef(1, 1);
-  c1 = xform.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
-  d1 = xform.MRef(3, 1);
+  a1 = s2f.MRef(0, 1);
+  b1 = s2f.MRef(1, 1);
+  c1 = s2f.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
+  d1 = s2f.MRef(3, 1);
 
   // extract factors: iz = (a2 * x + b2 * y + c2) * z + d2
-  a2 = xform.MRef(0, 2);
-  b2 = xform.MRef(1, 2);
-  c2 = xform.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
-  d2 = xform.MRef(3, 2);
+  a2 = s2f.MRef(0, 2);
+  b2 = s2f.MRef(1, 2);
+  c2 = s2f.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
+  d2 = s2f.MRef(3, 2);
 
   // apply coordinate transform to depth pixels
   for (y = 0; y < hh; y++, zrow += zln)
@@ -384,7 +430,7 @@ int jhcSurface3D::FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr,
 
     // remap pixels in a row of the depth image
     for (x = 0; x < hw; x++, z += zstep, abc0 += a0, abc1 += a1, abc2 += a2)
-      if ((*z >= 1760) && (*z <= zlim))
+      if ((*z >= choke) && (*z <= zlim))
       {
         // STREAK - determine multi-fill range around nominal value
         dev = 0;
@@ -424,7 +470,8 @@ int jhcSurface3D::FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr,
 // Note: does NOT do CacheXYZ so functions like MapBack and Ground will not work
 
 int jhcSurface3D::FloorColor (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const jhcImg& d16, int clr,
-                              double pan, double tilt, double roll, double xcam, double ycam, double zcam)
+                              double pan, double tilt, double roll, double xcam, double ycam, double zcam,
+                              double pcal, double tcal, double rcal)
 {
   double a0, b0, c0, d0, a1, b1, c1, d1, a2, b2, c2, d2, abc0, abc1, abc2;
   int zlim = __min(ROUND(dmax * 101.6 / ksc), 40000);                          // max = 10m (32.8')    
@@ -448,31 +495,31 @@ int jhcSurface3D::FloorColor (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const
 
   // figure out transform (enables coordinate mapping functions)
   // 0 degs is camera horizontal
-  BuildMatrices(pan, tilt + 90.0, roll, xcam, ycam, zcam);           
+  RngToMap(pan, tilt + 90.0, roll, xcam, ycam, zcam, pcal, tcal, rcal);           
 
   // add in conversion to overhead map with x = 0 in middle and z0 -> 1
-  xform.Copy(i2m);
-  xform.Translate(-32768.0, -32768.0, -32768.0 - 50.0 * z0);
-  xform.Magnify(0.02 / ipp, 0.02 / ipp, 0.02 * 253.0 / (z1 - z0));
-  xform.Translate(0.5 * hts.XDim(), 0.0, 1.0);
+  s2f.Copy(s2m);
+  s2f.Translate(-32768.0, -32768.0, -32768.0 - 50.0 * z0);
+  s2f.Magnify(0.02 / ipp, 0.02 / ipp, 0.02 * 253.0 / (z1 - z0));
+  s2f.Translate(0.5 * hts.XDim(), 0.0, 1.0);
 
   // extract factors: ix = (a0 * x + b0 * y + c0) * z + d0
-  a0 = xform.MRef(0, 0);
-  b0 = xform.MRef(1, 0);
-  c0 = xform.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
-  d0 = xform.MRef(3, 0);
+  a0 = s2f.MRef(0, 0);
+  b0 = s2f.MRef(1, 0);
+  c0 = s2f.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
+  d0 = s2f.MRef(3, 0);
 
   // extract factors: iy = (a1 * x + b1 * y + c1) * z + d1
-  a1 = xform.MRef(0, 1);
-  b1 = xform.MRef(1, 1);
-  c1 = xform.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
-  d1 = xform.MRef(3, 1);
+  a1 = s2f.MRef(0, 1);
+  b1 = s2f.MRef(1, 1);
+  c1 = s2f.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
+  d1 = s2f.MRef(3, 1);
 
   // extract factors: iz = (a2 * x + b2 * y + c2) * z + d2
-  a2 = xform.MRef(0, 2);
-  b2 = xform.MRef(1, 2);
-  c2 = xform.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
-  d2 = xform.MRef(3, 2);
+  a2 = s2f.MRef(0, 2);
+  b2 = s2f.MRef(1, 2);
+  c2 = s2f.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
+  d2 = s2f.MRef(3, 2);
 
   // apply coordinate transform to depth pixels
   for (y = 0; y < hh; y++, srow += sln, zrow += zln)
@@ -486,7 +533,7 @@ int jhcSurface3D::FloorColor (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const
 
     // remap pixels in a row of the depth image
     for (x = 0; x < hw; x++, s += sstep, z += zstep, abc0 += a0, abc1 += a1, abc2 += a2)
-      if ((*z >= 1760) && (*z <= zlim))
+      if ((*z >= choke) && (*z <= zlim))
       {
         // find map location for pixel and check if in valid region
         iz = (int)(abc2 * (*z) + d2);
@@ -556,7 +603,8 @@ int jhcSurface3D::FloorPel (double ht)
 // limited to about 54 feet in each direction relative to system origin
 // takes about 3.2ms for SIF on 3.2GHz Pentium
 
-int jhcSurface3D::CacheXYZ (const jhcImg& d16, double cpan, double ctilt, double croll, double dmax)
+int jhcSurface3D::CacheXYZ (const jhcImg& d16, double cpan, double ctilt, double croll, double dmax,
+                            double pcal, double tcal, double rcal)
 {
   int zlim = __min(ROUND(dmax * 101.6 / ksc), 40000);    // 101.6 = 4 * 25.4, max = 10m (32.8')
   int x, y, sk = wxyz.Skip() >> 1, ln2 = d16.Line();
@@ -569,25 +617,25 @@ int jhcSurface3D::CacheXYZ (const jhcImg& d16, double cpan, double ctilt, double
     return Fatal("Bad images to jhcSurface3D::CacheXYZ");
 
   // figure out mapping to use (no centering or perspective)
-  BuildMatrices(cpan, ctilt + 90.0, croll, cx, cy, cz);             // 0 degs is camera horizontal
+  RngToMap(cpan, ctilt + 90.0, croll, cx, cy, cz, pcal, tcal, rcal);   // 0 degs is camera horizontal
 
   // extract factors: ix = (a0 * x + b0 * y + c0) * z + d0
-  a0 = i2m.MRef(0, 0);
-  b0 = i2m.MRef(1, 0);
-  c0 = i2m.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
-  d0 = i2m.MRef(3, 0);
+  a0 = s2m.MRef(0, 0);
+  b0 = s2m.MRef(1, 0);
+  c0 = s2m.MRef(2, 0) - 0.5 * (a0 * (hw - 1) + b0 * (hh - 1));
+  d0 = s2m.MRef(3, 0);
 
   // extract factors: iy = (a1 * x + b1 * y + c1) * z + d1
-  a1 = i2m.MRef(0, 1);
-  b1 = i2m.MRef(1, 1);
-  c1 = i2m.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
-  d1 = i2m.MRef(3, 1);
+  a1 = s2m.MRef(0, 1);
+  b1 = s2m.MRef(1, 1);
+  c1 = s2m.MRef(2, 1) - 0.5 * (a1 * (hw - 1) + b1 * (hh - 1));
+  d1 = s2m.MRef(3, 1);
 
   // extract factors: iz = (a2 * x + b2 * y + c2) * z + d2
-  a2 = i2m.MRef(0, 2);
-  b2 = i2m.MRef(1, 2);
-  c2 = i2m.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
-  d2 = i2m.MRef(3, 2);
+  a2 = s2m.MRef(0, 2);
+  b2 = s2m.MRef(1, 2);
+  c2 = s2m.MRef(2, 2) - 0.5 * (a2 * (hw - 1) + b2 * (hh - 1));
+  d2 = s2m.MRef(3, 2);
 
   // apply coordinate transform to depth pixels
   for (y = 0; y < hh; y++, dxyz += sk, zrow += zln)
@@ -600,7 +648,7 @@ int jhcSurface3D::CacheXYZ (const jhcImg& d16, double cpan, double ctilt, double
 
     // remap pixels in a row of the depth image
     for (x = 0; x < hw; x++, dxyz += 3, z += zstep, abc0 += a0, abc1 += a1, abc2 += a2)
-      if ((*z >= 1760) && (*z <= zlim))
+      if ((*z >= choke) && (*z <= zlim))
       {
         // find world location for pixel
         dxyz[0] = (US16)(abc0 * (*z) + d0);
@@ -757,14 +805,15 @@ int jhcSurface3D::MapBack (jhcImg& dest, const jhcImg& src, double z0, double z1
 //                            Reverse Mapping                            //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Create binary mask showing where overhead (map) blob comes from in frontal view.
+//= Create binary mask showing where overhead (map) blob comes from in sensor frontal view.
 // recomputes map (x y) and ensures ht in range [over under] to lookup blob number in cc image 
-// assumes mapping parameters (xform) already set by one of main functions (e.g. FloorMap2)
+// assumes mapping parameters (s2f) already set by one of main functions (e.g. FloorMap2)
 // to make searching more efficient can supply frontal ROI by presetting dest
 // mask only written inside this ROI so clear all of mask first if displaying
 // adjusts mask ROI at exit to contain just marked pixels (add any border externally)
 // does incremental back-projection without need for CacheXYZ to be valid
 // useful for anaylzing color of objects (more pixels visible in frontal image)
+// NOTE: projects map pixels to sensor, but overhead map view means vertical sides missed!
 // returns 1 if okay, 0 if no valid pixels in mask
 
 int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, double under, const jhcImg& cc, int n)
@@ -785,22 +834,22 @@ int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, doubl
   mask.FillArr(0);
 
   // extract factors: ix = (a0 * x + b0 * y + c0) * z + d0
-  a0 = xform.MRef(0, 0);
-  b0 = xform.MRef(1, 0);
-  c0 = xform.MRef(2, 0) - 0.5 * (a0 * (iw - 1) + b0 * (ih - 1));
-  d0 = xform.MRef(3, 0);
+  a0 = s2f.MRef(0, 0);
+  b0 = s2f.MRef(1, 0);
+  c0 = s2f.MRef(2, 0) - 0.5 * (a0 * (iw - 1) + b0 * (ih - 1));
+  d0 = s2f.MRef(3, 0);
 
   // extract factors: iy = (a1 * x + b1 * y + c1) * z + d1
-  a1 = xform.MRef(0, 1);
-  b1 = xform.MRef(1, 1);
-  c1 = xform.MRef(2, 1) - 0.5 * (a1 * (iw - 1) + b1 * (ih - 1));
-  d1 = xform.MRef(3, 1);
+  a1 = s2f.MRef(0, 1);
+  b1 = s2f.MRef(1, 1);
+  c1 = s2f.MRef(2, 1) - 0.5 * (a1 * (iw - 1) + b1 * (ih - 1));
+  d1 = s2f.MRef(3, 1);
 
   // extract factors: iz = (a2 * x + b2 * y + c2) * z + d2
-  a2 = xform.MRef(0, 2);
-  b2 = xform.MRef(1, 2);
-  c2 = xform.MRef(2, 2) - 0.5 * (a2 * (iw - 1) + b2 * (ih - 1));
-  d2 = xform.MRef(3, 2);
+  a2 = s2f.MRef(0, 2);
+  b2 = s2f.MRef(1, 2);
+  c2 = s2f.MRef(2, 2) - 0.5 * (a2 * (iw - 1) + b2 * (ih - 1));
+  d2 = s2f.MRef(3, 2);
 
   // adjust for left edge
   c0 += a0 * x0;
@@ -817,7 +866,7 @@ int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, doubl
 
     // remap pixels in a row of the depth image
     for (x = x0; x <= xlim; x++, d++, z++, abc0 += a0, abc1 += a1, abc2 += a2)
-      if ((*z >= 1760) && (*z <= zlim))
+      if ((*z >= choke) && (*z <= zlim))
       {
         // find map location for pixel and check if in valid map region
         iz = (int)(abc2 * (*z) + d2);
@@ -851,11 +900,151 @@ int jhcSurface3D::FrontMask (jhcImg& mask, const jhcImg& d16, double over, doubl
 }
 
 
+//= Create binary mask showing where overhead (map) blob comes from in alternate camera view.
+// recomputes map (x y) and ensures ht in range [over under] to lookup blob number in cc image 
+// assumes sensor -> map parameters (s2m) already set by one of main functions (e.g. FloorMap2)
+// assumes map -> view parameters (m2v) already set by SetColorGeom() for alternate camera
+// to make searching more efficient can supply sensor bounding box by presetting mask ROI (for d16!)
+// adjusts mask ROI at exit to contain just marked pixels (add any border externally)
+// NOTE: 3-way projection is better for object sides: sensor -> map + pixel validation -> view 
+// returns 1 if okay, 0 if no valid pixels in mask
+
+int jhcSurface3D::ViewMask (jhcImg& mask, const jhcImg& d16, double over, double under, const jhcImg& cc, int n)
+{
+  jhcMatrix s2v(4, 4);
+  double a0, b0, c0, d0, a1, b1, c1, d1, a2, b2, c2, d2, abc0, abc1, abc2;
+  double va0, vb0, vc0, vd0, va1, vb1, vc1, vd1, va2, vb2, vc2, vd2, vabc0, vabc1, vabc2;
+  double vx, vy, vz, midx = 0.5 * (iw - 1), midy = 0.5 * (ih - 1);
+  int zbot = (int)(1.0 + 253.0 * (over  - z0) / (z1 - z0));
+  int zcut = (int)(1.0 + 253.0 * (under - z0) / (z1 - z0));
+  int x0 = mask.RoiX(), xlim = mask.RoiLimX(), y0 = mask.RoiY(), ylim = mask.RoiLimY();
+  int mw = cc.XDim(), mh = cc.YDim(), sk2 = d16.RoiSkip(mask) >> 1;
+  int x, y, mx, my, mz, ix, iy, lf = iw, rt = 0, bot = ih, top = 0;
+  const US16 *z = (const US16 *) d16.RoiSrc(mask);
+
+  // sanity check (view must be same size as sensor to make loops work)
+  if (!mask.SameFormat(iw, ih, 1) || !mask.SameSize(d16, 2))
+    return Fatal("Bad images to jhcSurface3D::ViewMask");
+  mask.FillArr(0);
+
+  // SENSOR -> FLOOR transform -------------------------------------------
+  // extract factors: mx = (a0 * x + b0 * y + c0) * z + d0
+  a0 = s2f.MRef(0, 0);
+  b0 = s2f.MRef(1, 0);
+  c0 = s2f.MRef(2, 0) - a0 * midx - b0 * midy; 
+  d0 = s2f.MRef(3, 0);
+
+  // extract factors: my = (a1 * x + b1 * y + c1) * z + d1
+  a1 = s2f.MRef(0, 1);
+  b1 = s2f.MRef(1, 1);
+  c1 = s2f.MRef(2, 1) - a1 * midx - b1 * midy;    
+  d1 = s2f.MRef(3, 1);
+
+  // extract factors: mz = (a2 * x + b2 * y + c2) * z + d2
+  a2 = s2f.MRef(0, 2);
+  b2 = s2f.MRef(1, 2);
+  c2 = s2f.MRef(2, 2) - a2 * midx - b2 * midy;   
+  d2 = s2f.MRef(3, 2);
+
+  // adjust for left edge
+  c0 += a0 * x0;
+  c1 += a1 * x0;
+  c2 += a2 * x0;
+
+  // SENSOR -> MAP -> VIEW transform -------------------------------------
+  s2v.MatMat(m2v, s2m);
+
+  // extract factors: vx = (va0 * x + vb0 * y + vc0) * z + vd0
+  va0 = s2v.MRef(0, 0);
+  vb0 = s2v.MRef(1, 0);
+  vc0 = s2v.MRef(2, 0) - va0 * midx - vb0 * midy;  
+  vd0 = s2v.MRef(3, 0);
+
+  // extract factors: vy = (va1 * x + vb1 * y + vc1) * z + vd1
+  va1 = s2v.MRef(0, 1);
+  vb1 = s2v.MRef(1, 1);
+  vc1 = s2v.MRef(2, 1) - va1 * midx - vb1 * midy;  
+  vd1 = s2v.MRef(3, 1);
+
+  // extract factors: vz = (va2 * x + vb2 * y + vc2) * z + vd2
+  va2 = s2v.MRef(0, 2);
+  vb2 = s2v.MRef(1, 2);
+  vc2 = s2v.MRef(2, 2) - va2 * midx - vb2 * midy;  
+  vd2 = s2v.MRef(3, 2);
+
+  // adjust for left edge
+  vc0 += va0 * x0;
+  vc1 += va1 * x0;
+  vc2 += va2 * x0;
+
+  // scan pixels in depth SENSOR ROI and find associated overhead map pixels
+  for (y = y0; y <= ylim; y++, z += sk2)
+  {
+    // compute beginning values for this line (prevent round-off drift)
+    abc0 = b0 * y + c0;
+    abc1 = b1 * y + c1;
+    abc2 = b2 * y + c2;
+
+    // compute beginning values for sensor->view projection
+    vabc0 = vb0 * y + vc0;
+    vabc1 = vb1 * y + vc1;
+    vabc2 = vb2 * y + vc2;
+
+    // project all SENSOR pixels in a row to map image and view image
+    for (x = x0; x <= xlim; x++, z++, abc0 += a0, abc1 += a1, abc2 += a2, vabc0 += va0, vabc1 += va1, vabc2 += va2)
+//      if ((*z >= choke) && (*z <= zlim))
+if (*z < 0xFFFF)
+      {
+        // find map location for SENSOR pixel and check if in valid region
+        mz = (int)(abc2 * (*z) + d2);
+        if ((mz < zbot) || (mz >= zcut))
+          continue;
+        my = (int)(abc1 * (*z) + d1);
+        if ((my < 0) || (my >= mh))
+          continue;
+        mx = (int)(abc0 * (*z) + d0);
+        if ((mx < 0) || (mx >= mw))
+          continue;
+
+        // see if component at this surface location matches desired
+        if (cc.ARef16(mx, my) == n)
+        {
+          // find view pixel for original SENSOR pixel and check if in bounds
+          vz = vabc2 * (*z) + vd2;
+          if (vz < 0.0)
+            continue;
+          vy = vabc1 * (*z) + vd1;
+          iy = ROUND(0.5 * (ih - 1) + (vy / vz));
+          if ((iy < 0) || (iy >= ih))
+            continue;
+          vx = vabc0 * (*z) + vd0;
+          ix = ROUND(0.5 * (iw - 1) + (vx / vz));
+          if ((ix < 0) || (ix >= iw))
+            continue;
+
+          // mark pixel and expand cumulative non-zero zone for output
+          mask.ASet(ix, iy, 0, 255);          
+          lf  = __min(lf, ix);
+          rt  = __max(rt, ix);
+          bot = __min(bot, iy);
+          top = __max(top, iy);
+        }
+      }
+  }
+
+  // adjust output ROI so it encloses just mask pixels
+  mask.SetRoiLims(lf, bot, rt, top);
+  if (mask.RoiArea() <= 0) 
+    return 0;
+  return 1;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                     Coordinate Transformations                        //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Determines coordinate of an image pixel in cached map.
+//= Determines coordinate of an image pixel in cached map (not world).
 // image coordinates are wrt original sized input, z is native 4x mm scale
 
 void jhcSurface3D::ToCache (double& mx, double& my, double& mz, 
@@ -864,14 +1053,14 @@ void jhcSurface3D::ToCache (double& mx, double& my, double& mz,
   jhcMatrix img(4), map(4);
 
   img.SetVec3((ix - 0.5 * (hw - 1)) * iz, (iy - 0.5 * (hh - 1)) * iz, iz);
-  map.MatVec(i2m, img);
+  map.MatVec(s2m, img);
   mx = map.X();
   my = map.Y();
   mz = map.Z();
 }
 
 
-//= Returns coordinates wrt original sized image of some point in cached world map.
+//= Returns coordinates wrt original sized image of some point in cached map (not world).
 // all map coordinates are in 0.02 inch steps with zero at 32768
 // ix and iy are in pixels, iz is in 4 * mm (101.6 * in)
 
@@ -881,7 +1070,7 @@ void jhcSurface3D::FromCache (double& ix, double& iy, double& iz,
   jhcMatrix img(4), map(4);
 
   map.SetVec3(mx, my, mz);
-  img.MatVec(m2i, map);
+  img.MatVec(m2v, map);
   ix = 0.5 * (hw - 1) + (img.X() / img.Z());
   iy = 0.5 * (hh - 1) + (img.Y() / img.Z());
   iz = img.Z();
@@ -955,7 +1144,8 @@ int jhcSurface3D::ImgPt (double& ix, double& iy,
 int jhcSurface3D::ImgRect (jhcRoi& box, double wx, double wy, double wz, 
                            double xsz, double zsz, double sc) const
 {
-  double x, z, ix, iy, lf, rt, bot, top;
+  double lf = 0.0, rt = 0.0, bot = 0.0, top = 0.0;
+  double x, z, ix, iy;
   int i, j;
 
   // examine all 4 corners of plane
@@ -1003,7 +1193,8 @@ int jhcSurface3D::ImgRect (jhcRoi& box, double wx, double wy, double wz,
 int jhcSurface3D::ImgCube (jhcRoi& box, double wx, double wy, double wz, 
                            double xsz, double ysz, double zsz, double sc) const
 {
-  double x, y, z, ix, iy, lf, rt, bot, top;
+  double lf = 0.0, rt = 0.0, bot = 0.0, top = 0.0;
+  double x, y, z, ix, iy;
   int i, j, k;
   
   // examine all 8 corners of volume
@@ -1056,26 +1247,27 @@ int jhcSurface3D::ImgPrism (jhcRoi& box, double wx, double wy, double wz, double
 {
   double rads = D2R * ang, c = cos(rads), s = sin(rads);
   double idx = len * c, idy = len * s, jdx = -wid * s, jdy = wid * c;
-  double x0, y0, x, y, z, ix, iy, lf, rt, bot, top;
+  double lf = 0.0, rt = 0.0, bot = 0.0, top = 0.0;
+  double x0, y0, x, y, z, ix, iy;
   int i, j, k;
   
   // examine all 8 corners of volume
   x0 = wx - 0.5 * idx;
   y0 = wy - 0.5 * idy;
-  for (i = 0; i < 2; i++, x0 += idx, y0 += idy)
+  for (i = 0; i < 2; i++, x0 += idx, y0 += idy)    // planar position of 2 long ends
   {
     x = x0 - 0.5 * jdx;
     y = y0 - 0.5 * jdy;
-    for (j = 0; j < 2; j++, x += jdx, y += jdy)
+    for (j = 0; j < 2; j++, x += jdx, y += jdy)    // position of 2 corners of end
     {
       z = wz - 0.5 * ht;
-      for (k = 0; k < 2; k++, z += ht)
+      for (k = 0; k < 2; k++, z += ht)             // 2 heights: on table and full
       {
         // find image coordinates of corner
         ImgPt(ix, iy, x, y, z, sc);
         if ((i == 0) && (j == 0) && (k == 0))
         {
-          // remember if first point tried
+          // if first point tried, just remember 
           lf = ix;
           rt = ix;
           bot = iy;
@@ -1083,7 +1275,7 @@ int jhcSurface3D::ImgPrism (jhcRoi& box, double wx, double wy, double wz, double
         }       
         else
         {
-          // add to bounds calculation
+          // else expand point set bounds
           lf = __min(lf, ix);
           rt = __max(rt, ix);
           bot = __min(bot, iy);

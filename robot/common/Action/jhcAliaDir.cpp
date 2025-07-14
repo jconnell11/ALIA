@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -840,6 +840,8 @@ int jhcAliaDir::next_method ()
   else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) ||
            (kind == JDIR_EACH) || (kind == JDIR_ANY))
     verdict = recall_assume();                             // clears guesses
+  else if (((kind == JDIR_CHK) || (kind == JDIR_ESC)) && (chk0 > 0))
+    chk0 = 0;                                              // fact does not have to be new
   else if (kind == JDIR_NOTE)
     verdict = 1;                                           // NOTE always succeeds
   else 
@@ -1110,7 +1112,8 @@ int jhcAliaDir::pick_method ()
   if (lvl > core->MaxStack())
     return jprintf("%*s>>> Subgoal stack too deep for %s[ %s ] !\n", lvl, "", KindTag(), KeyTag());
   if (match_ops(sel) > 0)
-    cnt = max_spec(sel);
+    if ((cnt = max_spec(sel)) > 0)
+      cnt = min_proc(sel);
   if (cnt <= 0)
   {
     if (noisy >= 2) 
@@ -1151,7 +1154,8 @@ int jhcAliaDir::pick_method ()
   // show expansion of operator chosen (possibly a persistent intention)
   if ((noisy >= 1) && (meth != NULL))
   {
-    jprintf("%*sApplying OP %d to %s[ %s ]", lvl, "", op[sel]->OpNum(), KindTag(), KeyTag());
+    jprintf("%*sApplying OP %d to %s[ %s ] %4.2f/%4.2f", lvl, "", 
+            op[sel]->OpNum(), KindTag(), KeyTag(), op[sel]->Pref(), (core->atree).MinPref());
     if (cnt > 1)
       jprintf(" (%d choices)", cnt);
     jprintf(" ...\n");
@@ -1252,6 +1256,40 @@ int jhcAliaDir::max_spec (int& sel)
     }
   return cnt;
 }
+
+
+//= Winnow suggested operators to keep only shortest (often fastest) procedure.
+// ignores looping (assumes one pass) and actual time-to-completion measure
+// if shortest method fails on early round, longer method will be chosen later
+// returns number left, sel is bound to last valid choice
+
+int jhcAliaDir::min_proc (int& sel)
+{
+  int i, steps, cnt = 0, bot = -1;
+
+  // find method with fewest directives
+  for (i = omax - 1; i >= mc; i--)
+    if (op[i] != NULL) 
+    {
+      steps = op[i]->NumSteps();
+      if ((bot < 0) || (steps < bot))
+        bot = steps;
+    }
+
+  // disqualify operators that are less specific
+  for (i = omax - 1; i >= mc; i--)
+    if (op[i] == NULL) 
+      continue;
+    else if (op[i]->NumSteps() > bot)
+      op[i] = NULL;
+    else
+    {
+      sel = i;
+      cnt++;
+    }
+  return cnt;
+}
+
 
 
 //= Randomly select between remaining operators using exponential weighting.

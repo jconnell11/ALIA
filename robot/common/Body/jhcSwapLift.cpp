@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,24 +50,48 @@ jhcSwapLift::jhcSwapLift ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Reset state for the beginning of a sequence.
-// "rpt" is generally level of disgnostic printouts desired
-// returns 1 always
 
-int jhcSwapLift::Reset (int rpt) 
+void jhcSwapLift::Reset ()
 {
-  ht = 0.0;
-  return def_cmd();
+  Status(0.0);
+  Update();
+  def_cmd();
+  Issue();
 }
 
 
 //= Reset locks and specify default commands.
 // returns 1 always for convenience
 
-int jhcSwapLift::def_cmd ()
+void jhcSwapLift::def_cmd ()
 {
   lrate = 0.0;
   llock = 0;
-  return 1;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                             Data Exchange                             //
+///////////////////////////////////////////////////////////////////////////
+
+//= Cache new gaze angles from robot sensors (call Update to transfer).
+// lvl is current height of fork lift stage above floor
+
+void jhcSwapLift::Status (float lvl)
+{
+  ht0 = lvl;
+}
+
+
+//= Report motion commands for robot actuator (use Issue to refresh).
+// hdes is desired height for lift stage 
+// sp is motion speed wrt nominal, bid is the importance of cmd
+
+void jhcSwapLift::Command (float& hdes, float& sp, int& bid)
+{
+  hdes = (float) lstop0;
+  sp = (float) lrate0;
+  bid = llock0;
 }
 
 
@@ -75,34 +99,24 @@ int jhcSwapLift::def_cmd ()
 //                            Core Interaction                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Get new measured height from robot sensors (indirectly).
-// lvl is current height of fork lift stage above floor
-// clears command priorites for next cycle
-// override this function to directly query robot (if available) 
-// returns 1 if sensors acquired, 0 or negative for problem
+//= Update height of the lift stage (load cache values with Status).
+// retrieves "data" from "data0", automatically resets "lock" for new bids
 
-int jhcSwapLift::Status (float lvl)
+void jhcSwapLift::Update ()
 {
-  ht = lvl;
-  return def_cmd();
+  ht = ht0;
+  def_cmd();
 }
 
 
-//= Send motion command to robot actuators (indirectly).
-// hdes is desired height for lift stage 
-// sp is motion speed wrt nominal, bid is the importance of cmd
-// override this function to directly drive robot (if available) 
-// returns 1 if command sent, 0 or negative for problem
+//= Harvest final angle commands now that arbitration is done.
+// caches "cmd" into "cmd0" for Command
 
-int jhcSwapLift::Command (float& hdes, float& sp, int& bid)
+void jhcSwapLift::Issue ()      
 {
-  // get height command and speed
-  hdes = (float) lstop;
-  sp = (float) lrate;
-
-  // get command importance
-  bid = llock;
-  return 1;
+  lstop0 = lstop;
+  lrate0 = lrate;
+  llock0 = llock;
 }
 
 

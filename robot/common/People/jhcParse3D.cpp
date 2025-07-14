@@ -21,6 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
+#include <string.h>
 #include <math.h>
 
 #include "Interface/jhcMessage.h"
@@ -1098,7 +1099,7 @@ int jhcParse3D::area_stats (double s[], const jhcImg& map, int ix, int iy, int i
   if (n > 0)
     den = 1.0 / n;
   for (i = 0; i < 9; i++)
-    s[i] = sum[i] * den;
+    s[i] = (double) sum[i] * den;
   return n;
 }
 

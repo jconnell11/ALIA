@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
+// Copyright 2024 Etaoin Systems 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALU_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALU_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -100,9 +98,6 @@ public:
   int MultRGB (jhcImg& dest, const jhcImg& src, const jhcImg& fact) const;
 
 };
-
-
-#endif
 
 
 /////////////////////////////////////////////////////////////////////////////

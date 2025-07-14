@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCLUT_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCLUT_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -84,14 +82,12 @@ public:
   int Replace (jhcImg& dest, int targ, int subst =255) const;
 
   // Kinect depth images
-  int Night8 (jhcImg& d8, const jhcImg& d16, int sh =0) const;
+  int Night8 (jhcImg& d8, const jhcImg& d16, int sh =0, int choke =1760) const;
+  int NightSD (jhcImg& d8, const jhcImg& d16, double sdf =2.0, int choke =0) const;
+  int Remap16 (jhcImg& d8, const jhcImg& d16, int lo16, int hi16, int lo8 =1, int hi8 =255, int choke =1760) const;
   int Fog16 (jhcImg& d16, const jhcImg& d8) const;
-  int Remap16 (jhcImg& d8, const jhcImg& d16, int lo16, int hi16, int lo8 =1, int hi8 =255) const;
 
 };
-
-
-#endif
 
 
 /////////////////////////////////////////////////////////////////////////////

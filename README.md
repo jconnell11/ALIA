@@ -39,11 +39,11 @@ By default speech recognition is off, but you can use "Demo / Demo Options" to s
 
 A secondary GUI program, [MensEt](robot/MensEt), was built for a small forklift vehicle. It operates in a similar fashion to Banzai but has some fun sound effects. Try "Demo / Text File" with [ken_dance.tst](robot/MensEt/test/ken_dance.tst). Of course this is better with a physical robot ...
 
-## Embedded Library
+## Embedded Libraries
 
-If you want to try integrating ALIA with your own robot consider using the [alia_act](audio/common/API/alia_act.h) library. This interfaces to an external robot through a pile of variables, but only does language and motion right now (perception is coming ...). The __related projects__ [Wansui](https://github.com/jconnell11/Wansui) (ROS) and [Ganbei](https://github.com/jconnell11/Ganbei) (Python) show how to use the [Linux version](deriv/alia_act/libalia_act.so) on two affordable commercial robots.
+If you want to try integrating ALIA with your own robot consider using the [alia_act](audio/common/API/alia_act.h) or [alia_vis](audio/common/API/alia_vis.h) library. They both interface to an external robot through a pile of variables, but alia_act only does language and basic motions. By contrast, alia_vis has some built-in processing for depth images to allow simple manipulation and navigation. The related projects [__Wansui__](https://github.com/jconnell11/Wansui) (ROS) and [__Ganbei__](https://github.com/jconnell11/Ganbei) (Python) show how to use the [Linux version](deriv/alia_vis/libalia_vis.so) on two affordable commercial robots.
 
-The Linux shared library can be rebuilt with Visual Studio and the solution file [alia_act_ix.sln](deriv/alia_act/alia_act_ix.sln). But to properly cross-compile you must first install the Windows Subsystem for Linux by opening a command line and typing:
+The Linux shared library can be rebuilt with Visual Studio and the solution file [alia_vis_ix.sln](deriv/alia_vis/alia_vis_ix.sln). But to properly cross-compile you must first install the Windows Subsystem for Linux by opening a command line and typing:
 
     wsl --install -d Ubuntu-18.04
 
@@ -51,10 +51,10 @@ You then need to start the local copy of Ubuntu and install the gcc/g++ compiler
 
     sudo apt-get install g++-aarch64-linux-gnu
 
-The pure Windows [DLL](deriv/alia_act/alia_act.dll), by contrast, only needs Visual Studio and the solution file [alia_act.sln](deriv/alia_act/alia_act.sln). 
+The pure Windows [DLL](deriv/alia_vis/alia_vis.dll) only needs Visual Studio and the solution file [alia_vis.sln](deriv/alia_vis/alia_vis.sln). 
 
 ---
 
-May 2024 - Jonathan Connell - jconnell@alum.mit.edu
+July 2025 - Jonathan Connell - jconnell@alum.mit.edu
 
 

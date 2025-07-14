@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2022 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCRUNS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCRUNS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include <stdlib.h>
@@ -129,10 +126,4 @@ private:
   void nz_avg (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb) const;
 
 };
-
-
-#endif
-
-
-
 

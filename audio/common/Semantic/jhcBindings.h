@@ -36,7 +36,7 @@ class jhcBindings
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  static const int bmax = 20;          /** Maximum number of bindings. */
+  static const int bmax = 50;          /** Maximum number of bindings. */
 
   // match keys and substitutions (now on heap)
   const jhcNetNode **key;

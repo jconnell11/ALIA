@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCFILL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCFILL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -59,12 +56,5 @@ public:
   int RibbonFill (jhcImg& mask, const int *rx, const int *ry, int n, 
                   const int *rx2, const int *ry2, int n2);
 
-
 };
-
-
-#endif  // once
-
-
-
 

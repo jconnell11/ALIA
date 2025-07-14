@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTOOLS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTOOLS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "Processing/jhcALU.h"
 #include "Processing/jhcArea.h"
@@ -57,13 +54,4 @@ class jhcTools :
   void swap_imgs (jhcImg **a, jhcImg **b)   /** Interchange two pointers. **/
     {jhcImg *swap = *a; *a = *b; *b = swap;};
 };
-
-
-#endif 
-
-
-
-
-
-
 

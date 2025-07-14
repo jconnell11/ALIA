@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,7 +60,7 @@ jhcFFind::jhcFFind ()
 int jhcFFind::FindWithin (jhcRoi& det, const jhcImg& src, const jhcRoi& area, 
                           double fmin, double fmax, double sc)
 {
-  int i, n, x, y, w, h, a, win, best = 0;
+  int i, n, x, y, w, h, a, win = 0, best = 0;
 
   // call basic low-level function
   n = ffind_roi(src.PxlSrc(), src.XDim(), src.YDim(), src.Fields(), 
@@ -81,7 +82,7 @@ int jhcFFind::FindWithin (jhcRoi& det, const jhcImg& src, const jhcRoi& area,
   }
 
   // load ROI with winning detection
-  ffind_box(x, y, w, h, i);
+  ffind_box(x, y, w, h, win);
   det.SetRoi(x, y, w, h);
   return 1;
 }
@@ -94,7 +95,7 @@ int jhcFFind::FindWithin (jhcRoi& det, const jhcImg& src, const jhcRoi& area,
 
 int jhcFFind::FindBest (jhcRoi& det, const jhcImg& src, int wmin, int wmax, double sc)
 {
-  int i, n, x, y, w, h, a, win, best = 0;
+  int i, n, x, y, w, h, a, win = 0, best = 0;
 
   // call basic low-level function
   n = ffind_run(src.PxlSrc(), src.XDim(), src.YDim(), src.Fields(), wmin, wmax, sc);  
@@ -114,7 +115,7 @@ int jhcFFind::FindBest (jhcRoi& det, const jhcImg& src, int wmin, int wmax, doub
   }
 
   // load ROI with winning detection
-  ffind_box(x, y, w, h, i);
+  ffind_box(x, y, w, h, win);
   det.SetRoi(x, y, w, h);
   return 1;
 }

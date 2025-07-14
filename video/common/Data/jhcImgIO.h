@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2017 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,17 +21,14 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCIMGIO_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCIMGIO_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
 #include <stdio.h>             // needed for FILE type
 
-#include "Data/jhcName.h"
 #include "Data/jhcImg.h"
+#include "Data/jhcName.h"
 
 
 //= Interface to the image file reader functions.
@@ -47,7 +45,7 @@ public:
   int quality;        /** For compression: 0 - 100 valid range.           */
 
 
-// PUBLIC MEMBER FUCNTIONS
+// PUBLIC MEMBER FUNCTIONS
 public:
   jhcImgIO_0 ();
   void SetDir (const char *path){strcpy0(dirdef, path, 200);};  /** Set the default directory.      */
@@ -97,14 +95,14 @@ public:
   int LoadVca (jhcImg& dest, FILE *in);
 
 
-// PROTECTED MEMBER FUCNTIONS
+// PROTECTED MEMBER FUNCTIONS
 protected:
   virtual int ReadAltHdr (int *w, int *h, int *f, const char *fname);  
   virtual int LoadAlt (jhcImg& dest, const char *fname);
   virtual int SaveAlt (const char *fname, const jhcImg& src);
 
 
-// PRIVATE MEMBER FUCNTIONS
+// PRIVATE MEMBER FUNCTIONS
 private:
   // auxilliary data
   int read_aux (UC8 *aux_data, FILE *in, int limit);
@@ -136,9 +134,3 @@ private:
 #else
   typedef jhcImgIO_0 jhcImgIO;
 #endif
-
-
-#endif  // once
-
-
-

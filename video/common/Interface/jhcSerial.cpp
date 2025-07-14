@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2002-2019 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,6 +70,10 @@ void jhcSerial::init_vals ()
   SetTimeouts();
 }
 
+
+///////////////////////////////////////////////////////////////////////////
+//                              Configuration                            //
+///////////////////////////////////////////////////////////////////////////
 
 //= Configure port as requested.
 // parity: 0 = none, 1 = odd, 2 = even
@@ -276,9 +281,8 @@ int jhcSerial::Parity ()
 int jhcSerial::Rcv ()
 {
   int tmp;
-  UL32 len;
+  DWORD len, end;
   UC8 val;
-  DWORD end;
 
   // make sure port is open and check for any saved data
   if (!Valid())
@@ -309,7 +313,7 @@ int jhcSerial::Rcv ()
 
 int jhcSerial::Xmit (int val)
 {
-  UL32 len;
+  DWORD len;
   UC8 b;
 
   if (!Valid())
@@ -351,7 +355,7 @@ int jhcSerial::RxLine (char *dest, int len, char end, int mask)
 
 int jhcSerial::TxLine (const char *line)
 {
-  UL32 len;
+  DWORD len;
 
   if (!Valid())
     return 0;
@@ -367,8 +371,7 @@ int jhcSerial::TxLine (const char *line)
 
 int jhcSerial::RxArray (UC8 *dest, int n)
 {
-  UL32 len;
-  DWORD start;
+  DWORD start, len;
   int wait = ROUND(1000.0 * wtime), got = 0;
 
   if (!Valid())
@@ -399,7 +402,7 @@ int jhcSerial::RxArray (UC8 *dest, int n)
 
 int jhcSerial::TxArray (UC8 *src, int n)
 {
-  UL32 len;
+  DWORD len;
 
   if (!Valid())
     return 0;
@@ -416,7 +419,7 @@ int jhcSerial::TxArray (UC8 *src, int n)
 int jhcSerial::Check ()
 {
   int tmp;
-  UL32 len;
+  DWORD len;
   UC8 val;
 
   if (!Valid())
@@ -471,3 +474,4 @@ int jhcSerial::Handshake ()
   GetCommModemStatus(sport, &state);
   return((state >> 4) & 0xFF);
 }
+

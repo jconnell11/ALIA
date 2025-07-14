@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@
 
 //= Control interface for external robot mobile platform.
 // no actual control code -- merely exchanges variable values
+// provides support for double buffering (if desired)
 
 class jhcSwapBase : public jhcGenBase
 {
@@ -43,7 +44,7 @@ private:
   // sensor data
   double along, ortho, dr;   // motion changes on last cycle
   double xmap, ymap;         // current robot location in map
-  double trav, head;         // accumulated path and windup
+  double trav, wind;         // accumulated path and windup
 
   // speed estimation
   double ips, dps;           // smoothed travel and turn speeds
@@ -56,14 +57,25 @@ private:
   double mrate, trate;       // desired motion speed
   int mlock, tlock;          // current command importance
 
+  // double buffered pose input
+  double trav0, wind0, xmap0, ymap0;
+
+  // double buffered command output
+  double mstop0, tstop0, mdir0, mrate0, trate0;
+  int mlock0, tlock0;
+
 
 // PROTECTED MEMBER VARIABLES
 protected:
+  // motion control parameters
   double msp, tsp, mdone, tdone;        
 
 
 // PUBLIC MEMBER VARIABLES
 public:
+  // motion control parameters
+  jhcParam cps;
+
   // hardware status
   int bok;                             
 
@@ -77,18 +89,26 @@ public:
   double MoveTol () const {return mdone;}
   double TurnTol () const {return tdone;}
 
+  // processing parameter bundles 
+  int Defaults (const char *fname =NULL) {return ctrl_params(fname);}
+  int SaveVals (const char *fname) const {return cps.SaveVals(fname);}
+
   // configuration
-  int Reset (int rpt =0);
+  void Reset ();
   int Zero ();
 
-  // core interaction
-  int Status (float mx, float my, float mh); 
-  double TravelRate () const {return mrate;}
-  int Command (float& dist, float& ang, float& skew, float& mvel, float& rvel, int& mbid, int& rbid);
+  // data exchange
+  void Status (float path, float spin, float mx, float my); 
+  void Command (float& dist, float& ang, float& skew, float& mvel, float& rvel, int& mbid, int& rbid);
+  double TravelRate () const {return mrate0;}
                
+  // core interaction
+  void Update ();
+  void Issue ();       
+
   // current position information
   double Travel () const {return trav;}  
-  double WindUp () const {return head;}
+  double WindUp () const {return wind;}
   int Static () const    {return parked;}
 
   // relative goal adjustment
@@ -109,12 +129,18 @@ public:
 
   // motion progress
   double MoveErr (double mgoal) const {return fabs(mgoal - trav);}
-  double TurnErr (double tgoal) const {return fabs(tgoal - head);}
+  double TurnErr (double tgoal) const {return fabs(tgoal - wind);}
 
 
 // PROTECTED MEMBER FUNCTIONS
 protected:
   // configuration
-  int def_cmd ();
+  void def_cmd ();
+
+
+// PRIVATE MEMBER FUNCTIONS
+private:
+  // processing parameters
+  int ctrl_params (const char *fname);
 
 };

@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCKALVEC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCKALVEC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -66,10 +63,4 @@ public:
 
 
 };
-
-
-#endif  // once
-
-
-
 

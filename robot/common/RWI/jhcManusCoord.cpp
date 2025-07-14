@@ -49,7 +49,7 @@ jhcManusCoord::jhcManusCoord ()
   kern.AddFcns(snd);
   kern.AddFcns(act);
   kern.AddFcns(vis);
-  kern.Platform(&rwi);
+  kern.Platform(&rwi, "jhcManusGrok");
 
   // default processing parameters and state
   noisy = 1;
@@ -112,6 +112,9 @@ int jhcManusCoord::Reset (int id)
 {
   int rc;
 
+  // do not batch up printfs for speed
+  jprintf_fflush = 1;                            
+
   // connect to robot and start processing
   rc = body.Reset(noisy, "config", id);
   rwi.Reset();
@@ -131,7 +134,7 @@ int jhcManusCoord::Respond ()
   if (UpdateSpeech() <= 0)
     return 0;
   rwi.Update(NextSense());
-  if (jhcAliaSAPI::Respond() <= 0)
+  if (jhcAliaSAPI::Consider() <= 0)
     return 0;
   rwi.Issue();
   DayDream(); 

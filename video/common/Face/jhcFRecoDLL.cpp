@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include "Face/freco_nkr.h"            // generic fcns but specific lib file
 #include "Interface/jhcMessage.h"
 
 #include "Face/jhcFRecoDLL.h"
@@ -54,9 +55,8 @@ jhcFRecoDLL::jhcFRecoDLL ()
   db = NULL;
   vsz = 256;
 
-  // initialize DLL
+  // initialize DLL with correct network
   Defaults();
-  freco_start();
 
   // record proper sizes for things
   vsz = freco_vsize();
@@ -64,7 +64,7 @@ jhcFRecoDLL::jhcFRecoDLL ()
   (probe->thumb).SetSize(freco_mug_w(), freco_mug_h(), 3);
 
   // status
-  Reset();
+  Reset(0);
 }
 
 
@@ -132,9 +132,12 @@ int jhcFRecoDLL::SaveVals (const char *fname, int data)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Set all status variables for start of run.
+// if prime > 0 will make sure GPU is fully loaded (can be slow)
 
-void jhcFRecoDLL::Reset ()
+void jhcFRecoDLL::Reset (int prime)
 {
+  if (prime > 0)
+    freco_start();
   win = NULL;
   best = NULL;
   ranked = 0;
@@ -367,10 +370,9 @@ int jhcFRecoDLL::chk_sure ()
 
 const char *jhcFRecoDLL::Name (int i)
 {
-  const jhcFaceVect *v;
   const char *ans = NULL;
 
-  v = mark_rank(&ans, i);
+  mark_rank(&ans, i);
   return ans;
 }
 
@@ -588,7 +590,7 @@ int jhcFRecoDLL::LoadDB (const char *fname, int append)
   jhcFaceVect *v;
   const char *fn = fname;
   char line[80], iname[200], def[80] = "people.txt";
-  int n, cnt = 0;
+  int cnt = 0;
 
   // possibly erase old data then try opening names file
   if (append <= 0)
@@ -606,10 +608,11 @@ int jhcFRecoDLL::LoadDB (const char *fname, int append)
   // read each line for a valid name
   while (fgets(line, 80, in) != NULL)
     if (strncmp(line, "//", 2) != 0)
-      if ((n = (int) strlen(line)) > 1)
+    {
+      line[strcspn(line, "\n\r\x0A")] = '\0';
+      if (strlen(line) > 1)
       {
         // try to load data for person (initializes vectors)
-        line[strcspn(line, "\n\r\x0A")] = '\0';
         dude = new jhcFaceOwner(line, vsz);
         if (dude->Load(dir) < 0)
         {
@@ -636,6 +639,7 @@ int jhcFRecoDLL::LoadDB (const char *fname, int append)
         last = dude;
         cnt++;
       }
+    }
 
   // clean up
   fclose(in);

@@ -75,7 +75,7 @@ jhcEliNeck::jhcEliNeck ()
   LoadCfg();
   Defaults();
   current_pose(pos0, dir);
-  stable = 30;                         // in case no body
+  stable = 30;                         // assume static at start
 }
 
 
@@ -302,7 +302,7 @@ int jhcEliNeck::Reset (int rpt, int chk)
   t0 = Tilt();
   ipv = 0.0;
   itv = 0.0;
-  stable = 0;  
+  stable = 30;  
 
   // control loop performance
   pvel = 0.0;

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -224,14 +224,14 @@ public:
   void Remove (const jhcAliaOp *rem)   {pmem.Remove(rem);}
 
   // main functions
-  const char *SetDir (const char *dir =NULL);
+  const char *SetDir (const char *path =NULL);
   void Reset (const char *rname =NULL, int prt =3, int cvt =1);
   int Interpret (const char *input =NULL, int gate =1, int amode =2);
   jhcAliaChain *Reinterpret ();
   int RunAll (int gc =1);
   int Response (char *out, int ssz) {return talk.Output(out, ssz);}
   void DayDream ();
-  void Done (int save =0);
+  void Done (int save =0, int batt =-1);
 
   // convenience
   template <size_t ssz>

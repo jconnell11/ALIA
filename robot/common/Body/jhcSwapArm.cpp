@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "Interface/jhcMessage.h"      // common video
-#include "Interface/jms_x.h"
+#include "Interface/jms_x.h"          
 
 #include "Body/jhcSwapArm.h"
 
@@ -42,10 +42,15 @@ jhcSwapArm::~jhcSwapArm ()
 
 jhcSwapArm::jhcSwapArm ()
 {
+  // target position and direction command
   pdes.SetSize(4);
   ddes.SetSize(4);
+  pdes0.SetSize(4);
+  ddes0.SetSize(4);
+
+  // passive gripper opening and status
   aok = 1;
-  rgap = 0.5;
+  Defaults();
   Reset();
 }
 
@@ -68,10 +73,10 @@ int jhcSwapArm::stow_params (const char *fname)
   ps->NextSpecF( &retz,  -2.0, "Tucked z position (in)");        
   ps->NextSpecF( &rdir, 180.0, "Tucked point direction (deg)");
   ps->NextSpecF( &rtip, -15.0, "Tucked tip direction (deg)");    
-  ps->NextSpecF( &wmax,   3.0, "Max grip width (in)");
+  ps->Skip();
 
-  ps->NextSpecF( &rets, -12.0, "Tight shoulder angle (deg)");    
-  ps->NextSpecF( &rete,  80.0, "Tight elbow angle (deg)");        
+  ps->NextSpecF( &wmax,   3.0, "Max grip width (in)");
+  ps->NextSpecF( &wlax,   1.0, "Relaxed width (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -83,30 +88,28 @@ int jhcSwapArm::stow_params (const char *fname)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Reset state for the beginning of a sequence.
-// "rpt" is generally level of disgnostic printouts desired
-// returns 1 always
 
-int jhcSwapArm::Reset (int rpt) 
+void jhcSwapArm::Reset () 
 {
   // arm speed
   now = jms_now(); 
   iarm = 0.0; 
   parked = 0; 
 
-  // arm and hand status
-  loc.Zero();
-  aim.Zero();
-  w0 = 0.0;
-  sqz = 0.0;
-  terr = 0.0;
-  return def_cmd();   
+  // arm and hand status 
+  Status((float) retx, (float) rety, (float) retz, (float) rdir, (float) rtip, 0.0, 
+         (float) wlax, 0.0, 0.0);
+  Update();
+
+  // arm and hand commands
+  def_cmd();   
+  Issue();
 }
 
 
 //= Reset locks and specify default commands.
-// returns 1 always (for convenience)
 
-int jhcSwapArm::def_cmd ()
+void jhcSwapArm::def_cmd ()
 {
   // position command
   prate = 0.0;
@@ -123,7 +126,93 @@ int jhcSwapArm::def_cmd ()
   // tuck command
   trate = 0.0;
   tlock = 0;
-  return 1;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                             Data Exchange                             //
+///////////////////////////////////////////////////////////////////////////
+
+//= Cache new arm status from robot sensors (call Update to transfer).
+// x, y, z is hand position while p, t, r is hand orientation
+// w is gripper opening, f is applied force, e is offset from tuck pose
+
+void jhcSwapArm::Status (float x, float y, float z, float p, float t, float r, 
+                         float w, float f, float e)
+{
+  // save Cartesion position & orientation
+  loc0.SetVec3(x, y, z);
+  aim0.SetVec3(p, t, r);
+
+  // save gripper width and force
+  wid0 = w;
+  sqz0 = f;
+
+  // save configuration angular offset
+  terr0 = e;
+}
+
+
+//= Report gripper position command for robot actuators (use Issue to refresh).
+// x, y, z is hand goal position, vel is translation speed wrt nominal
+// mode bits: 2 = exact Z, 1 = exact Y, 0 = exact X
+// bid is the importance of the position command 
+
+void jhcSwapArm::PosCmd (float& x, float& y, float& z, float& vel, int& mode, int& bid)
+{
+  // copy position goal command 
+  x = (float) pdes0.X();
+  y = (float) pdes0.Y();
+  z = (float) pdes0.Z();
+
+  // copy speed and coordinate priority
+  vel = (float) prate0;
+  mode = pmode0;
+
+  // copy command importance
+  bid = plock0;
+}
+                
+
+//= Report gripper orientation command for robot actuators (use Issue to refresh).
+// p, t, r is hand goal orientation, vel is rotation speed wrt nominal
+// mode bits: 3 = any pan, 2 = exact roll, 1 = exact tilt, 0 = exact pan
+// bid is the importance of the orientation command 
+
+void jhcSwapArm::DirCmd (float& pan, float& tilt, float& roll, float& vel, int& mode, int& bid)
+{
+  // copy orientation goal command 
+  pan  = (float) ddes0.P();
+  tilt = (float) ddes0.T();
+  roll = (float) ddes0.R();
+
+  // copy speed and aspect priority
+  vel = (float) drate0;
+  mode = dmode0;
+
+  // copy command importance
+  bid = dlock0;
+}
+                
+
+//= Report gripper width and arm tuck command for robot actuators (use Issue to refresh).
+// wf is desired finger separation if positive, gripping force if negative
+// wvel is the speed to open/close the gripper wrt nominal
+// svel is the speed to assumed a tucked configuration (0 = not invoked) 
+// wbid, sbid are the importance of the gripper and tuck commands 
+
+void jhcSwapArm::AuxCmd (float& wf, float& wvel, float& svel, int& wbid, int& sbid)
+{
+  // copy finger separation (or force) command and speed
+  wf   = (float) wstop0;
+  wvel = (float) wrate0;
+
+  // copy arm tuck command speed (0 = don't bother)
+  svel = (float) trate0;
+
+  // copy command importances
+  wbid = wlock0;
+  sbid = tlock0; 
 }
 
 
@@ -131,33 +220,28 @@ int jhcSwapArm::def_cmd ()
 //                            Core Interaction                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Get new arm status from robot sensors (indirectly).
-// x, y, z is hand position while p, t, r is hand orientation
-// w is gripper opening, f is applied force, e is offset from tuck pose
-// clears command priorites for next cycle
-// override this function to directly query robot (if available) 
-// returns 1 if sensors acquired, 0 or negative for problem
+//= Update joint angles of the arm and hand (load cache values with Status).
+// retrieves "data" from "data0", automatically resets "lock" for new bids
 
-int jhcSwapArm::Status (float x, float y, float z, float p, float t, float r, 
-                        float w, float f, float e)
+void jhcSwapArm::Update ()
 {
   jhcMatrix orig(4);
-  double a, s, mix = 0.2, twang = 3.0;
+  double a, s, mix = 1.0, twang = 1.0;     // twang was 3 for big robot
   UL32 last = now;
 
   // save Cartesion position & orientation
   orig.Copy(loc);
-  loc.SetVec3(x, y, z);
-  aim.SetVec3(p, t, r);
+  loc.Copy(loc0);
+  aim.Copy(aim0);
 
   // save gripper width and force
-  w0 = w;
-  sqz = f;
+  wid = wid0;
+  sqz = sqz0;
 
   // save configuration angular offset
-  terr = e;
+  terr = terr0;
 
-  // instantaneous speed estimates
+  // instantaneous speed estimates (check angular rate also?)
   now = jms_now();
   if (last != 0)
     if ((s = jms_secs(now, last)) > 0.0)
@@ -171,80 +255,36 @@ int jhcSwapArm::Status (float x, float y, float z, float p, float t, float r,
     parked = __max(1, parked + 1);
 
   // set up for next cycle of command arbitration
-  return def_cmd();
+  def_cmd();
 }
 
 
-//= Send gripper position command to robot actuators (indirectly).
-// x, y, z is hand goal position, vel is translation speed wrt nominal
-// mode bits: 2 = exact Z, 1 = exact Y, 0 = exact X
-// bid is the importance of the position command 
-// override this function to directly drive robot (if available) 
-// returns 1 if command sent, 0 or negative for problem
+//= Harvest final servo commands now that arbitration is done.
+// caches "cmd" into "cmd0" for PosCmd, DirCmd, and AuxCmd
 
-int jhcSwapArm::PosCmd (float& x, float& y, float& z, float& vel, int& mode, int& bid)
+void jhcSwapArm::Issue ()
 {
-  // copy position goal command 
-  x = (float) pdes.X();
-  y = (float) pdes.Y();
-  z = (float) pdes.Z();
+  // position command
+  pdes0.Copy(pdes);
+  pmode0 = pmode;
+  prate0 = prate;
+  plock0 = plock;
 
-  // copy speed and coordinate priority
-  vel = (float) prate;
-  mode = pmode;
+  // gripper orientation command
+  ddes0.Copy(ddes);
+  dmode0 = dmode;
+  drate0 = drate;
+  dlock0 = dlock;
 
-  // copy command importance
-  bid = plock;
-  return 1;
-}
-                
+  // finger command
+  wstop0 = wstop;
+  wrate0 = wrate;
+  wlock0 = wlock;
 
-//= Send gripper orientation command to robot actuators (indirectly).
-// p, t, r is hand goal orientation, vel is rotation speed wrt nominal
-// mode bits: 3 = any pan, 2 = exact roll, 1 = exact tilt, 0 = exact pan
-// bid is the importance of the orientation command 
-// override this function to directly drive robot (if available) 
-// returns 1 if command sent, 0 or negative for problem
-
-int jhcSwapArm::DirCmd (float& pan, float& tilt, float& roll, float& vel, int& mode, int& bid)
-{
-  // copy orientation goal command 
-  pan  = (float) ddes.P();
-  tilt = (float) ddes.T();
-  roll = (float) ddes.R();
-
-  // copy speed and aspect priority
-  vel = (float) drate;
-  mode = dmode;
-
-  // copy command importance
-  bid = dlock;
-  return 1;
-}
-                
-
-//= Send gripper width and arm tuck command to robot actuators (indirectly).
-// wf is desired finger separation if positive, gripping force if negative
-// wvel is the speed to open/close the gripper wrt nominal
-// svel is the speed to assumed a tucked configuration (0 = not invoked) 
-// wbid, sbid are the importance of the gripper and tuck commands 
-// override this function to directly drive robot (if available) 
-// returns 1 if command sent, 0 or negative for problem
-
-int jhcSwapArm::AuxCmd (float& wf, float& wvel, float& svel, int& wbid, int&sbid)
-{
-  // copy finger separation (or force) command and speed
-  wf = (float) wstop;
-  wvel = (float) wrate;
-
-  // copy arm tuck command speed (0 = don't bother)
-  svel = (float) trate;
-
-  // copy command importances
-  wbid = wlock;
-  sbid = tlock; 
-  return 1;
-}
+  // angular configuration command
+  trate0 = trate;
+  tlock0 = tlock; 
+} 
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -297,8 +337,8 @@ int jhcSwapArm::ArmTarget (const jhcMatrix& pos, const jhcMatrix& dir, double p_
 
 int jhcSwapArm::PosTarget (const jhcMatrix& pos, double rate, int bid, int mode)
 {
-  // see if previous command takes precedence (pos trumps tuck with same bid)
-  if ((bid <= plock) || (bid < tlock))
+  // see if previous command takes precedence 
+  if (bid <= plock)
     return 0;
   plock = bid;
 
@@ -333,8 +373,8 @@ int jhcSwapArm::PosTarget (double ax, double ay, double az, double rate, int bid
 
 int jhcSwapArm::DirTarget (const jhcMatrix& dir, double rate, int bid, int mode)
 {
-  // see if previous command takes precedence (dir trumps tuck with same bid)
-  if ((bid <= dlock) || (bid < tlock))
+  // see if previous command takes precedence 
+  if (bid <= dlock)
     return 0;
   dlock = bid;
 
@@ -367,7 +407,7 @@ int jhcSwapArm::DirTarget (double hp, double ht, double hr, double rate, int bid
 
 int jhcSwapArm::Tuck (double rate, int bid)
 {
-  if ((bid <= tlock) || (bid < plock) || (bid < dlock))
+  if (bid <= tlock) 
     return 0;
   tlock = bid;
   trate = rate;

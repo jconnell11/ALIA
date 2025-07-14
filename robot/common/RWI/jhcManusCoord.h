@@ -31,7 +31,7 @@
 #include "Grounding/jhcLocalSeq.h"
 #include "Grounding/jhcSoundFcn.h"
 #include "Grounding/jhcTargetVis.h"
-#include "RWI/jhcManusRWI.h"
+#include "RWI/jhcManusGrok.h"
 
 #include "Acoustic/jhcAliaSAPI.h"   
 
@@ -48,7 +48,7 @@ private:
 public:
   // possibly shared components
   jhcManusBody body;           
-  jhcManusRWI rwi;                     
+  jhcManusGrok rwi;                     
 
   // extra grounding kernels
   jhcBasicAct act;       
@@ -80,6 +80,5 @@ public:
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-
 
 };

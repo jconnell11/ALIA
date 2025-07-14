@@ -74,7 +74,7 @@ void jhcUserIO::Start ()
   
 const char *jhcUserIO::Get ()
 {
-  int ch;
+  int ch = -1;
 
   // make sure interaction started
   if (seq < 0)
@@ -115,35 +115,26 @@ const char *jhcUserIO::Get ()
       input[fill] = '\0';
     }
   }
+
+  // check for lone ESC (not part of sequence)
+  if (seq == 6)
+    quit = 1;
   return NULL;
 }
   
 
 //= Check for progression of multi-key sequences.
-// patterns: 1B:1B (quit), 1B:5B:41 (up arrow), 1B:5B:33:7E (delete), E0:48 (up arrow), E0:53 (delete)
-//      seq:  6  7          6  5 -1-             6  5  4 -2-           3 -1-             3 -2-
-// returns 0 if nothing, 1 if up arrow found, 2 if delete found, higher = in-progress
+// patterns: 1B -gap- (quit), 1B:5B:41 (up arrow), 1B:5B:33:7E (delete), E0:48 (up arrow), E0:53 (delete)
+//      seq:  6                6  5 -1-             6  5  4 -2-           3 -1-             3 -2-
+// returns 0 if nothing, 1 if up arrow found, 2 if delete found, higher = possibly in-progress
 
 int jhcUserIO::multikey (int ch)
 {
   // Linux sequences (begin with ESC)
   if (ch == 0x1B)                    
-  {
-    if (seq != 6)
-    {
-      printf("\x1B]12;red\x07\x1B[1 q");   // cursor = red blinking block
-      fflush(stdout);
-      return 6;
-    }
-    quit = 1;
-    return 7;                              // ESC ESC pattern not printable
-  }                                       
+    return 6;                              // lone ESC caught by main loop
   if (seq == 6)
-  {
-    printf("\x1B]12;gray\x07\x1B[0 q");    // cursor = gray default
-    fflush(stdout);
     return((ch == '[') ? 5 : 0);           // keep char after single ESC
-  }
   if (seq == 5)
     return((ch == 'A') ? 1 : ((ch == '3') ? 4 : 7));
   if (seq == 4) 
@@ -237,9 +228,6 @@ void jhcUserIO::Post (const char *msg, int user)
 
 void jhcUserIO::Stop ()
 {
-  if (seq < 0)
-    return;
-  printf("\x1B]12;gray\x07\x1B[0 q");    // cursor = gray default
   fflush(stdout);
   _kbdone();
   seq = -1;

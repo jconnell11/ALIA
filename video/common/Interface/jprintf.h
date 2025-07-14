@@ -25,8 +25,9 @@
 
 #include "jhcGlobal.h"
 
-#include <stdio.h>      // needed for the definition of FILE and NULL
+#include <stdio.h>           // needed for the definition of FILE and NULL
 
+extern int jprintf_fflush;   // whether to always flush jprintf
 
 int jprintf_open (const char *log, ...);
 const char *jprintf_log (int only =0);
@@ -41,4 +42,5 @@ int jprint_back ();
 
 int jfprintf (FILE *out, const char *msg, ...);
 int jfputs (const char *msg, FILE *out);
+
 

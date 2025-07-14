@@ -2,12 +2,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_BanzaiFrm_H__34BB6B41_D237_4209_9364_0E0A714DCBC2__INCLUDED_)
-#define AFX_BanzaiFrm_H__34BB6B41_D237_4209_9364_0E0A714DCBC2__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 class CMainFrame : public CFrameWnd
 {
@@ -59,4 +54,3 @@ public:
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_BanzaiFrm_H__34BB6B41_D237_4209_9364_0E0A714DCBC2__INCLUDED_)

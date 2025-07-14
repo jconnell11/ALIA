@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@
 // limitations under the License.
 // 
 ///////////////////////////////////////////////////////////////////////////
+
+#include <string.h>
 
 #include "Interface/jhcMessage.h"
 
@@ -419,7 +421,7 @@ int jhcStare3D::TargetX (jhcMatrix& full, int i, int rt, int trk, double xoff) c
 //= Gives bounding box around head of some person in some camera (not reversed).
 // returns 1 if okay, 0 if invalid
 
-int jhcStare3D::HeadBoxCam (jhcRoi& box, int i, int cam, int trk, double sc)
+int jhcStare3D::HeadBoxCam (jhcRoi& box, int i, int view, int trk, double sc)
 {
   jhcMatrix rel(4);
   const jhcBodyData *guy = GetPerson(i, trk);
@@ -427,7 +429,7 @@ int jhcStare3D::HeadBoxCam (jhcRoi& box, int i, int cam, int trk, double sc)
 
   if (guy == NULL)
     return 0;
-  AdjGeometry(cam);
+  SetColorGeom(view);
   BeamCoords(rel, *guy);
   ImgCylinder(box, rel, sz, sz, sc);
   return 1;
@@ -553,7 +555,7 @@ int jhcStare3D::ShowID (jhcImg& dest, int id, int trk,
 //= In frontal view, draw a box of some color around a head having a particular ID.
 // sz control head box size, negative size skips building projection matrices again
 
-int jhcStare3D::ShowIDCam (jhcImg& dest, int id, int cam, int trk, int rev, 
+int jhcStare3D::ShowIDCam (jhcImg& dest, int id, int view, int trk, int rev, 
                            int col, double sz, int style) 
 {
   jhcRoi box;
@@ -570,7 +572,7 @@ int jhcStare3D::ShowIDCam (jhcImg& dest, int id, int cam, int trk, int rev,
 
   // find image footprint of cylinder around head point
   if (sz >= 0.0)
-    AdjGeometry(cam);
+    SetColorGeom(view);
   BeamCoords(rel, *p);
   ImgCylinder(box, rel, sz0, sz0, sc);
   if (rev > 0)
@@ -588,16 +590,16 @@ int jhcStare3D::ShowIDCam (jhcImg& dest, int id, int cam, int trk, int rev,
 // can optionally show raw or tracked version 
 // sz control head box size, negative chooses color based on ID
 
-int jhcStare3D::HeadsCam (jhcImg& dest, int cam, int trk, int rev, double sz, int style) 
+int jhcStare3D::HeadsCam (jhcImg& dest, int view, int trk, int rev, double sz, int style) 
 {
   int i, n = PersonLim(trk);
 
   if (!dest.Valid(1, 3))
     return Fatal("Bad images to jhcStare3D::HeadsCam");
 
-  AdjGeometry(cam);
+  SetColorGeom(view);
   for (i = 0; i < n; i++)
-    PersonCam(dest, i, cam, trk, rev, -5, sz, style);
+    PersonCam(dest, i, view, trk, rev, -5, sz, style);
   return 1;
 }
 
@@ -606,7 +608,7 @@ int jhcStare3D::HeadsCam (jhcImg& dest, int cam, int trk, int rev, double sz, in
 // negative color skips building projection matrices again
 // sz control head box size, negative chooses color based on ID
 
-int jhcStare3D::PersonCam (jhcImg& dest, int i, int cam, int trk, int rev, int col, double sz, int style)
+int jhcStare3D::PersonCam (jhcImg& dest, int i, int view, int trk, int rev, int col, double sz, int style)
 {
   jhcRoi box;
   jhcMatrix rel(4);
@@ -622,7 +624,7 @@ int jhcStare3D::PersonCam (jhcImg& dest, int i, int cam, int trk, int rev, int c
 
   // find image footprint of cylinder around head point
   if (col >= 0)
-    AdjGeometry(cam);
+    SetColorGeom(view);
   BeamCoords(rel, *guy);
   ImgCylinder(box, rel, sz0, sz0, sc);
   if (rev > 0)
@@ -642,7 +644,7 @@ int jhcStare3D::PersonCam (jhcImg& dest, int i, int cam, int trk, int rev, int c
 // can optionally show raw or tracked version 
 // typically want to call this after ShowHands (smaller crosses)
 
-int jhcStare3D::HandsCam (jhcImg& dest, int cam, int trk, int rev, double sz)
+int jhcStare3D::HandsCam (jhcImg& dest, int view, int trk, int rev, double sz)
 {
   jhcRoi box;
   jhcMatrix rel(4), hand(4);
@@ -654,7 +656,7 @@ int jhcStare3D::HandsCam (jhcImg& dest, int cam, int trk, int rev, double sz)
     return Fatal("Bad images to jhcStare3D::HeadsCam");
 
   // set up projection from a particular camera
-  AdjGeometry(cam);
+  SetColorGeom(view);
   for (i = 0; i < n; i++)
   {
     // find image location of left fingertip and draw as X
@@ -685,7 +687,7 @@ int jhcStare3D::HandsCam (jhcImg& dest, int cam, int trk, int rev, double sz)
 // needs to know which sensor input to plot relative to
 // can optionally show raw or tracked version 
 
-int jhcStare3D::RaysCam (jhcImg& dest, int cam, int trk, int rev, double zlev)
+int jhcStare3D::RaysCam (jhcImg& dest, int view, int trk, int rev, double zlev)
 {
   jhcRoi box;
   jhcMatrix full(4), rel(4);
@@ -697,7 +699,7 @@ int jhcStare3D::RaysCam (jhcImg& dest, int cam, int trk, int rev, double zlev)
     return Fatal("Bad images to jhcStare3D::RaysCam");
 
   // set up projection from a particular camera
-  AdjGeometry(cam);
+  SetColorGeom(view);
   for (i = 0; i < n; i++)
     for (side = 0; side <= 1; side++)
       if (items[i].HandOK(side))
@@ -730,7 +732,7 @@ int jhcStare3D::RaysCam (jhcImg& dest, int cam, int trk, int rev, double zlev)
 // needs to know which sensor input to plot relative to
 // can optionally show raw or tracked version 
 
-int jhcStare3D::RaysCamY (jhcImg& dest, int cam, int trk, int rev, double yoff)
+int jhcStare3D::RaysCamY (jhcImg& dest, int view, int trk, int rev, double yoff)
 {
   jhcRoi box;
   jhcMatrix full(4), rel(4);
@@ -742,7 +744,7 @@ int jhcStare3D::RaysCamY (jhcImg& dest, int cam, int trk, int rev, double yoff)
     return Fatal("Bad images to jhcStare3D::RaysCamY");
 
   // set up projection from a particular camera
-  AdjGeometry(cam);
+  SetColorGeom(view);
   for (i = 0; i < n; i++)
     for (side = 0; side <= 1; side++)
       if (items[i].HandOK(side))
@@ -775,7 +777,7 @@ int jhcStare3D::RaysCamY (jhcImg& dest, int cam, int trk, int rev, double yoff)
 // needs to know which sensor input to plot relative to
 // can optionally show raw or tracked version 
 
-int jhcStare3D::RaysCamX (jhcImg& dest, int cam, int trk, int rev, double xoff)
+int jhcStare3D::RaysCamX (jhcImg& dest, int view, int trk, int rev, double xoff)
 {
   jhcRoi box;
   jhcMatrix full(4), rel(4);
@@ -787,7 +789,7 @@ int jhcStare3D::RaysCamX (jhcImg& dest, int cam, int trk, int rev, double xoff)
     return Fatal("Bad images to jhcStare3D::RaysCamX");
 
   // set up projection from a particular camera
-  AdjGeometry(cam);
+  SetColorGeom(view);
   for (i = 0; i < n; i++)
     for (side = 0; side <= 1; side++)
       if (items[i].HandOK(side))

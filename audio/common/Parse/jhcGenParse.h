@@ -36,7 +36,7 @@ public:
   // creation and configuration
   virtual int PrintCfg () =0;
 
-  // parsing g
+  // parsing 
   virtual void SetGrammar (const char *fname, ...) =0;
   virtual void ClearGrammar (int keep =1) =0;
   virtual int LoadGram (const char *fname, int lvl =0) =0;

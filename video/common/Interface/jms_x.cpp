@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -135,6 +135,8 @@ int jms_resume (UL32 cont)
 
 double jms_elapsed (UL32 tref)
 {
+  if (tref == 0)
+    return 0.0;                        // for convenience
   return jms_secs(jms_now(), tref);
 }
 

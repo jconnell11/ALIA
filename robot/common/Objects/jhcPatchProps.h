@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCPATCHPROPS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCPATCHPROPS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -34,10 +31,10 @@
 #include "Processing/jhcArea.h"
 #include "Processing/jhcColor.h"
 #include "Processing/jhcDraw.h"
+#include "Processing/jhcEdge.h"
 #include "Processing/jhcGray.h"
 #include "Processing/jhcGroup.h"
 #include "Processing/jhcHist.h"
-#include "Processing/jhcEdge.h"
 #include "Processing/jhcStats.h"
 #include "Processing/jhcThresh.h"
 #include "Processing/jhcVect.h"
@@ -48,12 +45,11 @@
 class jhcPatchProps : private jhcALU,   private jhcArea, private jhcColor, private jhcDraw,   private jhcEdge, private jhcGray, 
                       private jhcGroup, private jhcHist, private jhcStats, private jhcThresh, private jhcVect
 {
-friend class CMensEtDoc;  // for debugging
-friend class CBanzaiDoc;
+friend class CMensEtDoc;               // for debugging
 
 // PRIVATE MEMBER VARIABLES
 private:
-  static const int cmax = 9;    /** Maximum number of colors. */
+  static const int cmax = 9;           /** Maximum number of colors. */
 
   // interior of patch
   jhcImg shrink;
@@ -105,6 +101,7 @@ public:
   ~jhcPatchProps ();
   jhcPatchProps ();
   int NumCols () const {return cmax;}
+  const jhcImg *Mask () const {return &shrink;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -158,14 +155,8 @@ private:
   int size_params (const char *fname);
 
   // color functions
-  void color_bins (const jhcImg& src, const jhcImg& gate);
+  void color_bins (const jhcImg& src, jhcImg& gate);
   void qual_col ();
 
 };
-
-
-#endif  // once
-
-
-
 

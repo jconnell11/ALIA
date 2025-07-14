@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ jhcSpeaker::jhcSpeaker ()
 }
 
 
+/*
 //= Get serial port instance used to control attention light.
 // returns NULL if LED not available via local microphones
 
@@ -69,7 +70,7 @@ jhcSerial *jhcSpeaker::AttnLED ()
       return &(mic[i].mcom);
   return NULL;
 }
-
+*/
 
 ///////////////////////////////////////////////////////////////////////////
 //                           Parameter Bundles                           //
@@ -100,7 +101,7 @@ int jhcSpeaker::LoadCfg (const char *fname)
 
   // clear microphone port numbers (= validity flags)
   for (i = 0; i < amax; i++)
-    mic[i].SetPort(0);
+    mic[i].UsePort(0);
   if (m0 != NULL)
     return 1;
 
@@ -178,7 +179,7 @@ void jhcSpeaker::Reset ()
         mic[i].Reset();
 
   // no speaker currently found
-  vth = 2;                             // was jhcDirMic::spej
+  vth = 2;                             // was jhcGenMic::spej
   spk = -1;
   vcnt = 0;
   det = 0;
@@ -250,7 +251,7 @@ int jhcSpeaker::Analyze (int voice)
 //= Pick overall best person based on beam offset distance.
 // returns head number (not ID) if any suitable, else -1
 
-int jhcSpeaker::pick_dude (const jhcDirMic& m, double& best) const
+int jhcSpeaker::pick_dude (const jhcGenMic& m, double& best) const
 {
   const jhcMatrix *hd;
   double d;
@@ -305,7 +306,7 @@ int jhcSpeaker::MicsMap (jhcImg& dest, int invert) const
 
 //= Find microphone in map coords and draw oriented rectangle.
 
-void jhcSpeaker::draw_mic (jhcImg& dest, const jhcDirMic& m, int invert) const
+void jhcSpeaker::draw_mic (jhcImg& dest, const jhcGenMic& m, int invert) const
 {
   jhcMatrix mid(4);
   double ht = 2.2, wid = 11.4;
@@ -318,7 +319,7 @@ void jhcSpeaker::draw_mic (jhcImg& dest, const jhcDirMic& m, int invert) const
   hw0 = 0.5 * sc * wid;
 
   // get mic center in map coordinates
-  mid.MatVec(s3->ToMap(), m.loc);
+  mid.MatVec(s3->ToMap(), m.Location());
   x = ((invert <= 0) ? mid.X() : dest.XLim() - mid.X());
   y = ((invert <= 0) ? mid.Y() : dest.YLim() - mid.Y());
 
@@ -355,7 +356,7 @@ void jhcSpeaker::draw_mic (jhcImg& dest, const jhcDirMic& m, int invert) const
 
 
 //= Show sound direction as a beam from each microphone on overhead map.
-// src: 0 = raw, 1 = smoothed, 3 = voice
+// src: 0 = raw, 1 = smoothed, 2 = voice
 // projects beam (really a cone) at microphone height 
 
 int jhcSpeaker::SoundMap (jhcImg& dest, int invert, int src) const
@@ -379,25 +380,30 @@ int jhcSpeaker::SoundMap (jhcImg& dest, int invert, int src) const
 
 //= Show beam from a particular microphone on the overhead map.
 
-void jhcSpeaker::map_beam (jhcImg& dest, const jhcDirMic& m, int invert, int src) const
+void jhcSpeaker::map_beam (jhcImg& dest, const jhcGenMic& m, int invert, int src) const
 {
-  jhcMatrix pos(4), tip(4);
-  double rads = D2R * (m.Dir(src) + m.Pan() + 90.0), len = 192.0;   // 16 feet
-  double mx, my, tx, ty;
+  jhcMatrix pos(4), back(4), tip(4);
+  double rads = D2R * (m.Dir(src) + m.Pan() + 90.0), len = 192.0;    // 16 feet
+  double bx, by, tx, ty, s = sin(rads), c = cos(rads), rev = -12.0;
+  int col = ((src <= 0) ? -2 : ((src == 1) ? -4 : -3));
 
-  // get base in screen coordinates
-  pos.MatVec(s3->ToMap(), m.loc);
-  mx = ((invert <= 0) ? pos.X() : dest.XLim() - pos.X());
-  my = ((invert <= 0) ? pos.Y() : dest.YLim() - pos.Y());
+  // get base in overhead screen coordinates
+  pos.MatVec(s3->ToMap(), m.Location());
+
+  // small distance behind microphone (for 360 degree devices)
+  back.RelVec3(m.Location(), rev * c, rev * s, 0.0);
+  pos.MatVec(s3->ToMap(), back);
+  bx = ((invert <= 0) ? pos.X() : dest.XLim() - pos.X());
+  by = ((invert <= 0) ? pos.Y() : dest.YLim() - pos.Y());
 
   // find end of long ray
-  tip.RelVec3(m.loc, len * cos(rads), len * sin(rads), 0.0);
+  tip.RelVec3(m.Location(), len * c, len * s, 0.0);
   pos.MatVec(s3->ToMap(), tip);
   tx = ((invert <= 0) ? pos.X() : dest.XLim() - pos.X());
   ty = ((invert <= 0) ? pos.Y() : dest.YLim() - pos.Y());
-  
+
   // mark on map
-  DrawLine(dest, mx, my, tx, ty, 1, -2);
+  DrawLine(dest, bx, by, tx, ty, ((src == 2) ? 1 : 3), col);
 }
   
 
@@ -405,14 +411,14 @@ void jhcSpeaker::map_beam (jhcImg& dest, const jhcDirMic& m, int invert, int src
 // src: 0 = raw, 1 = smoothed, 3 = voice
 // assumes source is 6 feet away and at microphone height
 
-int jhcSpeaker::SoundCam (jhcImg& dest, int cam, int rev, int src) const
+int jhcSpeaker::SoundCam (jhcImg& dest, int view, int rev, int src) const
 {
   int i;
 
   // check arguments
   if (!dest.Valid(1, 3))
     return Fatal("Bad images to jhcSpeaker::SoundCam");
-  s3->AdjGeometry(cam);
+  s3->SetColorGeom(view);
 
   // go through all valid microphones
   if (m0 != NULL)
@@ -428,14 +434,14 @@ int jhcSpeaker::SoundCam (jhcImg& dest, int cam, int rev, int src) const
 //= Show direction on frontal color view based on a particular microphone.
 // assumes geometry already adjusted for desired camera
 
-void jhcSpeaker::front_beam (jhcImg& dest, const jhcDirMic& m, int rev, int src) const
+void jhcSpeaker::front_beam (jhcImg& dest, const jhcGenMic& m, int rev, int src) const
 {
   jhcMatrix tip(4), rel(4);
   double rads = D2R * (m.Dir(src) + m.Pan() + 90.0), len = 72.0;   // 6 feet
   double tx, ty, sc = dest.YDim() / (double) s3->InputH();
 
   // find end of long ray in screen coordinates
-  tip.RelVec3(m.loc, len * cos(rads), len * sin(rads), 0.0);
+  tip.RelVec3(m.Location(), len * cos(rads), len * sin(rads), 0.0);
   s3->BeamCoords(rel, tip);
   s3->ImgPt(tx, ty, rel, sc);
   if (rev > 0)
@@ -476,7 +482,7 @@ int jhcSpeaker::OffsetsMap (jhcImg& dest, int trk, int invert, int src, int styl
 
 //= Show offset location in overhead map using proper style for a particular microphone.
 
-void jhcSpeaker::map_off (jhcImg& dest, const jhcDirMic& m, int trk, int invert, int src, int style) const
+void jhcSpeaker::map_off (jhcImg& dest, const jhcGenMic& m, int trk, int invert, int src, int style) const
 {
   jhcMatrix lims(4), arr(4), hit(4), pt(4);
   const jhcMatrix *hd;
@@ -484,12 +490,12 @@ void jhcSpeaker::map_off (jhcImg& dest, const jhcDirMic& m, int trk, int invert,
   int i, id, n = s3->PersonLim(trk);
 
   // ignore raw beam request if no samples received
-  if ((style <= 0) && (m.cnt <= 0))
+  if ((style <= 0) && (m.CommOK() <= 0))
     return;
   lims.SetVec3(dest.XLim(), dest.YLim(), 0.0);
 
   // find microphone in map coords
-  arr.MatVec(s3->ToMap(), m.loc);
+  arr.MatVec(s3->ToMap(), m.Location());
   if (invert > 0)
     arr.CompVec3(lims);
   sz = s3->I2P(0.5 * circ);
@@ -507,7 +513,7 @@ void jhcSpeaker::map_off (jhcImg& dest, const jhcDirMic& m, int trk, int invert,
         // convert to map coordinates (and possibly invert display)
         hit.MatVec(s3->ToMap(), pt);
         if (invert > 0)
-           hit.CompVec3(lims);
+          hit.CompVec3(lims);
 
         // pick drawing method based on source
         if (style <= 0)
@@ -525,7 +531,7 @@ void jhcSpeaker::map_off (jhcImg& dest, const jhcDirMic& m, int trk, int invert,
 
 //= Show closest points consistent with sound beam on frontal view.
 
-int jhcSpeaker::OffsetsCam (jhcImg& dest, int cam, int trk, int rev, int src, int style) const
+int jhcSpeaker::OffsetsCam (jhcImg& dest, int view, int trk, int rev, int src, int style) const
 {
   int i;
 
@@ -534,7 +540,7 @@ int jhcSpeaker::OffsetsCam (jhcImg& dest, int cam, int trk, int rev, int src, in
     return Fatal("Unbound person detector in jhcSpeaker::OffsetsCam");
   if (!dest.Valid(1, 3))
     return Fatal("Bad images to jhcSpeaker::OffsetsCam");
-  s3->AdjGeometry(cam);
+  s3->SetColorGeom(view);
 
   // go through all valid microphones
   if (m0 != NULL)
@@ -550,7 +556,7 @@ int jhcSpeaker::OffsetsCam (jhcImg& dest, int cam, int trk, int rev, int src, in
 //= Show offset location in frontal view of some camera using proper style for a particular microphone.
 // assumes geometry already adjusted for desired camera
 
-void jhcSpeaker::front_off (jhcImg& dest, const jhcDirMic& m, int trk, int rev, int src, int style) const
+void jhcSpeaker::front_off (jhcImg& dest, const jhcGenMic& m, int trk, int rev, int src, int style) const
 {
   jhcMatrix rel(4), pt(4);
   jhcRoi box;
@@ -560,7 +566,7 @@ void jhcSpeaker::front_off (jhcImg& dest, const jhcDirMic& m, int trk, int rev, 
   int i, id, xlim = dest.XLim(), n = s3->PersonLim(trk);
 
   // ignore raw beam request if no samples received
-  if ((style <= 0) && (m.cnt <= 0))
+  if ((style <= 0) && (m.CommOK() <= 0))
     return;
 
   // possibly generate a beam for each person

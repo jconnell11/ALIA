@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCDECLMEM_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCDECLMEM_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -123,12 +120,5 @@ private:
   // spotlight
   void buoy_preds (jhcNetNode *n, int tval, int rels, int lvl) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

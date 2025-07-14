@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCEDGE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCEDGE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -109,12 +106,5 @@ private:
   int Sobel22_RGB (jhcImg& mag, jhcImg& dir, const jhcImg& src, double hi =15.0, double lo =10.0) const;
   int SobelQuad_RGB (jhcImg& mag, jhcImg& hv, jhcImg& d12, const jhcImg& src, double hi =15.0, double lo =10.0) const;
 
-
 };
-
-
-#endif
-
-
-
 

@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIATIMER_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIATIMER_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -55,10 +52,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

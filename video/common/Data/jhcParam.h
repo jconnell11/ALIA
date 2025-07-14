@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCPARAM_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCPARAM_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include <stdlib.h>
@@ -135,9 +132,4 @@ private:
   int add_line (const char *fname, const char *tag, const char *text) const;
 
 };
-
-#endif
-
-
-
 

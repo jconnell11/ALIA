@@ -1,11 +1,11 @@
-// jhcBallistic.cpp : interface to ELI motion kernel for ALIA system
+// jhcBallistic.cpp : interface to robot motion kernel for ALIA system
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -170,12 +170,12 @@ int jhcBallistic::grab_params (const char *fname)
   ps->SetTag("ball_grab", 0);
   ps->NextSpecF( &fhold,  12.0, "Holding force (oz)");  
   ps->NextSpec4( &fask,    5,   "Force repeat cycles");
-  ps->Skip(2);
   ps->NextSpecF( &wtol,    0.1, "Width tolerance (in)");
   ps->NextSpecF( &gprog,   0.1, "Width progress (in)");  
-
   ps->NextSpec4( &gstart, 10,   "Width start cycles");
   ps->NextSpec4( &gmid,    5,   "Width stall cycles");
+
+  ps->NextSpec4( &wzok,    0,   "Allow zero width grip");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -318,10 +318,14 @@ int jhcBallistic::SaveVals (const char *fname) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Attach physical enhanced body and make pointers to some pieces.
+// NOTE: must be careful that type cast from void * is valid!
 
-void jhcBallistic::local_platform (void *soma) 
+void jhcBallistic::local_platform (void *soma, const char *kind) 
 {
-  rwi = (jhcGenRWI *) soma;
+  if ((strcmp(kind, "jhcGenGrok") != 0) &&       // type check
+      (strcmp(kind, "jhcVisGrok") != 0))
+    return;
+  rwi = (jhcGenGrok *) soma;                     // only base class needed
 }
 
 
@@ -434,6 +438,8 @@ int jhcBallistic::ball_drive0 (const jhcAliaDesc& desc, int i)
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
+  if (!act->ObjNode())                 // move vs move "something"
+    return -1;
   if (get_vel(csp[i], act) <= 0)
     return -1;
   if (get_dist(camt[i], act) <= 0)
@@ -470,7 +476,7 @@ int jhcBallistic::ball_drive (const jhcAliaDesc& desc, int i)
   {
     // check if finished or stuck
     err = b->MoveErr(camt[i]);
-    jprintf(3, dbg, "move: %3.1f, err = %3.1f, stuck = %d\n", b->Travel(), err, ct0[i]);
+    jprintf(3, dbg, "move: %3.1f, err = %3.1f, stuck = %d\n", b->Travel(), err, ccnt[i]);
     if (err < (1.5 * b->MoveTol()))
       return 1;
     if (stuck(i, err, mprog, mstart, mmid))
@@ -611,7 +617,7 @@ int jhcBallistic::ball_turn (const jhcAliaDesc& desc, int i)
   {
     // check if finished or stuck
     err = b->TurnErr(camt[i]);
-    jprintf(3, dbg, "turn: %3.1f, err = %4.2f, stuck = %d\n", b->WindUp(), err, ct0[i]);
+    jprintf(3, dbg, "turn: %3.1f, err = %4.2f, stuck = %d\n", b->WindUp(), err, ccnt[i]);
     if (err < (1.5 * b->TurnTol()))
       return 1;
     if (stuck(i, err, tprog, tstart, tmid))
@@ -760,7 +766,7 @@ int jhcBallistic::ball_lift (const jhcAliaDesc& desc, int i)
   {
     // check if finished or stuck
     err = f->LiftErr(camt[i]);
-    jprintf(3, dbg, "lift: %3.1f, err = %3.1f, stuck = %d\n", f->Height(), err, ct0[i]);
+    jprintf(3, dbg, "lift: %3.1f, err = %3.1f, stuck = %d\n", f->Height(), err, ccnt[i]);
     if (err < f->LiftTol())
       return 1;
     if (stuck(i, err, lprog, lstart, lmid))
@@ -895,11 +901,11 @@ int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
     // check if target width achieved or stuck
     err = a->WidthErr(stop);
     jprintf(3, dbg, "%s[%d]: width = %3.1f in, force = %3.1f, stuck = %d\n", 
-            act, cst[i], a->Width(), a->Squeeze(), ct0[i]);
+            act, cst[i], a->Width(), a->Squeeze(), ccnt[i]);
     if (err < wtol)
     {
       // full close = fail if in hold mode 
-      if (camt[i] >= 0.0)   
+      if ((wzok > 0) || (camt[i] >= 0.0))
         return 1;            
       jprintf(1, dbg, " { ball_grip: nothing between fingers }", err, ndone); 
       return -1;
@@ -907,8 +913,8 @@ int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
     if ((camt[i] < 0.0) && (a->Squeeze() >= fhold))
     {
       // if holding, switch to force mode after initial contact 
-      ct0[i] = 0;  
-      cst[i] = 3;                                  
+      ccnt[i] = 0;  
+      cst[i]  = 3;                                  
     }
     if (stuck(i, err, gprog, gstart, gmid))
     {
@@ -921,8 +927,8 @@ int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
     // request force application for a while (always succeeds)
     err = a->SqueezeErr(fhold);
     jprintf(3, dbg, "hold[3]: width = %3.1f, force = %3.1f, good = %d, try = %d\n", 
-            a->Width(), a->Squeeze(), ROUND(csp[i]), ct0[i]);
-    if (ct0[i]++ >= (UL32) fask)  
+            a->Width(), a->Squeeze(), ROUND(csp[i]), ccnt[i]);
+    if (ccnt[i]++ >= fask)  
       return 1;
   }
           
@@ -962,11 +968,13 @@ int jhcBallistic::get_hand (double &width, const jhcAliaDesc *act) const
     return -1;
   if ((fcn = act->Fact("fcn")) == NULL)
     return -1;
-  width = 0.1;
+  width = 0.1;               // default = closed
 
   // get hold status based on main verb
   if (fcn->LexIn("open", "release"))
-    width = (rwi->arm)->MaxWidth();
+    width = (rwi->arm)->wmax;
+  else if (fcn->LexMatch("relax"))
+    width = (rwi->arm)->wlax;
   else if (fcn->LexMatch("hold"))
     width = -0.5;
   else if (!fcn->LexMatch("close"))
@@ -1038,9 +1046,7 @@ int jhcBallistic::ball_arm (const jhcAliaDesc& desc, int i)
     a->Position(now);
     err = now.PosDiff3(cpos[i]);
     zerr = a->ErrZ(cpos[i]);
-    if (cdir[i].W() < 0.0)
-      err = __max(err, a->Width());
-    jprintf(3, dbg, "hand: %s, err = %3.1f in (%3.1f), stuck = %d\n", now.ListVec3(txt), err, zerr, ct0[i]);
+    jprintf(3, dbg, "hand: %s, err = %3.1f in (%3.1f), stuck = %d\n", now.ListVec3(txt), err, zerr, ccnt[i]);
     if ((err < hdone) && (zerr < zdone))
       return 1;
     if (stuck(i, err, hprog, hstart, hmid))
@@ -1053,8 +1059,6 @@ int jhcBallistic::ball_arm (const jhcAliaDesc& desc, int i)
   // re-issue basic command (arm and wrist are combined, hand separate)
   jprintf(2, dbg, "|- Ballistic %d: hand @ %s\n\n", cbid[i], cpos[i].ListVec3(txt));
   a->ArmTarget(cpos[i], cdir[i], 1.0, 1.0, cbid[i]);
-  if (cdir[i].W() < 0.0)
-    a->WidthTarget(0.0);
   return 0;
 }
 
@@ -1079,13 +1083,13 @@ int jhcBallistic::get_pos (int i, const jhcAliaDesc *act)
   if (fcn->LexMatch("retract"))
   {
     cpos[i].SetVec3(a->retx, a->rety, a->retz);        
-    cdir[i].SetVec3(a->rdir, a->rtip, 0.0, -1.0);    // forced closed
+    cdir[i].SetVec3(a->rdir, a->rtip, 0.0);
     return 1;
   }
   else if (fcn->LexMatch("extend"))
   {
     cpos[i].SetVec3(extx, exty, extz);  
-    cdir[i].SetVec3(edir, etip, 0.0, 0.0);           // width unspecified
+    cdir[i].SetVec3(edir, etip, 0.0);
     return 1;
   }
   else if (set_inches(dist, act->Fact("amt"), 12.0) > 0)
@@ -1184,7 +1188,7 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc& desc, int i)
     // check if finished or stuck
     a->Direction(now);
     err = now.RotDiff3(cdir[i]);
-    jprintf(3, dbg, "wrist: %s, err = %3.1f deg, stuck = %d\n", now.ListVec3(txt), err, ct0[i]);
+    jprintf(3, dbg, "wrist: %s, err = %3.1f deg, stuck = %d\n", now.ListVec3(txt), err, ccnt[i]);
     if (err < wdone)
       return 1;
     if (stuck(i, err, wprog, wstart, wmid))
@@ -1318,7 +1322,7 @@ int jhcBallistic::ball_neck0 (const jhcAliaDesc& desc, int i)
 int jhcBallistic::ball_neck (const jhcAliaDesc& desc, int i)
 {
   jhcGenNeck *n = rwi->neck;
-  double err = 0.0;
+  double dwell = 1.0, err = 0.0;       // 1 sec to allow new object NOTE
 
   // lock to sensor cycle
   if (rwi->Ghost() || (n == NULL))
@@ -1333,25 +1337,29 @@ int jhcBallistic::ball_neck (const jhcAliaDesc& desc, int i)
     err = fabs(cdir[i].P() - n->Pan());
   if (cdir[i].T() != 0.0)
     err = __max(err, fabs(cdir[i].T() - n->Tilt()));
-
   if (cst[i] <= 0)
   {
     // record initial error
     cerr[i] = err;
     cst[i] = 1;
   }
-  else
+  else if (cst[i] == 1)
   {
-    // check if finished or stuck
-    jprintf(3, dbg, "neck: (%3.1f %3.1f), err = %3.1f deg, stuck = %d\n", n->Pan(), n->Tilt(), err, ct0[i]);
+    // check if finished moving or stuck
+    jprintf(3, dbg, "neck: (%3.1f %3.1f), err = %3.1f deg, stuck = %d\n", n->Pan(), n->Tilt(), err, ccnt[i]);
     if (err < ndone)
-      return 1;
-    if (stuck(i, err, nprog, nstart, nmid))
+    {
+      ct0[i] = jms_now();
+      cst[i] = 2;
+    }
+    else if (stuck(i, err, nprog, nstart, nmid))
     {
       jprintf(1, dbg, " { ball_neck: stuck at offset %4.2f [%4.2f] }\n", err, ndone); 
       return -1;
     }
   }
+  else if (jms_elapsed(ct0[i]) > dwell)          // stay at end position a while
+    return 1;
 
   // re-issue basic command (pan and tilt are separate resources)
   jprintf(2, dbg, "|- Ballistic %d: neck @ (%3.1f %3.1f)\n\n", cbid[i], cdir[i].P(), cdir[i].T());
@@ -1359,7 +1367,7 @@ int jhcBallistic::ball_neck (const jhcAliaDesc& desc, int i)
     n->PanTarget(cdir[i].P(), csp[i], cbid[i]);
   if (cdir[i].T() != 0.0)
     n->TiltTarget(cdir[i].T(), csp[i], cbid[i]);
-  return 0;
+  return 0;  
 }
 
 
@@ -1415,7 +1423,7 @@ int jhcBallistic::get_gaze (int i, const jhcAliaDesc *act)
       cdir[i].IncP(mag * p);
     else if (dir->LexMatch("right"))
       cdir[i].IncP(-mag * p);
-    else if (dir->LexMatch("straight"))
+    else if (dir->LexIn("straight", "forward"))
       cdir[i].SetP(0.1);
 
     // get incremental tilt offset
@@ -1541,20 +1549,20 @@ int jhcBallistic::set_inches (double& dist, const jhcAliaDesc *amt, double clip)
 //= Tests if command is making suitable progress given current target error.
 // reads and updates member variables associated with instance
 //   cerr[i]: error from target on last cycle (MUST be initialized!)
-//    ct0[i]: counts how many cycles with minimal progress
-//    cst[i]: 0 = set up target, 1 = wait for movement start, 2 = check if done
+//   ccnt[i]: counts how many cycles with minimal progress
+//   cst2[i]: 0 = set up target, 1 = wait for movement start, 2 = check if done
 // NOTE: function only works in states 1 and 2 and changes cst[i]
 
 bool jhcBallistic::stuck (int i, double err, double prog, int start, int mid)
 {
-  int wait = ((cst[i] <= 1) ? start : mid);  // no motion timeout depends on state
+  int wait = ((cst2[i] <= 1) ? start : mid);     // no motion timeout depends on state
 
   if ((cerr[i] - err) < prog)
-    return(ct0[i]++ > (UL32) wait);
+    return(ccnt[i]++ > wait);
   cerr[i] = err;
-  ct0[i]  = 0;                               // reset count once movement starts
-  if (cst[i] == 1)                 
-    cst[i] = 2;          
+  ccnt[i] = 0;                                   // reset count once movement starts
+  if (cst2[i] == 1)                 
+    cst2[i] = 2;          
   return false;
 }
 

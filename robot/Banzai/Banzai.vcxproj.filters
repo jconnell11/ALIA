@@ -327,9 +327,6 @@
     <ClCompile Include="..\common\Peripheral\jhcAccelXY.cpp">
       <Filter>Source Files\common robot\Peripheral</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\Peripheral\jhcDirMic.cpp">
-      <Filter>Source Files\common robot\Peripheral</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Peripheral\jhcDynamixel.cpp">
       <Filter>Source Files\common robot\Peripheral</Filter>
     </ClCompile>
@@ -558,9 +555,6 @@
     <ClCompile Include="..\common\RWI\jhcEliCoord.cpp">
       <Filter>Source Files\common robot\RWI</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\RWI\jhcBackgRWI.cpp">
-      <Filter>Source Files\common robot\RWI</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Kernel\jhcAliaKudos.cpp">
       <Filter>Source Files\common robot\Kernel</Filter>
     </ClCompile>
@@ -600,11 +594,26 @@
     <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSAPI.cpp">
       <Filter>Source Files\common audio\Acoustic</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\RWI\jhcEliRWI.cpp">
-      <Filter>Source Files\common robot\RWI</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\Kernel\jhcEmotion.cpp">
       <Filter>Source Files\common robot\Kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Objects\jhcGenObjects.cpp">
+      <Filter>Source Files\common robot\Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcBgndGrok.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\RWI\jhcVisGrok.cpp">
+      <Filter>Source Files\common robot\RWI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Peripheral\jhcGenMic.cpp">
+      <Filter>Source Files\common robot\Peripheral</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\Peripheral\jhcVt2Mic.cpp">
+      <Filter>Source Files\common robot\Peripheral</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\video\common\Processing\jhcWarp.cpp">
+      <Filter>Source Files\common video\Processing</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -777,9 +786,6 @@
       <Filter>Header Files\common audio\Parse</Filter>
     </ClInclude>
     <ClInclude Include="..\common\Peripheral\jhcAccelXY.h">
-      <Filter>Header Files\common robot\Peripheral</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\Peripheral\jhcDirMic.h">
       <Filter>Header Files\common robot\Peripheral</Filter>
     </ClInclude>
     <ClInclude Include="..\common\Peripheral\jhcDynamixel.h">
@@ -1034,9 +1040,6 @@
     <ClInclude Include="..\common\RWI\jhcEliCoord.h">
       <Filter>Header Files\common robot\RWI</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\RWI\jhcBackgRWI.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Kernel\jhcAliaKudos.h">
       <Filter>Header Files\common robot\Kernel</Filter>
     </ClInclude>
@@ -1088,9 +1091,6 @@
     <ClInclude Include="..\..\audio\common\Acoustic\jhcAliaSAPI.h">
       <Filter>Header Files\common audio\Acoustic</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\RWI\jhcEliRWI.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Body\jhcGenNeck.h">
       <Filter>Header Files\common robot\Body</Filter>
     </ClInclude>
@@ -1103,11 +1103,38 @@
     <ClInclude Include="..\common\Body\jhcGenArm.h">
       <Filter>Header Files\common robot\Body</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\RWI\jhcGenRWI.h">
-      <Filter>Header Files\common robot\RWI</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\Kernel\jhcEmotion.h">
       <Filter>Header Files\common robot\Kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Objects\jhcGenObjects.h">
+      <Filter>Header Files\common robot\Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcBgndGrok.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcGenGrok.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\jhc_pthread.h">
+      <Filter>Header Files\common video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\RWI\jhcVisGrok.h">
+      <Filter>Header Files\common robot\RWI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhc_font.h">
+      <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Body\jhcGenBody.h">
+      <Filter>Header Files\common robot\Body</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Peripheral\jhcGenMic.h">
+      <Filter>Header Files\common robot\Peripheral</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Peripheral\jhcVt2Mic.h">
+      <Filter>Header Files\common robot\Peripheral</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\video\common\Processing\jhcWarp.h">
+      <Filter>Header Files\common video\Processing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

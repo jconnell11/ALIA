@@ -1,10 +1,10 @@
-// jhcSceneVis.h : interface to ELI visual behavior kernel for ALIA system
+// jhcSceneVis.h : interface to robot visual behavior kernel for ALIA system
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@
 #include "jhcGlobal.h"
 
 #include "Geometry/jhcMatrix.h"        // common robot
-#include "RWI/jhcEliRWI.h"              
+#include "Objects/jhcSurfObjs.h"
+#include "RWI/jhcVisGrok.h"              
 
 #include "Kernel/jhcStdKern.h"         
 
@@ -143,9 +144,10 @@ private:
   jhcMatrix *cpos, *cdir; 
 
   // link to hardware 
-  jhcEliRWI *rwi;           // likely shared
+  jhcVisGrok *rwi;           // likely shared
+  jhcGenNeck *neck;
+  jhcGenLift *lift;
   jhcSurfObjs *sobj;
-  jhcEliBody *body;
 
   // status variables
   jhcAliaNote *rpt;          // where to inject NOTEs
@@ -154,11 +156,20 @@ private:
   // analysis mask
   jhcImg bin;
 
+  // object-of-interest
+  jhcAliaDesc *goi;
+  double gerr;
+  UL32 gt0;
+
 
 // PRIVATE MEMBER PARAMETERS
 private:
+  // gaze control parameters
+  double atol, xbd, ybd, prog, stim;
+  int dwell, survey, gbid;
+
   // distance category parameters
-  double dist0, dist1, dist2, dist3, dvar, drop, xbd, ybd;
+  double dist0, dist1, dist2, dist3, dvar, drop;
 
   // object shape categories
   double len0, len1, len2, len3, thk0, thk1, thk2, thk3;
@@ -173,7 +184,7 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:  
-  jhcParam rps, sps, dps, cps;
+  jhcParam gps, rps, sps, dps, cps;
   int gok;                   // whether succeeds without body
   int dbg;                   // control of diagnostic messages
 
@@ -192,13 +203,14 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // processing parameters
+  int gaze_params (const char *fname);  
   int rng_params (const char *fname);  
   int shape_params (const char *fname);  
   int dims_params (const char *fname);  
   int comp_params (const char *fname);  
 
   // overridden virtuals
-  void local_platform (void *soma);
+  void local_platform (void *soma, const char *kind);
   void local_reset (jhcAliaNote& top);
   void local_volunteer ();
   int local_start (const jhcAliaDesc& desc, int i);
@@ -211,10 +223,12 @@ private:
   void alert_any ();
   void alert_close ();
   void mark_attn ();
+  void gaze_last ();
                
   // gaze control
   JCMD_DEF(vis_look);
   JCMD_DEF(vis_orient);
+  int fixate_read (const jhcAliaDesc& desc, int i);
   int chk_stuck (int i, double err);
 
   // value ranges

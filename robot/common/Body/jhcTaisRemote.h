@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTAISREMOTE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTAISREMOTE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -103,12 +100,5 @@ private:
   void put24 (UL32 val, int n);
   void build_cvt ();
 
-
 };
-
-
-#endif  // once
-
-
-
 

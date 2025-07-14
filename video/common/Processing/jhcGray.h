@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2018 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGRAY_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGRAY_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcImg.h"
@@ -62,10 +60,6 @@ public:
   int EqualizeRGB (jhcImg& dest, const jhcImg& src, int thresh =0) const;
 
 };
-
-
-#endif
-
 
 
 

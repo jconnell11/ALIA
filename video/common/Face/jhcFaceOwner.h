@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCFACEOWNER_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCFACEOWNER_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -79,12 +76,5 @@ private:
   // main functions
   void rem_weakest ();
 
-
 };
-
-
-#endif  // once
-
-
-
 

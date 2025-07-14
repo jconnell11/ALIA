@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSOUNDFCN_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSOUNDFCN_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -67,12 +64,5 @@ private:
   // background thread
   static unsigned int __stdcall snd_backg (void *inst);
 
-
 };
-
-
-#endif  // once
-
-
-
 

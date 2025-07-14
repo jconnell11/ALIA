@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIACHAIN_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIACHAIN_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -103,6 +100,7 @@ public:
   bool Empty () const {return((d == NULL) && (p == NULL));}
   bool StepDir (int kind) const;
   void RefSteps (jhcNetNode *src, const char *slot, jhcNodePool& pool, int init =1);
+  int NumSteps (int init =0);
   int PlayAct (jhcAliaChain *act, int mode);
   jhcAliaChain *StepN (int n);
   jhcAliaChain *Penult ();
@@ -163,10 +161,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include "RWI/jhcManusRWI.h"
+#include "RWI/jhcManusGrok.h"
 
 #include "Grounding/jhcLocalSeq.h"
 
@@ -52,9 +52,11 @@ jhcLocalSeq::jhcLocalSeq ()
 
 //= Attach physical enhanced body and make pointers to some pieces.
 
-void jhcLocalSeq::local_platform (void *soma)
+void jhcLocalSeq::local_platform (void *soma, const char *kind) 
 {
-  rwi = (jhcManusRWI *) soma;
+  if (strcmp(kind, "jhcManusGrok") != 0)         // type check
+    return;
+  rwi = (jhcManusGrok *) soma;
 }
 
 

@@ -1,10 +1,11 @@
-// jhcLabel.h : uses operating system to add captions to an image
+// jhcLabel.h : add text captions to an image
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2018 IBM Corporation
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,41 +21,38 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCLABEL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCLABEL_
-/* CPPDOC_END_EXCLUDE */
-
+#pragma once
 
 #include "jhcGlobal.h"
 
-#include <windows.h> 
 #include <stdio.h>
 
 #include "Data/jhcImg.h"
 
 
-//= Uses operating system to add captions to an image.
-// conceptually part of jhcDraw but has Windows dependency
+//= Add text captions to an image.
+// conceptually part of jhcDraw but has font dependency
 
 class jhcLabel 
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  HDC dc;
-  HGDIOBJ bmap0, font0;
-  HBITMAP bmap;
-  HFONT font;
-  LPBITMAPINFOHEADER hdr;
-  jhcImg src;
-  int sz, tw, th;
+  // font information (shared by all instances)
+  static int cw[96], ch[96];
+  static UC8 *pels[96];
+  static int font_users, full, line;
+
+  // full label image
+  jhcImg lab;
+  int tw, th;
 
 
 // PUBLIC MEMBER FUNCTIONS
 public:
   // creation and configuration
-  jhcLabel (int xmax =640, int ymax =480);
+  jhcLabel ();
   ~jhcLabel ();
+  void SetDir (const char *path);
 
   // main functions
   int LabelLeft (jhcImg& dest, double x, double y, const char *msg, 
@@ -74,23 +72,28 @@ public:
   int LabelBox (jhcImg& dest, const jhcRoi& box, int n,
                 int ht =16, int r =255, int g =255, int b =255, int gap =5)
     {char msg[80]; sprintf_s(msg, "%d", n); return LabelBox(dest, box, msg, ht, r, g, b, gap);}
+  int LabelSolid (jhcImg& dest, double x, double y, const char *msg,
+                  int wht =0, int r =255, int g =255, int b =255);
 
 
 // PRIVATE MEMBER FUNCTIONS
 private:
-  void make_header ();
-  void set_font (int ht);
-  void make_label (const char *txt, int ht, int just);
+  // creation and configuration
+  int load_font (const char *fname);
+
+  // main functions
+  void blank_panel (jhcImg& dest, double x, double y, int wht, int pad) const;
+
+  // label generation
+  int make_label (const char *txt, int mag, int just);
+  int set_size (const char *txt, int mag);
+  const char *line_len (int& w, const char *txt) const;
+  int insert_pels (int x0, int y0, int i, int mag);
+
+  // pixel setting
   int xfer_text (jhcImg& dest, int x, int y, int r, int g, int b, int chk);
   int xfer_text_rot (jhcImg& dest, double x, double y, double degs, int r, int g, int b);
   void cvt_col (int& red, int& grn, int& blu, const jhcImg& dest, int r, int g, int b) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

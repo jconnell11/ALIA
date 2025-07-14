@@ -1,4 +1,4 @@
-// jhcSupport.cpp : interface to ELI surface finder kernel for ALIA system
+// jhcSupport.cpp : interface to robot surface finder kernel for ALIA system
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
@@ -216,10 +216,13 @@ int jhcSupport::SaveVals (const char *fname) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Attach physical enhanced body and make pointers to some pieces.
+// NOTE: must be careful that type cast from void * is valid!
 
-void jhcSupport::local_platform (void *soma) 
+void jhcSupport::local_platform (void *soma, const char *kind) 
 {
-  rwi = (jhcEliRWI *) soma;
+  if (strcmp(kind, "jhcVisGrok") != 0)           // type check
+    return;
+  rwi = (jhcVisGrok *) soma;
   tab = NULL;
   neck = NULL;
   lift = NULL;
@@ -491,9 +494,9 @@ int jhcSupport::surf_enum0 (const jhcAliaDesc& desc, int i)
 int jhcSupport::surf_enum (const jhcAliaDesc& desc, int i)
 {
   jhcAliaDesc *obj = desc.Val("arg");
-  double dmax = dfar + band;
-  double dhi[4]  = {dmax, dmid, dfar, dmax};
-  double zavg[5] = {mavg,  0.0, lavg, mavg, havg};
+//  double dmax = dfar + band;
+//  double dhi[4]  = {dmax, dmid, dfar, dmax};
+//  double zavg[5] = {mavg,  0.0, lavg, mavg, havg};
   double sz = 0.0;
   int aqnt = (int) cpos[i].P(), dqnt = (int) cpos[i].X(), hqnt = (int) cpos[i].Z();
   int current, id, idx, born = 0;
@@ -552,8 +555,13 @@ double jhcSupport::scan_suitable (int dqnt, int hqnt, double d0)
   tab->InitSurf();
   while ((rng = tab->NextSurf()) >= 0.0)
   {
+/*
     if (tab->SurfHt() < mlth)                     // ignore floor
-      continue;
+{
+printf("  scan_suitable: ignore floor at %3.1f in [%3.1f]?\n", tab->SurfHt(), mlth); 
+//      continue;
+}
+*/
     if ((dqnt > 0) && (rng > dhi[dqnt]))
       break;                                      // too far
     if ((rng > d0) && (rng >= dlo[dqnt]))
@@ -655,7 +663,7 @@ int jhcSupport::surf_orient (const jhcAliaDesc& desc, int i)
   // look slightly beyond edge of table
   tab->SurfEdge(edge, saved[idx], soff[idx] - inset);
   neck->AimFor(pan, tilt, edge, lift->Height());
-  neck->GazeTarget(pan, tilt, 1.0, 1.0, cbid[i]);
+  neck->GazeTarget(pan, tilt, 1.0, 1.0, cbid[i]);    // use GazeFix instead?
 
   // see if close enough yet
   dp = neck->PanErr(pan);
@@ -765,8 +773,8 @@ int jhcSupport::surf_goto (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
-    return err_hw("body");
+//  if ((rwi->body)->CommOK() <= 0)
+//    return err_hw("body");
 
   // determine location of closest edge of surface (and attempt to find again)
   tab->SurfEdge(edge, saved[idx], soff[idx] - inset);   

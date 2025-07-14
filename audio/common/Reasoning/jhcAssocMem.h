@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCASSOCMEM_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCASSOCMEM_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -91,12 +88,5 @@ private:
   // file functions
   int save_rules (FILE *out, int level) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

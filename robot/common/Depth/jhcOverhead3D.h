@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCOVERHEAD3D_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCOVERHEAD3D_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -48,7 +45,7 @@
 // <pre>
 // class tree and parameters:
 //
-//   Overhead3D    cps[] rps[] mps
+//   Overhead3D    cps[] vrps[] vps[] mps pps kps
 //     Surface3D
 //       PlaneEst
 //
@@ -62,7 +59,7 @@ class jhcOverhead3D : public jhcSurface3D,
 private:
   jhcFill fill;
   jhcImg ctmp, dmsk, mask;
-  int smax;
+  int smax, vmax;
 
   // plane fitting results
   double efit, tfit, rfit, hfit;
@@ -86,11 +83,17 @@ public:
   // camera parameters (multiple Kinects)
   jhcParam *cps;
   double *cx, *cy, *cz, *p0, *t0, *r0, *rmax;
+  double *cpf, *ctf, *crf;
   int *dev;
 
   // restriction regions (multiple Kinects)
   jhcParam *rps;
   int *rx, *ry;
+
+  // viewing parameters (multiple color cameras)
+  jhcParam *vps;
+  double *vx, *vy, *vz, *vp, *vt, *vr, *vf, *vs;
+  double *vpf, *vtf, *vrf;
 
   // map parameters
   jhcParam mps;
@@ -110,10 +113,13 @@ public:
 public:
   // creation and initialization
   ~jhcOverhead3D ();
-  jhcOverhead3D (int ncam =1);
+  jhcOverhead3D (int ncam =1, int nview =1);
   void AllocCams (int ncam);
+  void AllocViews (int nview);
   int NumCam (int lim =0) const 
     {return((lim <= 0) ? smax : __min(lim, smax));}
+  int NumView (int lim =0) const 
+    {return((lim <= 0) ? vmax : __min(lim, vmax));}
   int XDim () const {return map.XDim();}
   int YDim () const {return map.YDim();}
   int InputW () const {return jhcSurface3D::XDim();}
@@ -134,8 +140,15 @@ public:
   void SetFit (double d, int n, double e, double t, double r, double h, int w =100);
   void SetCam (int n, double x, double y, double z, double pan, double tilt, 
                double roll =0.0, double rng =180.0, int dnum =0); 
+  void SetCamFix (int n, double pcal, double tcal, double rcal);
+  void SetAlt (int n, double x, double y, double z, double pan, double tilt, double roll =0.0);
+  void AltFlen (int n, double f =525.0, double sc =1.0);
+  void SetAltFix (int n, double pcal, double tcal, double rcal);
   void SetCam (int n, const jhcMatrix& pos, const jhcMatrix& dir, double rng =180.0, int dnum =0)
     {SetCam(n, pos.X(), pos.Y(), pos.Z(), dir.P(), dir.T(), dir.R(), rng, dnum);}
+  void SetAlt (int n, const jhcMatrix& pos, const jhcMatrix& dir)
+    {SetAlt(n, pos.X(), pos.Y(), pos.Z(), dir.P(), dir.T(), dir.R());}
+  void CamViews ();
 
   // processing parameter bundles
   int Defaults (const char *fname =NULL);
@@ -163,7 +176,6 @@ public:
   bool AlreadyOK (const jhcImg& ref, int cam =0, int big =0) const;
   void RollSize (jhcImg& dest, const jhcImg& ref, int cam =0, int fields =0, int big =0) const;
   jhcImg *Correct (jhcImg& dest, const jhcImg& src, int cam =0, int big =0);
-  double ImgRoll (int cam =0) const;
 
   // main functions
   void SrcSize (int w =640, int h =480, double f =525.0, double sc=0.9659);
@@ -220,7 +232,8 @@ public:
   double MapZ (int mx, int my, int sz =3, double def =0.0) const;
 
   // debugging graphics
-  void AdjGeometry (int cam =0);
+  void SetDepthGeom (int cam =0);
+  void SetColorGeom (int view =0);
   int ShowCams (jhcImg& dest,           int t =1, int r =-5, int g =0, int b =0) const;
   int CamLoc (jhcImg& dest,    int cam, int t =1, int r =-5, int g =0, int b =0) const;
   int ShowZones (jhcImg& dest,          int t =1, int r =-5, int g =0, int b =0) const;
@@ -234,6 +247,7 @@ public:
 protected:
   // processing parameters
   int cam_params (int n, const char *fname);
+  int view_params (int n, const char *fname);
   int flat_params (int n, const char *fname);
   int map_params (const char *fname);
   int plane_params (const char *fname);
@@ -243,17 +257,15 @@ protected:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // creation and initialization
-  void dealloc ();
+  void dealloc_cam ();
+  void dealloc_view ();
+
+  // image normalization
+  double norm_roll (double roll) const;
 
   // plane fitting
   int z_err (jhcImg& devs, const jhcImg& hts, double dmax, double lo, double hi) const;
 
 
 };
-
-
-#endif  // once
-
-
-
 

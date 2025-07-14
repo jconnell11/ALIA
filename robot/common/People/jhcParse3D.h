@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCPARSE3D_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCPARSE3D_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -267,10 +264,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

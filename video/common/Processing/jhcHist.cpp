@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ int jhcHist::HistRegion (jhcArr& h, const jhcImg& src,
 {
   jhcRoi area;
 
+  area.RoiClip(src);
   area.CenterRoi(xc, yc, wid, ht);
   return HistRegion(h, src, area);
 }
@@ -545,7 +546,7 @@ int jhcHist::Enhance (jhcImg& dest, const jhcImg& src, double smax, const jhcRoi
   // local variables
   jhcArr ihist(256);
   UC8 scaled[256];
-  int x, y, rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  int x, y, f, rw = dest.RoiW(), rh = dest.RoiH(), nf = dest.Fields(), rsk = dest.RoiSkip();
   UC8 *d = dest.RoiDest();
   const UC8 *s = src.RoiSrc();
 
@@ -558,8 +559,9 @@ int jhcHist::Enhance (jhcImg& dest, const jhcImg& src, double smax, const jhcRoi
 
   // apply stretching to image
   for (y = rh; y > 0; y--, d += rsk, s += rsk)
-    for (x = rw; x > 0; x--, d++, s++)
-      *d = scaled[*s];
+    for (x = rw; x > 0; x--)
+      for (f = nf; f > 0; f--, d++, s++)
+        *d = scaled[*s];
   return 1;
 }
 
@@ -844,15 +846,19 @@ int jhcHist::ProjectH (jhcArr& hist, const jhcImg& src, const jhcRoi& area, doub
 
 int jhcHist::SliceV (jhcArr& hist, const jhcImg& src, int x) const 
 {
-  int y, h = src.YDim(), ln = src.Line();
-  const UC8 *s;
+  int y, h = src.YDim(), ln = src.Line(), ln2 = ln >> 1;
+  const UC8 *s = src.RoiSrc(x, 0);
+  const US16 *s2 = (const US16 *) s;
 
-  if (!src.Valid(1) || (hist.Size() != h) || (x < 0) || (x >= src.XDim()))
+  if (!src.Valid(1, 2) || (hist.Size() != h) || (x < 0) || (x >= src.XDim()))
     return Fatal("Bad inputs to jhcHist::SliceV");
 
-  s = src.RoiSrc(x, 0);
-  for (y = 0; y < h; y++, s += ln)
-    hist.ASet(y, *s);
+  if (src.Valid(1))
+    for (y = 0; y < h; y++, s += ln)
+      hist.ASet(y, *s);
+  else
+    for (y = 0; y < h; y++, s2 += ln2)
+      hist.ASet(y, *s2);
   return 1;
 }
 
@@ -863,14 +869,18 @@ int jhcHist::SliceV (jhcArr& hist, const jhcImg& src, int x) const
 int jhcHist::SliceH (jhcArr& hist, const jhcImg& src, int y) const 
 {
   int x, w = src.XDim(), h = src.YDim();
-  const UC8 *s;
+  const UC8 *s = src.RoiSrc(0, y);
+  const US16 *s2 = (const US16 *) s;
 
-  if (!src.Valid(1) || (hist.Size() != w) || (y < 0) || (y >= h))
+  if (!src.Valid(1, 2) || (hist.Size() != w) || (y < 0) || (y >= h))
     return Fatal("Bad inputs to jhcHist::SliceH");
 
-  s = src.RoiSrc(0, y);
-  for (x = 0; x < w; x++, s++)
-    hist.ASet(x, *s);
+  if (src.Valid(1))
+    for (x = 0; x < w; x++, s++)
+      hist.ASet(x, *s);
+  else
+    for (x = 0; x < w; x++, s2++)
+      hist.ASet(x, *s2);
   return 1;
 }
 
@@ -982,11 +992,11 @@ int jhcHist::Hist2D (jhcImg& dest, const jhcImg& xval, const jhcImg& yval, doubl
   for (i = 0; i < j; i++)
     if (t[i] > top)
       top = t[i];
-  vsc = ROUND(65536.0 * 255.0 * psc / top);
+  vsc = ROUND(65536.0 * 255.0 * psc / (double) top);
   for (y = dh; y > 0; y--, d += dsk)
     for (x = dw; x > 0; x--, t++, d++)
     {
-      v = ((*t) * vsc) >> 16;
+      v = (int)(((*t) * vsc) >> 16);
       *d = BOUND(v); 
     }
   return 1;

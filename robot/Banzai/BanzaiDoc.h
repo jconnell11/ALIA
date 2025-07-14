@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_BanzaiDOC_H__88A3963D_AA79_44B8_ADD0_FFB56CC99566__INCLUDED_)
-#define AFX_BanzaiDOC_H__88A3963D_AA79_44B8_ADD0_FFB56CC99566__INCLUDED_
-
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
-
 
 // JHC: definitions of added member variables
 #include "Data/jhcImg.h"               // common video
@@ -91,6 +85,12 @@ public:
   int swing_params (const char *fname =NULL);
   int interact_params (const char *fname =NULL);
   bool next_line (char *txt, int ssz, FILE *f) const;
+
+
+// test
+int sx[480], fx[480], sy[640], fy[640];
+void tof_sampling ();
+int set_z16_tof (jhcImg& dest, const void *pels) const;
 
 
 // Operations
@@ -253,11 +253,14 @@ public:
   afx_msg void OnMoodAdjustmix();
   afx_msg void OnMoodPreferencemix();
   afx_msg void OnMoodNagtiming();
+  afx_msg void OnManipFingerpose();
+  afx_msg void OnImagesRangerfinder();
+  afx_msg void OnImagesColorcamera();
 };
+
 
 /////////////////////////////////////////////////////////////////////////////
 
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_BanzaiDOC_H__88A3963D_AA79_44B8_ADD0_FFB56CC99566__INCLUDED_)

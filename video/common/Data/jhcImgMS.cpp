@@ -451,7 +451,7 @@ int jhcImgMS::Encode (const char *fname, const jhcImg& src)
     if (IsFlavor("jpg") || IsFlavor("jpeg"))
     {
       // set compression quality based on member variable
-      opts.pstrName = L"ImageQuality";
+      opts.pstrName = (LPOLESTR) L"ImageQuality";
       val.vt = VT_R4;
       val.fltVal = (float)(0.01 * quality);
       comp = 1;
@@ -459,7 +459,7 @@ int jhcImgMS::Encode (const char *fname, const jhcImg& src)
     else if (IsFlavor("tif") || IsFlavor("tiff"))
     {
       // select lossless ZIP compression
-      opts.pstrName = L"TiffCompressionMethod";
+      opts.pstrName = (LPOLESTR) L"TiffCompressionMethod";
       val.vt = VT_UI1;
       val.bVal = WICTiffCompressionZIP;      
       comp = 1;

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -530,7 +530,7 @@ int jhcThresh_0::RampUnder (jhcImg& dest, const jhcImg& src, int lo, int hi) con
     else if (i >= hi)
       thv[i] = 0;
     else
-      thv[i] = 255 - BOUND(ROUND(sc * (i - lo)));
+      thv[i] = (UC8)(255 - BOUND(ROUND(sc * (i - lo))));
 
   // apply lookup table to image
   for (y = rh; y > 0; y--)
@@ -642,12 +642,12 @@ int jhcThresh_0::InRange (jhcImg& dest, const jhcImg& src, int lo, int hi, int d
     else if (i <= v2)
       thv[i] = 255;
     else if (i < v3)
-      thv[i] = 255 - BOUND(ROUND(sc * (i - v2)));
+      thv[i] = (UC8)(255 - BOUND(ROUND(sc * (i - v2))));
     else
       thv[i] = 0;
   if (hi < lo)
     for (i = 0; i <= 255; i++)
-      thv[i] = 255 - thv[i];
+      thv[i] = (UC8)(255 - thv[i]);
   if (nz > 0)                          // zero input sometimes invalid
     thv[0] = 0;                        
 
@@ -748,7 +748,7 @@ int jhcThresh_0::MinUnder (jhcImg& dest, const jhcImg& old, const jhcImg& src, i
     else if (i >= hi)
       thv[i] = 0;
     else
-      thv[i] = 255 - BOUND(ROUND(sc * (i - lo)));
+      thv[i] = (UC8)(255 - BOUND(ROUND(sc * (i - lo))));
 
   // apply lookup table to image and combine with old value
   for (y = rh; y > 0; y--)
@@ -848,7 +848,7 @@ int jhcThresh_0::MaxUnder (jhcImg& dest, const jhcImg& old, const jhcImg& src, i
     else if (i >= hi)
       thv[i] = 0;
     else
-      thv[i] = 255 - BOUND(ROUND(sc * (i - lo)));
+      thv[i] = (UC8)(255 - BOUND(ROUND(sc * (i - lo))));
 
   // apply lookup table to image and combine with old value
   for (y = rh; y > 0; y--)

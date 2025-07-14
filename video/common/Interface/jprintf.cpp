@@ -34,17 +34,23 @@
 #include "Interface/jprintf.h"
 
 
-//= Persistent global file pointer for log file output.
+//= Persistent global variable for whether each jprintf is followed by fflush.
+// this can be convenient if the console generally uses setvbuf() for speed-up
+
+int jprintf_fflush = 0;   
+
+
+//= Persistent hidden global file pointer for log file output.
 
 static FILE *log_file = NULL;
 
 
-//= Persistent global name of log file.
+//= Persistent hidden global name of log file.
 
 static char log_name[500] = "";
 
 
-//= Persistent flag used to suppress console copy of output.
+//= Persistent hidden flag used to suppress console copy of output.
 
 static int only_log = 0;
 
@@ -184,7 +190,11 @@ int jprint (const char *txt)
   int n = (int) strlen(txt);
 
   if (only_log <= 0)
+  {
     fwrite(txt, sizeof(char), n, stdout);
+    if (jprintf_fflush > 0)                      // for setvbuf()
+      fflush(stdout); 
+  }
   if (log_file != NULL)
     fwrite(txt, sizeof(char), n, log_file);
   return 0;
@@ -197,7 +207,11 @@ int jprint (const char *txt)
 int jprint_back ()
 {
   if (only_log <= 0)
+  {
     fwrite("\b \b", sizeof(char), 3, stdout);
+    if (jprintf_fflush > 0)                      // for setvbuf()
+      fflush(stdout); 
+  }
   if (log_file != NULL)
   {
     fseek(log_file, -1, SEEK_CUR);
@@ -229,7 +243,7 @@ int jfprintf (FILE *out, const char *msg, ...)
     if (only_log > 0)
       return 0;
   }
-  return((int) fwrite(val, csz, n, out));
+  return((int) fwrite(val, csz, n, out));        // ignore setvbuf()
 }    
 
 
@@ -247,5 +261,3 @@ int jfputs (const char *msg, FILE *out)
   }
   return fputs(msg, out);
 }    
-  
-

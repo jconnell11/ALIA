@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include <math.h>
-#include <basetsd.h>                 // for __int64 type
 #include "Interface/jhcMessage.h"
 
 #include "Processing/jhcArea.h"
@@ -311,7 +310,7 @@ int jhcArea::box_avg0 (jhcImg &dest, const jhcImg& src, int dx, int dy,
   int rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
   int nx = dx / 2, px = dx - nx, xlim = rw - px - 1;
   int ny = dy / 2, py = dy - ny, ylim = rh - py, nyp = ny + 1;
-  unsigned __int64 norm = (unsigned __int64)(0x01000000 * sc / (dx * dy));
+  UL64 norm = (UL64)(0x01000000 * sc / (dx * dy));
   UL32 sum, ej, val, roff4, line4 = dest.XDim();
   const UC8 *a0, *ahi, *alo, *aej;
   UC8 *d;
@@ -1708,7 +1707,6 @@ int jhcArea::BoxStd (jhcImg &dest, const jhcImg& src, int wid, int ht, double sc
   // generic ROI case
   double nsc = sc / (double) area;
   UL32 sum, ssq, ej, ej2, val;
-//  unsigned __int64 v64;
   int x, y, wx, rsk4; 
   int rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
   int nx = dx / 2, px = dx - nx, xlim = rw - px - 1;
@@ -1860,10 +1858,10 @@ int jhcArea::BoxStd (jhcImg &dest, const jhcImg& src, int wid, int ht, double sc
     bhi = b + px;
     for (x = 0; x < nx; x++)
     {
-//      v64 = area * (unsigned __int64) ssq - sum * (unsigned __int64) sum;
+//      v64 = area * (UL64) ssq - sum * (UL64) sum;
 //      val = (UL32) v64;
 //      val = (UL32)(nsc * sqrt((double) val) + 0.5);
-double fval = area * (double) ssq - sum * (double) sum;
+double fval = (double)(area * ssq - sum * sum);
 val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *a++ = (UC8) val;
@@ -1879,10 +1877,10 @@ val = (UL32)(nsc * sqrt(fval) + 0.5);
     for (x = nx; x < xlim; x++)
     {
 
-//      v64 = area * (unsigned __int64) ssq - sum * (unsigned __int64) sum;
+//      v64 = area * (UL64) ssq - sum * (UL64) sum;
 //      val = (UL32) v64;
 //      val = (UL32)(nsc * sqrt((double) val) + 0.5);
-double fval = area * (double) ssq - sum * (double) sum;
+double fval = (double)(area * ssq - sum * sum);
 val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *a++ = (UC8) val;
@@ -1897,10 +1895,10 @@ val = (UL32)(nsc * sqrt(fval) + 0.5);
     ej  = *bhi;
     for (x = xlim; x < rw; x++)
     {
-//      v64 = area * (unsigned __int64) ssq - sum * (unsigned __int64) sum;
+//      v64 = area * (UL64) ssq - sum * (UL64) sum;
 //      val = (UL32) v64;
 //      val = (UL32)(nsc * sqrt((double) val) + 0.5);
-double fval = area * (double) ssq - sum * (double) sum;
+double fval = (double)(area * ssq - sum * sum);
 val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *a++ = (UC8) val;
@@ -2102,11 +2100,11 @@ int jhcArea::BoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     bhi = b + px;
     for (x = 0; x < nx; x++)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d++ = (UC8) val;
-      *a++ = (UC8)(norm * sum + 0.5);
+      *a++ = (UC8)(norm * (double) sum + 0.5);
       ssq -= ej2;
       ssq += *chi++;
       sum -= ej;
@@ -2118,11 +2116,11 @@ int jhcArea::BoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     blo = b;
     for (x = nx; x < xlim; x++)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d++ = (UC8) val;
-      *a++ = (UC8)(norm * sum + 0.5);
+      *a++ = (UC8)(norm * (double) sum + 0.5);
       ssq -= *clo++;
       ssq += *chi++;
       sum -= *blo++;
@@ -2134,11 +2132,11 @@ int jhcArea::BoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     ej  = *bhi;
     for (x = xlim; x < rw; x++)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d++ = (UC8) val;
-      *a++ = (UC8)(norm * sum + 0.5);
+      *a++ = (UC8)(norm * (double) sum + 0.5);
       ssq -= *clo++;
       ssq += ej2;
       sum -= *blo++;
@@ -2339,11 +2337,11 @@ int jhcArea::BoxAvgInv (jhcImg &avg, jhcImg& isd, const jhcImg& src,
     bhi = b + px;
     for (x = 0; x < nx; x++)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d++ = (UC8) val;
-      *a++ = (UC8)(norm * sum + 0.5);
+      *a++ = (UC8)(norm * (double) sum + 0.5);
       ssq -= ej2;
       ssq += *chi++;
       sum -= ej;
@@ -2355,11 +2353,11 @@ int jhcArea::BoxAvgInv (jhcImg &avg, jhcImg& isd, const jhcImg& src,
     blo = b;
     for (x = nx; x < xlim; x++)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d++ = (UC8) val;
-      *a++ = (UC8)(norm * sum + 0.5);
+      *a++ = (UC8)(norm * (double) sum + 0.5);
       ssq -= *clo++;
       ssq += *chi++;
       sum -= *blo++;
@@ -2371,11 +2369,11 @@ int jhcArea::BoxAvgInv (jhcImg &avg, jhcImg& isd, const jhcImg& src,
     ej  = *bhi;
     for (x = xlim; x < rw; x++)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d++ = (UC8) val;
-      *a++ = (UC8)(norm * sum + 0.5);
+      *a++ = (UC8)(norm * (double) sum + 0.5);
       ssq -= *clo++;
       ssq += ej2;
       sum -= *blo++;
@@ -2662,7 +2660,7 @@ int jhcArea::DBoxAvg (jhcImg &dest, const jhcImg& src, int w1, int h2, double sc
     stop = __min(nd2i, lim2);
     while (i < stop)            
     {
-      v = sum >> 16;
+      v = (int)(sum >> 16);
       *d = (UC8) __min(v, 255);
       sum -= (*m2);       // subtract bottom border copy
       sum += (*m);        // add leading edge value
@@ -2676,7 +2674,7 @@ int jhcArea::DBoxAvg (jhcImg &dest, const jhcImg& src, int w1, int h2, double sc
       stop = __min(nd2i, lim);
       while (i < stop)           
       {
-        v = sum >> 16;
+        v = (int)(sum >> 16);
         *d = (UC8) __min(v, 255);
         sum -= (*m2);     // subtract off copy of bottom border pixel
         sum += (*m);      // add in copy of top border pixel
@@ -2689,7 +2687,7 @@ int jhcArea::DBoxAvg (jhcImg &dest, const jhcImg& src, int w1, int h2, double sc
     // loop skipped if already beyond i = lim2 (e.g. dual overhang)
     while (i < lim2)
     {
-      v = sum >> 16;
+      v = (int)(sum >> 16);
       *d = (UC8) __min(v, 255);
       sum -= (*m2);       // subtract trailing, add leading, advance both
       sum += (*m);
@@ -2702,7 +2700,7 @@ int jhcArea::DBoxAvg (jhcImg &dest, const jhcImg& src, int w1, int h2, double sc
     // finish scan - mask is overhanging top or side now
     while (i <= lim)
     {
-      v = sum >> 16;
+      v = (int)(sum >> 16);
       *d = (UC8) __min(v, 255);
       sum -= (*m2);       // subtract trailing
       sum += (*m);        // add copy of top border
@@ -2751,7 +2749,7 @@ int jhcArea::DBoxAvg (jhcImg &dest, const jhcImg& src, int w1, int h2, double sc
     stop = __min(nd2i, lim2);
     while (i < stop)
     {
-      v = sum >> 16;
+      v = (int)(sum >> 16);
       *d = (UC8) __min(v, 255);
       sum -= (*m2);       // subtract bottom border copy
       sum += (*m);        // add leading edge value
@@ -2765,7 +2763,7 @@ int jhcArea::DBoxAvg (jhcImg &dest, const jhcImg& src, int w1, int h2, double sc
       stop = __min(nd2i, lim);
       while (i < stop)
       {
-        v = sum >> 16;
+        v = (int)(sum >> 16);
         *d = (UC8) __min(v, 255);
         sum -= (*m2);     // subtract off copy of bottom border pixel
         sum += (*m);      // add in copy of top border pixel
@@ -2778,7 +2776,7 @@ int jhcArea::DBoxAvg (jhcImg &dest, const jhcImg& src, int w1, int h2, double sc
     // loop skipped if already beyond i = lim2 (e.g. dual overhang)
     while (i < lim2)
     {
-      v = sum >> 16;
+      v = (int)(sum >> 16);
       *d = (UC8) __min(v, 255);
       sum -= (*m2);       // subtract trailing, add leading, advance both
       sum += (*m);
@@ -2791,7 +2789,7 @@ int jhcArea::DBoxAvg (jhcImg &dest, const jhcImg& src, int w1, int h2, double sc
     // finish scan - mask is overhanging top or side now
     while (i <= lim)
     {
-      v = sum >> 16;
+      v = (int)(sum >> 16);
       *d = (UC8) __min(v, 255);
       sum -= (*m2);       // subtract trailing
       sum += (*m);        // add copy of top border
@@ -3135,11 +3133,11 @@ int jhcArea::DBoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     stop = __min(nd2i, lim2);
     while (i < stop)            
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract bottom border copy
       ssq -= *v2;
       sum += *m;          // add leading edge value
@@ -3157,11 +3155,11 @@ int jhcArea::DBoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
       stop = __min(nd2i, lim);
       while (i < stop)           
       {
-        fval = area * (double) ssq - sum * (double) sum;
+        fval = (double)(area * ssq - sum * sum);
         val = (UL32)(nsc * sqrt(fval) + 0.5);
         val = __min(255, val);
         *d = (UC8) val;
-        *a = (UC8)(norm * sum + 0.5);
+        *a = (UC8)(norm * (double) sum + 0.5);
         sum -= *m2;       // subtract off copy of bottom border pixel
         ssq -= *v2;
         sum += *m;        // add in copy of top border pixel
@@ -3176,11 +3174,11 @@ int jhcArea::DBoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     // loop skipped if already beyond i = lim2 (e.g. dual overhang)
     while (i < lim2)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract trailing, add leading, advance both
       ssq -= *v2;
       sum += *m;
@@ -3197,11 +3195,11 @@ int jhcArea::DBoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     // finish scan - mask is overhanging top or side now
     while (i <= lim)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract trailing
       ssq -= *v2;
       sum += *m;          // add copy of top border
@@ -3266,11 +3264,11 @@ int jhcArea::DBoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     stop = __min(nd2i, lim2);
     while (i < stop)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract bottom border copy
       ssq -= *v2;
       sum += *m;          // add leading edge value
@@ -3288,11 +3286,11 @@ int jhcArea::DBoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
       stop = __min(nd2i, lim);
       while (i < stop)
       {
-        fval = area * (double) ssq - sum * (double) sum;
+        fval = (double)(area * ssq - sum * sum);
         val = (UL32)(nsc * sqrt(fval) + 0.5);
         val = __min(255, val);
         *d = (UC8) val;
-        *a = (UC8)(norm * sum + 0.5);
+        *a = (UC8)(norm * (double) sum + 0.5);
         sum -= *m2;     // subtract off copy of bottom border pixel
         ssq -= *v2;
         sum += *m;      // add in copy of top border pixel
@@ -3307,11 +3305,11 @@ int jhcArea::DBoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     // loop skipped if already beyond i = lim2 (e.g. dual overhang)
     while (i < lim2)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract trailing, add leading, advance both
       ssq -= *v2;
       sum += *m;
@@ -3328,11 +3326,11 @@ int jhcArea::DBoxAvgStd (jhcImg &avg, jhcImg& std, const jhcImg& src,
     // finish scan - mask is overhanging top or side now
     while (i <= lim)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc * sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract trailing
       ssq -= *v2;
       sum += *m;          // add copy of top border
@@ -3682,11 +3680,11 @@ int jhcArea::DBoxAvgInv (jhcImg &avg, jhcImg& std, const jhcImg& src,
     stop = __min(nd2i, lim2);
     while (i < stop)            
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract bottom border copy
       ssq -= *v2;
       sum += *m;          // add leading edge value
@@ -3704,11 +3702,11 @@ int jhcArea::DBoxAvgInv (jhcImg &avg, jhcImg& std, const jhcImg& src,
       stop = __min(nd2i, lim);
       while (i < stop)           
       {
-        fval = area * (double) ssq - sum * (double) sum;
+        fval = (double)(area * ssq - sum * sum);
         val = (UL32)(nsc / sqrt(fval) + 0.5);
         val = __min(255, val);
         *d = (UC8) val;
-        *a = (UC8)(norm * sum + 0.5);
+        *a = (UC8)(norm * (double) sum + 0.5);
         sum -= *m2;       // subtract off copy of bottom border pixel
         ssq -= *v2;
         sum += *m;        // add in copy of top border pixel
@@ -3723,11 +3721,11 @@ int jhcArea::DBoxAvgInv (jhcImg &avg, jhcImg& std, const jhcImg& src,
     // loop skipped if already beyond i = lim2 (e.g. dual overhang)
     while (i < lim2)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract trailing, add leading, advance both
       ssq -= *v2;
       sum += *m;
@@ -3744,11 +3742,11 @@ int jhcArea::DBoxAvgInv (jhcImg &avg, jhcImg& std, const jhcImg& src,
     // finish scan - mask is overhanging top or side now
     while (i <= lim)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract trailing
       ssq -= *v2;
       sum += *m;          // add copy of top border
@@ -3813,11 +3811,11 @@ int jhcArea::DBoxAvgInv (jhcImg &avg, jhcImg& std, const jhcImg& src,
     stop = __min(nd2i, lim2);
     while (i < stop)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract bottom border copy
       ssq -= *v2;
       sum += *m;          // add leading edge value
@@ -3835,11 +3833,11 @@ int jhcArea::DBoxAvgInv (jhcImg &avg, jhcImg& std, const jhcImg& src,
       stop = __min(nd2i, lim);
       while (i < stop)
       {
-        fval = area * (double) ssq - sum * (double) sum;
+        fval = (double)(area * ssq - sum * sum);
         val = (UL32)(nsc / sqrt(fval) + 0.5);
         val = __min(255, val);
         *d = (UC8) val;
-        *a = (UC8)(norm * sum + 0.5);
+        *a = (UC8)(norm * (double) sum + 0.5);
         sum -= *m2;     // subtract off copy of bottom border pixel
         ssq -= *v2;
         sum += *m;      // add in copy of top border pixel
@@ -3854,11 +3852,11 @@ int jhcArea::DBoxAvgInv (jhcImg &avg, jhcImg& std, const jhcImg& src,
     // loop skipped if already beyond i = lim2 (e.g. dual overhang)
     while (i < lim2)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract trailing, add leading, advance both
       ssq -= *v2;
       sum += *m;
@@ -3875,11 +3873,11 @@ int jhcArea::DBoxAvgInv (jhcImg &avg, jhcImg& std, const jhcImg& src,
     // finish scan - mask is overhanging top or side now
     while (i <= lim)
     {
-      fval = area * (double) ssq - sum * (double) sum;
+      fval = (double)(area * ssq - sum * sum);
       val = (UL32)(nsc / sqrt(fval) + 0.5);
       val = __min(255, val);
       *d = (UC8) val;
-      *a = (UC8)(norm * sum + 0.5);
+      *a = (UC8)(norm * (double) sum + 0.5);
       sum -= *m2;         // subtract trailing
       ssq -= *v2;
       sum += *m;          // add copy of top border
@@ -3934,7 +3932,7 @@ int jhcArea::BoxAvg16 (jhcImg &dest, const jhcImg& src, int wid, int ht, double 
   int rw = dest.RoiW(), rh = dest.RoiH(), rsk2 = dest.RoiSkip() >> 1;
   int nx = dx / 2, px = dx - nx, xlim = rw - px - 1;
   int ny = dy / 2, py = dy - ny, ylim = rh - py, nyp = ny + 1;
-  unsigned __int64 norm = (unsigned __int64)(0x01000000 * sc / area);
+  UL64 norm = (UL64)(0x01000000 * sc / area);
   UL32 sum, ej, val, roff4, line4 = dest.XDim();
   const US16 *a0, *ahi, *alo, *aej;
   US16 *a;
@@ -4102,7 +4100,7 @@ int jhcArea::DBoxAvg16 (jhcImg &dest, const jhcImg& src, int w1, int h2, double 
   int line2 = dest.Line() >> 1, line4 = a4.Line() >> 2;  // line4 = a4.XDim();
   int nd1 = d1z / 2, pd1 = d1z - nd1, nd1i = nd1 + 1;
   int nd2 = d2z / 2, pd2 = d2z - nd2, nd2i = nd2 + 1;
-  unsigned __int64 norm = (unsigned __int64)(0x01000000 * sc / area);
+  UL64 norm = (UL64)(0x01000000 * sc / area);
   UL32 sum, val;
   const US16 *s, *s2, *sst, *s0;
   US16 *d, *dst, *d0;
@@ -5240,7 +5238,7 @@ int jhcArea::BoxFracOver (jhcImg& dest, const jhcImg& src, int wid, int ht, doub
 
 void jhcArea::rem_pel (int v, US16 *hist, int& under, int cut, int wt) const  
 {
-  hist[v] -= (UC8) wt;
+  hist[v] = (US16)(hist[v] - wt);
   if (v < cut)
     under -= wt;
 }
@@ -5250,7 +5248,7 @@ void jhcArea::rem_pel (int v, US16 *hist, int& under, int cut, int wt) const
 
 void jhcArea::add_pel (int v, US16 *hist, int& under, int cut, int wt) const 
 {
-  hist[v] += (UC8) wt;
+  hist[v] = (US16)(hist[v] + wt);
   if (v < cut)
     under += wt;
 }
@@ -5324,16 +5322,16 @@ void jhcArea::mid_cut_dn (int& cut, int& under, const US16 *hist, int th) const
 
 
 //= Finds threshold such that some fraction of pixels in box are above value.
-// if height is zero then copies width, interpolates between boundary bins
+// finds histogram bin number that n'th sorted value would fall into
+// if height is zero then copies width, handles even and odd box areas
 // <pre>
 // cut point finding:
 //
-//  index =    0  1  2  3  4  5  6
-//   vals = [ 20 10  0  0  0 25 10 ]    with amt = 39 (frac = 0.6) 
-//               lo          hi           so mid = 1 + (5 - 1) * (39 - 30) / 25 = 2 
-//                                        with sub = 30
+//  index =    0  1  2  3  4  5  6  7  8
+//   vals = [ 20 10  0  0  0 25  9 10  7 ]    with amt = 32 (frac = 0.4 of 81 total) 
+//               lo     *    hi               sub = 55 @ hi = 5 (previous lo = 1)
+//                                            so rank val = 0.5 * (lo + hi) = 3
 // </pre>
-
 //  38.6 ms for 3x3 on 320x240 with 3.2GHz Xeon
 // 119.9 ms for 9x9 on 320x240 with 3.2GHz Xeon
 
@@ -5348,17 +5346,16 @@ int jhcArea::BoxRankLin (jhcImg& dest, const jhcImg& src, int wid, int ht, doubl
     return Fatal("Mask too big (%d %d) vs. (%d %d) in jhcArea::BoxRankLin", 
                  dx, dy, src.RoiW(), src.RoiH());
 
-  // special cases
+  // special cases 
   if ((dx <= 0) || (dy <= 0) || (area <= 1) || (area > 65535))
     return 0;
   dest.CopyRoi(src);
 
   // generic ROI case
   int nx = dx / 2, px = dx - nx, ny = dy / 2, py = dy - ny;
-  int rw = dest.RoiW(), rh = dest.RoiH(), ln = dest.Line();
-  int xlim = rw - 1, ylim = rh - 1, rsk = ln - rw;
-  int i, x, y, now, lo, hi, j, nowx; 
-  int sub, amt = area - ROUND(frac * area);
+  int rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  int xlim = rw - 1, ylim = rh - 1, amt = ROUND(frac * area);
+  int x, y, i, j, now, nowx, pel, lo, hi, sub, odd = amt & 0x01;
   UC8 *d = dest.RoiDest();
  
   // process each line of image
@@ -5378,25 +5375,26 @@ int jhcArea::BoxRankLin (jhcImg& dest, const jhcImg& src, int wid, int ht, doubl
         for (i = -nx; i < px; i++)
         {
           nowx = __max(__min(x + i, xlim), 0);
-          vals[src.ARef(nowx, now)] += 1;
+          pel = src.ARef(nowx, now);
+          vals[pel] = (US16)(vals[pel] + 1);
         }
       }
 
-      // compute new split point
+      // find histogram bin number that n'th sorted value would fall into
       lo = -1;
       sub = 0;
       for (hi = 0; hi < 256; hi++)
         if (vals[hi] > 0)                    
         {
           sub += vals[hi];                  
-          if (sub > amt)                 // find top filled bin
+          if (sub >= amt)                // find top filled bin
             break;
           lo = hi;                       // save bottom filled bin
         }
-      if (lo < 0)
+      if ((odd > 0) || (vals[hi] > 1) || (lo < 0))
         *d = (UC8) hi;
       else
-        *d = (UC8)((hi + lo) >> 1);
+        *d = (UC8)((hi + lo) >> 1);      // split difference
     }
   }
   return 1;
@@ -5408,6 +5406,96 @@ int jhcArea::BoxRankLin (jhcImg& dest, const jhcImg& src, int wid, int ht, doubl
 int jhcArea::BoxMedian (jhcImg& dest, const jhcImg& src, int sc)
 {
   return BoxRankLin(dest, src, sc, sc, 0.5);
+}
+
+
+//= Finds threshold such that some fraction of non-zero pixels in box are above value.
+
+int jhcArea::NZBoxRankLin (jhcImg& dest, const jhcImg& src, int wid, int ht, double frac)
+{
+  int dx = wid, dy = ((ht == 0) ? wid : ht), area = dx * dy;
+
+  // check arguments
+  if (!dest.Valid(1) || !dest.SameFormat(src) || dest.SameImg(src))
+    return Fatal("Bad images to jhcArea::NZBoxRankLin");
+  if ((dx > src.RoiW()) || (dy > src.RoiH()))
+    return Fatal("Mask too big (%d %d) vs. (%d %d) in jhcArea::NZBoxRankLin", 
+                 dx, dy, src.RoiW(), src.RoiH());
+
+  // special cases
+  if ((dx <= 0) || (dy <= 0) || (area <= 1) || (area > 65535))
+    return 0;
+  dest.CopyRoi(src);
+
+  // generic ROI case
+  int nx = dx / 2, px = dx - nx, ny = dy / 2, py = dy - ny;
+  int rw = dest.RoiW(), rh = dest.RoiH(), rsk = dest.RoiSkip();
+  int x, y, i, j, now, nowx, pel, cnt, amt, odd, lo, hi, sub; 
+  UC8 *d = dest.RoiDest();
+ 
+  // process each line of image
+  for (y = 0; y < rh; y++, d += rsk)
+  {
+    // generate value for each pixel in line
+    for (x = 0; x < rw; x++, d++)
+    {
+      // clear histogram
+      for (i = 0; i < 256; i++)
+        vals[i] = 0;
+      cnt = 0;
+
+      // form full histogram
+      for (j = -ny; j < py; j++)
+      {
+        now = y + j;
+        if ((now < 0) || (now >= rh))
+          continue;
+        for (i = -nx; i < px; i++)
+        {
+          nowx = x + i;
+          if ((nowx < 0) || (nowx >= rw))
+            continue;
+          pel = src.ARef(nowx, now);
+          if (pel <= 0)
+            continue;
+          vals[pel] = (US16)(vals[pel] + 1);
+          cnt++;
+        }
+      }
+
+      // find histogram bin number that n'th sorted value would fall into
+      if (cnt <= 0)
+      {
+        *d = 0;  
+        continue;
+      }
+      amt = ROUND(frac * cnt);
+      odd = amt & 0x01;           
+      lo = -1;
+      sub = 0;
+      for (hi = 0; hi < 256; hi++)
+        if (vals[hi] > 0)                    
+        {
+          sub += vals[hi];                  
+          if (sub >= amt)                // find top filled bin
+            break;
+          lo = hi;                       // save bottom filled bin
+        }
+      if ((odd > 0) || (vals[hi] > 1) || (lo < 0))
+        *d = (UC8) hi;
+      else
+        *d = (UC8)((hi + lo) >> 1);      // split difference
+    }
+  }
+  return 1;
+}
+
+
+//= Median filtering using a square box but ignoring zero pixels.
+
+int jhcArea::NZBoxMedian (jhcImg& dest, const jhcImg& src, int sc)
+{
+  return NZBoxRankLin(dest, src, sc, sc, 0.5);
 }
 
 

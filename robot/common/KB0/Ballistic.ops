@@ -151,9 +151,21 @@ OP 14 - "To hold something ..."
                -arg-> act-1 ]
 
 
+OP 15 - "To relax the hand ..."
+  trig:
+    DO[ fcn-1 -lex-  relax
+              -fcn-> act-1
+        act-1 -obj-> obj-1 
+        ako-1 -lex-  hand
+              -ako-> obj-1 ]
+---------------
+   GND[ call-1 -lex-  ball_grip 
+               -arg-> act-1 ]
+
+
 // --------------------------------------
 
-OP 15 - "To extend the arm ..."
+OP 16 - "To extend the arm ..."
   trig:
     DO[ fcn-1 -lex-  extend
               -fcn-> act-1
@@ -165,7 +177,7 @@ OP 15 - "To extend the arm ..."
                -arg-> act-1 ]
 
 
-OP 16 - "To retract the arm ..."
+OP 17 - "To retract the arm ..."
   trig:
     DO[ fcn-1 -lex-  retract
               -fcn-> act-1
@@ -177,7 +189,7 @@ OP 16 - "To retract the arm ..."
                -arg-> act-1 ]
 
 
-OP 17 - "To shift some direction ..."
+OP 18 - "To shift some direction ..."
   trig:
     DO[ fcn-1 -lex-  shift
               -fcn-> act-1
@@ -189,7 +201,7 @@ OP 17 - "To shift some direction ..."
 
 // --------------------------------------
 
-OP 18 - "To reset the hand ..."
+OP 19 - "To reset the hand ..."
   trig:
     DO[ fcn-1 -lex-  reset
               -fcn-> act-1
@@ -201,7 +213,7 @@ OP 18 - "To reset the hand ..."
                -arg-> act-1 ]
 
 
-OP 19 - "To point some direction ..."
+OP 20 - "To point some direction ..."
   trig:
     DO[ fcn-1 -lex-  point
               -fcn-> act-1
@@ -211,7 +223,7 @@ OP 19 - "To point some direction ..."
                -arg-> act-1 ]
 
 
-OP 20 - "To twist some direction ..."
+OP 21 - "To twist some direction ..."
   trig:
     DO[ fcn-1 -lex-  twist
               -fcn-> act-1
@@ -223,7 +235,7 @@ OP 20 - "To twist some direction ..."
 
 // --------------------------------------
 
-OP 21 - "To reset the head ..."
+OP 22 - "To reset the head ..."
   trig:
     DO[ fcn-1 -lex-  reset
               -fcn-> act-1
@@ -235,7 +247,7 @@ OP 21 - "To reset the head ..."
                -arg-> act-1 ]
 
 
-OP 22 - "To look some direction ..."
+OP 23 - "To look some direction ..."
   trig:
     DO[ fcn-1 -lex-  look
               -fcn-> act-1
@@ -247,7 +259,7 @@ OP 22 - "To look some direction ..."
 
 // ========================================
 
-OP 23 - "To scan right look left then look right very slowly"
+OP 24 - "To scan right look left then look straight then look right"
   trig:
     DO[ fcn-1 -lex-  scan
               -fcn-> act-1
@@ -260,15 +272,15 @@ OP 23 - "To scan right look left then look right very slowly"
               -dir-> act-2 ]
     DO[ fcn-3 -lex-  look
               -fcn-> act-3
-        dir-3 -lex-  right
-              -dir-> act-3 
-        mod-3 -lex-  slowly
-              -mod-> act-3 
-        deg-3 -lex-  very
-              -deg-> mod-3 ]
+        dir-3 -lex-  straight
+              -dir-> act-3 ]
+    DO[ fcn-4 -lex-  look
+              -fcn-> act-4
+        dir-4 -lex-  right
+              -dir-> act-4 ]
 
 
-OP 24 - "To scan left look right then look left very slowly"
+OP 25 - "To scan left look right then look straight then look left"
   trig:
     DO[ fcn-1 -lex-  scan
               -fcn-> act-1
@@ -281,15 +293,15 @@ OP 24 - "To scan left look right then look left very slowly"
               -dir-> act-2 ]
     DO[ fcn-3 -lex-  look
               -fcn-> act-3
-        dir-3 -lex-  left
-              -dir-> act-3 
-        mod-3 -lex-  slowly
-              -mod-> act-3 
-        deg-3 -lex-  very
-              -deg-> mod-3 ]
+        dir-3 -lex-  straight
+              -dir-> act-3 ]
+    DO[ fcn-4 -lex-  look
+              -fcn-> act-4
+        dir-4 -lex-  left
+              -dir-> act-4 ]
 
 
-OP 25 - "To visually search upwards scan left far down then scan down to the right then scan left slightly down"
+OP 26 - "To visually search upwards scan left far down then scan down to the right then scan left slightly down"
   trig:
     DO[ fcn-1 -lex-  search
               -fcn-> act-1
@@ -322,7 +334,7 @@ OP 25 - "To visually search upwards scan left far down then scan down to the rig
               -deg-> dir-7 ] 
 
 
-OP 26 - "To visually search downwards scan slightly up to the left then scan level right then scan slightly down to the left"
+OP 27 - "To visually search downwards scan slightly up to the left then scan level right then scan slightly down to the left"
   trig:
     DO[ fcn-1 -lex-  search
               -fcn-> act-1
@@ -357,7 +369,7 @@ OP 26 - "To visually search downwards scan slightly up to the left then scan lev
 
 // -------------------------------------------
 
-OP 27 - "To gaze look"
+OP 28 - "To gaze look"
   trig:
     DO[ fcn-1 -lex-  gaze 
               -fcn-> act-1 ]
@@ -366,7 +378,7 @@ OP 27 - "To gaze look"
               -fcn-> act-2 ]
 
 
-OP 28 - "To scan to the right scan right"
+OP 29 - "To scan to the right scan right"
   trig:
     DO[ fcn-1 -lex-  scan
               -fcn-> act-1
@@ -379,7 +391,7 @@ OP 28 - "To scan to the right scan right"
               -dir-> act-2 ]
 
 
-OP 29 - "To scan to the left scan left"
+OP 30 - "To scan to the left scan left"
   trig:
     DO[ fcn-1 -lex-  scan
               -fcn-> act-1
@@ -392,7 +404,7 @@ OP 29 - "To scan to the left scan left"
               -dir-> act-2 ]
 
 
-OP 30 - "To look around visually search downward"
+OP 31 - "To look around visually search downward"
   trig:
      DO[ fcn-1 -lex-  look
                -fcn-> act-1

@@ -26,6 +26,7 @@
 #include "jhcGlobal.h"
 
 #include "Data/jhcParam.h"             // common video
+#include "Processing/jhcDraw.h"
 
 #include "Acoustic/jhcAliaSAPI.h"      // common audio 
 #include "Parse/jhcNameList.h"         
@@ -37,7 +38,7 @@
 #include "Grounding/jhcSceneVis.h"
 #include "Grounding/jhcSocial.h"
 #include "Grounding/jhcSupport.h"
-#include "RWI/jhcEliRWI.h"
+#include "RWI/jhcVisGrok.h"
 
 
 //= Top level parsing, learning, and control for ELI robot.
@@ -74,7 +75,7 @@
 // 
 // </pre>
 
-class jhcEliCoord : public jhcAliaSAPI
+class jhcEliCoord : public jhcAliaSAPI, private jhcDraw
 {
 // PRIVATE MEMBER VARIABLES
 private:
@@ -85,7 +86,7 @@ private:
 public:
   // possibly shared components
   jhcEliBody body;           
-  jhcEliRWI rwi;                     
+  jhcVisGrok rwi;                     
 
   // extra grounding kernels
   jhcBallistic ball; 
@@ -117,6 +118,12 @@ public:
   int Respond ();
   const jhcImg *View (int num =0);
   int Done (int face =0);
+
+  // debugging graphics
+  int Skeleton (jhcImg& dest, double ray =6.0) const;
+  int MapArm (jhcImg& map, double ray =6.0) const;
+  double ImgJt (double& ix, double& iy, int jt) const;
+  double ImgVeer (int mx, int my, int jt1, int jt0) const;
 
 
 // PRIVATE MEMBER FUNCTIONS

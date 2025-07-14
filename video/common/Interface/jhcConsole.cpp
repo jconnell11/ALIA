@@ -58,8 +58,10 @@ jhcConsole::jhcConsole (const char *title, int x, int y)
 	freopen_s(&fpstdout, "CONOUT$", "w", stdout);
 	freopen_s(&fpstderr, "CONOUT$", "w", stderr);
 
+#ifndef _DEBUG
   // save up printfs for speed - MUST call fflush() to emit
   setvbuf(stdout, NULL, _IOFBF, 4096);
+#endif
 
   // prevent application lock-up on mouse selection in window
   in = GetStdHandle(STD_INPUT_HANDLE);

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "Interface/jhcMessage.h"      // common video
+#include "Interface/jms_x.h"
 #include "Interface/jprintf.h"
 
 #include "Grounding/jhcManipulate.h"
@@ -50,9 +51,8 @@ jhcManipulate::~jhcManipulate ()
   delete [] cref2;
   delete [] cref;
   delete [] citem;
-  delete [] caux2;
+  delete [] cvia;
   delete [] cdir;
-  delete [] cend;
   delete [] cpos;
 }
 
@@ -70,42 +70,40 @@ jhcManipulate::jhcManipulate ()
   cpos = new jhcMatrix [n];
   for (i = 0; i < n; i++)
     cpos[i].SetSize(4);             
-  cend = new jhcMatrix [n];
-  for (i = 0; i < n; i++)
-    cend[i].SetSize(4);             
   cdir = new jhcMatrix [n];
   for (i = 0; i < n; i++)
     cdir[i].SetSize(4);             
-  caux2 = new double [n];
+  cvia = new jhcMatrix [n];
+  for (i = 0; i < n; i++)
+    cvia[i].SetSize(4);             
   citem = new int [n];
   cref  = new int [n];
   cref2 = new int [n];
   cflag = new int [n];
   ccnt2 = new int [n];
 
-  // vector sizes
-  end.SetSize(4);
-  aim.SetSize(4);
+  // misc vector sizes
   perr.SetSize(4);
   derr.SetSize(4);
+  dest.SetSize(4);
 
   // body and mind connection
   rwi  = NULL;
   sobj = NULL;
   lift = NULL;
   arm  = NULL;
+  base = NULL;
   pos  = NULL;
   dir  = NULL;
   rpt  = NULL;
 
   // no object in hand currently
-  clear_grip();
+  clear_grip(0);
 
   // processing parameters
   Defaults();
   gok = 1;                   // either 1 or -1
   dbg = 1;
-dbg = 3;
 }
 
 
@@ -113,23 +111,40 @@ dbg = 3;
 //                         Processing Parameters                         //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Parameters controlling gripping of objects.
+//= Parameters controlling gripping location.
 
-int jhcManipulate::hold_params (const char *fname)
+int jhcManipulate::grip_params (const char *fname)
 {
-  jhcParam *ps = &hps;
+  jhcParam *ps = &gps;
   int ok;
 
-  ps->SetTag("man_hold", 0);
+  ps->SetTag("man_grip", 0);
   ps->NextSpecF( &knob,   0.8, "Slice off for grab (in)");  
   ps->NextSpecF( &mesa,   0.3, "Slice off for deposit (in)");  
   ps->NextSpecF( &choke,  3.0, "Max object size (in)");  
   ps->NextSpecF( &ecc0,   1.3, "Round eccentriciy");           // was 1.2
   ps->NextSpecF( &down,   0.2, "Grab down from top (in)");     // was 1, 0.5, 0.3, then 0
   ps->NextSpecF( &gulp,   0.6, "Center into gripper (in)");    // was 0
-  
-  ps->NextSpecF( &loose,  0.5, "Extra open each side (in)");
-  ps->NextSpecF( &tip,   30.0, "Standard grip tilt (deg)");    // was 15 then 45
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters controlling fingers when gripping.
+
+int jhcManipulate::tip_params (const char *fname)
+{
+  jhcParam *ps = &tps;
+  int ok;
+
+  ps->SetTag("man_tip", 0);
+  ps->NextSpecF( &loose,   1.0, "Extra open for grab (in)");
+  ps->NextSpecF( &stip,  -30.0, "Sideways grip tilt (deg)");    // -40 for Ganbei
+  ps->NextSpecF( &otip,  -30.0, "Overhead grip tilt (deg)");    // -60 for Ganbei
+  ps->NextSpecF( &oht,     1.5, "Height for overhead (in)");    
+  ps->NextSpecF( &olen,    2.5, "Length for overhead (in)");    
+  ps->NextSpecF( &hys,     0.2, "Flip hysteresis (in)");    
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -168,15 +183,15 @@ int jhcManipulate::ctrl_params (const char *fname)
   int ok;
 
   ps->SetTag("man_ctrl", 0);
-  ps->NextSpec4( &park,   5,   "Base static for update (cyc)");
+  ps->NextSpec4( &park,   10,  "Camera still for detection");    // VisGrok::ign + SmTrack::gone
   ps->NextSpecF( &ttol,   0.2, "Error for straight up (in)");
   ps->NextSpecF( &hold,  12.0, "Holding force (oz)");
   ps->NextSpecF( &wmin,   0.3, "Empty hand width (in)");
   ps->NextSpecF( &wtim,   2.0, "Open/close timeout (sec)");
   ps->NextSpecF( &edge,  20.0, "Tilt to surface edge (deg)");
 
-  ps->NextSpecF( &over,   1.8, "Tip travel height (in)");      // was 1.3 then 1.6
-  ps->NextSpecF( &graze,  0.9, "Min grip point height (in)");  // was 1.2 then 1.3 
+  ps->NextSpecF( &over,   1.8, "Tip travel height (in)");        // was 1.3 then 1.6
+  ps->NextSpecF( &graze,  0.9, "Min grip point height (in)");    // was 1.2 then 1.3 
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -193,7 +208,7 @@ int jhcManipulate::done_params (const char *fname)
   ps->SetTag("man_done", 0);
   ps->NextSpec4( &detwang, 3,    "Oscillation wait (cyc)");
   ps->NextSpecF( &ptol,    0.25, "Position tol (in)");
-  ps->NextSpecF( &atol,    7.0,  "Direction tol (deg)"); 
+  ps->NextSpecF( &atol,    7.0,  "Wrist tol or ignore (deg)");       // neg to ignore all
   ps->NextSpecF( &wtol,    0.1,  "Grip width tol (in)");
   ps->NextSpecF( &ftol,    2.0,  "Grip force tol (oz)");
   ps->NextSpecF( &cont,    1.5,  "Position continue (in)"); 
@@ -262,7 +277,8 @@ int jhcManipulate::Defaults (const char *fname)
 {
   int ok = 1;
 
-  ok &= hold_params(fname);
+  ok &= grip_params(fname);
+  ok &= tip_params(fname);
   ok &= spot_params(fname);
   ok &= ctrl_params(fname);
   ok &= done_params(fname);
@@ -278,7 +294,8 @@ int jhcManipulate::SaveVals (const char *fname) const
 {
   int ok = 1;
 
-  ok &= hps.SaveVals(fname);
+  ok &= gps.SaveVals(fname);
+  ok &= tps.SaveVals(fname);
   ok &= sps.SaveVals(fname);
   ok &= cps.SaveVals(fname);
   ok &= dps.SaveVals(fname);
@@ -293,13 +310,20 @@ int jhcManipulate::SaveVals (const char *fname) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Attach physical enhanced body and make pointers to some pieces.
+// NOTE: must be careful that type cast from void * is valid!
 
-void jhcManipulate::local_platform (void *soma) 
+void jhcManipulate::local_platform (void *soma, const char *kind) 
 {
-  rwi = (jhcEliRWI *) soma;
+  if (strcmp(kind, "jhcVisGrok") != 0)           // type check
+    return;
+  rwi = (jhcVisGrok *) soma;
+  rwi->space2 = &space;                          // for debugging
   sobj = &(rwi->sobj);
-  lift = rwi->lift;
+  body = rwi->body;
+  neck = rwi->neck;
   arm  = rwi->arm;
+  lift = rwi->lift;
+  base = rwi->base;
   pos  = arm->Position();
   dir  = arm->Direction();
 }
@@ -311,7 +335,7 @@ void jhcManipulate::local_platform (void *soma)
 void jhcManipulate::local_reset (jhcAliaNote& top)
 {
   rpt = &top;
-  clear_grip();              // nothing in hand
+  clear_grip(0);             // nothing in hand
   msg = 0;                   
 }
 
@@ -333,6 +357,7 @@ void jhcManipulate::local_volunteer ()
 
 int jhcManipulate::local_start (const jhcAliaDesc& desc, int i)
 {
+  JCMD_SET(man_held);
   JCMD_SET(man_wrap);
   JCMD_SET(man_lift);
   JCMD_SET(man_trans);
@@ -348,6 +373,7 @@ int jhcManipulate::local_start (const jhcAliaDesc& desc, int i)
 
 int jhcManipulate::local_status (const jhcAliaDesc& desc, int i)
 {
+  JCMD_CHK(man_held);
   JCMD_CHK(man_wrap);
   JCMD_CHK(man_lift);
   JCMD_CHK(man_trans);
@@ -382,6 +408,7 @@ void jhcManipulate::set_size (const jhcImg& ref)
 int jhcManipulate::update_held ()
 {
   double ang, rads, c, s, wx, wy, wz, ht = lift->Height(), sqz0 = 5.0;
+  int dcnt = 5;
 
   // wait for next sensor cycle 
   if ((rwi == NULL) || rwi->Ghost() || !rwi->Accepting())
@@ -390,14 +417,19 @@ int jhcManipulate::update_held ()
     return 0;
 
   // check that object is still being held (allow short bobble)
-  if ((arm->Width() < wmin) || (arm->Squeeze() < sqz0))
-    if (drop++ > 0)
-    {
+  if ((arm->Squeeze() >= sqz0) && 
+      ((thin > 0) || (arm->Width() >= wmin)))
+    drop = 0;
+  else if (++drop >= dcnt)
+  {
+    if (arm->SqueezeGoal() > 0.0)      // see if not intentional
       err_drop(held);                
-      return clear_grip();
-    }
+    else
+      msg_hold(held, 1);               // update WMEM with event
+    return clear_grip(1);
+  }
 
-  // update object pose based on robot arm configuration
+  // update grasped object pose based on robot arm configuration
   ang = dir->P() + skew;
   rads = D2R * dir->P();
   c = cos(rads);
@@ -414,30 +446,52 @@ int jhcManipulate::update_held ()
 
 
 ///////////////////////////////////////////////////////////////////////////
+//                           Hand Information                            //
+///////////////////////////////////////////////////////////////////////////
+
+//= First call to hand contents reporter but not allowed to fail.
+// answers "Am I holding X?" or "What am I holding?"
+// returns 1 if okay, -1 for interpretation error
+
+int jhcManipulate::man_held0 (const jhcAliaDesc& desc, int i)
+{
+  if ((rwi == NULL) || (rpt == NULL))
+    return -1;
+  return 1;
+}
+
+
+//= Report hadn contents in response to either a Y/N or WH- question.
+// returns 1 if done, 0 if still working, -1 for failure
+
+int jhcManipulate::man_held (const jhcAliaDesc& desc, int i)
+{
+  jhcAliaDesc *obj;
+
+  if ((obj = desc.Val("arg")) != NULL)
+    msg_hold(obj, ((obj == held) ? 0 : 1));      // yes/no
+  else if (held != NULL)
+    msg_hold(held, 0);                           // what
+  return 1;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
 //                           Motion Sequences                            //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Start trying to squeeze object with hand.
 // instance number and bid already recorded by base class
 // assumes not holding anything currently (will likely drop)
-// used for latching onto handles or levers (not objects)
 // returns 1 if okay, -1 for interpretation error
 
 int jhcManipulate::man_wrap0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-
-  // argument parsing
   if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
-
-  // intialize state
-  cmode[i] = -1;             // no explicit destination
-  citem[i] = -1;             // await access to vision
-  ccnt[i]  = 0;              // non-detect count
-  ccnt2[i] = 0;
-  cflag[i] = 0;              // no workspace violations
+  ccnt2[i] = 0;              // jockey attempts
   return 1;
 }
 
@@ -445,9 +499,10 @@ int jhcManipulate::man_wrap0 (const jhcAliaDesc& desc, int i)
 //= Continue trying to squeeze object with hand.
 // sets up continuing request to body if not finished
 //   cst[i]: 0 = check if graspable 
-//           1 = travel to via point
-//           2 = travel to grasp point
-//           3 = close fingers on object
+//           1 = maneuver body into range
+//           2 = travel to via point
+//           3 = travel to grasp point
+//           4 = close fingers on object
 // returns 1 if done, 0 if still working, -1 for failure
 
 int jhcManipulate::man_wrap (const jhcAliaDesc& desc, int i)
@@ -457,9 +512,9 @@ int jhcManipulate::man_wrap (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle and check update standard cached info
   if (!rwi->Accepting())
     return 0;
-  init_vals(i);
+  init_vals(i, 0);
 
-  // make sure target object still is known 
+  // make sure target is still present, set citem[] to current track 
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i], 0))) < 0)
     return err_gone(cobj[i]);
   if (rwi->Ghost())
@@ -468,54 +523,47 @@ int jhcManipulate::man_wrap (const jhcAliaDesc& desc, int i)
     return err_arm();
 
   // check for serendipitous grasp or interference
-  if (cst[i] <= 3) 
+  if (cst[i] <= 4) 
   {
     if (held == cobj[i])
       return 1;                        // lucky
-    else if (chk_hand(NULL) <= 0)
-      fail_clean();
+    if (held != NULL)
+      fail_clean(NULL);
   }
 
   // get desired position and orientation based on state
   if (cst[i] <= 0)
     rc = assess_obj();
   else if (cst[i] == 1)
-    rc = goto_via();
+    rc = jockey(0);                    // action point = src
   else if (cst[i] == 2)
+    rc = goto_via(0);
+  else if (cst[i] == 3)
     rc = goto_grasp();
-  else if (cst[i] == 3)                // last grasp
+  else if (cst[i] == 4)                // last grasp
     rc = close_fingers();
-  else if (cst[i] == 4)                // success
+  else if (cst[i] == 5)                // success
     return 1;
 
   // cleanup from failure
-  if (cst[i] == 20)             
-    rc = stow_arm();           
-  else if (cst[i] == 21)
-    return tuck_elbow(-1);             // joint mode
+  if (cst[i] >= 20)             
+    return stow_arm(-1);               // joint mode
   return command_bot(rc);
 }
 
 
 //= Start trying to securely raise held object above surface.
 // instance number and bid already recorded by base class
+// required: look at dest, look at src, others optional
 // returns 1 if okay, -1 for interpretation error
 
 int jhcManipulate::man_lift0 (const jhcAliaDesc& desc, int i)
 {
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-
-  // argument parsing
   if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
-
-  // initialize state
-  cmode[i] = -1;             // no explicit destination
-  citem[i] = -1;             // await access to vision
-  ccnt[i]  = 0;              // non-detect count
-  ccnt2[i] = 0;
-  cflag[i] = 0;              // no workspace violations
+  ccnt2[i] = 0;              // jockey attempts
   return 1;
 }
 
@@ -523,10 +571,11 @@ int jhcManipulate::man_lift0 (const jhcAliaDesc& desc, int i)
 //= Continue trying to securely raise held object above surface.
 // sets up continuing request to body if not finished
 //   cst[i]: 0 = check if graspable 
-//           1 = travel to via point
-//           2 = travel to grasp point
-//           3 = close fingers on object
-//         * 4 = lift object off surface
+//           1 = maneuver body into range
+//           2 = travel to via point
+//           3 = travel to grasp point
+//           4 = close fingers on object
+//         * 5 = lift object off surface
 // repeats most of man_wrap but skips forward if already acquired
 // returns 1 if done, 0 if still working, -1 for failure
 
@@ -537,9 +586,9 @@ int jhcManipulate::man_lift (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle and update standard cached info
   if (!rwi->Accepting())
     return 0;
-  init_vals(i);
+  init_vals(i, 0);
 
-  // make sure target object is still known 
+  // make sure target is still present, set citem[] to current track 
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i], 0))) < 0)
     return err_gone(cobj[i]);
   if (rwi->Ghost())
@@ -548,39 +597,39 @@ int jhcManipulate::man_lift (const jhcAliaDesc& desc, int i)
     return err_arm();
 
   // check for serendipitous grasp or interference
-  if (cst[i] <= 3)                   
+  if (cst[i] <= 4)                   
   {
     if (held == cobj[i])    
     {         
-      cst[i]  = 4;                     // skip ahead
+      cst[i]  = 5;                     // skip ahead
       cst2[i] = 0;
     }
-    else if (chk_hand(NULL) <= 0)
-      fail_clean();
+    else if (held != NULL)
+      fail_clean(NULL);
   }
-  else if (cst[i] == 5)
-    if (chk_hand(cobj[i]) <= 0)
-      fail_clean();
+  else if (cst[i] == 6)                // should have object
+    if (held != cobj[i])
+      fail_clean(cobj[i]);
 
   // get desired position and orientation based on state
   if (cst[i] <= 0)
     rc = assess_obj();
   else if (cst[i] == 1)
-    rc = goto_via();
+    rc = jockey(0);                    // src action point
   else if (cst[i] == 2)
+    rc = goto_via(0);
+  else if (cst[i] == 3)
     rc = goto_grasp();
-  else if (cst[i] == 3)                // last grasp
+  else if (cst[i] == 4)                // last grasp
     rc = close_fingers();
-  else if (cst[i] == 4)                
+  else if (cst[i] == 5)                
     rc = lift_off();
-  else if (cst[i] == 5)                // success
+  else if (cst[i] == 6)                // success
     return 1;
 
   // cleanup from failure
-  if (cst[i] == 20)             
-    rc = stow_arm();           
-  else if (cst[i] == 21)
-    return tuck_elbow(-1);             // joint mode
+  if (cst[i] >= 20)
+    return stow_arm(-1);               // joint mode
   return command_bot(rc);
 }
 
@@ -603,6 +652,9 @@ int jhcManipulate::man_trans0 (const jhcAliaDesc& desc, int i)
     return -1;
   if ((cmode[i] = txt2rnum(cspot[i]->Lex())) < 0)
     return -1;
+  if (cmode[i] < 0)
+    return -1;
+
   if ((cmode[i] == ON) && (cspot[i]->Val("ref") == cobj[i]))
     return -1;
 
@@ -610,9 +662,7 @@ int jhcManipulate::man_trans0 (const jhcAliaDesc& desc, int i)
   citem[i] = -1;             // await access to vision
   cref[i]  = -1;
   cref2[i] = -1;
-  ccnt[i]  = 0;              // non-detect count
-  ccnt2[i] = 0;
-  cflag[i] = 0;              // no workspace violations
+  ccnt2[i] = 0;              // jockey attempts
   return 1;
 }
 
@@ -621,11 +671,12 @@ int jhcManipulate::man_trans0 (const jhcAliaDesc& desc, int i)
 // assumes cmode[i] has relation and cspot[i] has destination description
 // sets cref[i] and cref2[i] to be tracks for reference objects (if any)
 //   cst[i]: 0 = check for reasonable deposit spot
-//           1 = transfer to over destination
-//           2 = lower to destination height
-//           3 = release object
-//           4 = retract to stowed location
-//           5 = avoid protruding joints
+//           1 = maneuver body into range
+//           2 = transfer to over destination
+//           3 = lower to destination height
+//           4 = release object
+//           5 = retract to stowed location
+//           6 = avoid protruding joints
 // returns 1 if done, 0 if still working, -1 for failure
 // NOTE: calls assess_spot while holding object so destination may be occluded
 
@@ -636,15 +687,16 @@ int jhcManipulate::man_trans (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle and update standard cached info
   if (!rwi->Accepting())
     return 0;
-  init_vals(i);
+  init_vals(i, 1);
 
-  // make sure target and reference object(s) are still known 
-  if (cst[i] <= 2)
+  // make sure target and reference object(s) are still present
+  // set citem[] to held object track, cref[] to deposit object track
+  if (cst[i] <= 3)
   {
     if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i], 0))) < 0)
       return err_gone(cobj[i]);
     if (ref_tracks(cref[i], cref2[i], cmode[i], cspot[i]) < 0)   
-      return -1;                       // generates err_gone also
+      return -1;                       // invokes err_gone() also
   }
   if (rwi->Ghost())
     return gok;
@@ -652,29 +704,27 @@ int jhcManipulate::man_trans (const jhcAliaDesc& desc, int i)
     return err_arm();
 
   // check for accidental drop
-  if (cst[i] <= 2)
-    if (chk_hand(cobj[i]) <= 0)
-      fail_clean();
+  if (cst[i] <= 3)
+    if (held != cobj[i])
+      fail_clean(cobj[i]);
 
   // get desired position and orientation based on state
   if (cst[i] <= 0)
-    rc = assess_spot();                // sets cend[i] and caux[i]
+    rc = assess_spot();                // sets cpos, cdir, cvia
   else if (cst[i] == 1)                
+    rc = jockey(1);                    // dest action point
+  else if (cst[i] == 2)                
     rc = xfer_over();
-  else if (cst[i] == 2)
-    rc = place_on();
   else if (cst[i] == 3)
-    rc = release_obj();                // held -> NULL
+    rc = place_on();
   else if (cst[i] == 4)
-    rc = stow_arm();
+    rc = release_obj();                // held -> NULL
   else if (cst[i] == 5)
-    return tuck_elbow(1);              // joint mode
+    return stow_arm(1);                // joint mode
 
   // cleanup from failure
-  if (cst[i] == 20)             
-    rc = stow_arm();           
-  else if (cst[i] == 21)
-    return tuck_elbow(-1);             // joint mode
+  if (cst[i] >= 20)
+    return stow_arm(-1);               // joint mode
   return command_bot(rc);
 }
 
@@ -688,22 +738,16 @@ int jhcManipulate::man_tuck0 (const jhcAliaDesc& desc, int i)
     return -1;
 
   // initialize state
-  cst[i] = 20;               // start cleanup immediately
-  cflag[i] = 0;              // no workspace violations
   cobj[i] = held;
   return 1;
 }
 
 
 //= Continue trying to retract arm to travel position.
-//   cst[i]: 0 = retract to stowed location
-//           1 = avoid protruding joints
 // returns 1 if done, 0 if still working, -1 for failure
 
 int jhcManipulate::man_tuck (const jhcAliaDesc& desc, int i)
 {
-  int rc = 0;
-
   // lock to sensor cycle and update standard cached info
   if (rwi->Ghost())
     return gok;
@@ -711,18 +755,15 @@ int jhcManipulate::man_tuck (const jhcAliaDesc& desc, int i)
     return 0;
   if (arm->CommOK() <= 0)
     return err_arm();
-  init_vals(i);
+  init_vals(i, 0);
 
   // get desired position and orientation based on state
-  if (cst[i] == 20)
-    rc = stow_arm();
-  else if (cst[i] == 21)
-  {
-    if (tuck_elbow(1) == 0)            // joint mode
-      return 0;
-    return chk_hand(cobj[i]);          // check for drop
-  }
-  return command_bot(rc);
+  if (stow_arm(1) == 0)                // joint mode
+    return 0;
+  if (held == cobj[i])                 // check if still holding
+    return 1;
+  err_lack(cobj[i]);
+  return -1;
 }
 
 
@@ -741,63 +782,49 @@ int jhcManipulate::man_point0 (const jhcAliaDesc& desc, int i)
 
   // intialize state
   citem[i] = -1;             // await access to vision
-  cflag[i] = 0;              // no workspace violations
+  ccnt2[i] = 0;              // jockey attempts
   return 1;
 }
 
 
 //= Continue trying to indicate an object with the hand.
 // sets up continuing request to body if not finished
-// only has one step so no finite state machine (or failure cleanup)
+//   cst[i]: 0 = check current position
+//           1 = maneuver body into range
+//           2 = travel to via point
 // returns 1 if done, 0 if still working, -1 for failure
 
 int jhcManipulate::man_point (const jhcAliaDesc& desc, int i)
 {
-  double ht, dp;
+  int rc = 0;
 
   // lock to sensor cycle and check update standard cached info
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
-  if (arm->CommOK() <= 0)
-    return err_arm();
-  init_vals(i);
+  init_vals(i, 0);
 
-  // make sure target object still is known then check for interference
+  // make sure target object still is present, set citem[] to current track
   if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i], 0))) < 0)
     return err_gone(cobj[i]);
-  if (chk_hand(NULL) <= 0)
-    return -1;
+  if (rwi->Ghost())
+    return gok;
+  if (arm->CommOK() <= 0)
+    return err_arm();
 
-  // possibly print entry message and choose zero gaze offset
-  if (cst[inst] == 0)
-  {
-    jprintf(1, dbg, "|- Manipulate %d: point %s\n", cbid[inst], cobj[inst]->Nick());
-    cpos[inst].Zero();
-    cst[inst] = 1;
-  }
-  
-  // track object to get desired arm pose (just over centroid)
-  sobj->World(end, citem[inst]);
-  end.SetZ(sobj->MaxZ(citem[inst]) + graze + over);
-  aim.SetVec3(corner_ang(end.X(), end.Y()), -tip, 0.0);
-  wid = 0.0;
-  target = 1;
+  // move fingertips to via position over object
+  if (cst[i] <= 0)
+    rc = assess_obj();
+  else if (cst[i] == 1)
+    rc = jockey(0);                    // action point = src
+  else if (cst[i] == 2)
+    rc = goto_via(1);
+  else if (cst[i] == 3)                // success
+    return 1;
+  else
+    return -1;                         // failure at some step
 
-  // see if close enough to desired pose
-  ht = lift->Height();
-  dp = arm->PosErr3D(perr, end, ht, 0);
-  if (dp > ptol)
-  {
-    // fail if not making progress unless in right ballpark (hope for best)
-    if (chk_stuck(dp) <= 0)
-      return command_bot(0);
-    jprintf(2, dbg, "    stuck: dp = %s\n", dp);
-    if (arm->PosOffset3D(end, ht) > cont)
-      return err_reach(cobj[inst]);
-  }
-  return final_pose(1);                // success
+  // drive arm and base, possibly transition to next state
+  return command_bot(rc);
 }
 
 
@@ -805,97 +832,149 @@ int jhcManipulate::man_point (const jhcAliaDesc& desc, int i)
 //                              Take Phases                              //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Look at target object and determine a good grasp point on its top.
-// assumes cobj[i] bound to target node and citem[i] is vision track
-// sets cpos[i] to object-relative grasp point, cdir[i] to absolute angles
-// sets camt[i] to width (negative if top is roundish)
+// Look for target object and set up motion vectors for grabbing. 
+// want reliable estimate of object grasp point within workspace
+// assumes cobj[] is target object semnet node, citem[] is current track
+// Sets:  cpos[] = absolute grasp location
+//        cdir[] = gripper orientation
+//        cvia[] = absolute trajectory point over object
+//        camt[] = object width (negative if top is roundish)
+// Uses:  ccnt[] = failed blob detections
+//        caux[] = initial gripper width
 // returns 1 if done, 0 if still working, -1 for timeout
-// NOTE: always first phase of man_grab, man_lift, man_take (second of man_move)
 
 int jhcManipulate::assess_obj ()
 {
-  jhcMatrix obj(4);
-  double da, ht = lift->Height();
-  int t = citem[inst];
+  double da, mix = 0.1, gtol = 5.0;
+  int rc, tries = 5;
 
-  // temporarily assign grasp point as object center (zero offset)
+  // announce entry and zero failed dectection count
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: pick grasp %s\n", cbid[inst], cobj[inst]->Nick());
-    cpos[inst].Zero();
+    jprintf(1, dbg, "|- Manipulate %d: assess grab %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;
+    caux[inst] = arm->Width();         // remember finger separation
+    ct0[inst] = 0;                     // gaze timeout (chk_stuck)
+    ccnt[inst] = 0;                    // missed detections
+    if (ccnt2[inst] <= 0)
+      sobj->World(cpos[inst], citem[inst]);      // general vicinity   
   } 
 
-  // leave arm in current location but look toward object
-  end.RelVec3(*pos, 0.0, 0.0, ht);
-  aim.Copy(*dir);
-  wid = arm->Width();
-  worksp = 0;                          // no body motion
-  target = 1;                          // look at source object
+  // extra command info
+  wid = caux[inst];                    // keep gripper the same
 
-  // see if close enough to proper gaze direction
-  sobj->World(obj, t);
-  da = (rwi->neck)->GazeErr(obj, ht);
-  if (da > atol)
+  // look at target grasp point (or object to be picked up) 
+  da = neck->GazeErr(cpos[inst], lift->Height());
+  if (da > gtol)
   {
-    if (chk_stuck(0.1 * da) <= 0)
+    if (chk_stuck(mix * da, 1.0) <= 0)
       return 0;
-    jprintf(2, dbg, "    stuck: gaze = %3.1f\n", da);
+    jprintf(2, dbg, "    stuck: gaze = %3.1f\n", da);  
   }
 
-  // possibly wait several cycles for target object to be actively detected
-  if (!update_src(ccnt[inst]))
-    return 0;
-  return compute_src(camt[inst], cpos[inst], cdir[inst]);
+  // make sure object is actively detected 
+  ct0[inst] = 0;                                 // reset gaze timeout (chk_stuck)
+  stare = 1;
+  if ((rc = src_visible()) > 0)                  
+  {
+    // try determine exact grasp point
+    if (update_src(camt[inst], cpos[inst], cdir[inst], cvia[inst]) <= 0)
+      if (ccnt2[inst] <= 0)                      // must find originally
+        return -1;
+    return 1;
+  }   
+  if ((rc < 0) && (ccnt[inst]++ >= tries))       // can wait several cycles
+    return -1;                                   // required
+  return 0;
+}
+
+
+//= Drive, turn, or lift to bring hand action point into valid workspace zone.
+// fixes one body error at a time: Z then X then finally Y
+// assumes "gap" variable already has allowable travel distance if fix = 2
+// Uses:  ccnt2[] = total number of jockey phases attempted
+//         caux[] = initial grasp force or finger separation
+// returns 1 if done, 0 if still working, -1 for timeout, -2 for re-assess
+
+int jhcManipulate::jockey (int dest)
+{
+  double err, ex = cpos[inst].X(), ey = cpos[inst].Y(), ez = cpos[inst].Z();
+  int fix, flail = 8;
+
+  // announce entry
+  if (cst2[inst] == 0)
+  {
+    jprintf(1, dbg, "|- Manipulate %d: jockey %s %s\n", 
+            bid, ((dest <= 0) ? "grab" : "dest"), cobj[inst]->Nick());
+    cst2[inst] = 1;
+    caux[inst] = ((dest > 0) ? -hold : arm->Width());
+    cflag[inst] = 0;    
+    ct0[inst] = 0;                     // move timeout (chk_stuck)
+    ccnt2[inst] += 1;                  // started another fixing round
+  } 
+
+  // find most important violations of workspace
+  fix = chk_outside(cflag[inst], ex, ey, ez);
+  if (fix == 0)
+    return 1;
+  if (fix < 0)
+  {
+    if (ccnt2[inst] >= flail)
+      return -1;                       // too many attempts
+    return -2;                         // just resolved so re-assess
+  }
+
+  // try to get location into arm workspace by moving body
+  wid = caux[inst];
+  if ((err = adj_workspace(fix, ex, ey, ez)) < 0.0)
+    return -1;
+  if (chk_stuck(err, 2.0) > 0)
+    return -1;
+  return 0;
 }
 
 
 //= Move hand to via point appropriate for object.
-// assumes cpos[i] is object-relative grasp point, cdir[i] is absolute angles
-// updates target grasp parameters if object currently detected
+// can update target grasp parameters if object currently detected
 // returns 1 if done, 0 if still working, -1 for timeout
-// NOTE: always comes from deploy_arm
 
-int jhcManipulate::goto_via ()
+int jhcManipulate::goto_via (int pt)
 { 
-  double dp, da, dw, ht = lift->Height();
+  double err, dp, da, dw;
 
-  // possibly print entry message then refind grasp (if needed) and maybe destination
+  // possibly print entry message 
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: approach %s\n", cbid[inst], cobj[inst]->Nick());
+    jprintf(1, dbg, "|- Manipulate %d: approach %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;
+    ct0[inst] = 0;                               // move timeout (chk_stuck)
   }
-  if (update_src(ccnt[inst]))
-    compute_src(camt[inst], cpos[inst], cdir[inst]);
-  if (cmode[inst] >= 0)
-    if (update_dest(ccnt2[inst]))
-      compute_dest(cend[inst], caux[inst], cflag[inst], 0);   
 
-  // set for hand destination but high enough to clear object top
-  src_full(end, 1);
-  aim.Copy(cdir[inst]);
-  wid = arm->MaxWidth();               // fully open
-  dmode = 0x4;                         // exact R orientation (0100)
-  target = 1;                          // look at pickup location
-  tim = 1.0;                           // long timeout
+  // possibly track moving object while reaching for it
+  if (src_visible() > 0)
+    update_src(camt[inst], cpos[inst], cdir[inst], cvia[inst]);
+
+  // extra command parameters
+  wid = ((pt > 0) ? 0.0 : fabs(camt[inst]));     // open to object size plus some
+  dmode = 0x4;                                   // exact R orientation (0100)
 
   // see if close enough to desired pose
-  dp = arm->PosErr3D(perr, end, ht, 0);
-  da = arm->DirErr(derr, aim, 0);
+  err = pose_err(dp, da, 1);
   dw = arm->WidthErr(wid);
-  if ((dp > ptol) || (da > atol) || (dw > wtol))
+  if (atol < 0.0)                               // possibly ignore wrist
+    da = derr.Zero();
+  if ((dp > ptol) || (da > fabs(atol)) || (dw > wtol))
   {
     // fail if not making progress unless in right ballpark (hope for best)
-    if (chk_stuck(perr.SumAbs3() + 0.1 * derr.SumAbs3() + dw) <= 0)
+    if (chk_stuck(err + dw, 1.0) <= 0)
       return 0;
     jprintf(2, dbg, "    stuck: perr = %s, derr = %s, werr = %3.1f\n", perr.ListVec3(txt), derr.ListVec3(txt2), dw);
-    if (arm->PosOffset3D(end, ht) > cont)
+    if (arm->PosOffset3D(cvia[inst], 0.0) > cont)
       return err_reach(cobj[inst]);
   }
 
   // wait for oscillation to subside then possibly tell final accuracy
-  if (arm->Static() < detwang)
+  if ((detwang >= 0) && (arm->Static() < detwang))
   {
     if (arm->Static() == (detwang - 1))
       jprintf(2, dbg, "    detwang ...\n");
@@ -906,39 +985,34 @@ int jhcManipulate::goto_via ()
 
 
 //= Move hand to grasp point appropriate for object.
-// assumes cpos[i] is object-relative grasp point, cdir[i] is absolute angles
 // returns 1 if done, 0 if still working, -1 for timeout
-// NOTE: always comes from goto_via
 
 int jhcManipulate::goto_grasp ()
 { 
-  double dp, da, ht = lift->Height();
+  double err, dp, da;
 
   // possibly print entry message 
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: engulf %s\n", cbid[inst], cobj[inst]->Nick());
+    jprintf(1, dbg, "|- Manipulate %d: engulf %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;
+    ct0[inst] = 0;                     // descend timeout (chk_stuck)
   }
 
-  // select desired final arm pose 
-  src_full(end, 0);
-  aim.Copy(cdir[inst]);
-  wid = arm->MaxWidth();               // fully open
+  // extra command parameters
+  wid = fabs(camt[inst]);              // open to object size plus some
   pmode = 0x3;                         // exact YX position (011)
   dmode = 0x4;                         // exact R orientation (0100)
-  target = 1;                          // look at pickup location
 
   // see if close enough to desired pose
-  dp = arm->PosErr3D(perr, end, ht, 0);
-  da = arm->DirErr(derr, aim, 0);
-  if ((dp > ptol) || (da > atol))
+  err = pose_err(dp, da, 0);
+  if ((dp > ptol) || (da > fabs(atol)))
   {
     // fail if not making progress unless in right ballpark (hope for best)
-    if (chk_stuck(perr.SumAbs3() + 0.1 * derr.SumAbs3()) <= 0)
+    if (chk_stuck(err, 0.5) <= 0)
       return 0;
     jprintf(2, dbg, "    stuck: perr = %s, derr = %s\n", perr.ListVec3(txt), derr.ListVec3(txt2));
-    if (arm->PosOffset3D(end, ht) > cont)
+    if (arm->PosOffset3D(cpos[inst], lift->Height()) > cont)
       return err_reach(cobj[inst]);
   }
 
@@ -948,33 +1022,26 @@ int jhcManipulate::goto_grasp ()
 
 
 //= Close fingers around object until standard force achieved.
-// assumes cpos[i] is object-relative grasp point, cdir[i] is absolute angles
-// sets "held", "htrk", "nose", and "hang" once hold is established
+// sets "held", "htrk", "nose", "hang", and "thin" once hold is established
 // returns 1 if done, 0 if still working, -1 if fingers empty or timeout
-// NOTE: always comes from goto_grasp
 
 int jhcManipulate::close_fingers ()
 {
   // possibly print entry message and remember start time (wtim not chk_stuck) 
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: wrap %s\n", cbid[inst], cobj[inst]->Nick());
-    fcnt = 0;
-    ct0[inst] = jms_now();   
+    jprintf(1, dbg, "|- Manipulate %d: squeeze %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;         
+    fcnt = 0;                          // number of squeezing cycles 
+    ct0[inst] = jms_now();             // closure timeout (jms_elapsed)
   }
 
-  // stay at grasping point but squeeze hand closed 
-  src_full(end, 0);
-  aim.Copy(cdir[inst]);
-  wid = 0.0;                           // ballistic move (not force)
+  // extra command parameters
+  wid = 0.0;                           // ballistically pinch (not force)
   pmode = 0x4;                         // exact Z position (100)
   dmode = 0x4;                         // exact R orientation (0100)
-  target = 1;                          // look at pickup location
 
-  // fail if closed on air, succeed if moderate force
-  if (arm->Width() < wmin)   
-    return -1;
+  // succeed if moderate force for several cycles
   fcnt++;
   if ((hold - arm->Squeeze()) > ftol) 
     fcnt = 0;
@@ -990,15 +1057,18 @@ int jhcManipulate::close_fingers ()
   // remember engagement details and generate "holding" event
   record_grip(citem[inst]);
   wt = -1.0;                           // not measured yet
+  if (held == NULL)                    // might be second call
+  {
+    held = cobj[inst];
+    msg_hold(cobj[inst], 0);           // successfully holding
+  }
   return final_pose(0);
 }
 
 
 //= Raise grasped object slightly off table to allow moving.
-// sets cpos[i] and cdir[i] to absolute arm pose to achieve after lifting object
-// records estimate of weight of held object in "wt"
+// sets "wt" to estimate of weight of held object
 // returns 1 if done, 0 if still working, -1 if timeout (non-movable?)
-// NOTE: earlier grasp steps might have been skipped 
 
 int jhcManipulate::lift_off ()
 {
@@ -1007,23 +1077,22 @@ int jhcManipulate::lift_off ()
   // remember starting absolute pose 
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: lift %s\n", cbid[inst], cobj[inst]->Nick());
-    cpos[inst].SetVec3(pos->X(), pos->Y(), over + z3d);
-    cdir[inst].SetVec3(dir->P(), -tip, 0.0);
+    jprintf(1, dbg, "|- Manipulate %d: lift %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;
+    cpos[inst].SetZ(over + z3d);         // slightly up from grasp location
+    cdir[inst].Copy(*dir);               // maintain current orientation
+    ct0[inst] = 0;                       // lift timeout (chk_stuck)
   }
 
-  // maintain planar pose but raise hand while still squeezing (no gaze command)
-  end.Copy(cpos[inst]);
-  aim.Copy(cdir[inst]);
-  wid = -hold;                         // maintain force
-  dmode = 0xE;                         // any pan, exact RT orientation (1110)
+  // extra command parameters
+  wid = -hold;                           // maintain force
+  dmode = 0xE;                           // any pan, exact RT orientation (1110)
 
   // see if high enough yet (ignore any other errors)
-  under = end.Z() - z3d;
+  under = cpos[inst].Z() - z3d;
   if (under > ztol)
   {
-    if (chk_stuck(under) <= 0)
+    if (chk_stuck(under, 1.0) <= 0)
       return 0;
     jprintf(2, dbg, "    stuck: zerr = %3.1f\n", -under);
     final_pose(0);
@@ -1036,11 +1105,6 @@ int jhcManipulate::lift_off ()
     wt = arm->ObjectWt();         
     jprintf(2, dbg, "    wt = %3.1f oz\n", wt);
   }
-  if (held == NULL)                      // might be second call
-  {
-    held = cobj[inst];
-    msg_hold(cobj[inst], 0);             // successfully holding
-  }
   return final_pose(0);
 }
 
@@ -1050,96 +1114,97 @@ int jhcManipulate::lift_off ()
 ///////////////////////////////////////////////////////////////////////////
 
 //= Determine an appropriate ending location to move the object to.
+// want reliable estimate of object-relative deposit location within workspace
 // assumes cmode[i] is spatial relation, cref[i] is reference object track
-// temporarily sets cend[i] to approximate location of destination description
-// sets anchor-relative hand destination cend[i] and absolute orientation caux[i] 
+// Sets:  cpos[] = absolute deposit location
+//        cdir[] = gripper orientation
+//        cvia[] = absolute trajectory point over destination
+// Uses:  ccnt[] = failed blob detections
 // returns 1 if done, 0 if still working, -1 for timeout
-// NOTE: always first phase of man_move
 
 int jhcManipulate::assess_spot ()
 {
-  jhcMatrix anchor(4), full(4);
-  double da, ht = lift->Height();
+  double da, mix = 0.1, gtol = 5.0;
+  int rc, tries = 5;
 
-  // possibly announce entry then set initial spot to look at
+  // possibly announce entry and clear state
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: pick dest %s\n", cbid[inst], cobj[inst]->Nick());
-    if (cref[inst] < 0)
-      sobj->NearTable(cend[inst], citem[inst]);  // closest table point
-    else
-      cend[inst].Zero();                         // anchor location
+    jprintf(1, dbg, "|- manipulate %d: assess dest %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;
+    ccnt[inst] = 0;                    // missed detections
+    ct0[inst] = 0;                     // gaze timeout (chk_stuck)
+    if (ccnt2[inst] <= 0)
+      anchor_loc(cpos[inst]);          // general vicinity of deposit
   }
 
-  // leave arm in current location but look toward rough destination
-  end.RelVec3(*pos, 0.0, 0.0, ht);
-  aim.Copy(*dir);
-  wid = ((held != NULL) ? -hold : wmin);
-  worksp = 0;                          // no body motion
-  target = 2;                          // look at destination
+  // extra command parameters
+  wid = -hold;                         // always transporting something
 
-  // see if close enough to proper gaze direction
-  dest_full(anchor, 0);
-  da = (rwi->neck)->GazeErr(anchor, ht);
-  if (da > atol)
+  // try to look at deposit location (or reference location)
+  da = neck->GazeErr(cpos[inst], lift->Height());
+  if (da > gtol)
   {
-    if (chk_stuck(0.1 * da) <= 0)
+    if (chk_stuck(mix * da, 1.0) <= 0)
       return 0;
     jprintf(2, dbg, "    stuck: gaze = %3.1f\n", da);
   }
 
-  // possibly wait several cycles for location anchors then find rough destination
-  if (!update_dest(ccnt2[inst]))
-    return 0;
-  return compute_dest(cend[inst], caux[inst], cflag[inst], 0);   
+  // make sure reference object(s) is actively detected (can wait several cycles)
+  ct0[inst] = 0;                                 // gaze timeout (chk_stuck)
+  stare = 1;
+  if ((rc = dest_visible()) > 0)                 
+  {
+    // try to determine exact deposit location
+    if (update_dest(cpos[inst], cdir[inst], cvia[inst], 1) <= 0)
+      if (ccnt2[inst] <= 0)
+        return -1;                               // must find originally
+    return 1;
+  }
+  if ((rc < 0) && (ccnt[inst]++ >= tries))       // can wait several cycles
+    return -1;                                   // required to be visible     
+  return 0;
 }
 
 
 //= Move object at travel height over to destination location.
-// assumes cend[i] is anchor-relative destination, caux[i] is absolute orientation
+// can update deposit location if reference object currently detected
 // returns 1 if done, 0 if still working, -1 if timeout 
-// NOTE: earlier grasp steps might have been skipped
 
 int jhcManipulate::xfer_over ()
 {
   jhcMatrix full(4), anchor(4);
-  double ht = lift->Height();
+  double cont = 0.3;
 
-  // possibly announce entry then adjust rough destination for actual grip parameters
+  // possibly announce entry 
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: transfer %s\n", cbid[inst], cobj[inst]->Nick());
-    dest_full(full, 0);
-    adjust_dest(full, caux[inst], cflag[inst] & 0x10);
-    dest_rel(cend[inst], full);
+    jprintf(1, dbg, "|- Manipulate %d: transfer %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;
   }
-  if ((cref[inst] >= 0) && update_dest(ccnt2[inst]))       // drifts if dest = "down"
-    compute_dest(cend[inst], caux[inst], cflag[inst], 1);
 
-  // set for hand destination but up a bit (keep squeezing)
-  dest_full(end, 1);
-  aim.SetVec3(caux[inst], -tip, 0.0);
-  wid = -hold;
+  // possibly track reference object(s) while moving arm (drifts if dest = "down")
+  if (dest_visible() > 0)
+    update_dest(cpos[inst], cdir[inst], cvia[inst], 1);
+
+  // extra command parameters
+  wid = -hold;                         // keep squeezing
   pmode = 0x4;                         // exact Z position (0100)
   dmode = 0x6;                         // exact RT orientation (0110)
-  target = 2;                          // look at destination
-  tim = 1.0;                           // long timeout
 
   // see if at destination position yet (ignore any orientation error)
-  if (arm->PosOffset3D(end, ht) > cont)
+  if (arm->PosOffset3D(cvia[inst], 0.0) > cont)
   {
     // if not making progress then fail 
-    arm->PosErr3D(perr, end, ht, 0);
-    if (chk_stuck(perr.SumAbs3()) <= 0)
+    arm->PosErr3D(perr, cvia[inst], 0.0, 0);
+    if (chk_stuck(perr.SumAbs3(), 5.0) <= 0)
       return 0;
     jprintf(2, dbg, "    stuck: perr = %s\n", perr.ListVec3(txt));
     return err_reach(cspot[inst]);
   }
 
   // wait for oscillation to subside then possibly tell final accuracy
-  if (arm->Static() < detwang)
+  if ((detwang >= 0) && (arm->Static() < detwang))
   {
     if (arm->Static() == (detwang - 1))
       jprintf(2, dbg, "    detwang ...\n");
@@ -1150,9 +1215,7 @@ int jhcManipulate::xfer_over ()
 
 
 //= Descend toward destination height until upwards force felt.
-// assumes cpos[i] is anchor-relative hand destination, caux[i] is absolute orientation
 // returns 1 if done, 0 if still working (never fails)
-// NOTE: always comes from xfer_over
 
 int jhcManipulate::place_on ()
 {
@@ -1161,26 +1224,23 @@ int jhcManipulate::place_on ()
   // possibly announce entry
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: deposit %s\n", cbid[inst], cobj[inst]->Nick());
+    jprintf(1, dbg, "|- Manipulate %d: deposit %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;
   }
 
-  // aim for destination pose while still squeezing 
-  dest_full(end, 0);
-  aim.SetVec3(caux[inst], -tip, 0.0);
-  wid = -hold;
+  // extra command parameters
+  wid = -hold;               // keep squeezing
   pmode = 0x3;               // exact YX position (0011)
   dmode = 0x7;               // exact RTP orientation (0111)
-  target = 2;                // look at destination
 
   // see if approximately in contact with surface
-  dx = pos->X() - end.X();
-  dy = pos->Y() - end.Y();
-  dz = (pos->Z() + ht) - end.Z();
+  dx = pos->X() - cpos[inst].X();
+  dy = pos->Y() - cpos[inst].Y();
+  dz = (pos->Z() + ht) - cpos[inst].Z();
   if ((fabs(dx) > ptol) || (fabs(dy) > ptol) || (dz > dtol))
   {
     // quit if no longer making progress
-    if (chk_stuck(dz + fabs(dx) + fabs(dy)) <= 0)
+    if (chk_stuck(dz + fabs(dx) + fabs(dy), 0.5) <= 0)
       return 0;
     jprintf(2, dbg, "    stuck: perr = [%3.1f %3.1f %3.1f]\n", dx, dy, dz);
   }
@@ -1191,30 +1251,24 @@ int jhcManipulate::place_on ()
 
 
 //= Open fingers wide to release object.
-// assumes cend[i] is anchor-relative hand destination, caux[i] is absolute orientation
-// sets "held" to NULL at end
+// sets "held" to NULL 
 // returns 1 if done, 0 if still working
-// NOTE: always comes from place_on
 
 int jhcManipulate::release_obj ()
 {
   // remember desired width and start time (wtim not chk_stuck)
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: release %s\n", cbid[inst], cobj[inst]->Nick());
-    camt[inst] = arm->Width() + 2.0 * loose;
-    ct0[inst] = jms_now();         
-    held = NULL;                       // prevent drop detection
+    jprintf(1, dbg, "|- Manipulate %d: release %s\n", bid, cobj[inst]->Nick());
     cst2[inst] = 1;
+    ct0[inst] = jms_now();             // release timeout
+    held = NULL;                       // prevent drop detection
   }
 
-  // use object itself as point to back away from
-  dest_full(end, 0);
-  aim.SetVec3(caux[inst], -tip, 0.0);
-  wid = camt[inst];
+  // extra command parameters
+  wid = sobj->Minor(citem[inst]) + loose;
   pmode = 0x7;                         // exact ZYX position (0111)
   dmode = 0x7;                         // exact RTP orientation (0111)
-  target = 2;                          // look at destination
 
   // see if hand is open wide enough yet
   if (fabs(arm->Width() - wid) > wtol)
@@ -1228,88 +1282,48 @@ int jhcManipulate::release_obj ()
   // generate "not holding" event and mark hand as empty
   msg_hold(cobj[inst], 1);
   cobj[inst] = NULL;
-  clear_grip();
+  clear_grip(1);
   return final_pose(0);
 }
 
- 
-//= Retract arm (possibly with object) in preparation for environmental navigation.
-// returns 1 if done, 0 if still working (never fails)
 
-int jhcManipulate::stow_arm ()
+//= Return arm to tucked configuration suitbale for body navigation.
+// directly drives arm in joint mode so disable drive in command_bot()
+// Uses:  caux[] = initial finger separation
+// returns 1 if done, 0 if still working, -1 if fail marked (rc < 0)
+
+int jhcManipulate::stow_arm (int rc)
 {
-  double pk, wz, under, dp, da, ht = lift->Height(), az = pos->Z() + ht;
-
-  // set up absolute retracted pose (only lift if some obstruction)
-  if (cst2[inst] == 0)
-  {
-    jprintf(1, dbg, "|- Manipulate %d: stow %s\n", cbid[inst], 
-            ((cobj[inst] != NULL) ? cobj[inst]->Nick() : "arm"));
-    pk = obj_peaks(arm->retx, arm->rety, arm->Width(), 1);
-    wz = hang + over + pk;
-    cpos[inst].SetVec3(arm->retx, arm->rety, __max(wz, az));
-    cdir[inst].SetVec3(arm->rdir, -tip, 0.0);
-    cst2[inst] = 1;
-  }
-
-  // go to stowed pose while still squeezing any held object (no gaze command)
-  end.Copy(cpos[inst]);
-  aim.Copy(cdir[inst]);
-  under = end.Z() - az;
-  if (held != NULL)
-    wid = -hold;
-  else if (under > ztol)               // don't close until hi enough
-    wid = arm->Width();
-  else
-    wid = wmin;
-  if (under > ztol)                    // slow until clear
-    sp = __max(0.5, sp);
-  worksp = 1;                          // only up/dn adjustments
-
-  // see if close enough to desired pose
-  dp = arm->PosErr3D(perr, end, ht, 0);
-  da = arm->DirErr(derr, aim, 0);
-  if ((dp > ptol) || (da > atol))
-  {
-    // quit is stop making progress
-    if (chk_stuck(perr.SumAbs3() + 0.1 * derr.SumAbs3()) <= 0)
-      return 0;
-    jprintf(2, dbg, "    stuck: perr = %s, derr = %s\n", perr.ListVec3(txt), derr.ListVec3(txt2));
-  }
-  return final_pose(0);                // always advance to tuck          
-}
-
-
-//= Make sure elbow is tight to robot for body navigation.
-// uses arm in joint mode so should not call command_bot afterward
-// sets caux[i] to elbow, camt[i] to mid-arm lift, cdir[i] to wrist angles
-// returns rc if done (possibly a fail), 0 if still working (never fails)
-// NOTE: always comes from stow_arm, no states ever follow this
-
-int jhcManipulate::tuck_elbow (int rc)
-{
-  double da;
+  double da, mix = 0.1;
 
   // remember outer arm configuration (but change elbow if stow failed)
   if (cst2[inst] == 0)
   {
-    jprintf(1, dbg, "|- Manipulate %d: tuck %s\n", cbid[inst], 
+    jprintf(1, dbg, "|- Manipulate %d: stow %s\n", bid, 
             ((cobj[inst] != NULL) ? cobj[inst]->Nick() : "arm"));
-    ct0[inst] = jms_now();       
     cst2[inst] = 1;  
+    caux[inst] = arm->Width();         // initial finger separation
+    ct0[inst] = 0;                     // pose timeout (chk_stuck)
   }
 
+  // only close hand when high enough
+  if (held != NULL)
+    wid = -hold;
+  else if ((arm->retz - pos->Z()) > ztol)        
+    wid = caux[inst];
+  else
+    wid = arm->wlax;
+
   // check if tucked yet
-  keep = 0;
   da = arm->TuckErr();
   if (da > arm->AngTol())
   {
     // quit if not making progress
-    if (chk_stuck(0.1 * da) <= 0)
+    if (chk_stuck(mix * da, 0.5) <= 0)
     {
       // send joint angles to arm and close hand (no gaze command)
-      arm->Tuck(1.0, cbid[inst]);
-      arm->HandTarget(((held != NULL) ? -hold : wmin), 1.0, cbid[inst]);                              
+      arm->Tuck(1.0, bid);
+      arm->HandTarget(wid, 1.0, bid);                              
       return 0;
     }
     jprintf(2, dbg, "    stuck: da = %3.1f\n", da);
@@ -1319,67 +1333,9 @@ int jhcManipulate::tuck_elbow (int rc)
   if (rc <= 0)
     return rc;
   cst[inst] += 1;            // largely for GUI
-  cst2[inst] = 0;            
-  ct0[inst]  = 0;           
   return 1;                         
 }
 
-/*
-int jhcManipulate::tuck_elbow (int rc)
-{
-  const jhcMatrix *cfg = arm->ArmConfig();
-  jhcMatrix tuck(6);
-  double ds, de, etol = 10.0;
-
-  // remember outer arm configuration (but change elbow if stow failed)
-  if (cst2[inst] == 0)
-  {
-    jprintf(1, dbg, "|- Manipulate %d: tuck %s\n", cbid[inst], 
-            ((cobj[inst] != NULL) ? cobj[inst]->Nick() : "arm"));
-    if (fabs(arm->JtAng(1) - arm->rete) > etol)
-      caux[inst] = arm->rete;                    
-    else
-      caux[inst] = cfg->VRef(1);
-    camt[inst] = cfg->VRef(2);
-    cdir[inst].SetVec3(cfg->VRef(3), cfg->VRef(4), cfg->VRef(5)); 
-    ct0[inst] = jms_now();       
-    cst2[inst] = 1;  
-  }
-
-  // keep original joint angles except shoulder 
-  tuck.VSet(0, arm->rets);
-  tuck.VSet(1, caux[inst]);
-  tuck.VSet(2, camt[inst]);
-  tuck.VSet(3, cdir[inst].VRef(0));
-  tuck.VSet(4, cdir[inst].VRef(1));
-  tuck.VSet(5, cdir[inst].VRef(2));
-  keep = 0;
-
-  // check if shoulder sufficiently close 
-  ds = fabs(cfg->VRef(0) - tuck.VRef(0));
-  de = fabs(cfg->VRef(1) - tuck.VRef(1));
-  if ((ds > arm->AngTol()) || (de > arm->AngTol()))
-  {
-    // quit if not making progress
-    if (chk_stuck(0.1 * (ds + de)) <= 0)
-    {
-      // send joint angles to arm and close hand (no gaze command)
-      arm->CfgTarget(tuck, 1.0, cbid[inst]);
-      arm->HandTarget(((held != NULL) ? -hold : wmin), 1.0, cbid[inst]);                              
-      return 0;
-    }
-    jprintf(2, dbg, "    stuck: ds = %3.1f, de = %3.1f\n", ds, de);
-  }
-
-  // return value given, possibly advancing state if normal sequence
-  if (rc <= 0)
-    return rc;
-  cst[inst] += 1;            // largely for GUI
-  cst2[inst] = 0;            
-  ct0[inst]  = 0;           
-  return 1;                         
-}
-*/
 
 ///////////////////////////////////////////////////////////////////////////
 //                           Sequence Helpers                            //
@@ -1387,71 +1343,26 @@ int jhcManipulate::tuck_elbow (int rc)
 
 //= Set up some standard control values.
 
-void jhcManipulate::init_vals (int i)
+void jhcManipulate::init_vals (int i, int keep)
 {
+  double pan = cdir[i].P();
+
   // current instance information
   inst = i;                    
   msg = 0;                     
 
   // default command details
-  sp = csp[i];              
+  sp = csp[i];    
+  bid = cbid[i];          
   pmode = 0;                
   dmode = 0;   
-  worksp = 2;
-  target = 0;
-  tim = 0.5;               
+  stare = 0;
 
-  // never erase occluded objects, target will not change shape
-  if (cst[i] <= 0)
-    keep = 1;
-  if (keep > 0)
-  {
-    sobj->RetainAll();           
-    sobj->KeepShape(citem[i]);   
-  }
-
-  // roughly update absolute deposit location on surface using odometry
-  if (cref[i] < 0)
-    (rwi->base)->AdjustTarget(cend[i]);
-}
-
-
-//= Make sure hand is holding the expected object (or nothing).
-// automatically generates error messages for drop or interference
-// <pre>
-// width   held    expect   
-// -----  ------  --------  
-//   -     NULL     NULL    -> okay
-//   -     NULL     obj-1   -> error: not holding obj-1
-//   -     obj-2    NULL    -> error: holding obj-2
-//   -     obj-2    obj-1   -> error: holding obj-2
-//   0     obj-1    obj-1   -> error: dropped obj-1
-//   w     obj-1    obj-1   -> okay
-// </pre>
-// returns 1 if okay, 0 or negative for problem
-
-int jhcManipulate::chk_hand (jhcAliaDesc *expect)
-{
-  double sqz0 = 5.0;
-
-  // holding nothing
-  if (held == NULL) 
-  {
-    if (expect != NULL)
-      return err_lack(expect);
-    return 1;
-  }
-
-  // holding something
-  if (held != expect)
-    return err_lack(expect);
-  if (arm->SqueezeGoal() > 0.0)
-    if ((arm->Width() < wmin) || (arm->Squeeze() < sqz0))
-    {
-      err_drop(held);
-      return clear_grip();
-    }
-  return 1;
+  // default update target, via, and grasp direction using odometry
+  // these will be overridden if anchor objects are visible
+  base->AdjustTarget(cpos[i]);
+  base->AdjustTarget(cvia[i]);
+  cdir[i].SetP(base->AdjustAng(pan));
 }
 
 
@@ -1459,32 +1370,16 @@ int jhcManipulate::chk_hand (jhcAliaDesc *expect)
 // detects lack of improvement over "prog" for "tim" (about 15 cycles)
 // hardcoded for 0.1" position progress, otherwise scale error first 
 // assumes member variable "inst" bound with proper command index
-// if body adjustment active then evaluates progress of that not total goal
-// assumes "end" is arm target, cflag[i] bit 3 set if change from last mode
+// uses cerr[] and ct0[] to monitor progress across calls
 // returns 1 if at asymptote, 0 if still moving toward goal
 
-int jhcManipulate::chk_stuck (double diff)
+int jhcManipulate::chk_stuck (double err, double tim)
 {
-  double prog = 0.1;     
-  double chg, err = diff;
-  int fix = cflag[inst] & 0x07;
+  double chg = cerr[inst] - err, prog = 0.1;     
 
-  // if body motion needed then only monitor relevant coordinate
-  if (fix != 0)
-  {
-    err = diff_workspace(fix);
-    if (fix <= 2)
-      tim = 2.0;                       // very slow translation
-    else if (fix <= 4)
-      tim = 1.0;                       // slow base rotation
-  }
-  if ((cflag[inst] & 0x08) != 0)  
-    ct0[inst] = 0;                     // restart timeout if new violation     
-  chg = cerr[inst] - err;
-
-  // reset timer if minimal progress being made
   if ((ct0[inst] == 0) || (chg >= prog))
   {
+    // reset timer if minimal progress has been made
     ct0[inst] = jms_now();
     cerr[inst] = err;
   }
@@ -1500,13 +1395,14 @@ int jhcManipulate::chk_stuck (double diff)
 
 int jhcManipulate::final_pose (int xyz) 
 {  
+  const jhcMatrix *cmd = ((cst[inst] < 3) ? &(cvia[inst]) : &(cpos[inst]));
   double ht = lift->Height();
-
-  jprintf(3, dbg, "      command: %s %s\n", end.ListVec3(txt), aim.ListVec3(txt2));
+    
+  jprintf(3, dbg, "      command: %s %s\n", cmd->ListVec3(txt), cdir[inst].ListVec3(txt2));
   jprintf(3, dbg, "      -> pose: [%3.1f %3.1f %3.1f] %s\n", pos->X(), pos->Y(), pos->Z() + ht, dir->ListVec3(txt));
   if ((xyz > 0) && (dbg >= 2))
   {
-    arm->PosErr3D(perr, end, ht, 0);
+    arm->PosErr3D(perr, *cmd, ht, 0);
     jprintf("    final offset = %s\n", perr.ListVec3(txt)); 
   }
   return 1;
@@ -1514,12 +1410,14 @@ int jhcManipulate::final_pose (int xyz)
 
 
 //= Fail sequence by transitioning to the cleanup phase.
-// does not generate any event or record any error
+// opriotnally generates a failure event about holding the wrong object
 // always returns 0 for convenience
 
-int jhcManipulate::fail_clean ()
+int jhcManipulate::fail_clean (jhcAliaDesc *obj)
 {
-  cst[inst]  = 20;           // special constant
+  if (obj != NULL)
+    err_lack(obj);
+  cst[inst]  = 20;           // jump to stow_arm()
   cst2[inst] = 0;            // mark as newly started
   ct0[inst] = 0;       
   cflag[inst] &= 0xF0;       // no body fixes required      
@@ -1531,66 +1429,112 @@ int jhcManipulate::fail_clean ()
 //                          Coordinated Motion                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Act on commands generated if successful and possibly advance state.
-// assumes member variable "inst" bound with proper command index
-// assumes "end", "aim", "wid", and "sp" encode desired absolute action
-// pmode bits:              2 = exact Z,    1 = exact Y,    0 = exact X
-// dmode bits: 3 = any pan, 2 = exact roll, 1 = exact tilt, 0 = exact pan
-// target: 0 = no gaze, 1 = pickup location, 2 = deposit location
-// stores workspace limit violations in cflag[i] 
+//= Find current deviation from desired hand position and orientation.
+// binds "perr" and "derr" vectors of component-wise signed differences
+// binds max absolute value of xyz deviations (dp) and ptr deviations (da)
+// returns wieghted SUM of absolute positional and angular coordinate errors
+
+double jhcManipulate::pose_err (double& dp, double& da, int via) 
+{
+  double psum, dsum, dt, dr, mix = 0.1;
+
+  // signed positional xyz error (via or action location)
+  if (via > 0)
+    dp = arm->PosErr3D(perr, cvia[inst], lift->Height(), 0);
+  else
+    dp = arm->PosErr3D(perr, cpos[inst], lift->Height(), 0);
+  psum = perr.SumAbs3();
+
+  // signed angular pan-tilt-roll error (possibly ignore pan)
+  da = arm->DirErr(derr, cdir[inst], 0);
+  dsum = derr.SumAbs3();
+  if (atol < 0.0)                      // leave derr intact
+  {
+    dt = fabs(derr.T());
+    dr = fabs(derr.R());
+    da = __max(dt, dr);
+    dsum = dt + dr;
+  }
+
+  // return Manhattan distance from goal in 6D
+  return(psum + mix * dsum);
+}
+
+
+//= Sets up arm and gaze commands based on FSM state from cst[].
+// generally moving arm toward cpos[] or cvia[] depending on state
+// additional info passed through vars "wid", "pmode", and "dmode"
+// handles state transitions and exits based on return code "rc"
+// <pre>
+//
+//   state                   gaze     arm
+//   -----                  ------  ------
+//     0    assess_obj       obj       x     
+//     1    jockey           obj       x
+//     2    goto_via        (obj)     via
+//     3    goto_grasp        -      grasp
+//     4    close_fingers     -      grasp
+//     5    lift_off          -      grasp+ 
+//
+//     0    assess_spot      spot      x     
+//     1    jockey           spot      x
+//     2    xfer_over       (spot)    via
+//     3    place_on          -       dump
+//     4    release_obj       -       dump
+//
+//    20    stow_arm          -       stow
+//
+// </pre>
 
 int jhcManipulate::command_bot (int rc)
 {
-  jhcMatrix view(4);
-  double pan, tilt, ht = lift->Height(), ex = end.X(), ey = end.Y(), ez = end.Z() - ht;
-  double ztop = ((pos->Y() < (arm->rety + fwd)) ? arm->retz : wz1), gtim = 1.0;                        
-  int fix = 0;
+  jhcMatrix rise(4);
+  const jhcMatrix *loc = &(cpos[inst]);
+  double ht = lift->Height(); 
+  int state = cst[inst];
   
-  // go to cleanup phase if error (stow and tuck never fail)
-  if (rc < 0)
-    return fail_clean();     
+  // cleanup on FSM fail (stow never fails)
+  if (rc == -1)
+    return fail_clean(NULL); 
 
-  // try to fix any important arm problems then fill in rest of parameters
-  fix = chk_outside(cflag[inst], ex, ey, ez);
-  if ((ez - pos->Z()) > ttol)
-  {
-    if (fix == 6)                                          // up but no base motion 
-      lift->LiftShift(ez - (ztop - zup) + ztra, 0.5, cbid[inst]);     
-    else                                                   // up but no lateral motion
-      arm->PosTarget(pos->X(), pos->Y(), ez, sp, cbid[inst]);
-  }
-  else if (fix != 0)
-    adj_workspace(fix, ex, ey, ez);                        // attempt body jockeying
-  else
-  {
-    arm->PosTarget3D(end, ht, sp, cbid[inst], pmode);      // normal trajectory          
-    arm->DirTarget(aim, sp, cbid[inst], dmode);
-  }
-  arm->ArmTarget(*pos, *dir, 1.0, 1.0, cbid[inst]);        // only as default
-  arm->HandTarget(wid, sp, cbid[inst]);                              
+  // gaze at dest for assess_X() + jockey() + goto_via()/xfer_over()
+  if ((state <= 2) && (stare <= 0))     
+    neck->GazeAt(cpos[inst], ht, 1.0, bid);   
 
-  // decide where to look (shift closer if fixing +y violation)
-  if (target > 0)
+  // always control fingers (need to hold during assess_spot)
+  arm->HandTarget(wid, sp, bid);                              
+
+  // directly commmand arm for assess_X() + jockey() + stow_arm() 
+  if ((state >= 2) && (state <= 20))
   {
-    if (target == 1)
-      src_full(view, 0);                                   // pickup location
-    else 
-      dest_full(view, 0);                                  // deposit location
-    (rwi->neck)->AimFor(pan, tilt, view, ht);
-    if (ey > wy1)                                          // approach surface edge
-      tilt -= edge;
-    (rwi->neck)->GazeFix(pan, tilt, gtim, cbid[inst]);
+    if (state == 2)                    // goto_via() or xfer_over()                                        
+      loc = &(cvia[inst]);       
+    if ((loc->Z() - pos->Z()) > ttol)
+    {
+      // jump straight up if arm too low
+      rise.SetVec3(pos->X(), pos->Y(), loc->Z());          
+      loc = &rise;  
+    }
+    arm->PosTarget(*loc, sp, bid, pmode);
+    arm->DirTarget(cdir[inst], sp, bid, dmode);
   }
 
-  // possibly shift to next sequence state on following cycle 
-  if (rc >= 1)
+  // possibly shift to different sequence state on following cycle 
+  if ((rc >= 1) || (rc <= -2))
   {
-    cst[inst] += 1;
-    cst2[inst] = 0;          // mark as newly started
+    // assess location again if workspace aligned, else advance to next step
+    if (rc <= -2)            
+      cst[inst] = 0;         
+    else   
+      cst[inst] += 1;        
+
+    // mark as newly started: no failed detections, no workspace violations
+    cst2[inst] = 0;          
     ct0[inst]  = 0;    
-    cflag[inst] &= 0xF0;     // no body fixes required      
+    ccnt[inst] = 0;          
+    cflag[inst] &= 0xF0;   
   }
-  return 0;
+  return 0;                                                // FSM continue
 }
 
 
@@ -1608,61 +1552,51 @@ int jhcManipulate::chk_outside (int& old, double gx, double gy, double gz)
 {
   char prob[7][20] = {"okay for arm", "backoff", "advance", "swivel left", "swivel right", "lower", "raise"};
   double ztop = ((pos->Y() < (arm->rety + fwd)) ? arm->retz : wz1);                        
-  int fix = old & 0x07, bad = 0;
-
-  // if no adjustment allowed then clear violation mode
-  if (worksp <= 0)
-  {
-    old &= 0xF0;                                 
-    if (fix != 0)
-      old |= 0x08;
-    return 0;
-  }
+  int lok = lift->CommOK(), prev = old & 0x07, fix = prev, bad = 0;
 
   // find current violations in priority order
-  if (gz > ztop)
+  if ((gz > ztop) && (lok > 0))                  // too high
     bad = 6;                 
-  else if (gz < wz0)
+  else if ((gz < wz0) && (lok > 0))              // too low
     bad = 5;                 
-  else if (worksp >= 2)
-  {
-    if (gx > wx1)
-      bad = 4;                 
-    else if (gx < wx0)
-      bad = 3;                 
-    else if (gy < wy0)                           // if true then gy > wy1 false
-      bad = 1; 
-    else if (gy > wy1) 
-      if ((gap = surf_gap()) > 0.0)              // only set if movement possible
-        bad = 2;                 
-  }
+  else if (gy < wy0)                             // too close
+    bad = 1; 
+  else if (gx > wx1)                             // too far right
+    bad = 4;                 
+  else if (gx < wx0)                             // too far left
+    bad = 3;                 
+  else if (gy > wy1)                             // too far
+//    if ((gap = surf_gap()) > 0.0)                
+    if ((gap = (rwi->nav).Forward()) > 0.0)      // only set if movement possible
+      bad = 2;                 
 
   // see if old violation resolved (or remove if being ignored)
-  if ((worksp <= 1) && (fix < 5))      
-    fix = 0;                                     
-  if (((fix == 6) && (gz < (ztop - zup))) ||
+  if (((fix == 6) && (gz < (ztop - zup))) ||     // up/down
       ((fix == 5) && (gz > (wz0 + zdn))) ||
-      ((fix == 4) && (gx < (wx1 - xbd))) ||
+      ((fix == 4) && (gx < (wx1 - xbd))) ||      // left/roight
       ((fix == 3) && (gx > (wx0 + xbd))) ||
-      ((fix == 2) && (gy < (wy1 - ybd))) || 
+      ((fix == 2) && (gy < (wy1 - ybd))) ||      // fwd/back
       ((fix == 1) && (gy > (wy0 + ybd))))
     fix = 0;
 
   // stop advancing if movement no longer possible
   if ((fix == 2) && (bad < 2))
-    if ((gap = surf_gap()) <= 0.0)
+//    if ((gap = surf_gap()) <= 0.0)
+    if ((gap = (rwi->nav).Forward()) <= 0.0)
       fix = 0;
 
   // continue to fix old error or switch to new one
   if (bad > fix)
     fix = bad;
   if (fix == (old & 0x07))
-    old &= 0xF7;                                 // clear change flag
+    old &= 0xF7;                       // clear change flag
   else
   {
-    old &= 0xF0;                                 // clear all workspace data
+    old &= 0xF0;                       // clear all workspace data
     old |= (0x08 | fix); 
     jprintf(2, dbg, "      workspace: fix %d - %s\n", fix, prob[fix]);
+    if (prev != 0)
+      return -1;                       // re-assess after every fix
   }
   return fix;                
 }
@@ -1672,90 +1606,52 @@ int jhcManipulate::chk_outside (int& old, double gx, double gy, double gz)
 // fixes one body error at a time: Z then X then finally Y
 // assumes "gap" variable already has allowable travel distance if fix = 2
 // returns 1 or 0 if special motion undertaken, -1 if arm should be moveable
+// returns size of current error being reduced (negative for error)
 
-int jhcManipulate::adj_workspace (int fix, double gx, double gy, double gz)
+double jhcManipulate::adj_workspace (int fix, double gx, double gy, double gz)
 {
-  jhcGenBase *base = rwi->base;
-  double trav, nd, azm, ang, ztop = ((pos->Y() < (arm->rety + fwd)) ? arm->retz : wz1);                        
+  double jfsp = 0.5, jtsp = 0.3, jmsp = 0.3; 
+  double err, ztop = ((pos->Y() < (arm->rety + fwd)) ? arm->retz : wz1);                        
+  double ang, nd = -sqrt(gx * gx + gy * gy), azm = R2D * asin(gx / nd);                
 
   // sanity check
   if ((fix <= 0) || (fix > 6))
-    return -1;
+    return -1.0;
 
   // z and y errors fixed by moving some number of inches
-  if (fix == 6)
-    return lift->LiftShift(gz - (ztop - zup) + ztra, 0.5, cbid[inst]);    // too low -> up 
-  if (fix == 5) 
-    return lift->LiftShift(gz - (wz0 + zdn) - ztra, 0.5, cbid[inst]);     // too high -> down  
-  if (fix == 2)
+  if (fix == 6)                                  // too low -> up 
   {
-    trav = gy - (wy1 - ybd) + ytra;
-    return base->MoveTarget(__min(trav, gap), 1.0, cbid[inst]);           // too far -> fwd 
+    err = gz - (ztop - zup);
+    lift->LiftShift(err + ztra, jfsp, bid);       
   }
-  if (fix == 1)
-    return base->MoveTarget(gy - (wy0 + ybd) - ytra, 1.0, cbid[inst]);    // too close -> rev
-
-  // x errors fixed by rotating some number of degrees
-  nd = -sqrt(gx * gx + gy * gy);
-  azm = R2D * asin(gx / nd);                
-  if (fix == 4)
-    ang = azm - R2D * asin((wx1 - xbd) / nd) - xtra;       // too far right -> neg turn (CW)
-  else
-    ang = azm - R2D * asin((wx0 + xbd) / nd) + xtra;       // too far left -> pos turn (CCW)
-  return base->TurnTarget(ang, 1.0, cbid[inst]);                
-}
-
-
-//= Find out how far robot can travel before bumping into edge of surface.
-
-double jhcManipulate::surf_gap () const
-{
-  double x[4], y[4];
-  double hw = (rwi->nav).Hip(), hpel = (rwi->s3).I2P(hw), mx = (rwi->tab).MidX();
-  double m, clear, lx = mx - hpel, rx = mx + hpel;
-  int ly, ry;
-
-  // impossible to estimate if no current surface
-  if (!(rwi->tab).SurfOK())
-    return 0.0;
-
-  // find intersections of travel corridor sides with bottom of sensor beam
-  if ((rwi->s3).BeamCorners(x, y, (rwi->tab).SurfHt()) <= 0)
-    return 0.0;
-  if ((lx < x[0]) || (rx > x[1]))      // outside swx to sex span
-    return 0.0;
-  m = (y[1] - y[0]) / (x[1] - x[0]);
-  ly = ROUND(m * (lx - x[0]) + y[0]);
-  ry = ROUND(m * (rx - x[0]) + y[0]);
-
-  // see how far robot can travel before bumping into surface edge
-  clear = (rwi->tab).SurfMove(hw, __max(ly, ry)) - prow;
-  return __max(0.0, clear);
-}
-
-
-//= Tell how close some workspace violation is to being fixed.
-// fix: 6 = +z, 5 = -z, 4 = +x, 3 = -x, 2 = +y, 1 = -y, 0 = none
-// assumes "end" holds desired grip position in robot-centric coords
-
-double jhcManipulate::diff_workspace (int fix) const
-{
-  double x = end.X(), y = end.Y(), z = end.Z() - lift->Height();
-  double ztop = ((pos->Y() < (arm->rety + fwd)) ? arm->retz : wz1);
-
-  if (fix == 6)
-    return(z - (ztop - zup));
-  if (fix == 5)
-    return((wz0 + zdn) - z);
-  if (fix == 4)
-    return(x - (wx1 - xbd));
-  if (fix == 3)
-    return((wx0 + xbd) - x);
-  if (fix == 2)
-    return(y - (wy1 - ybd));
-  if (fix == 1)
-    return((wy0 + ybd) - y);
-  return 0.0;
+  else if (fix == 5)                             // too high -> down  
+  {
+    err = gz - (wz0 + zdn);
+    lift->LiftShift(err - ztra, jfsp, bid);       
+  }
+  else if (fix == 4)                             // too far right -> neg turn (CW)
+  {
+    err = gx - (wx1 - xbd);
+    ang = azm - R2D * asin((wx1 - xbd) / nd);    
+    base->TurnTarget(ang - xtra, jtsp, bid);
+  }
+  else if (fix == 3)                             // too far left -> pos turn (CCW)
+  {
+    err = gx - (wx0 + xbd);
+    ang = azm - R2D * asin((wx0 + xbd) / nd);    
+    base->TurnTarget(ang + xtra, jtsp, bid);
+  }
+  else if (fix == 2)                             // too far -> fwd 
+  {
+    err = gy - (wy1 - ybd);
+    base->MoveTarget(__min(err + ytra, gap), jmsp, bid);    
+  }
+  else                                           // too close -> rev
+  {
+    err = gy - (wy0 + ybd);
+    base->MoveTarget(err - ytra, jmsp, bid);      
+  }
+  return fabs(err);                              // always in inches
 }
 
 
@@ -1763,86 +1659,51 @@ double jhcManipulate::diff_workspace (int fix) const
 //                           Object Acquisition                          //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Find full hand grasp location based on offset from tracked object position.
-// can optionally raise the position to be the skyhook approach height 
-// returns absolute orientation of target object, negative if no longer tracked
+//= Tell if object currently detected in range image.
+// returns 0 if not stable, 1 if item detected, -1 if not seen
 
-double jhcManipulate::src_full (jhcMatrix& full, int up) 
+int jhcManipulate::src_visible () const
 {
-  double peak, ang = sobj->World(full, citem[inst]);
-
-  if (ang >= 0.0)
-  {
-    full.IncVec3(cpos[inst]);
-    if (up > 0)
-    {
-      peak = obj_peaks(full.X(), full.Y(), arm->MaxWidth(), 0);
-      full.SetZ(__max(full.Z(), peak) + over);
-    }
-  }
-  return ang;
+  if (body->RngStatic() < park) 
+    return 0;
+  if (sobj->Component(citem[inst]) < 0)  
+    return -1;
+  return 1;
 }
 
 
-//= Convert a full source position into an anchor-relative offset vector.
-
-void jhcManipulate::src_rel (jhcMatrix& rel, const jhcMatrix& full) const
-{
-  sobj->World(rel, citem[inst]);
-  rel.DiffVec3(full, rel);
-}
-
-
-//= Determine whether source should be recomputed on this cycle.
-// wants base to be stopped and target object actually detected
-// generally needed to handle changed orientation of surface, hence hand offset
-// set cnt = 0 externally to get first estimate
-
-bool jhcManipulate::update_src (int& fail) const
-{
-  int stopped = (rwi->base)->Static(), tries = 5;
-
-  // if base is moving then reset count and do not update
-  if (stopped < -3)
-    fail = 0;                
-  if (stopped < park)
-    return false;
-
-  // if waiting to estimate then check if target is currently detected 
-  if (fail >= tries)
-    return false;
-  if (sobj->Component(citem[inst]) <= 0)
-    fail++;
-  else
-    fail = tries;                      // estimate once now
-  return(fail == tries);               // too many failures
-}
-
-
-//= Find grip position relative to object centroid and absolute orientation.
+//= Find absolute grip position, orientation, and approach point for selected object.
 // also determines expected gripper width (negative if roundish)
 // returns 1 if okay, -1 if object height or width bad
 
-int jhcManipulate::compute_src (double& grip, jhcMatrix& rel, jhcMatrix& dir)
+int jhcManipulate::update_src (double& sep, jhcMatrix& hand, jhcMatrix& orient, jhcMatrix& via) 
 {
-  jhcMatrix full(4), obj(4);
-  double pan, ang;
+  jhcMatrix obj(4);
+  double pan, tilt, tad, mtns, ang, mid = 0.5 * (stip + otip);
   int rc, t = citem[inst];
 
   // get hand location and angle for grabbing but barf if object top is too big
-  if ((rc = pick_grasp(grip, pan, full, t)) < 0)
+  if ((rc = pick_grasp(sep, pan, hand, t)) < 0)
     return err_size(rc);
   if (rc == 1)
-    grip = -grip;                      // mark as roundish
+    sep = -sep;                                  // mark as roundish
 
-  // record object-relative grasp point and absolute orientation
-  src_rel(rel, full);
-  dir.SetVec3(pan, -tip, 0.0);
-  if (dbg >= 3)
-  {
-    ang = sobj->World(obj, t);
-    jprintf("    hand %s @ %3.1f <- object %s @ %3.1f\n", full.ListVec3(txt), pan, obj.ListVec3(txt2), ang);
-  }
+  // pick overhead or sideways grasp angle
+  tad = ((orient.T() < mid) ? hys : -hys);       // positive if already aimed down
+  if ((sobj->SizeZ(t) < (oht + tad)) ||          // very short -> overhead
+      (sobj->Major(t) > (olen - tad)))           // very long  -> overhead
+    tilt = otip; 
+  else
+    tilt = stip;
+  orient.SetVec3(pan, tilt, 0.0);         
+
+  // determine approach via point over object
+  mtns = obj_peaks(hand.X(), hand.Y(), arm->wmax, 0);
+  via.SetVec3(hand.X(), hand.Y(), __max(sobj->MaxZ(t), mtns) + over);
+
+  // possibly report grasp details
+  ang = sobj->World(obj, t);
+  jprintf(3, dbg, "      grasp %s @ %3.1f <- object %s @ %3.1f\n", hand.ListVec3(txt), pan, obj.ListVec3(txt2), ang);
   return 1;
 }
 
@@ -1854,31 +1715,33 @@ int jhcManipulate::compute_src (double& grip, jhcMatrix& rel, jhcMatrix& dir)
 int jhcManipulate::pick_grasp (double& open, double& ang, jhcMatrix& grab, int t) const
 {
   double flat = 0.5;
-  double wx, wy, wz, wid, len, rads, ht = sobj->SizeZ(t);
+  double wx, wy, wz, wid, len, ht = sobj->SizeZ(t);
 
-  // find location, orientation, and size of graspable top
+  // find location, orientation (on table), and size of graspable top
   if (ht < flat)
     return -2;
-  if ((ang = sobj->FullTop(wx, wy, wid, len, t, knob)) < 0.0)     
+  if ((ang = sobj->FullTop(wx, wy, wid, len, t, knob)) < 0.0)  
   {
+    // if no good top knob, grasp middle of body
     ang = sobj->World(wx, wy, t);      
     wid = sobj->Minor(t);
     len = sobj->Major(t);
   }
   if (wid > choke)                                                 
-    return -1;                                  
-  
+    return -1;                                
+
   // if top elongated then align with it, else orient gripper for convenience
   wz = sobj->MinZ(t) + __max(graze, ht - down);
-  open = arm->MaxWidth();
-  ang = easy_grip(ang, len / wid, corner_ang(wx, wy));
-
-  // make sure gripper enagages small objects
-  rads = D2R * ang;
-  wx += gulp * cos(rads);
-  wy += gulp * sin(rads); 
   grab.SetVec3(wx, wy, wz);
-  return(((len / wid) > ecc0) ? 2 : 1);
+  open = __min(wid + loose, arm->wmax);
+  ang = easy_grip(ang, len / wid, corner_ang(wx, wy));     // gripper wrt plane
+
+  // make sure gripper enagages small objects (Eli???)
+  if ((len / wid) <= ecc0)
+    return 1;
+//  rads = D2R * ang;
+//  grab.IncVec3(gulp * cos(rads), gulp * sin(rads), 0.0);   // not really useful?
+  return 2;
 }
 
 
@@ -1918,16 +1781,19 @@ double jhcManipulate::easy_grip (double pan, double ecc, double grip) const
 
 
 //= Clear all member variables related to object being gripped.
-// awlays returns -1 for convenience
+// always returns -1 for convenience
 
-int jhcManipulate::clear_grip ()
+int jhcManipulate::clear_grip (int dn)
 {
+  if (dn > 0)
+    sobj->OnTable(htrk);
   held = NULL;
   htrk = -1;
   nose = 0.0;
   left = 0.0;
   hang = graze;
   skew = 0.0;
+  thin = 0;
   drop = 0;
   return -1;
 }
@@ -1943,6 +1809,8 @@ void jhcManipulate::record_grip (int t)
 
   // remember visual track (wait on semantic node until lifted)
   htrk = t;
+  slope = dir->T();                    // hand tilt at grasp time
+  thin = ((arm->Width() < wmin) ? 1 : 0); 
 
   // elongated tops are physically forced into alignment with fingers
   ang = sobj->World(wx, wy, t);
@@ -1967,7 +1835,7 @@ void jhcManipulate::record_grip (int t)
   // determine how much vertical clearance the hand needs now
   z3d = pos->Z() + lift->Height();
   hang = z3d - sobj->MinZ(t);         // amount below grip point
-  jprintf(3, dbg, "    nose = %3.1f, left = %3.1f, hang = %3.1f, skew = %3.1f\n", nose, left, hang, skew);
+  jprintf(3, dbg, "    nose = %3.1f, left = %3.1f, hang = %3.1f, skew = %3.1f, thin %d\n", nose, left, hang, skew, thin);
 }
 
 
@@ -1983,6 +1851,9 @@ double jhcManipulate::obj_peaks (double wx, double wy, double fsep, int carry)
 {
   double wid, len;
   int i, h20, n = sobj->ObjLimit(); 
+
+// ignore restriction (MasterPi always goes hi to look ...)
+return 0.0;
 
   // clear image where footprint of each object is marked by its maximum height
   mtns.FillMax(0);
@@ -2050,19 +1921,23 @@ void jhcManipulate::traj_path (double wx, double wy, double fsep, int carry)
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                      Destination Dtermination                         //
+//                      Destination Determination                        //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Return the absolute anchor position based on current position of references.
+// Note: this is not the same as the hand action point, merely same neighborhood
 
 void jhcManipulate::anchor_loc (jhcMatrix& loc) const
 {
   jhcMatrix obj2(4);
+  double wx, wy;
 
-  // "down" destination is absolute and has no anchor
+  // "down" has no anchor object(s) - use current hand position
   if (cref[inst] < 0)
   {    
-    loc.Zero();
+    wx = __max(wx0 + xbd, __min(pos->X(), wx1 - xbd));
+    wy = __max(wy0 + ybd, __min(pos->Y(), wy1 - ybd));
+    loc.SetVec3(wx, wy, sobj->ztab);
     return;
   }
 
@@ -2075,70 +1950,53 @@ void jhcManipulate::anchor_loc (jhcMatrix& loc) const
 }
 
 
-//= Fill vector with full absolute position for hand at deposit spot.
-// can optionally boost z coordinate to clear any intervening obstacles
+//= Tell if reference object(s) currently detected in range image.
+// returns 0 if not stable, 1 if item detected, -1 if not seen
 
-void jhcManipulate::dest_full (jhcMatrix& full, int up)
+int jhcManipulate::dest_visible () const
 {
-  double mtn;
+  int rn = cmode[inst];
 
-  anchor_loc(full); 
-  full.IncVec3(cend[inst]);
-  if (up > 0)
-  {
-    mtn = obj_peaks(full.X(), full.Y(), arm->Width(), 1) + hang;
-    full.SetZ(__max(full.Z(), mtn) + over);
-  }
+  if (body->RngStatic() < park)                  // needed for obj_peaks()
+    return 0;
+  if ((rn == DOWN) || (rn == TWIXT))             // no ref or big separation
+    return 1;
+  if (sobj->Component(cref[inst]) < 0)           
+    return -1;
+  return 1;
 }
 
 
-//= Convert a full destination position into an anchor-relative offset vector.
+//= Find absolute release position, orientation, and approach point for deposit.
+// returns 1 if successful, -1 if no such location possible
 
-void jhcManipulate::dest_rel (jhcMatrix& rel, const jhcMatrix& full) const
+int jhcManipulate::update_dest (jhcMatrix& hand, jhcMatrix& orient, jhcMatrix& via, int adj) 
 {
-  anchor_loc(rel);
-  rel.DiffVec3(full, rel);
+  double pan, mtn, ht = sobj->ztab;
+
+  // get hand action point 
+  if (compute_dest(hand, pan, cflag[inst], adj) < 0)
+    return -1;
+  orient.SetVec3(pan, slope, 0.0);  
+
+  // get intermediate location directly above action point
+  if ((cmode[inst] == ON) && (cref[inst] >= 0))
+    ht = sobj->MaxZ(cref[inst]);
+  mtn = obj_peaks(hand.X(), hand.Y(), arm->Width(), 1) + hang;
+  via.SetVec3(hand.X(), hand.Y(), __max(ht, mtn) + over);
+  return 1;
 }
 
 
-//= Determine whether destination should be recomputed on this cycle.
-// wants base to be stopped and reference object(s) actually detected
-// generally needed to handle changed orientation of surface, hence hand offset
-// set cnt = 0 externally to get first estimate
-
-bool jhcManipulate::update_dest (int& fail) const
-{
-  int stopped = (rwi->base)->Static(), tries = 5;
-
-  // if base is moving then reset count and do not update
-  if (stopped < -3)
-    fail = 0;        
-  if (stopped < park)
-    return false;
-
-  // if waiting to estimate then check if target is currently detected 
-  if (fail >= tries)
-    return false;
-  if ((cref[inst] >= 0) && (sobj->Component(cref[inst]) <= 0))
-    fail++;
-  else if ((cref2[inst] >= 0) && (sobj->Component(cref2[inst]) <= 0))
-    fail++;
-  else
-    fail = tries;                      // estimate once now
-  return(fail == tries);               // too many failures
-}
-
-
-//= Find optimal hand deposit position relative to location anchor and absolute grasp angle.
+//= Find optimal absolute hand deposit position relative and gripper angle.
 // assumes cmode[i] is spatial relation, cref[i] is reference object track
 // assumes hand-to-object offsets "nose", "left", "hang" and "skew" have been set
 // sets bit 4 of eflag if underlying location is not oriented (for adjust_dest)
 // returns 1 if successful, -1 if no such location possible
-// Note: before grip "rel" essentially gets set to zero 
 
-int jhcManipulate::compute_dest (jhcMatrix& rel, double& pan, int& eflag, int adj) 
+int jhcManipulate::compute_dest (jhcMatrix& hand, double& pan, int& eflag, int adj) 
 {
-  jhcMatrix loc(4), hand(4);
+  jhcMatrix loc(4);
   double ang;
 
   // find robot centric position for bottom of held object
@@ -2160,7 +2018,66 @@ int jhcManipulate::compute_dest (jhcMatrix& rel, double& pan, int& eflag, int ad
 
   // possibly report hand pose then save hand offset from anchor
   jprintf(3, dbg, "    hand %s @ %3.1f <- deposit %s @ %3.1f\n", hand.ListVec3(txt), pan, loc.ListVec3(txt2), ang); 
-  dest_rel(rel, hand);
+  return 1;
+}
+
+
+//= Find desired robot relative coordinates for bottom of held object.
+// also tells final gripper orientation needed to fit in spot
+// prefers top slice for "on" but defaults to full object footprint
+// deposit location estimate is tighter if all objects are curently detected
+// sets variables "xdest" and "ydest" as selected map point (for debugging)
+// returns 1 if successful, -1 if no space (values unchanged)
+
+int jhcManipulate::dest_bottom (jhcMatrix& loc, double& pan)
+{
+  jhcMatrix dir(4);
+  int side[4] = {180, 0, -90, 90};
+  double ang, wid, len, ix, iy,  wx, wy;
+  int ok, rn = cmode[inst], a = cref[inst], a2 = cref2[inst], t = htrk;
+
+  // simple handler for "on" some object
+  if (rn == ON)
+  {
+    if ((ang = sobj->FullTop(wx, wy, wid, len, a, mesa)) < 0.0)     
+    {
+      // if no good top plateau, deposit at middle of object
+      ang = sobj->World(wx, wy, a);      
+      wid = sobj->Minor(t);
+      len = sobj->Major(t);
+    }
+    loc.SetVec3(wx, wy, sobj->MaxZ(a));
+    pan = easy_grip(ang, len / wid, corner_ang(wx, wy));
+    space.FillArr(0);                  // debug img
+    return 1;
+  }
+
+  // attempt to find satisfactory map deposit location and orientation 
+  free_space(((t == a) || (t == a2)) ? -1 : t);
+  dest_ref(ix, iy, t, rn, a, a2);
+  ang = dest_ang(ix, iy, t, rn, a, a2);
+  ok = pick_spot(xdest, ydest, ix, iy, ang, t, rn, a, a2);
+
+  // debug img: mark search cone (if any) and reference location 
+  if ((rn >= 1) && (rn <= 4))
+  {
+    ang = sobj->ViewAngle(side[rn - 1]);
+    Ray(space, ix, iy, ang + sdev, 0.0, 1, 90);
+    Ray(space, ix, iy, ang - sdev, 0.0, 1, 90);
+  }
+  Cross(space, ix, iy, 17, 17, 1, 200);
+
+  // debug img: mark chosen deposit footprint for held object
+  if (ok <= 0)
+    return -1;
+  wid = 1.2 * sobj->I2P(sobj->Minor(t));
+  len = 1.2 * sobj->I2P(sobj->Major(t));
+  RectCent(space, xdest, ydest, len, wid, ang, 3, -5);  
+
+  // convert map pose to full world coordinates
+  sobj->PelsXY(wx, wy, xdest, ydest);
+  loc.SetVec3(wx, wy, sobj->ztab);
+  pan = sobj->FullAngle(ang);
   return 1;
 }
 
@@ -2195,48 +2112,6 @@ void jhcManipulate::adjust_dest (jhcMatrix& full, double& pan, int any)
   jprintf(3, dbg, "    hand [%3.1f %3.1f %3.1f] @ %3.1f <- rough %s @ %3.1f\n", 
           full.X() + dx, full.Y() + dy, full.Z() + hang, pan, full.ListVec3(txt), pan0); 
   full.IncVec3(dx, dy, hang);
-}
-
-
-//= Find desired robot relative coordinates for bottom of held object.
-// also tells final gripper orientation needed to fit in spot
-// prefers top slice for "on" but defaults to full object footprint
-// deposit location estimate is tighter if all objects are curently detected
-// sets variables "xdest" and "ydest" as selected map point (for debugging)
-// returns 1 if successful, -1 if no space (values unchanged)
-
-int jhcManipulate::dest_bottom (jhcMatrix& loc, double& pan)
-{
-  jhcMatrix dir(4);
-  double ang, wid, len, ix, iy,  wx, wy;
-  int rn = cmode[inst], a = cref[inst], a2 = cref2[inst], t = htrk;
-
-  // simple handler for "on" some object
-  if (rn == ON)
-  {
-    if ((ang = sobj->FullTop(wx, wy, wid, len, a, mesa)) < 0.0)     
-    {
-      ang = sobj->World(wx, wy, a);      
-      wid = sobj->Minor(t);
-      len = sobj->Major(t);
-    }
-    loc.SetVec3(wx, wy, sobj->MaxZ(a));
-    pan = easy_grip(ang, len / wid, corner_ang(wx, wy));
-    return 1;
-  }
-
-  // attempt to find satisfactory map deposit location and orientation 
-  free_space(((t == a) || (t == a2)) ? -1 : t);
-  dest_ref(ix, iy, t, rn, a, a2);
-  ang = dest_ang(ix, iy, t, rn, a, a2);
-  if (pick_spot(xdest, ydest, ix, iy, ang, t, rn, a, a2) <= 0)
-    return -1;
-
-  // convert to map pose to full world coordinates
-  sobj->PelsXY(wx, wy, xdest, ydest);
-  loc.SetVec3(wx, wy, sobj->ztab);
-  pan = sobj->FullAngle(ang);
-  return 1;
 }
 
 
@@ -2280,17 +2155,20 @@ void jhcManipulate::free_space (int exc)
 void jhcManipulate::dest_ref (double& ix, double& iy, int t, int rn, int a, int a2) 
 {
   jhcMatrix loc(4);
-  double dx, dy, f;
+  double wx, wy, dx, dy, f;
 
-  // special case of setting down (examine around closest point of table)
+  // special case of setting down (nearest workspace point shifted to table)
   if (rn == DOWN)
   {
-    sobj->NearTable(loc, citem[inst]);
-    sobj->ViewPels(ix, iy, loc.X(), loc.Y());
+    wx = __max(wx0 + xbd, __min(pos->X(), wx1 - xbd));
+    wy = __max(wy0 + ybd, __min(pos->Y(), wy1 - ybd));
+//    sobj->NearTable(loc, wx, wy);
+    loc.SetVec3(wx, wy, sobj->ztab);
+    sobj->ViewPels(ix, iy, loc.X(), loc.Y());    // ix, iy for debugging
     return;
   }
 
-  // assume reference point at anchor object
+  // assume reference point at anchor object (ix, iy for debugging)
   ix = sobj->MapX(a);
   iy = sobj->MapY(a);
   if (rn == TWIXT)
@@ -2661,10 +2539,6 @@ int jhcManipulate::err_lack (jhcAliaDesc *obj)
 {
   jhcAliaDesc *fail;
 
-  // sanity check
-  if (obj == NULL)
-    return -1;
-
   // event generation (adds as failure reason even if whole motion succeeds)
   rpt->StartNote();
   fail = rpt->NewAct("hold", 1);
@@ -2680,14 +2554,14 @@ int jhcManipulate::err_lack (jhcAliaDesc *obj)
 //   NOTE[ act-1 -lex-  drop
 //               -ach-  1
 //               -obj-> obj-1
-//               -agt-> self-1
-//         act-1 -lex-  hold
+//               -agt-> self-1 
+//         act-2 -lex-  hold
 //               -neg-  1
 //               -obj-> obj-1
 //               -agt-> self-1 ]
 // </pre>
 // always returns -1 for convenience
-// Note: "not holding" better than "dropped" for ANTE operator
+// Note: incorporating "not holding" into same NOTE is necessary
 
 int jhcManipulate::err_drop (jhcAliaDesc *obj)
 {
@@ -2747,10 +2621,10 @@ void jhcManipulate::Workspace (jhcImg& dest, int r, int g, int b) const
 
   if ((rwi == NULL) || !dest.Valid())
     return;
-  (rwi->sobj).ViewPels(gx[0], gy[0], wx0, wy0);
-  (rwi->sobj).ViewPels(gx[1], gy[1], wx1, wy0);
-  (rwi->sobj).ViewPels(gx[2], gy[2], wx1, wy1);
-  (rwi->sobj).ViewPels(gx[3], gy[3], wx0, wy1);
+  sobj->ViewPels(gx[0], gy[0], wx0, wy0);
+  sobj->ViewPels(gx[1], gy[1], wx1, wy0);
+  sobj->ViewPels(gx[2], gy[2], wx1, wy1);
+  sobj->ViewPels(gx[3], gy[3], wx0, wy1);
   DrawPoly(dest, gx, gy, 4, 1, r, g, b);
 }
 
@@ -2780,13 +2654,10 @@ void jhcManipulate::ForceItem (int t)
   cbid[i] = 10;
 
   // initial state
-  cst[i] = 1;                // no need to find deposit spot
-  ct0[i] = 0;
-
-  // motion state
-  ccnt[i]  = 0;              // detection trial
-  ccnt2[i] = 0;
-  cflag[i] = 0;              // no workspace errors
+  half = 0;                  // for Move()
+  cst[i] = 0;                // start with pick grasp                
+  cst2[i] = 0;
+  ccnt2[i] = 0;              // jockey attempts
 }
 
 
@@ -2794,80 +2665,43 @@ void jhcManipulate::ForceItem (int t)
 
 void jhcManipulate::ForceDest (double wx, double wy, double wz) 
 {
-  int i = 0;
-
-  cend[i].SetVec3(wx, wy, wz);    
-  caux[i] = -90.0;                     // any convenient
+  dest.SetVec3(wx, wy, wz);    
+  half = 0;                  // for Move()
 }
 
 
 //= Go through all steps of a "take" sequence after forcing object and destination.
-// assumes cmode[i] has relation and cspot[i] has destination description
-// sets cref[i] and cref2[i] to be tracks for reference objects (if any)
-//   cst[i]: 0 = check for reasonable deposit spot
-//           1 = check if graspable 
-//           2 = travel to via point
-//           3 = travel to grasp point
-//           4 = close fingers on object
-//           5 = transfer to over destination
-//           6 = lower to destination height
-//           7 = release object
-//           8 = retract to stowed location
-//           9 = avoid protruding joints
+// does man_wrap followed by man_trans, needs external state variable half = 0 at start
 // returns 1 if done, 0 if still working, -1 for failure
 
 int jhcManipulate::Move () 
 {
-  int i = 0, rc = 0;
+  const jhcAliaDesc *dummy = rpt->User();
+  int rc;
 
-  // do background processing first
+  // do background processing first (no ALIA)
   local_volunteer(); 
-  if (!rwi->Accepting())
+ 
+  // do either object acquisition or deposit
+  if (half <= 0)
+    rc = man_wrap(*dummy, 0);
+  else
+    rc = man_trans(*dummy, 0);
+    
+  // check for failure and success
+  if (rc < 0)
+    return -1;
+  if (rc == 0)
     return 0;
-  init_vals(i);
+  if (half > 0)
+    return 1;
 
-  // make sure target and reference object(s) are still known 
-  if ((citem[i] = sobj->ObjTrack(rpt->VisID(cobj[i], 0))) < 0)
-    return err_gone(cobj[i]);
-  if (ref_tracks(cref[i], cref2[i], cmode[i], cspot[i]) < 0)   
-    return -1;                         // generates err_gone also
-  if (rwi->Ghost())
-    return gok;
-  if (arm->CommOK() <= 0)
-    return err_arm();
-
-  // check for grasp interference
-  if ((cst[i] >= 1) && (cst[i] <= 5))
-    if (chk_hand((cst[i] == 5) ? cobj[i] : NULL) <= 0)
-      fail_clean();
-
-  // get desired position and orientation based on state
-  if (cst[i] <= 0)
-    rc = assess_spot();                // sets cend[i] and caux[i]
-  else if (cst[i] == 1)                                     
-    rc = assess_obj();                 // sets cpos[i], cdir[i], and camt[i]
-  else if (cst[i] == 2)
-    rc = goto_via();
-  else if (cst[i] == 3)
-    rc = goto_grasp();
-  else if (cst[i] == 4)                // grasp achieved
-    rc = close_fingers();
-  else if (cst[i] == 5)                
-    rc = xfer_over();
-  else if (cst[i] == 6)
-    rc = place_on();
-  else if (cst[i] == 7)
-    rc = release_obj();                // held -> NULL
-  else if (cst[i] == 8)
-    rc = stow_arm();
-  else if (cst[i] == 9)
-    return tuck_elbow(1);              // joint mode
-
-  // cleanup from failure
-  if (cst[i] == 20)             
-    rc = stow_arm();           
-  else if (cst[i] == 21)
-    return tuck_elbow(-1);             // joint mode
-  return command_bot(rc);
+  // transition between controllers
+  cpos[0].Copy(dest);
+  cdir[0].Copy(*dir);
+  cst[0] = 1;                // start with jockey                
+  cst2[0] = 0;
+  ccnt2[0] = 0;              // jockey attempts
+  half = 1;
+  return 0;
 }
-

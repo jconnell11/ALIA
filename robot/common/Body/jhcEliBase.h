@@ -49,6 +49,7 @@
 //   computed Cartesian position (xpos, ypos) and since-last-step (dx, dy)
 //   AdjustXY function moves some point (target) to compensate for base motion
 // errors: generally try all sends but increment berr on failed receives
+// NOTE: for 2016 controller iloop = 100, older boards = 8 (else very jerky!)
 
 class jhcEliBase : public jhcGenBase
 {

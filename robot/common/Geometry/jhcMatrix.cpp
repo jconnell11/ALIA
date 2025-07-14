@@ -168,8 +168,9 @@ void jhcMatrix::Clone (const jhcMatrix& src)
 
 //= Clear all entries in matrix.
 // if homogeneous then write a 1 in lower right corner
+// returns 0 always for convenience
 
-void jhcMatrix::Zero (double homo)
+double jhcMatrix::Zero (double homo)
 {
   int i;
 
@@ -177,6 +178,7 @@ void jhcMatrix::Zero (double homo)
     vals[i] = 0.0;
   if ((homo != 0.0) && (n > 0))
     vals[n - 1] = homo;
+  return 0.0;
 }
 
 

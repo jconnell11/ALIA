@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2021 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSTARE3D_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSTARE3D_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -102,7 +99,7 @@ public:
   int Target (jhcMatrix& full, int i, int rt =1, int trk =1, double zlev =0.0) const;
   int TargetY (jhcMatrix& full, int i, int rt =1, int trk =1, double yoff =0.0) const;
   int TargetX (jhcMatrix& full, int i, int rt =1, int trk =1, double xoff =0.0) const;
-  int HeadBoxCam (jhcRoi& box, int i, int cam =0, int trk =1, double sc =1.0);
+  int HeadBoxCam (jhcRoi& box, int i, int view =0, int trk =1, double sc =1.0);
   const char *GetName (int id, int trk =1) const;
   int SetName (int id, const char *name, int trk =1);
   const void *GetNode (int id, int trk =1) const;
@@ -121,13 +118,13 @@ public:
   int AllRaysX (jhcImg& dest, int trk =1, int invert =0, double xoff =0.0, int pt =3) const
     {return((trk > 0) ? TrackedRaysX(dest, invert, xoff, pt) : RawRaysX(dest, invert, xoff));}
   int ShowID (jhcImg& dest, int id, int trk =1, int invert =0, int col =6, double sz =8.0, int style =2);
-  int ShowIDCam (jhcImg& dest, int id, int cam =0, int trk =1, int rev =0, int col =6, double sz =8.0, int style =2);
-  int HeadsCam (jhcImg& dest, int cam =0, int trk =1, int rev =0, double sz =8.0, int style =2);  
-  int PersonCam (jhcImg& dest, int i, int cam =0, int trk =1, int rev =0, int col =5, double sz =8.0, int style =2);
-  int HandsCam (jhcImg& dest, int cam =0, int trk =1, int rev =0, double sz =4.0);  
-  int RaysCam (jhcImg& dest, int cam =0, int trk =1, int rev =0, double zlev =0.0);  
-  int RaysCamY (jhcImg& dest, int cam =0, int trk =1, int rev =0, double yoff =0.0);  
-  int RaysCamX (jhcImg& dest, int cam =0, int trk =1, int rev =0, double xoff =0.0);  
+  int ShowIDCam (jhcImg& dest, int id, int view =0, int trk =1, int rev =0, int col =6, double sz =8.0, int style =2);
+  int HeadsCam (jhcImg& dest, int view =0, int trk =1, int rev =0, double sz =8.0, int style =2);  
+  int PersonCam (jhcImg& dest, int i, int view =0, int trk =1, int rev =0, int col =5, double sz =8.0, int style =2);
+  int HandsCam (jhcImg& dest, int view =0, int trk =1, int rev =0, double sz =4.0);  
+  int RaysCam (jhcImg& dest, int view =0, int trk =1, int rev =0, double zlev =0.0);  
+  int RaysCamY (jhcImg& dest, int view =0, int trk =1, int rev =0, double yoff =0.0);  
+  int RaysCamX (jhcImg& dest, int view =0, int trk =1, int rev =0, double xoff =0.0);  
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -135,10 +132,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

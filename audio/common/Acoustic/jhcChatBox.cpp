@@ -89,7 +89,8 @@ void jhcChatBox::Launch (int x, int y)
 
 void jhcChatBox::Reset (int disable, const char *dir, const char *rname)
 {
-  char fname[200], date[80];
+  char fname[200], date[80], bot[80] = "log";
+  char *sp;
 
   // initialize graphics (Mute closes any old log)
   m_hist.Clear();
@@ -98,13 +99,21 @@ void jhcChatBox::Reset (int disable, const char *dir, const char *rname)
   *prior = '\0';
   last = 0;                            // suppress separator
 
+  // get base file name - robot first name preferred
+  if (rname != NULL)
+  {
+    strcpy_s(bot, rname);
+    if ((sp = strchr(bot, ' ')) != NULL)
+      *sp = '\0';
+  }
+
   // create chat log file (if desired)
   if (dir != NULL)
   {
     if (*dir == '\0')
-      sprintf_s(fname, "%s_%s.chat", ((rname == NULL) ? "log" : rname), jms_date(date));
+      sprintf_s(fname, "%s_%s.chat", bot, jms_date(date));
     else
-      sprintf_s(fname, "%s/%s_%s.chat", dir, ((rname == NULL) ? "log" : rname), jms_date(date));
+      sprintf_s(fname, "%s/%s_%s.chat", dir, bot, jms_date(date));
     log = _fsopen(fname, "w", _SH_DENYWR);
   }
 }

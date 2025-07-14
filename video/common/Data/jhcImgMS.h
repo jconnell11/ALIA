@@ -20,11 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCIMGMS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCIMGMS_
-/* CPPDOC_END_EXCLUDE */
-
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -95,10 +91,4 @@ private:
 #elif defined(JHC_MSIO)
   typedef jhcImgMS jhcImgIO;
 #endif
-
-
-#endif  // once
-
-
-
 

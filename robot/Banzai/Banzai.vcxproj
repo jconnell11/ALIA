@@ -301,6 +301,12 @@
     </Bscmake>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\video\common\Processing\jhcWarp.cpp" />
+    <ClCompile Include="..\common\Objects\jhcGenObjects.cpp" />
+    <ClCompile Include="..\common\Peripheral\jhcGenMic.cpp" />
+    <ClCompile Include="..\common\Peripheral\jhcVt2Mic.cpp" />
+    <ClCompile Include="..\common\RWI\jhcBgndGrok.cpp" />
+    <ClCompile Include="..\common\RWI\jhcVisGrok.cpp" />
     <ClCompile Include="Banzai.cpp" />
     <!-- JHC: this should come first -->
     <ClCompile Include="BanzaiDoc.cpp" />
@@ -313,7 +319,6 @@
     <ClCompile Include="..\common\Body\jhcEliNeck.cpp" />
     <ClCompile Include="..\common\Kernel\jhcEmotion.cpp" />
     <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSAPI.cpp" />
-    <ClCompile Include="..\common\RWI\jhcEliRWI.cpp" />
     <ClCompile Include="..\common\Action\jhcAliaChart.cpp" />
     <ClCompile Include="..\common\Kernel\jhcAliaTimer.cpp" />
     <ClCompile Include="..\common\Kernel\jhcAliaKudos.cpp" />
@@ -321,7 +326,6 @@
     <ClCompile Include="..\common\Kernel\jhcMemStore.cpp" />
     <ClCompile Include="..\common\Kernel\jhcStdKern.cpp" />
     <ClCompile Include="..\common\Kernel\jhcTalkFcn.cpp" />
-    <ClCompile Include="..\common\RWI\jhcBackgRWI.cpp" />
     <ClCompile Include="..\common\RWI\jhcEliCoord.cpp" />
     <ClCompile Include="..\..\audio\common\Reasoning\jhcDeclMem.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcVocab.cpp" />
@@ -440,7 +444,6 @@
     <ClCompile Include="..\..\audio\common\Acoustic\jhcSpTextMS.cpp" />
     <ClCompile Include="..\..\audio\common\Parse\jhcTxtSrc.cpp" />
     <ClCompile Include="..\common\Peripheral\jhcAccelXY.cpp" />
-    <ClCompile Include="..\common\Peripheral\jhcDirMic.cpp" />
     <ClCompile Include="..\common\Peripheral\jhcDynamixel.cpp" />
     <ClCompile Include="..\common\Peripheral\jhcSerialFTDI.cpp" />
     <ClCompile Include="..\common\Geometry\jhcJoint.cpp" />
@@ -463,6 +466,9 @@
     <ClInclude Include="..\..\audio\common\Parse\jhcVocab.h" />
     <ClInclude Include="..\..\audio\common\Reasoning\jhcDeclMem.h" />
     <ClInclude Include="..\..\video\common\jhc_conio.h" />
+    <ClInclude Include="..\..\video\common\jhc_pthread.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhcWarp.h" />
+    <ClInclude Include="..\..\video\common\Processing\jhc_font.h" />
     <ClInclude Include="..\..\video\common\stdafx.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcChatBox.h" />
     <ClInclude Include="..\..\audio\common\Acoustic\jhcChatHist.h" />
@@ -525,6 +531,7 @@
     <ClInclude Include="..\common\Body\jhcEliNeck.h" />
     <ClInclude Include="..\common\Body\jhcGenArm.h" />
     <ClInclude Include="..\common\Body\jhcGenBase.h" />
+    <ClInclude Include="..\common\Body\jhcGenBody.h" />
     <ClInclude Include="..\common\Body\jhcGenLift.h" />
     <ClInclude Include="..\common\Body\jhcGenNeck.h" />
     <ClInclude Include="..\common\Depth\jhcOverhead3D.h" />
@@ -547,6 +554,7 @@
     <ClInclude Include="..\common\Kernel\jhcStdKern.h" />
     <ClInclude Include="..\common\Kernel\jhcTalkFcn.h" />
     <ClInclude Include="..\common\Objects\jhcBumps.h" />
+    <ClInclude Include="..\common\Objects\jhcGenObjects.h" />
     <ClInclude Include="..\common\Objects\jhcPatchProps.h" />
     <ClInclude Include="..\common\Objects\jhcSurfObjs.h" />
     <ClInclude Include="..\common\People\jhcBodyData.h" />
@@ -556,10 +564,12 @@
     <ClInclude Include="..\common\People\jhcSpeaker.h" />
     <ClInclude Include="..\common\People\jhcStare3D.h" />
     <ClInclude Include="..\common\People\jhcTrack3D.h" />
-    <ClInclude Include="..\common\RWI\jhcBackgRWI.h" />
+    <ClInclude Include="..\common\Peripheral\jhcGenMic.h" />
+    <ClInclude Include="..\common\Peripheral\jhcVt2Mic.h" />
+    <ClInclude Include="..\common\RWI\jhcBgndGrok.h" />
     <ClInclude Include="..\common\RWI\jhcEliCoord.h" />
-    <ClInclude Include="..\common\RWI\jhcEliRWI.h" />
-    <ClInclude Include="..\common\RWI\jhcGenRWI.h" />
+    <ClInclude Include="..\common\RWI\jhcGenGrok.h" />
+    <ClInclude Include="..\common\RWI\jhcVisGrok.h" />
     <ClInclude Include="BanzaiDoc.h" />
     <ClInclude Include="Banzai.h" />
     <ClInclude Include="BanzaiFrm.h" />
@@ -617,7 +627,6 @@
     <ClInclude Include="..\..\audio\common\Acoustic\jhcSpTextMS.h" />
     <ClInclude Include="..\..\audio\common\Parse\jhcTxtSrc.h" />
     <ClInclude Include="..\common\Peripheral\jhcAccelXY.h" />
-    <ClInclude Include="..\common\Peripheral\jhcDirMic.h" />
     <ClInclude Include="..\common\Peripheral\jhcDynamixel.h" />
     <ClInclude Include="..\common\Peripheral\jhcSerialFTDI.h" />
     <ClInclude Include="..\common\Geometry\jhcJoint.h" />

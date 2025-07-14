@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ jhcAliaOp::jhcAliaOp (JDIR_KIND k)
   id = 0;
   lvl = 3;             // default = newly told
   pref = 1.0;
+  steps = 0;           // filled on-demand
 
   // expected duration
   tavg = ((k == JDIR_NOTE) ? t0 : 0.0);
@@ -100,6 +101,17 @@ void jhcAliaOp::SetGist (const char *sent)
   gist[0] = (char) toupper(gist[0]);
   if ((end = strrchr(gist, '"')) != NULL)
     *end = '\0';
+}
+
+
+//= Determine rough complexity of associated method (and cache value).
+// counts total number of nodes in method (one pass loops, all branches)
+
+int jhcAliaOp::NumSteps ()
+{
+  if ((steps <= 0) && (meth != NULL))
+    steps = meth->NumSteps(1);
+  return steps;
 }
 
 

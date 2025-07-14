@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -393,9 +394,9 @@ int jhcBlob::FindParams (const jhcImg& src, int append, int val0)
       // get centroid and central moments
       xc  = xsum[i] / a;
       yc  = ysum[i] / a;
-      mxx = x2sum[i] - (a * xc * xc);
-      myy = y2sum[i] - (a * yc * yc);
-      mxy = xysum[i] - (a * xc * yc);
+      mxx = (double) x2sum[i] - (a * xc * xc);
+      myy = (double) y2sum[i] - (a * yc * yc);
+      mxy = (double) xysum[i] - (a * xc * yc);
 
       // find orientation axis
       if ((mxy == 0) && (mxx == mxy))

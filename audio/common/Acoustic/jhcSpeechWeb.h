@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@ private:
   // recognition results and status
   char utt0[500], raw[500], utt[500];
   const char *rcv;
+  double secs;
+  UL32 dead, cag;
   int hear, mute, txtin, quit, dbg;
 
   // speech corrections
@@ -61,8 +63,9 @@ public:
   int Update (int tts =0);
   void Close ();
 
-  // reognition status and results
+  // recognition status and results
   int Hearing () const {return hear;}
+  double Delay () const {return secs;}
   const char *Heard () const {return utt;} 
   const char *LastIn () const {return rcv;}
   bool Escape () const {return(quit > 0);}

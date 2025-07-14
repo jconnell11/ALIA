@@ -29,7 +29,7 @@
 
 #include "Reasoning/jhcAssocMem.h"
 
-#include "Interface/jtimer.h"
+
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -200,7 +200,6 @@ int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, int dbg) const
 
 //dbg = 2;                               // quick way to show halo inferences
 
-jtimer(14, "RefreshHalo");
   // possibly announce entry
   jprintf(1, dbg, "HALO refresh ...\n");
 
@@ -228,7 +227,6 @@ jtimer(14, "RefreshHalo");
 
   // report result
   jprintf(1, dbg, "  %d + %d rule invocations\n", cnt, cnt2);
-jtimer_x(14);
 //wmem.PrintHalo();
   return cnt;
 }

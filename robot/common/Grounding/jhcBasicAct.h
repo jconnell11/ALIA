@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCBASICACT_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCBASICACT_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -33,7 +30,7 @@
 
 #include "Data/jhcParam.h"             // common video
 
-#include "RWI/jhcManusRWI.h"           // common robot
+#include "RWI/jhcManusGrok.h"          // common robot
 
 #include "Kernel/jhcStdKern.h"       
 
@@ -45,7 +42,7 @@ class jhcBasicAct : public jhcStdKern
 // PRIVATE MEMBER VARIABLES
 private:
   // link to hardware
-  jhcManusRWI *rwi;
+  jhcManusGrok *rwi;
 
   // gripper goal and status
   int hold;
@@ -96,7 +93,7 @@ private:
   int misc_params (const char *fname);
 
   // overridden virtuals
-  void local_platform (void *soma);
+  void local_platform (void *soma, const char *kind);
   void local_reset (jhcAliaNote& top);
   void local_volunteer ();
   int local_start (const jhcAliaDesc& desc, int i);
@@ -130,12 +127,5 @@ private:
   int set_degs (double& ang, const jhcAliaDesc *amt) const;
   int set_inches (double& dist, const jhcAliaDesc *amt, double clip) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

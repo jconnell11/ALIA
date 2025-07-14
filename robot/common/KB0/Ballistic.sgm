@@ -42,6 +42,7 @@
   release
   close
   hold
+  relax
   extend
   retract
   shift

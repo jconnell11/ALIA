@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCNODELIST_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCNODELIST_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -50,10 +47,4 @@ public:
   virtual bool InBand (const jhcNetNode *n, int part) const {return true;}
 
 };
-
-
-#endif  // once
-
-
-
 

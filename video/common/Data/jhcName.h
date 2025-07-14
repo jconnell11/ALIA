@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCNAME_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCNAME_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -80,10 +77,4 @@ protected:
       {return NextSubDir(spec, full, last, ssz);}
 
 };
-
-
-#endif
-
-
-
 

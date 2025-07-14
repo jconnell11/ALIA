@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGRAPHLET_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGRAPHLET_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -166,12 +163,5 @@ public:
   void Print (const char *tag, int lvl =0, int detail =1) const;
   void ListAll (const char *tag =NULL, int lvl =0, int blf =0) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

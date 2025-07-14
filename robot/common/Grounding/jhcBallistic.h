@@ -1,11 +1,11 @@
-// jhcBallistic.h : interface to ELI motion kernel for ALIA system
+// jhcBallistic.h : interface to robot motion kernel for ALIA system
 //
 // Written by Jonathan H. Connell, jconnell@alum.mit.edu
 //
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@
 #include "Data/jhcParam.h"             // common video
 
 #include "Geometry/jhcMatrix.h"        // common robot
-#include "RWI/jhcGenRWI.h"
+#include "RWI/jhcGenGrok.h"
 
 #include "Kernel/jhcStdKern.h"         
 
@@ -50,7 +50,7 @@ private:
   jhcMatrix *cpos, *cdir; 
 
   // link to hardware
-  jhcGenRWI *rwi;
+  jhcGenGrok *rwi;
 
   // reported events
   jhcAliaNote *rpt;
@@ -74,7 +74,7 @@ private:
 
   // parameters for grabbing
   double wtol, gprog, fhold;
-  int gstart, gmid, fask;
+  int gstart, gmid, fask, wzok;
 
   // parameters for arm extension
   double extx, exty, extz, edir, etip;
@@ -124,7 +124,7 @@ private:
   int neck_params (const char *fname);
 
   // overridden virtuals
-  void local_platform (void *soma);
+  void local_platform (void *soma, const char *kind);
   void local_reset (jhcAliaNote& top);
   int local_start (const jhcAliaDesc& desc, int i);
   int local_status (const jhcAliaDesc& desc, int i);

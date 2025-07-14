@@ -103,7 +103,7 @@ int jhcSpTextMS::tts_setup (const char *cfg_file)
   // clear any previous setup
   tts_cleanup();
 
-  // create a non-shared recognition engine and connect to audio input
+  // create a TTS engine
   if (FAILED(CoCreateInstance(CLSID_SpVoice,
                               NULL, 
                               CLSCTX_ALL, 

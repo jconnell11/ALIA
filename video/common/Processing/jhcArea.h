@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCAREA_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCAREA_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include <stdlib.h>
@@ -114,6 +111,8 @@ public:
   int BoxFracOver (jhcImg& dest, const jhcImg& src, int wid, int ht =0, double frac =0.5);
   int BoxRankLin (jhcImg& dest, const jhcImg& src, int wid, int ht =0, double frac =0.5);
   int BoxMedian (jhcImg& dest, const jhcImg& src, int sc);
+  int NZBoxRankLin (jhcImg& dest, const jhcImg& src, int wid, int ht =0, double frac =0.5);
+  int NZBoxMedian (jhcImg& dest, const jhcImg& src, int sc);
 
   // tracking
   int NearestComp (int& wx, int& wy, const jhcRoi& area, const jhcImg& comps) const;
@@ -136,10 +135,5 @@ private:
   void mid_cut_dn (int& cut, int& under, const US16 *hist, int th) const;
 
 };
-
-
-#endif
-
-
 
 

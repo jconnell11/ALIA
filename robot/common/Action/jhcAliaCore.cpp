@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ jhcAliaCore::~jhcAliaCore ()
 jhcAliaCore::jhcAliaCore ()
 {
   // global variables
-  ver = 5.40;                // reflected in GUI
+  ver = 5.70;                // reflected in GUI
   vol = 1;                   // enable free will reactions
   acc = 0;                   // forget rules/ops
   gnd = 0;                   // no grounding DLLs yet
@@ -110,7 +110,7 @@ void jhcAliaCore::init_state (const char *rname)
   // reset affective modulation
   det   = 1.0;
   argh  = 1.0;               // secs
-  waver = 5.0;               // secs
+  waver = 30.0;              // secs
   deep  = 20;
 
   // communicate debugging level
@@ -318,18 +318,18 @@ return 0;
 ///////////////////////////////////////////////////////////////////////////
 
 //= Set up directory to read configuration files from.
-// makes sure there is a slash at end of directory
+// makes sure there is a slash at end (use Dir() to get clean version) 
 
-const char *jhcAliaCore::SetDir (const char *dir)
+const char *jhcAliaCore::SetDir (const char *path)
 {
   int n;
 
   *wdir = '\0';
-  if (dir != NULL)
+  if (path != NULL)
   {
-    strcpy_s(wdir, dir);
-    n = (int) strlen(dir) - 1;
-    if ((dir[n] != '/') && (dir[n] != '\\'))
+    strcpy_s(wdir, path);
+    n = (int) strlen(path) - 1;
+    if ((path[n] != '/') && (path[n] != '\\'))
       strcat_s(wdir, "/");
   }
   return wdir;
@@ -399,8 +399,8 @@ void jhcAliaCore::Reset (const char *rname, int prt, int cvt)
   if (cvt > 0)
     open_cvt(rname);
 
-  // make sure printf captured by setvbuf() get emitted
-  fflush(stdout);                    
+  // allow printf batching for speed (in case overridden)
+  jprintf_fflush = 0;
 }
 
 
@@ -682,55 +682,59 @@ int jhcAliaCore::Interpret (const char *input, int gate, int amode)
 //  if ((gate == 0) && (wake <= 0))
 //    return 0;
 
-jtimer(21, "Interpret");
+jtimer(14, "Interpret");
+
+  // sanity check
+  if ((input == NULL) || (*input == '\0'))
+    return 0;
+
   // parse input string to get association list
-  if ((input != NULL) && (*input != '\0'))
-  {
-    sent = gr.Expand(input, 1);                  // undo contractions  
-jtimer(18, "Parse"); 
-    nt = gr.Parse(sent, 0);
-jtimer_x(18);
-    if ((nt <= 0) && (amode < 0))
-      if ((fix = vc.FixTypos(sent)) != NULL)     // correct typing errors
-      {
-        sent = fix;
-        nt = gr.Parse(sent, 0);
-        if (nt > 0)
-          jprintf(1, noisy, " { Fixed typos in original: \"%s\" }\n", gr.NoContract());
-      }
-    if (nt <= 0)
-      if (guess_cats(sent) > 0)                  // handle unknown words
+  sent = gr.Expand(input, 1);                  // undo contractions  
+jtimer(15, "Parse"); 
+  nt = gr.Parse(sent, 0);
+jtimer_x(15);
+  if ((nt <= 0) && (amode < 0))
+    if ((fix = vc.FixTypos(sent)) != NULL)     // correct typing errors
+    {
+      sent = fix;
+      nt = gr.Parse(sent, 0);
+      if (nt > 0)
+        jprintf(1, noisy, " { Fixed typos in original: \"%s\" }\n", gr.NoContract());
+    }
+  if (nt <= 0)
+    if (guess_cats(sent) > 0)                  // handle unknown words
 {
-jtimer(18, "Parse");
-        nt = gr.Parse(sent, 0);
-jtimer_x(18);
+jtimer(15, "Parse");
+      nt = gr.Parse(sent, 0);
+jtimer_x(15);
 }
-    if (nt > 0)
-      gr.AssocList(alist, 1);
-  }
+  if (nt > 0)
+    gr.AssocList(alist, 1);
 
   // check if name mentioned (will NOT trigger on unparsable "robot fizzboom")
+  // if so, causes the robot to complain (later) if input is unparsable
   hear0 = 0;
   wake = net.NameSaid(alist, amode);
-  if ((gate == 0) && (wake <= 0))                          // not listening
+  if (nt > 0)                                              // valid sentence
   {
-    if ((input != NULL) && (*input != '\0'))
+    if ((gate == 0) && (wake <= 0))                        // not listening
+    {
       jprintf(1, noisy, " { Ignored input: \"%s\" }\n", input);
-jtimer_x(21);
-    return 0;
-  }
-  if ((nt <= 0) && (amode >= 0) && !syllables(sent, 2))    // spurious noise
-  {
-    if ((input != NULL) && (*input != '\0'))
+jtimer_x(14);
+      return 0;
+    }
+    if ((amode >= 0) && !syllables(sent, 2))               // spurious noise
+    {
       jprintf(1, noisy, " { Too few syllables in: \"%s\" }\n", input);
-jtimer_x(21);
-    return 0;
+jtimer_x(14);
+      return 0;
+    }
   }
 
-  // get canonicalized form of input for logs
-  if ((gate > 0) || (wake > 0))
+  // get canonicalized form of input for logs (incl. unparseable)
+  if ((nt > 0) || (gate > 0) || (wake > 0))
   {
-    if (gr.NumTrees() > 0)
+    if (nt > 0)
       strcpy_s(echo, gr.Clean());                // with typos fixed
     else 
       strcpy_s(echo, vc.Marked());               // with unknown words marked
@@ -740,28 +744,28 @@ jtimer_x(21);
         strcat_s(echo, "?");                     // save question mark
   }
 
-  // show parsing steps and reduce "lonely" (even if not understood)
+  // show parsing steps and reduce "lonely" (if robot-directed input) 
   gr.PrintInput(NULL, echo, __min(noisy, 1));
   if (nt > 0)
   {
     mood.Hear((int) strlen(input));     
-jtimer(19, "PrintResult");
+jtimer(16, "PrintResult");
     gr.PrintResult(pshow, 1);
-jtimer_x(19);
+jtimer_x(16);
   }
 
   // generate semantic nets (nt = 0 gives huh? response)
-jtimer(20, "Convert");
+jtimer(17, "Convert");
   spact = net.Convert(alist, sent);     
-jtimer_x(20);
+jtimer_x(17);
   net.Summarize(netlog, echo, nt, spact);
   hear0 = ((wake > 0) ? 2 : 1);
-jtimer_x(21);
+jtimer_x(14);
   return hear0;
 }
 
 
-//= Try to identifying unknonw open-class words from morphology and context.
+//= Try to identifying unknown open-class words from morphology and context.
 // returns number fixed 
 
 int jhcAliaCore::guess_cats (const char *sent)
@@ -897,10 +901,14 @@ int jhcAliaCore::RunAll (int gc)
   kern.Volunteer();
   if (atree.Update(gc) > 0)                      // also if bth or node blfs change?
   {
+jtimer(18, "DejaVu");
     dmem.DejaVu();                               // (re-)tether objects to LTM
+jtimer_x(18);
     atree.ClearHalo();
     dmem.GhostFacts();                           // add in proximal LTM facts
+jtimer(19, "RefreshHalo");
     amem.RefreshHalo(atree, noisy - 1);          // apply all rules
+jtimer_x(19);
   }
   if (gc > 0)
   {
@@ -934,11 +942,11 @@ int jhcAliaCore::RunAll (int gc)
 
 void jhcAliaCore::DayDream ()
 {
-  double budget = 0.9, turbo = 2.0, frac = 1.0;
+  double budget = 0.9, turbo = 4.0, frac = 1.0;
   int ms = ROUND(1000.0 * budget / shz);         // time limit for this call
   int melt, cyc, n = 1; 
 
-jtimer(17, "DayDream");
+jtimer(20, "DayDream");
   // determine how many total thought cycles to run right now
   if (start == 0)
     start = now;                                 // for total run time stats
@@ -962,15 +970,16 @@ jtimer(17, "DayDream");
   think += cyc;
   sense++;                                       // original call had sensors
 
-  // make sure printf captured by setvbuf() get emitted
+  // make sure printfs captured by setvbuf() get emitted
   fflush(stdout);                    
-jtimer_x(17);
+jtimer_x(20);
 }
 
 
 //= Current run is done so shut things down smoothly.
+// if batt >= 0 then prints charge level message
 
-void jhcAliaCore::Done (int save)
+void jhcAliaCore::Done (int save, int batt)
 {
   // stop all running activities
   stop_all();
@@ -984,10 +993,12 @@ void jhcAliaCore::Done (int save)
   if ((save > 0) && (acc >= 2))
     DumpLearned();
 
-  // report final memory contents
+  // report final memory contents (fflush for setvbuf in console)
   jprintf("\n==========================================================\n");
   ShowMem();
   jprintf("DONE - Think %3.1f Hz, Sense %3.1f Hz\n", Thinking(), Sensing()); 
+  if (batt >= 0)
+    jprintf("\nbattery = %d%%\n", batt);
   fflush(stdout);
   jprintf_close();
 }

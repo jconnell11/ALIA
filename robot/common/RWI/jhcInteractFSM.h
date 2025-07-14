@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCINTERACTFSM_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCINTERACTFSM_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -88,10 +85,4 @@ private:
   int empty_params (const char *fname);
 
 };
-
-
-#endif  // once
-
-
-
 

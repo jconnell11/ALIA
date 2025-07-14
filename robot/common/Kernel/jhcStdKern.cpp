@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -162,13 +162,14 @@ void jhcStdKern::AddFcns (jhcAliaKernel& pool)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Connect kernel to real-world sensors and actuators.
+// passes "kind" string for run-time type checking of "soma"
 // automatically chains to "next" pool
 
-void jhcStdKern::Platform (void *soma)
+void jhcStdKern::Platform (void *soma, const char *kind)
 {
-  local_platform(soma);
+  local_platform(soma, kind);
   if (next != NULL)
-    next->Platform(soma);
+    next->Platform(soma, kind);
 }
 
 

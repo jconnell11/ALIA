@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
+// Copyright 2024 Etaoin Systems 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -645,7 +646,7 @@ int jhcALU_0::RelBoost (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, do
       diff = (int)(*a++) - (int)(*b++);
       if (diff < 0)
         diff = -diff;
-      v = (diff * den[sm]) >> 16;
+      v = (int)((diff * den[sm]) >> 16);
       if (v >= 255)
         *d++ = 255;
       else
@@ -690,11 +691,11 @@ int jhcALU_0::RelDrop (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, dou
   {
     for (x = rcnt; x > 0; x--)
     {
-      big = __max(1, __max(*a, *b));
+      big = __max((UC8) 1, __max(*a, *b));
       diff = (int)(*a++) - (int)(*b++);
       if (diff < 0)
         diff = -diff;
-      v = (diff * den[big]) >> 16;
+      v = (int)((diff * den[big]) >> 16);
       if (v >= 255)
         *d++ = 255;
       else
@@ -742,7 +743,7 @@ int jhcALU_0::RelDiff (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, dou
       if (diff < 0)
         diff = -diff;
       sum  = *a++ + *b++;
-      v = (diff * den[sum]) >> 16;
+      v = (int)((diff * den[sum]) >> 16);
       if (v >= 255)
         *d++ = 255;
       else
@@ -794,7 +795,7 @@ int jhcALU_0::FracBoost (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, d
       else
       {
         diff = (int)(*a++) - (int)(*b);
-        v = (diff * den[*b++]) >> 16;
+        v = (int)((diff * den[*b++]) >> 16);
         if (v >= 255)
           *d++ = 255;
         else
@@ -846,7 +847,7 @@ int jhcALU_0::FracDrop (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, do
       else
       {
         diff = (int)(*b) - (int)(*a++);
-        v = (diff * den[*b++]) >> 16;
+        v = (int)((diff * den[*b++]) >> 16);
         if (v >= 255)
           *d++ = 255;
         else
@@ -900,7 +901,7 @@ int jhcALU_0::FracDiff (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, do
         diff = (int)(*a++) - (int)(*b);
         if (diff < 0)
           diff = -diff;
-        v = (diff * den[*b++]) >> 16;
+        v = (int)((diff * den[*b++]) >> 16);
         if (v >= 255)
           *d++ = 255;
         else
@@ -1341,9 +1342,9 @@ int jhcALU_0::MixToward (jhcImg& dest, const jhcImg& goal, const jhcImg& src, do
   for (y = rh; y > 0; y--, d += rsk, g += rsk, s += rsk)
     for (x = rcnt; x > 0; x--, d++, g++, s++)
       if (*g >= *s)
-        *d = *s + dsc[*g - *s];
+        *d = (UC8)(*s + dsc[*g - *s]);
       else
-        *d = *s - dsc[*s - *g];
+        *d = (UC8)(*s - dsc[*s - *g]);
   return 1;
 }
 
@@ -1539,16 +1540,11 @@ int jhcALU_0::AbsRatio (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, do
   dest.MergeRoi(imgb);
 
   // general ROI case
-  int x, y, v, num = ROUND(255.0 * sc);
+  int x, y, v;
   int rcnt = dest.RoiCnt(), rh = dest.RoiH(), rsk = dest.RoiSkip();
   UL32 roff = dest.RoiOff();
   UC8 *d = dest.PxlDest() + roff;
   const UC8 *a = imga.PxlSrc() + roff, *b = imgb.PxlSrc() + roff;
-  UL32 den[256];
-
-  // compute arbitrarily scaled denomiator for all possible sums
-  for (v = 0; v <= 255; v++)
-    den[v] = num * recip[v];
 
   // run lookup table over images (rounding omitted)
   for (y = rh; y > 0; y--)
@@ -1557,9 +1553,9 @@ int jhcALU_0::AbsRatio (jhcImg& dest, const jhcImg& imga, const jhcImg& imgb, do
     {
       // very inefficient version!
       if (*a < *b)
-        v = ROUND(255.0 * sc * *a / *b);
+        v = ROUND(255.0 * sc * (*a) / (*b));
       else if (*b < *a)
-        v = ROUND(255.0 * sc * *b / *a);
+        v = ROUND(255.0 * sc * (*b) / (*a));
       else
         v = ROUND(255.0 * sc);
       *d++ = (UC8) __min(v, 255);

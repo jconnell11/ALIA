@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCALIADLL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCALIADLL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -60,7 +57,7 @@ private:
 
   // included configuration functions
   const char * (*local_name)();
-  void (*local_platform)(void *soma);
+  void (*local_platform)(void *soma, const char *kind);
   void (*local_reset)(jhcAliaNote& attn);
 
   // included operational functions
@@ -77,7 +74,7 @@ public:
   jhcAliaDLL (const char *file =NULL);
   int Load (const char *file);
   void AddFcns (jhcAliaKernel& pool);
-  void Platform (void *soma);
+  void Platform (void *soma, const char *kind);
   void Reset (jhcAliaNote& attn);                    
 
   // main functions
@@ -94,10 +91,4 @@ private:
 
 
 };
-
-
-#endif  // once
-
-
-
 

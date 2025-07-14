@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2014 IBM Corporation
+// Copyright 2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -165,14 +166,14 @@ void jhcExpVSrc::Defaults (char *fname)
 {
   squash.SetTag("vid_size");
   squash.ClearAll();
-  squash.NextSpec4( &xlim,   0, "Max width");
-  squash.NextSpec4( &ylim,   0, "Max height");
-  squash.NextSpec4( &Avg,    0, "Averaging style");
-  squash.NextSpec4( &Mono,   0, "Monochrome style");
-  squash.NextSpec4( &Quad,   0, "Extracted quadrant");
-  squash.NextSpec4( &Shift,  0, "Downshift pixels");    // only for Kinect
-  squash.NextSpec4( &w,      0, "Current width");
-  squash.NextSpec4( &h,      0, "Current height");
+  squash.NextSpec4( &xlim,   0,   "Max width");
+  squash.NextSpec4( &ylim,   0,   "Max height");
+  squash.NextSpec4( &Avg,    0,   "Averaging style");
+  squash.NextSpec4( &Mono,   0,   "Monochrome style");
+  squash.NextSpec4( &Quad,   0,   "Extracted quadrant");
+  squash.NextSpecF( &Shift,  2.0, "16 bit std dev range");     // only for Kinect
+  squash.NextSpec4( &w,      0,   "Current width");
+  squash.NextSpec4( &h,      0,   "Current height");
 
   // some things are for display purposes only
   play.LockMatch( &w, 1);

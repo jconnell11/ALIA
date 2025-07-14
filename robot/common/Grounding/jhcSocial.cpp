@@ -178,10 +178,13 @@ int jhcSocial::SaveVals (const char *fname) const
 ///////////////////////////////////////////////////////////////////////////
 
 //= Attach physical enhanced body and make pointers to some pieces.
+// NOTE: must be careful that type cast from void * is valid!
 
-void jhcSocial::local_platform (void *soma) 
+void jhcSocial::local_platform (void *soma, const char *kind) 
 {
-  rwi = (jhcEliRWI *) soma;
+  if (strcmp(kind, "jhcVisGrok") != 0)           // type check
+    return;
+  rwi = (jhcVisGrok *) soma;
   neck = rwi->neck;
 }
 
@@ -466,7 +469,7 @@ void jhcSocial::wmem_heads ()
 
 int jhcSocial::soc_talk0 (const jhcAliaDesc& desc, int i)
 {
-  if ((rwi == NULL) || (rpt == NULL))
+  if ((rwi == NULL) || (rpt == NULL) || (rwi->mic == NULL))
     return -1;
   return 1;
 }
@@ -492,7 +495,7 @@ int jhcSocial::soc_talk (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
+  if (rwi->CommOK() <= 0)
     return err_body();
   ht = (rwi->lift)->Height();
 
@@ -612,7 +615,7 @@ int jhcSocial::soc_orient (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
+  if (rwi->CommOK() <= 0)
     return err_body();
 
   // see if timeout then check if person is still there 
@@ -665,7 +668,7 @@ int jhcSocial::soc_look (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
+  if (rwi->CommOK() <= 0)
     return err_body();
 
   // see if timeout then check if person is still there 
@@ -718,7 +721,7 @@ int jhcSocial::soc_align (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
+  if (rwi->CommOK() <= 0)
     return err_body();
 
   // see if timeout then check if person is still there
@@ -777,7 +780,7 @@ int jhcSocial::soc_approach (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
+  if (rwi->CommOK() <= 0)
     return err_body();
 
   // see if timeout then check if person is still there 
@@ -853,7 +856,7 @@ int jhcSocial::soc_retreat (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
+  if (rwi->CommOK() <= 0)
     return err_body();
 
   // see if timeout then check if person is still there 
@@ -920,7 +923,7 @@ int jhcSocial::soc_follow (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
+  if (rwi->CommOK() <= 0)
     return err_body();
 
   // check if person is still there 
@@ -988,7 +991,7 @@ int jhcSocial::soc_explore (const jhcAliaDesc& desc, int i)
     return gok;
   if (!rwi->Accepting())
     return 0;
-  if ((rwi->body)->CommOK() <= 0)
+  if (rwi->CommOK() <= 0)
     return err_body();
 
   // go forward as long as obstacles fairly far away

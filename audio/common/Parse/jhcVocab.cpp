@@ -5,7 +5,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022-2024 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -296,8 +296,7 @@ const char *jhcVocab::FixTypos (const char *txt)
             if (try_brem(word, next, &s) <= 0)
               if (try_split(word) <= 0)
                 if (try_swap(word) <= 0)
-                  if (try_ins(word) <= 0)
-                    fixed--;
+                  fixed--;
     }
 
     // add revised word (and possibly next one) to output
@@ -524,6 +523,7 @@ int jhcVocab::try_swap (char *word) const
 //= Try adding a letter somewhere in word to match a known word.
 // example: "blac" unknown -> "black" with "k" insertion (expensive)
 // returns 1 if successful and leaves fixed version in "word", 0 retains original
+// NOTE: will convert unknown "bow" into "bowl"!
 
 int jhcVocab::try_ins (char *word) const
 {
@@ -777,25 +777,36 @@ int jhcVocab::guess_word ()
     return noun_ctx(item[2]);
   if ((fcn[1] == 4) && (fcn[4] > 0))             // [det ? x .] 
     return adj_ctx(item[2]);
-  if (fcn[3] == 2)                               // [? aux]
-    return name_ctx(item[2], 1);
+//  if (fcn[3] == 2)                               // [? aux]
+//    return name_ctx(item[2], 1);
 
   // examine verb phrases
   if ((fcn[1] > 0) && (fcn[3] >= 3))             // [. ? det] or [. ? prep]
     return verb_ctx(item[2]);
+  if ((*sep[1] == '\0') &&                       // ["to" ?]
+      (strcmp(item[1], "to") == 0))                
+    return verb_ctx(item[2]);
 
   // check for explicit definition 
-  if ((strcmp(item[0], "name") == 0) && (strcmp(item[1], "is") == 0))    // ["name" "is" ? ]
+  if ((strcmp(item[0], "name") == 0) &&          // ["name" "is" ? ] 
+      (strcmp(item[1], "is") == 0))    
     return name_ctx(item[2], 0);
   if (strcmp(item[3], "is") == 0) 
   {
-    if (strcmp(item[5], "name") == 0)            // [. ? "is" x "name"]
+    if ((strcmp(item[5], "name") == 0) ||        // [. ? "is" x "name"]
+        (strcmp(item[5], "place") == 0))
       return name_ctx(item[2], 0);
-    if (strcmp(item[5], "property") == 0)        // [. ? "is" x "property"]
+    if ((strcmp(item[5], "thing") == 0) ||       // [. ? "is" x "thing"]
+        (strcmp(item[5], "noun") == 0))
+      return noun_ctx(item[2]);
+    if ((strcmp(item[5], "property") == 0) ||    // [. ? "is" x "property"]
+        (strcmp(item[5], "adjective") == 0))
       return adj_ctx(item[2]);
-    if (strcmp(item[5], "action") == 0)          // [. ? "is" x "action"]
+    if ((strcmp(item[5], "action") == 0) ||      // [. ? "is" x "action"]
+        (strcmp(item[5], "verb") == 0))
       return verb_ctx(item[2]);
-    if (strcmp(item[5], "manner") == 0)          // [. ? "is" x "manner"]
+    if ((strcmp(item[5], "manner") == 0) ||      // [. ? "is" x "manner"]
+        (strcmp(item[5], "adverb") == 0))
     {
       strcpy_s(unk, item[2]);                    // no -ly suffix needed
       strcpy_s(cat, "MOD");

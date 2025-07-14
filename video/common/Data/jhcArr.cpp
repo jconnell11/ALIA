@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -588,6 +588,25 @@ int jhcArr::MaxRegion (int lo, int hi) const
     if (arr[i] > top)
       top = arr[i];
   return top;
+}
+
+
+//= Find biggest value that is below threshold.
+// always looks at whole array
+// can return special value if nothing above
+
+int jhcArr::MaxUnder (int th, int none) const
+{
+  int i, top = 0, any = 0;
+
+  for (i = 0; i < sz; i++)
+    if (arr[i] < th)
+      if ((any <= 0) || (arr[i] > top))
+      {
+        top = arr[i];
+        any = 1;
+      }
+  return((any > 0) ? top : none);
 }
 
 
@@ -2331,6 +2350,39 @@ int jhcArr::NormBy (const jhcArr& src, int cnt, int total)
 int jhcArr::Normalize (int total)
 {
   return NormBy(*this, SumAll(), total);
+}
+
+
+//= Linearly remaps values between lo and hi to values between bot and top.
+// always operates on full array
+
+void jhcArr::Remap (int lo, int hi, int bot, int top)
+{
+  double sc;
+  int i, v;
+
+  if (lo == hi)
+  {
+    // make a trinary array using midpoint of bot and top
+    v = ROUND(0.5 * (bot + top));
+    for (i = 0; i < sz; i++)
+      if (arr[i] < lo)
+        arr[i] = bot;
+      else if (arr[i] > hi)
+        arr[i] = top;
+      else
+        arr[i] = v;
+  }
+  else    
+  {    
+    // linearly remap values
+    sc = (top - bot) / (double)(hi - lo);
+    for (i = 0; i < sz; i++)
+    {
+      v = ROUND(sc * (arr[i] - lo));
+      arr[i] = __max(bot, __min(v, top));
+    }
+  }
 }
 
 

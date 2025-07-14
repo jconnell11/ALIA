@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2023 Etaoin Systems
+// Copyright 2023-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCLOCALSEQ_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCLOCALSEQ_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -40,7 +37,7 @@ class jhcLocalSeq : public jhcStdKern
 // PRIVATE MEMBER VARIABLES
 private:
   // link to hardware
-  jhcManusRWI *rwi;
+  jhcManusGrok *rwi;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -58,18 +55,11 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // overridden virtuals
-  void local_platform (void *soma);
+  void local_platform (void *soma, const char *kind);
   void local_reset (jhcAliaNote& top);
   void local_volunteer ();
   int local_start (const jhcAliaDesc& desc, int i);
   int local_status (const jhcAliaDesc& desc, int i);
 
-
 };
-
-
-#endif  // once
-
-
-
 

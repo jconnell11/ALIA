@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,10 +33,11 @@
 #include "Body/jhcSwapLift.h"
 #include "Body/jhcSwapNeck.h"
 #include "Grounding/jhcBallistic.h"
-#include "RWI/jhcSwapRWI.h"
+#include "RWI/jhcGenGrok.h"
 
 
 //= Parsing, learning, and control for external robot.
+// Note: jhcVisCoord used by alia_vis for sensor interpretation
 
 class jhcSwapCoord : public jhcAliaSpeech
 {
@@ -47,13 +48,16 @@ public:
   jhcSwapArm arm0;
   jhcSwapLift lift0;
   jhcSwapBase base0;
-  jhcSwapRWI rwi;                     
+  jhcGenGrok rwi;                     
 
   // extra grounding kernels
   jhcBallistic ball; 
 
   // kernel debugging messages
   jhcParam kps;
+
+  // system has been reset
+  int up;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -68,7 +72,8 @@ public:
 
   // main functions
   int Reset (const char *dir =NULL, const char *rname =NULL, int silent =0);
-  int Done (int face =0);
+  void Respond ();
+  int Done (int face =0, int batt =-1);
 
 
 // PRIVATE MEMBER FUNCTIONS

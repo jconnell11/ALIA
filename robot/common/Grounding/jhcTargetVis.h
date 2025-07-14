@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,16 +21,13 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCTARGETVIS_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCTARGETVIS_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
 #include "Objects/jhcStackSeg.h"       // common robot
 #include "Objects/jhcPatchProps.h"
-#include "RWI/jhcManusRWI.h"         
+#include "RWI/jhcManusGrok.h"         
 
 #include "Kernel/jhcStdKern.h"       
 
@@ -42,7 +39,7 @@ class jhcTargetVis : public jhcStdKern
 // PRIVATE MEMBER VARIABLES
 private:
   // link to hardware 
-  jhcManusRWI *rwi;          // likely shared
+  jhcManusGrok *rwi;         // likely shared
   jhcStackSeg *seg;
   jhcPatchProps *ext;
   jhcManusX *body;
@@ -74,7 +71,7 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // overridden virtuals
-  void local_platform (void *soma);
+  void local_platform (void *soma, const char *kind);
   void local_reset (jhcAliaNote& top);
   void local_volunteer ();
   int local_start (const jhcAliaDesc& desc, int i);
@@ -101,10 +98,4 @@ private:
   int add_striped (jhcAliaDesc *obj, int id, int only);
 
 };
-
-
-#endif  // once
-
-
-
 

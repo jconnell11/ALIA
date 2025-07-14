@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018 IBM Corporation
+// Copyright 2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCFACEVECT_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCFACEVECT_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -65,16 +63,5 @@ public:
   int Load (FILE *in);
   void Save (FILE *out) const;
 
-
-// PRIVATE MEMBER FUNCTIONS
-private:
-
-
 };
-
-
-#endif  // once
-
-
-
 

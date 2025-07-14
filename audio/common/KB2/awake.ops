@@ -56,3 +56,33 @@ OP 4 - "To announce that you are awake say that was a nice nap, but now I'm wide
         act-2 -obj-> txt-1
         txt-1 -str-  that was a nice nap, but now I'm wide awake ]
 
+
+OP 5 - "To announce that you are awake say it's a great day, let's get going"
+  trig:
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
+         hq-1 -lex-  awake
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  it's a great day, let's get going ]
+
+
+OP 6 - "To announce that you are awake say oh boy, time to play"
+  trig:
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
+         hq-1 -lex-  awake
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  oh boy, time to play ]
+

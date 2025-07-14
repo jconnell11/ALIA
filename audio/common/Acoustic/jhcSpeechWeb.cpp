@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include <ctype.h>
 
 #include "Data/jhcParam.h"             // common video
+#include "Interface/jms_x.h"
 #include "Interface/jprintf.h"
 
 #include "Acoustic/sp_reco_web.h"      // common audio (DLL interface)
@@ -58,8 +59,11 @@ void jhcSpeechWeb::clr_state ()
   *utt0 = '\0';
   *utt = '\0';
   rcv = NULL;
+  secs = 0.0;
   hear = 0;
   mute = 0;
+  dead = 0;
+  cag = 0;
   txtin = 0;
   quit = 0;
   dbg = 0;
@@ -106,6 +110,7 @@ void jhcSpeechWeb::Inject (const char *txt, int stop)
   if ((txt != NULL) && (*txt != '\0'))
   {
     // prefer this string to reco result
+    secs = 0.0;
     strcpy_s(utt, txt);
     rcv = utt;
     hear = 2;
@@ -120,6 +125,7 @@ void jhcSpeechWeb::Listen (int doit)
 {
   if (((doit > 0) && (mute > 0)) || ((doit <= 0) && (mute <= 0)))
   {
+printf("+++ reco_listen = %d\n", doit);
     reco_listen(doit);
     mute = ((doit <= 0) ? 1 : 0);
   }   
@@ -143,6 +149,7 @@ int jhcSpeechWeb::Update (int tts)
     hear = reco_status();
     if (hear == 2)
     {
+      secs = 0.001 * reco_delay();
       strcpy_s(raw, reco_heard());               
       fix_up(utt, 500, raw);
       rcv = utt;                                 // for single shot
@@ -157,8 +164,29 @@ int jhcSpeechWeb::Update (int tts)
         strcpy_s(utt0, recent);
       }
     }
-    else if (hear == -2)
-      jprintf("\n>>> Lost internet connection to web speech service!\n\n");
+
+    // monitor service link and complain repeatedly until restored
+    if (hear <= -2)
+    {
+      if (dead == 0)
+      {
+        jprintf(">>> LOST internet connection to web speech service!\n");
+        dead = jms_now();
+        cag = dead;
+      }
+      else if (jms_elapsed(cag) >= 5.0)
+      {
+        jprintf(">>> No internet connection to web speech service for %1.0f sec!\n", jms_elapsed(dead));
+        cag = jms_now();
+      }
+    }
+    else
+    {
+      if (dead > 0)
+        jprintf("<<< RECONNECTED to web speech service after %3.1f sec\n", jms_elapsed(dead));
+      dead = 0;
+      cag = 0;
+    }
   }
   txtin = 0;
   return hear;

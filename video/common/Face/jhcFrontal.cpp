@@ -153,7 +153,7 @@ int jhcFrontal::FaceChk (int p, const jhcImg& src, const jhcRoi& area, double an
   // carve out rotated image patch 
   clip = &(crop[p][cam]);
   clip->vsz = 1;
-  clip->SetSize(area.RoiW(), area.RoiH(), src.Fields());
+  clip->SetSize(area.RoiW() & 0xFFFC, area.RoiH(), src.Fields());    // no padding
   ExtRotateRGB(*clip, src, midx, midy, ang);
 
   // stretch contrast based on middle portion

@@ -24,15 +24,7 @@
 // use the commands in the "edit" menu to "copy" dialog IDC_JHCNAME, then 
 // "paste" it into the Dialog folder on the ResourceView tab of current project. 
 
-#if !defined(AFX_JHCPICKSTRING_H__A2753E01_3F81_11D3_9645_006094EB2F79__INCLUDED_)
-/* CPPDOC_BEGIN_EXCLUDE */
-#define AFX_JHCPICKSTRING_H__A2753E01_3F81_11D3_9645_006094EB2F79__INCLUDED_
-/* CPPDOC_END_EXCLUDE */
-
-#if _MSC_VER >= 1000
 #pragma once
-#endif // _MSC_VER >= 1000
-
 
 #include "jhcGlobal.h"
 
@@ -96,7 +88,7 @@ protected:
   DECLARE_MESSAGE_MAP()
 };
 
+
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.
 
-#endif // !defined(AFX_JHCPICKSTRING_H__A2753E01_3F81_11D3_9645_006094EB2F79__INCLUDED_)

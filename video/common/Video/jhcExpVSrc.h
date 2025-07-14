@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1998-2014 IBM Corporation
+// Copyright 2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCEXPVSRC_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCEXPVSRC_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -91,10 +89,4 @@ private:
   int iDual (jhcImg& dest, jhcImg& dest2);
 
 };
-
-
-#endif
-
-
-
 

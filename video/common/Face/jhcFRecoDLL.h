@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCFRECODLL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCFRECODLL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -32,8 +29,6 @@
 #include "Data/jhcImgIO.h"
 #include "Data/jhcParam.h"
 #include "Face/jhcFaceOwner.h"
-
-#include "Face/freco_nkr.h"       // generic fcns but specific lib file
 
 
 //= Holds gallery of faces and matches probe image to them.
@@ -84,7 +79,7 @@ public:
   int SaveVals (const char *fname, int data =1);
 
   // main functions
-  void Reset ();
+  void Reset (int prime =0);
   const jhcFaceVect *Enroll (const char *name, const jhcImg& src, const jhcRoi& box, int rem =1);
   const jhcFaceVect *Enroll (const char *name, const jhcFaceVect *ref, int rem =1);
   const jhcFaceVect *TouchUp (const char *name);
@@ -126,15 +121,5 @@ private:
   jhcFaceVect *mark_rank (const char **name, int i);
   jhcFaceVect *find_rank (const char **name, int i) const;
 
-  // database functions
-  int save_vects ();
-
-
 };
-
-
-#endif  // once
-
-
-
 

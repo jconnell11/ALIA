@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCFRONTAL_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCFRONTAL_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -152,12 +149,5 @@ private:
   // result browsing
   bool ok_idx (int p, int cam) const;
 
-
 };
-
-
-#endif  // once
-
-
-
 

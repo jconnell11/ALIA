@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSPEECHX_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSPEECHX_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -284,12 +281,5 @@ private:
   // alternate pronunciations
   const char *alt_pron (const char *src);
 
-
 };
-
-
-#endif  // once
-
-
-
 

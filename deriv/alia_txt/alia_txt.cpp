@@ -23,6 +23,7 @@
 #ifndef __linux__
   #include <windows.h>
   #include <direct.h>                  // for _getcwd in Windows
+  #include "resource.h"
 #endif
 
 #include "Interface/jhcMessage.h"      // common video
@@ -31,7 +32,6 @@
 #include "Action/jhcAliaCore.h"        // common robot
 
 #include "API/alia_txt.h"
-#include "resource.h"
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -137,7 +137,7 @@ extern "C" DEXP int alia_kernel (class jhcAliaKernel *fcns)
 
 extern "C" DEXP void alia_body (void *soma)
 {
-  (core.kern).Platform(soma);
+  (core.kern).Platform(soma, "custom");
 }
 
 

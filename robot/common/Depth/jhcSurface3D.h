@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2020 IBM Corporation
-// Copyright 2020-2021 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCSURFACE3D_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCSURFACE3D_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -40,21 +37,23 @@ class jhcSurface3D : protected jhcPlaneEst
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  jhcMatrix i2m;               // transform from image to map
+  jhcMatrix s2m;               // transform from sensor to map
+  jhcMatrix s2f;               // matrix for floor projection
+  jhcMatrix m2v;               // transform from map to view
   int iw, ih, hw, hh;          // expected image size
 
 
 // PROTECTED MEMBER VARIABLES
 protected:
-  jhcMatrix xform;             // matrix for floor projection
-  jhcMatrix m2i;               // transform from map to image
   jhcImg wxyz;                 // cached pixel coordinates
 
 
 // PUBLIC MEMBER VARIABLES
 public:
   double cx, cy, cz, p0, t0, r0, kf, ksc;  // camera pose, focal length, and scaling
+  double padj, tadj, radj;                 // camera mounting adjustments
   double z0, z1, zmax, ipp, dmax;          // map formation parameters
+  int choke;                               // invalid close depth reading
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -62,7 +61,7 @@ public:
   // creation and initialization
   jhcSurface3D ();
   void SetSize (const jhcImg& ref, int full =0);
-  void SetSize (int x =640, int y =480, int full =0);
+  void SetSize (int x =640, int y =480, int full =0, double f =0.0, double sc =0.0);
 
   // configuration
   void SetPose (const double *p6) 
@@ -73,6 +72,8 @@ public:
     {p0 = p; t0 = t; r0 = r;}
   void SetOptics (double f =525.0, double sc =0.9659) 
     {kf = f; ksc = sc;}
+  void SetFix (double pcal =0.0, double tcal =0.0, double rcal =0.0)
+    {padj = pcal; tadj = tcal; radj = rcal;}
   void SetProject (double lo =36.0, double hi =78.0, double cut =84.0, double sc =0.3, double rng =240.0)
     {z0 = lo; z1 = hi; zmax = cut; ipp = sc; dmax = rng;}
 
@@ -89,38 +90,47 @@ public:
                    double f0 =0.2, double f1 =0.8) const;
 
   // standard overhead map
-  void BuildMatrices (double cpan, double ctilt, double croll, double x0, double y0, double z0);
+  void RngToMap (double cpan, double ctilt, double croll, double x0, double y0, double z0, 
+                 double pcal, double tcal, double rcal);
+  void MapToRng () {m2v.Invert(s2m);}
+  void MapToCol (double cpan, double ctilt, double croll, double x0, double y0, double z0, 
+                 double f, double sc, double pcal, double tcal, double rcal);
   int FloorMap0 (jhcImg& dest, const jhcImg& d16, int clr, 
-                 double pan, double tilt, double roll, double xcam, double ycam, double zcam);
+                 double pan, double tilt, double roll, double xcam, double ycam, double zcam, 
+                 double pcal, double tcal, double rcal);
   int FloorMap (jhcImg& dest, const jhcImg& d16, int clr, 
-                double pan, double tilt, double roll, double xcam, double ycam, double zcam);
+                double pan, double tilt, double roll, double xcam, double ycam, double zcam, 
+                double pcal, double tcal, double rcal);
   int FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr, 
-                 double pan, double tilt, double roll, double xcam, double ycam, double zcam, int n =1);
+                 double pan, double tilt, double roll, double xcam, double ycam, double zcam, int n =1, 
+                 double pcal =0.0, double tcal =0.0, double rcal =0.0);
   int FloorColor (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const jhcImg& d16, int clr,
-                  double pan, double tilt, double roll, double xcam, double ycam, double zcam);
+                  double pan, double tilt, double roll, double xcam, double ycam, double zcam, 
+                  double pcal, double tcal, double rcal);
   double FloorHt (int pixel);
   int FloorPel (double ht);
 
   // shortenend versions of overhead map functions
-  void BuildMatrices ()
-    {BuildMatrices(p0, t0 + 90.0, r0, cx, cy, cz);}
+  void RngToMap ()
+    {RngToMap(p0, t0 + 90.0, r0, cx, cy, cz, padj, tadj, radj);}
   int FloorMap0 (jhcImg& dest, const jhcImg& d16, int clr =1) 
-    {return FloorMap0(dest, d16, clr, p0, t0, r0, cx, cy, cz);}    
+    {return FloorMap0(dest, d16, clr, p0, t0, r0, cx, cy, cz, padj, tadj, radj);}    
   int FloorMap (jhcImg& dest, const jhcImg& d16, int clr =1) 
-    {return FloorMap(dest, d16, clr, p0, t0, r0, cx, cy, cz);}    
+    {return FloorMap(dest, d16, clr, p0, t0, r0, cx, cy, cz, padj, tadj, radj);}    
   int FloorMap2 (jhcImg& dest, const jhcImg& d16, int clr =1, int n =1) 
-    {return FloorMap2(dest, d16, clr, p0, t0, r0, cx, cy, cz, n);}    
+    {return FloorMap2(dest, d16, clr, p0, t0, r0, cx, cy, cz, n, padj, tadj, radj);}    
   int FloorFwd0 (jhcImg& dest, const jhcImg& d16, double tilt, double roll, double ht)
-    {return FloorMap0(dest, d16, 1, 0.0, tilt, roll, 0.0, 0.0, ht);}
+    {return FloorMap0(dest, d16, 1, 0.0, tilt, roll, 0.0, 0.0, ht, padj, tadj, radj);}
   int FloorFwd (jhcImg& dest, const jhcImg& d16, double tilt, double roll, double ht)
-    {return FloorMap(dest, d16, 1, 0.0, tilt, roll, 0.0, 0.0, ht);}
+    {return FloorMap(dest, d16, 1, 0.0, tilt, roll, 0.0, 0.0, ht, padj, tadj, radj);}
   int FloorFwd2 (jhcImg& dest, const jhcImg& d16, double tilt, double roll, double ht, int n =1)
-    {return FloorMap2(dest, d16, 1, 0.0, tilt, roll, 0.0, 0.0, ht, n);}
+    {return FloorMap2(dest, d16, 1, 0.0, tilt, roll, 0.0, 0.0, ht, n, padj, tadj, radj);}
   int FloorColor (jhcImg& rgb, jhcImg& hts, const jhcImg& col, const jhcImg& d16, int clr =1)
-    {return FloorColor(rgb, hts, col, d16, clr, p0, t0, r0, cx, cy, cz);}
+    {return FloorColor(rgb, hts, col, d16, clr, p0, t0, r0, cx, cy, cz, padj, tadj, radj);}
 
   // height analysis with back mapping
-  int CacheXYZ (const jhcImg& d16, double cpan, double ctilt, double croll =0.0, double dmax =300.0);
+  int CacheXYZ (const jhcImg& d16, double cpan, double ctilt, double croll =0.0, double dmax =300.0,
+                double pcal =0.0, double tcal =0.0, double rcal =0.0);
   int Plane (jhcImg& dest, double ipp =0.3, double yoff =0.0, 
              double zoff =0.0, double zrng =2.0, double zmax =72.0, int pos =0); 
   int Slice (jhcImg& dest, double z0 =4.0, double z1 =84.0, 
@@ -130,27 +140,23 @@ public:
 
   // reverse mapping (incremental)
   int FrontMask (jhcImg& mask, const jhcImg& d16, double over, double under, const jhcImg& cc, int n);
+  int ViewMask (jhcImg& mask, const jhcImg& d16, double over, double under, const jhcImg& cc, int n);
 
   // coordinate transformations
-  void ToCache (double& mx, double& my, double& mz, 
-                double ix, double iy, double iz) const;
-  void FromCache (double& ix, double& iy, double& iz, 
-                  double mx, double my, double mz) const;
+  void ToCache (double& mx, double& my, double& mz, double ix, double iy, double iz) const;
+  void FromCache (double& ix, double& iy, double& iz, double mx, double my, double mz) const;
   void WorldPt (double& wx, double& wy, double& wz, 
                 double ix, double iy, double iz, double sc =1.0) const;
   void WorldPt (jhcMatrix& w, double ix, double iy, double iz, double sc =1.0) const;
-  double ImgPtZ (double& ix, double& iy, 
-                 double wx, double wy, double wz, double sc =1.0) const; 
-  int ImgPt (double& ix, double& iy, 
-             double wx, double wy, double wz, double sc =1.0) const; 
+  double ImgPtZ (double& ix, double& iy, double wx, double wy, double wz, double sc =1.0) const; 
+  int ImgPt (double& ix, double& iy, double wx, double wy, double wz, double sc =1.0) const; 
   int ImgRect (jhcRoi& box, double wx, double wy, double wz, 
                double xsz, double zsz, double sc =1.0) const;
   int ImgCube (jhcRoi& box, double wx, double wy, double wz, 
                double xsz, double ysz, double zsz, double sc =1.0) const;
   int ImgPrism (jhcRoi& box, double wx, double wy, double wz, double ang,
                 double len, double wid, double ht, double sc =1.0) const;
-  int ImgSphere (jhcRoi& box, double wx, double wy, double wz, 
-                 double diam, double sc =1.0) const;
+  int ImgSphere (jhcRoi& box, double wx, double wy, double wz, double diam, double sc =1.0) const;
   int ImgCylinder (jhcRoi& box, double wx, double wy, double wz, 
                    double diam, double zsz, double sc =1.0) const;
   double ImgScale (double wx, double wy, double wz, double sc =1.0, double test =1.0) const;
@@ -177,10 +183,4 @@ public:
 
 
 };
-
-
-#endif  // once
-
-
-
 

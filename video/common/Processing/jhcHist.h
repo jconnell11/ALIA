@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
-// Copyright 2022 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCHIST_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCHIST_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 #include "Data/jhcArr.h"
@@ -107,10 +104,5 @@ private:
 
 
 };
-
-
-#endif
-
-
 
 

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2003-2013 IBM Corporation
+// Copyright 2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,8 +59,8 @@ void jhcFilter_0::Reset ()
 
 void jhcFilter_0::SetSize (const jhcImg& ref)
 {
-  est.SetSize(ref, 3);
-  var.SetSize(ref, 3);
+  est.SetSize(ref);
+  var.SetSize(ref);
   Reset();
 }
 
@@ -77,10 +78,14 @@ int jhcFilter_0::Flywheel (const jhcImg& src, int init)
   // check for correct arguments
   if ((init > 0) || !est.Valid())
     SetSize(src);
-  if (!src.Valid(3) || !src.SameSize(est))
+  if (!src.Valid(1, 3) || !src.SameSize(est))
     return Fatal("Bad images to jhcFilter_0::Flywheel");
   est.MergeRoi(src);
   var.CopyRoi(est);
+
+  // simpler monochrome version
+  if (src.Valid(1))
+    return fly_mono(src, init);
 
   // if this is the first image presented then initialize things
   if ((init > 0) || (first > 0))
@@ -138,15 +143,52 @@ int jhcFilter_0::Flywheel (const jhcImg& src, int init)
 }
 
 
+//= Monochrome version of temporal filtering.
+
+int jhcFilter_0::fly_mono (const jhcImg& src, int init)  
+{
+  // if this is the first image presented then initialize things
+  if ((init > 0) || (first > 0))
+  {
+    est.CopyArr(src);
+    var.FillArr(BOUND(ROUND(nv[0])));
+    first = 0;
+    return 1;
+  }
+
+  // general ROI case, f = amount of noise reduction desired
+  int diff, vm, k, val; 
+  int fi = ROUND(f0 * 256.0), cfi = 256 - fi, mn = ROUND(256.0 * nv[0]);
+  int x, y, rw = est.RoiW(), rh = est.RoiH(), sk = est.Skip();
+  const UC8 *m = src.RoiSrc(est);
+  UC8 *p = est.RoiDest(), *v = var.RoiDest();
+
+  // independently examine all pixels in image
+  for (y = rh; y > 0; y--, p += sk, v += sk, m += sk)
+    for (x = rw; x > 0; x--, p++, v++, m++)
+    {
+      // project from last step and add in new measurement 
+      diff = (*m) - (*p);
+      vm   = cfi * (*v) + fi * diff * diff;
+      k    = (vm << 8) / (vm + mn);
+      val  = (((*p) << 8) + k * diff + 128) >> 8;
+      *p   = BOUND(val);
+      val  = ((256 - k) * (vm >> 1) + 16384) >> 15;
+      *v   = BOUND(val);
+    }
+  return 1;
+}
+
+
 //= Original floating point version (3x slower).
 
-int jhcFilter_0::Flywheel0 (const jhcImg& src)  
+int jhcFilter_0::fly_float (const jhcImg& src)  
 {
   // check for correct arguments
   if (!est.Valid())
     SetSize(src);
   if (!src.Valid(3) || !src.SameSize(est))
-    return Fatal("Bad images to jhcFilter_0::Flywheel0");
+    return Fatal("Bad images to jhcFilter_0::fly_float");
   est.MergeRoi(src);
   var.CopyRoi(est);
 

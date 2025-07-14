@@ -292,9 +292,9 @@ int jhcManusBody::SaveCfg (const char *dir)
 const char *jhcManusBody::CfgName (const char *dir)
 {
   if (dir != NULL)
-    sprintf_s(cfile, "%s\\Manus-%d.cfg", dir, id);
+    sprintf_s(cfile, "%s\\Manus-%d.cal", dir, id);
   else
-    sprintf_s(cfile, "Manus-%d.cfg", id);
+    sprintf_s(cfile, "Manus-%d.cal", id);
   return cfile;
 }
 
@@ -639,14 +639,22 @@ int jhcManusBody::Update (int img)
 
 int jhcManusBody::UpdateImg (int rect)
 {
+  int ans;
+
+  // make sure some camera or file
   got = 0;
   if (vid == NULL) 
     return 0;
-  if (vid->Get(now) <= 0)              // only affected image
-    return -1;
-  if (rect > 0)
+
+  // try getting next image and possibly unwarping it
+  ans = vid->Get(now);              
+  if ((ans > 0) && (rect > 0))
     Rectify();
-  return 1;
+
+  // static images are always "fresh" on each cycle
+  if (vid->IsClass("jhcListVSrc") > 0)
+    return 1;
+  return ans;
 }
 
 

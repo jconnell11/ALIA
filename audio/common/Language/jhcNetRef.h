@@ -62,7 +62,6 @@ public:
   jhcNetNode *FindMake (jhcNodePool& add, int find =0, jhcNetNode *f0 =NULL, 
                         double blf =-1.0, jhcAliaChain **skolem =NULL);
   jhcNetNode *LookUp (const jhcNetNode *old) const {return win.LookUp(old);}
-
 /*
   // language generation
   jhcNetNode *Main () const {return cond.Main();}

@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCACCELXY_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCACCELXY_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -87,10 +84,4 @@ private:
   int acc_params (const char *fname);
 
 };
-
-
-#endif  // once
-
-
-
 

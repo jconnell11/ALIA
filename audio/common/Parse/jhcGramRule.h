@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCGRAMRULE_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCGRAMRULE_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -78,12 +75,5 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
 
-
 };
-
-
-#endif  // once
-
-
-
 

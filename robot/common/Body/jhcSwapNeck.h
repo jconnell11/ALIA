@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 
 //= Control interface for external robot camera aiming.
 // no actual control code -- merely exchanges variable values
+// provides support for double buffering (if desired)
 
 class jhcSwapNeck : public jhcGenNeck
 {
@@ -40,11 +41,21 @@ private:
   double pang, tang, rang;   // current camera angles
   double xcam, ycam, zcam;   // location of camera center
   double p0, t0;             // angles on previous cycle
+  int stable;                // number of no-motion cycles
 
   // command info
-  int plock, tlock;          // current command importance
-  double pstop, tstop;       // desired end angles
-  double prate, trate;       // desired rotation speed
+  double pstop, tstop, gazex, gazey, gazez;      // desired angles or coords
+  double prate, trate, grate;                    // desired rotation speed
+  int plock, tlock, glock;                       // current command importance
+
+  // double buffered input
+  double pang0, tang0, rang0;   
+  double xcam0, ycam0, zcam0;   
+
+  // double buffered output
+  double pstop0, tstop0, gazex0, gazey0, gazez0;
+  double prate0, trate0, grate0;
+  int plock0, tlock0, glock0;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -61,11 +72,16 @@ public:
   int CommOK () {return nok;}
 
   // configuration
-  int Reset (int rpt =0);
+  void Reset ();
+
+  // data exchange
+  void Status (float pan, float tilt, float cx, float cy, float cz);
+  void PosCmd (float& xcmd, float& ycmd, float& zcmd, float& gvel, int& gbid);
+  void DirCmd (float& pcmd, float& tcmd, float& pvel, float& tvel, int& pbid, int& tbid);
 
   // core interaction
-  int Status (float pan, float tilt, float cx, float cy, float cz);
-  int Command (float& pcmd, float& tcmd, float& pvel, float& tvel, int& pbid, int& tbid);
+  void Update ();
+  void Issue ();       
 
   // current gaze information
   double Pan () const  {return pang;}
@@ -73,6 +89,7 @@ public:
   void HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift =0.0) const;
   bool Saccade (double plim =3.5, double tlim =1.0) const
     {return((fabs(pang - p0) > plim) || (fabs(tang - t0) > tlim));}
+  int Stare () const {return stable;}
 
   // goal conversion
   void AimFor (double& p, double& t, const jhcMatrix& targ, double lift =0.0) const;
@@ -98,7 +115,7 @@ public:
 // PROTECTED MEMBER FUNCTIONS
 protected:
   // configuration
-  int def_cmd ();
+  void def_cmd ();
 
   // motion progress
   double norm_ang (double degs) const;

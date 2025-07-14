@@ -155,6 +155,7 @@
     <ClInclude Include="..\..\robot\common\Action\jhcEchoFcn.h" />
     <ClInclude Include="..\..\robot\common\Body\jhcGenArm.h" />
     <ClInclude Include="..\..\robot\common\Body\jhcGenBase.h" />
+    <ClInclude Include="..\..\robot\common\Body\jhcGenBody.h" />
     <ClInclude Include="..\..\robot\common\Body\jhcGenLift.h" />
     <ClInclude Include="..\..\robot\common\Body\jhcGenNeck.h" />
     <ClInclude Include="..\..\robot\common\Body\jhcSwapArm.h" />
@@ -170,9 +171,9 @@
     <ClInclude Include="..\..\robot\common\Kernel\jhcMemStore.h" />
     <ClInclude Include="..\..\robot\common\Kernel\jhcStdKern.h" />
     <ClInclude Include="..\..\robot\common\Kernel\jhcTalkFcn.h" />
-    <ClInclude Include="..\..\robot\common\RWI\jhcGenRWI.h" />
+    <ClInclude Include="..\..\robot\common\Peripheral\jhcGenMic.h" />
+    <ClInclude Include="..\..\robot\common\RWI\jhcGenGrok.h" />
     <ClInclude Include="..\..\robot\common\RWI\jhcSwapCoord.h" />
-    <ClInclude Include="..\..\robot\common\RWI\jhcSwapRWI.h" />
     <ClInclude Include="..\..\video\common\Data\jhcArr.h" />
     <ClInclude Include="..\..\video\common\Data\jhcParam.h" />
     <ClInclude Include="..\..\video\common\Interface\jhcMessage.h" />
@@ -185,7 +186,6 @@
     <ClInclude Include="..\..\video\common\jhc_conio.h" />
     <ClInclude Include="..\..\video\common\jhc_pthread.h" />
     <ClInclude Include="..\..\video\common\jhc_str_s.h" />
-    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\audio\common\Acoustic\jhcAliaSpeech.cpp" />
@@ -236,8 +236,8 @@
     <ClCompile Include="..\..\robot\common\Kernel\jhcMemStore.cpp" />
     <ClCompile Include="..\..\robot\common\Kernel\jhcStdKern.cpp" />
     <ClCompile Include="..\..\robot\common\Kernel\jhcTalkFcn.cpp" />
+    <ClCompile Include="..\..\robot\common\Peripheral\jhcGenMic.cpp" />
     <ClCompile Include="..\..\robot\common\RWI\jhcSwapCoord.cpp" />
-    <ClCompile Include="..\..\robot\common\RWI\jhcSwapRWI.cpp" />
     <ClCompile Include="..\..\video\common\Data\jhcArr.cpp" />
     <ClCompile Include="..\..\video\common\Data\jhcParam.cpp" />
     <ClCompile Include="..\..\video\common\Interface\jhcMessage.cpp" />
@@ -283,6 +283,8 @@
     <Link>
       <AdditionalDependencies>-ldl;$(StlAdditionalDependencies);%(Link.AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>-pthread %(AdditionalOptions)</AdditionalOptions>
+      <SharedLibrarySearchPath>%(Link.SharedLibrarySearchPath)</SharedLibrarySearchPath>
+      <AdditionalLibraryDirectories>/usr/lib;%(Link.AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">

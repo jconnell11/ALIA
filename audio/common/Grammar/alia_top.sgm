@@ -76,7 +76,7 @@
 // something to do or note
 
 =[%Immediate]
-  (<POLITE>) <chain> (<POLITE>)
+  (now) (<POLITE>) <chain> (<now>) (<POLITE>) 
   (<YES>) <%fact>
   (<NO>) <%fact>
   (<YES>) <%fact-n>

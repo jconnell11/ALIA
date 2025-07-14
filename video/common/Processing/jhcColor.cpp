@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2024 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,7 +112,7 @@ jhcColor::jhcColor ()
     sum = 128;
     for (i = 0; i <= 255; i++)
     {
-      v = sum >> 8;
+      v = (int)(sum >> 8);
       ratio[m][i] = BOUND(v);
       sum += f;
     }
@@ -1962,24 +1962,24 @@ int jhcColor::DeBayer16 (jhcImg& red, jhcImg& grn, jhcImg& blu, const jhcImg& sr
     for (x = wm2; x > 0; x -= 2, rd += 2, gd += 2, bd += 2, s += 2)
     {
       // over an R pixel
-      bd[i00] = (s[p00] + s[p20] + s[p02] + s[p22]) >> 2;  // blue avg 4
-      gd[i00] = (s[p10] + s[p01] + s[p21] + s[p12]) >> 2;  // green avg 4
-      rd[i00] =  s[p11];                                   // red copy
+      bd[i00] = (US16)((s[p00] + s[p20] + s[p02] + s[p22]) >> 2);    // blue avg 4
+      gd[i00] = (US16)((s[p10] + s[p01] + s[p21] + s[p12]) >> 2);    // green avg 4
+      rd[i00] = (US16)( s[p11]);                                     // red copy
 
       // over a G pixel
-      bd[i10] = (s[p20] + s[p22]) >> 1;                    // blue avg 2
-      gd[i10] =  s[p21];                                   // green copy
-      rd[i10] = (s[p11] + s[p31]) >> 1;                    // red avg 2
+      bd[i10] = (US16)((s[p20] + s[p22]) >> 1);                      // blue avg 2
+      gd[i10] = (US16)( s[p21]);                                     // green copy
+      rd[i10] = (US16)((s[p11] + s[p31]) >> 1);                      // red avg 2
 
       // over another G pixel
-      bd[i01] = (s[p02] + s[p22]) >> 1;                    // blue avg 2
-      gd[i01] =  s[p12];                                   // green copy
-      rd[i01] = (s[p11] + s[p13]) >> 1;                    // red avg 2
+      bd[i01] = (US16)((s[p02] + s[p22]) >> 1);                      // blue avg 2
+      gd[i01] = (US16)( s[p12]);                                     // green copy
+      rd[i01] = (US16)((s[p11] + s[p13]) >> 1);                      // red avg 2
 
       // over a B pixel
-      bd[i11] =  s[p22];                                   // blue copy
-      gd[i11] = (s[p21] + s[p12] + s[p32] + s[p23]) >> 2;  // green avg 4
-      rd[i11] = (s[p11] + s[p31] + s[p13] + s[p33]) >> 2;  // red avg 4
+      bd[i11] = (US16)( s[p22]);                                     // blue copy
+      gd[i11] = (US16)((s[p21] + s[p12] + s[p32] + s[p23]) >> 2);    // green avg 4
+      rd[i11] = (US16)((s[p11] + s[p31] + s[p13] + s[p33]) >> 2);    // red avg 4
     }
 
     // black on right (2 lines)
@@ -2065,24 +2065,24 @@ int jhcColor::DeBayer16_GB (jhcImg& red, jhcImg& grn, jhcImg& blu, const jhcImg&
     for (x = wm2; x > 0; x -= 2, rd += 2, gd += 2, bd += 2, s += 2)
     {
       // over a G pixel
-      bd[i00] = (s[p10] + s[p12]) >> 1;                    // blue avg 2
-      gd[i00] =  s[p11];                                   // green copy
-      rd[i00] = (s[p01] + s[p21]) >> 1;                    // red avg 2
+      bd[i00] = (US16)((s[p10] + s[p12]) >> 1);                      // blue avg 2
+      gd[i00] = (US16)( s[p11]);                                     // green copy
+      rd[i00] = (US16)((s[p01] + s[p21]) >> 1);                      // red avg 2
 
       // over an R pixel
-      bd[i10] = (s[p10] + s[p30] + s[p12] + s[p32]) >> 2;  // blue avg 4
-      gd[i10] = (s[p20] + s[p11] + s[p31] + s[p22]) >> 2;  // green avg 4
-      rd[i10] =  s[p21];                                   // red copy
+      bd[i10] = (US16)((s[p10] + s[p30] + s[p12] + s[p32]) >> 2);    // blue avg 4
+      gd[i10] = (US16)((s[p20] + s[p11] + s[p31] + s[p22]) >> 2);    // green avg 4
+      rd[i10] = (US16)( s[p21]);                                     // red copy
 
       // over a B pixel
-      bd[i01] =  s[p12];                                   // blue copy
-      gd[i01] = (s[p11] + s[p02] + s[p22] + s[p13]) >> 2;  // green avg 4
-      rd[i01] = (s[p01] + s[p21] + s[p03] + s[p23]) >> 2;  // red avg 4
+      bd[i01] = (US16)( s[p12]);                                     // blue copy
+      gd[i01] = (US16)((s[p11] + s[p02] + s[p22] + s[p13]) >> 2);    // green avg 4
+      rd[i01] = (US16)((s[p01] + s[p21] + s[p03] + s[p23]) >> 2);    // red avg 4
 
       // over another G pixel
-      bd[i11] = (s[p12] + s[p32]) >> 1;                    // blue avg 2
-      gd[i11] =  s[p22];                                   // green copy
-      rd[i11] = (s[p21] + s[p23]) >> 1;                    // red avg 2
+      bd[i11] = (US16)((s[p12] + s[p32]) >> 1);                      // blue avg 2
+      gd[i11] = (US16)( s[p22]);                                     // green copy
+      rd[i11] = (US16)((s[p21] + s[p23]) >> 1);                      // red avg 2
     }
 
     // black on right (2 lines)
@@ -2168,24 +2168,24 @@ int jhcColor::DeBayer16_GR (jhcImg& red, jhcImg& grn, jhcImg& blu, const jhcImg&
     for (x = wm2; x > 0; x -= 2, rd += 2, gd += 2, bd += 2, s += 2)
     {
       // over a G pixel
-      bd[i00] = (s[p01] + s[p21]) >> 1;                    // blue avg 2
-      gd[i00] =  s[p11];                                   // green copy
-      rd[i00] = (s[p10] + s[p12]) >> 1;                    // red avg 2
+      bd[i00] = (US16)((s[p01] + s[p21]) >> 1);                      // blue avg 2
+      gd[i00] = (US16)( s[p11]);                                     // green copy
+      rd[i00] = (US16)((s[p10] + s[p12]) >> 1);                      // red avg 2
 
       // over a B pixel
-      bd[i10] =  s[p21];                                   // blue copy
-      gd[i10] = (s[p20] + s[p11] + s[p31] + s[p22]) >> 2;  // green avg 4
-      rd[i10] = (s[p10] + s[p30] + s[p12] + s[p32]) >> 2;  // red avg 4
+      bd[i10] = (US16)( s[p21]);                                     // blue copy
+      gd[i10] = (US16)((s[p20] + s[p11] + s[p31] + s[p22]) >> 2);    // green avg 4
+      rd[i10] = (US16)((s[p10] + s[p30] + s[p12] + s[p32]) >> 2);    // red avg 4
 
       // over an R pixel
-      bd[i01] = (s[p01] + s[p21] + s[p03] + s[p23]) >> 2;  // blue avg 4
-      gd[i01] = (s[p11] + s[p02] + s[p22] + s[p13]) >> 2;  // green avg 4
-      rd[i01] =  s[p12];                                   // red copy
+      bd[i01] = (US16)((s[p01] + s[p21] + s[p03] + s[p23]) >> 2);    // blue avg 4
+      gd[i01] = (US16)((s[p11] + s[p02] + s[p22] + s[p13]) >> 2);    // green avg 4
+      rd[i01] = (US16)( s[p12]);                                     // red copy
 
       // over another G pixel
-      bd[i11] = (s[p21] + s[p23]) >> 1;                    // blue avg 2
-      gd[i11] =  s[p22];                                   // green copy
-      rd[i11] = (s[p12] + s[p32]) >> 1;                    // red avg 2
+      bd[i11] = (US16)((s[p21] + s[p23]) >> 1);                      // blue avg 2
+      gd[i11] = (US16)( s[p22]);                                     // green copy
+      rd[i11] = (US16)((s[p12] + s[p32]) >> 1);                      // red avg 2
     }
 
     // black on right (2 lines)

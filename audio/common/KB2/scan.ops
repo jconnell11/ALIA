@@ -1,0 +1,103 @@
+OP 1 - "To locate something look straight far down then visually search for it"
+  trig:
+    DO[ fcn-1 -lex-  locate
+              -fcn-> act-2
+        act-2 -obj-> obj-3 ]
+-----------------
+    DO[ fcn-4 -lex-  look
+              -fcn-> act-5
+        dir-6 -lex-  straight
+              -dir-> act-5
+        dir-7 -lex-  down
+              -dir-> act-5
+        deg-8 -lex-  far
+              -deg-> dir-7 ]
+    DO[  fcn-9 -lex-  search for
+               -fcn-> act-10
+        act-10 -obj-> obj-3
+        mod-11 -lex-  visually
+               -mod-> act-10 ]
+
+
+OP 2 - "To locate something look left far down then visually search for it"
+  trig:
+    DO[ fcn-1 -lex-  locate
+              -fcn-> act-2
+        act-2 -obj-> obj-3 ]
+-----------------
+    DO[ fcn-4 -lex-  look
+              -fcn-> act-5
+        dir-6 -lex-  left
+              -dir-> act-5
+        dir-7 -lex-  down
+              -dir-> act-5
+        deg-8 -lex-  far
+              -deg-> dir-7 ]
+    DO[  fcn-9 -lex-  search for
+               -fcn-> act-10
+        act-10 -obj-> obj-3
+        mod-11 -lex-  visually
+               -mod-> act-10 ]
+
+
+OP 3 - "To locate something look right far down then visually search for it"
+  trig:
+    DO[ fcn-1 -lex-  locate
+              -fcn-> act-2
+        act-2 -obj-> obj-3 ]
+-----------------
+    DO[ fcn-4 -lex-  look
+              -fcn-> act-5
+        dir-6 -lex-  right
+              -dir-> act-5
+        dir-7 -lex-  down
+              -dir-> act-5
+        deg-8 -lex-  far
+              -deg-> dir-7 ]
+    DO[  fcn-9 -lex-  search for
+               -fcn-> act-10
+        act-10 -obj-> obj-3
+        mod-11 -lex-  visually
+               -mod-> act-10 ]
+
+
+OP 4 - "To locate something look slightly left down then visually search for it"
+  trig:
+    DO[ fcn-1 -lex-  locate
+              -fcn-> act-2
+        act-2 -obj-> obj-3 ]
+-----------------
+    DO[ fcn-4 -lex-  look
+              -fcn-> act-5
+        dir-6 -lex-  left
+              -dir-> act-5
+        deg-1 -lex-  slightly
+              -deg-> dir-6
+        dir-7 -lex-  down
+              -dir-> act-5 ]
+    DO[  fcn-9 -lex-  search for
+               -fcn-> act-10
+        act-10 -obj-> obj-3
+        mod-11 -lex-  visually
+               -mod-> act-10 ]
+
+
+OP 5 - "To locate something look slightly right down then visually search for it"
+  trig:
+    DO[ fcn-1 -lex-  locate
+              -fcn-> act-2
+        act-2 -obj-> obj-3 ]
+-----------------
+    DO[ fcn-4 -lex-  look
+              -fcn-> act-5
+        dir-6 -lex-  right
+              -dir-> act-5
+        deg-1 -lex-  slightly
+              -deg-> dir-6
+        dir-7 -lex-  down
+              -dir-> act-5 ]
+    DO[  fcn-9 -lex-  search for
+               -fcn-> act-10
+        act-10 -obj-> obj-3
+        mod-11 -lex-  visually
+               -mod-> act-10 ]
