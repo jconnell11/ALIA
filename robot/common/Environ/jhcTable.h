@@ -136,7 +136,7 @@ private:
   int zdev (double dht) const {return ROUND(253.0 * dht / zrng);}
 
   // main functions
-  void hist_range (jhcArr& hist, const jhcImg& hts, double close, double far);
+  void hist_range (jhcArr& hist, const jhcImg& hts, double close, double farout);
   int update_surf (int t);
 
 

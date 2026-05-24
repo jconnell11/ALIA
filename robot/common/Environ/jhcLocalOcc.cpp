@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 
 #include "Interface/jhcMessage.h"      // common video
 #include "Interface/jms_x.h"
+#include "Interface/jtimer.h"          // for profiling
 
 #include "Environ/jhcLocalOcc.h"
 
@@ -72,8 +73,8 @@ int jhcLocalOcc::env_params (const char *fname)
   ps->NextSpecF( &zlo,    -4.0, "Sensing below surface (in)");
   ps->NextSpecF( &fbump,   2.5, "Max floor deviation (in)");
 
+  ps->NextSpec4( &thin,    0,   "Thin object filter scale (pel)");
   ps->NextSpec4( &drop,  100,   "Object area to ignore (pel)");
-  ps->NextSpec4( &hole,  500,   "Floor hole to ignore (pel)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -88,15 +89,15 @@ int jhcLocalOcc::geom_params (const char *fname)
   int ok;
 
   ps->SetTag("occ_geom", 0);
-  ps->NextSpecF( &rside,  8.0, "Robot half width (in)");
-  ps->NextSpecF( &rfwd,  14.0, "Fwd robot protrusion (in)");   // was 14 then 15
-  ps->NextSpecF( &rback, 14.0, "Rear robot extension (in)");
-  ps->Skip();
-  ps->NextSpecF( &pad,    1.5, "Perimeter clearance (in)");
-  ps->Skip();
+  ps->NextSpecF( &rside,   8.0, "Robot half width (in)");
+  ps->NextSpecF( &rfwd,   14.0, "Fwd robot protrusion (in)");   // was 14 then 15
+  ps->NextSpecF( &rback,  14.0, "Rear robot extension (in)");
+  ps->NextSpecF( &pad,     1.5, "Body footprint margin (in)");
+  ps->NextSpecF( &chute,   1.0, "Path side clearance (in)");
+  ps->NextSpec4( &hole,  500,   "Floor hole to ignore (pel)");
 
-  ps->NextSpecF( &fade,  30.0, "Confidence decay (sec)");
-  ps->NextSpecF( &temp,   5.0, "Moving obj decay (sec)");
+  ps->NextSpecF( &fade,   30.0, "Confidence decay (sec)");
+  ps->NextSpecF( &temp,    5.0, "Moving obj decay (sec)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -161,6 +162,25 @@ int jhcLocalOcc::SaveVals (const char *fname) const
 
 
 ///////////////////////////////////////////////////////////////////////////
+//                           Synthetic Sensors                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Determine if front few paths have very little safe travel.
+
+bool jhcLocalOcc::Tight (double hem) const
+{
+  double half = 20.0;                            // looks at +/- 20 degs (approx)
+  int di, rng = ROUND(ndir * half / 180.0); 
+
+  for (di = -rng; di <= rng; di++)
+    if (dist[ndir + di] >= hem)
+      return false;
+  return true;
+//  return((dist[ndir - 1] < hem) && (dist[ndir] < hem) && (dist[ndir + 1] < hem));
+}
+
+
+///////////////////////////////////////////////////////////////////////////
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
@@ -181,6 +201,8 @@ void jhcLocalOcc::Reset ()
   // set image sizes and clear basic maps
   dev.SetSize(map);
   bad.SetSize(map);
+  scan.SetSize(map);
+  sea.SetSize(map);
   obst.InitSize(map);
   conf.InitSize(map);
 
@@ -199,6 +221,7 @@ void jhcLocalOcc::Reset ()
   raim = 0.0;
   nh = 0;
   fill = 0;
+  minit = 0;
 
   // oriented local maps and navigation
   set_spin(veer);
@@ -207,20 +230,42 @@ void jhcLocalOcc::Reset ()
 }
 
 
+//= Make up a bunch of local maps for various robot orientations.
+
+void jhcLocalOcc::set_spin (double da)
+{
+  double s = rside + pad, f = __max(rfwd, rback) + lead + pad;
+  int i, nd, sz = ROUND(2.0 * sqrt(s * s + f * f) / ipp) + 3;
+ 
+  // figure out number of orientations and pixel size
+  nd = ROUND(180.0 / da) & 0xFE;
+  nd = __min(nd, 18);
+  if ((nd == ndir) && (sz == spin[0].XDim()))
+    return;
+
+  // make individual direction travel maps (only for ELI-model robots)
+  if (thin <= 0)
+    for (i = 0; i < nd; i++)
+      spin[i].SetSize(sz, sz, 1);      // for block-shifting path estimation
+  ndir = nd;
+}
+
+
 //= Get ready to accept new depth data after robot moves.
 // "fwd" and "lf" are base motion in previous direction, then "dr" rotation 
 // allows robot travel in fractional pixels without blurring map
 // takes around 0.9ms (max 1.5ms) at 2.7GHz when moving
 
-int jhcLocalOcc::AdjustMaps (double fwd, double lf, double dr)
+void jhcLocalOcc::AdjustMaps (double fwd, double lf, double dr)
 {
   double rads = D2R * (raim + 90.0), c = cos(rads), s = sin(rads);
   int shx, shy;
 
-  // map maintenance tasks
+  // decay confidence in map pixels
   if (++ccnt >= cwait)                    
   {
-    jhcLUT::Offset(conf, conf, -1);    
+    jhcLUT::Offset(conf, conf, -1); 
+    OverGate(obst, obst, conf);        // erase if conf = 0   
     ccnt = 0;
   }
 
@@ -234,14 +279,13 @@ int jhcLocalOcc::AdjustMaps (double fwd, double lf, double dr)
   shx = (int)(-rx / ipp);
   shy = (int)(-ry / ipp);
   if ((shx == 0) && (shy == 0))
-    return 0;
+    return;
 
   // move maps and adjust robot position
   Shift(obst, shx, shy);
   Shift(conf, shx, shy);
   rx += ipp * shx;
   ry += ipp * shy;
-  return 1;
 }
 
 
@@ -274,6 +318,232 @@ void jhcLocalOcc::adj_hist (double fwd, double lf, double dr)
 }
  
 
+//= See what fraction of pixels in front of robot are relatively fresh.
+// variant of jhcResize::Rigid without source pixel check or scaling
+// typically called by ComputePaths()
+
+void jhcLocalOcc::known_ahead (double& any, const jhcImg& cf) const
+{
+  double cx = 0.5 * wmat, cy = 0.5 * hmat, off = rfwd + cy, rads = -D2R * raim;
+  double c = cos(rads), s = sin(rads), px = rx + x0 + off * s, py = ry + y0 + off * c; 
+  int x, isx, isx0 = ROUND(65536.0 * (px - cx * c - cy * s) / ipp), is = ROUND(65536.0 * s);
+  int y, isy, isy0 = ROUND(65536.0 * (py + cx * s - cy * c) / ipp), ic = ROUND(65536.0 * c);
+  int v, th = ROUND(rate * tmat / cwait), w = ROUND(wmat / ipp), h = ROUND(hmat / ipp), cnt = 0;
+
+  // find closest source pixel and check against threshold
+  for (y = h; y > 0; y--, isx0 += is, isy0 += ic)
+  {
+    isx = isx0;
+    isy = isy0;
+    for (x = w; x > 0; x--, isx += ic, isy -= is)
+    {
+      v = cf.ARef((isx + 32768) >> 16, (isy + 32768) >> 16);
+      if (v >= th)
+        cnt++;
+    }
+  }
+  any = cnt / (double)(w * h);
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                      Map Building and Sensors                         //
+///////////////////////////////////////////////////////////////////////////
+
+//= Analyze depth image into free-space and obstacles then combine with overall map.
+// "obst" pixels: 255 tall obstacle
+//                128 non-floor area
+//                 50 traversable floor
+//                  0 unknown
+// also maintains per-pixel recency in "conf" to help erase old parts of map
+// tries to speed up computation by only using region where overhead projection is valid
+
+void jhcLocalOcc::RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcMatrix& dir) 
+{
+  jhcMatrix p2(4), d2(4);
+
+  // backwards compatibility for ELI-model robots
+  if (thin <= 0)
+  {
+    RefineMaps2(d16, pos, dir);
+    return;
+  }
+
+  // convert camera position using current map orientation 
+  p2.RotPan3(pos, raim);
+  p2.IncVec3(rx, ry, 0.0);
+  d2.RelVec3(dir, raim, 0.0, 0.0);
+  SetCam(0, p2, d2, 1.2 * dej);
+  minit = 1;
+
+jtimer(30, "Reproject");  // 25 ms
+  // get heights above surface and find deviations from planar floor fit
+  map.FillMax(0);
+  Reproject(map, d16, 0, 0, pos.Z() + hat, 0);
+  RegionNZ(map, map);                            // for efficiency
+  map.GrowRoi(1, 1);
+jtimer_x(30);
+jtimer(31, "find obstructions");  // 7 ms
+  dev.FillMax(0);
+  PlaneDev(dev, map, fbump, 2.0 * fbump);
+
+  // get local scan image of floor, bad areas, and hi/lo heights
+  scan.FillMax(0);
+  if (!NoPlane())
+  {
+    // find obstructions and suppress noise
+    Between(bad, dev, 178, 78, 255, 1);          // bad plane fit areas
+    BoxThresh(bad, bad, thin, 180);              // ditch skinny and small
+    RemSmall(bad, bad, 0.0, drop);
+
+    // combine floor with obstructions
+    Between(scan, dev, 78, 178);                 // blue floor
+    BoxThresh(scan, scan, 3, 80, 50);
+    UnderGate(scan, scan, bad, 128, 128);        // green non-floor
+  }
+
+  // add white walls and blue body footprint 
+  MarkTween(scan, map, 255, 255);                
+  RefreshBody(&map);
+  map.MaxRoi();                                  // restore full ROIs
+  dev.MaxRoi();
+  scan.MaxRoi();          
+jtimer_x(31);                       
+}
+
+
+//= Area currently covered by robot chassis is always de facto clear.
+
+void jhcLocalOcc::RefreshBody (const jhcRoi *map)
+{
+  double cx = obst.XMidF(), cy = obst.YMidF() + 0.5 * (rfwd - rback) / ipp;
+  double len = (rfwd + rback + 2.0 * pad) / ipp, wid = 2.0 * (rside + pad) / ipp; 
+
+  // backwards compatibility for ELI-model robots
+  if (thin <= 0)
+    return;
+
+  // draw rectangle at current heading angle (sets tight ROI)
+  if (map == NULL)
+    scan.FillMax(0);
+  BlockRot(scan, cx, cy, len, wid, raim + 90.0, 50, 0, 0, 1);  
+  if (map != NULL)
+    scan.AbsorbRoi(*map);
+
+  // combine with old map and update confidence
+  OverlayNZ(obst, scan);
+  UnderGate(conf, conf, scan, 1, cmax);
+  obst.MaxRoi();
+  conf.MaxRoi();
+}
+
+
+//= Use consolidated map of free-space and obstacles to generate distance pseudo-sensors.
+// "dist[]" array has amount that can be moved forward and back at various angles
+
+void jhcLocalOcc::ComputePaths () 
+{
+  jhcRoi fill;
+  double ang, step = 180.0 / ndir;
+  int dev, sc = (ROUND(2.0 * (rside + chute) / ipp) + 1) | 0x01;  
+
+  // backwards compatibility for ELI-model robots
+  if (thin <= 0)
+  {
+    ComputePaths2();
+    return;
+  }
+ 
+jtimer(33, "ComputePaths");  // 47 ms!
+  // only look at filled portions of map (for efficiency)
+  if (RegionNZ(fill, obst) <= 0)
+    return;
+  obst.CopyRoi(fill);
+  obst.GrowRoi(1, 1);
+  if (obst.RoiMinDim() < sc)           // should never happen (pad > chute)
+    return;
+
+jtimer(40, "FillHoles");
+  // remove small non-obstacle holes in floor (bad = open areas)
+  bad.FillMax(0);
+  MatchKey(bad, obst, 50);
+  FillHoles(bad, bad, hole);           
+  UnderGate(bad, bad, obst, 100);
+jtimer_x(40);
+
+jtimer(41, "Sea morphology");
+  // shrink then expand floor by robot width (sea = traversable)
+  sea.FillMax(0);
+  Complement(sea, bad);
+  BoxThresh(sea, sea, sc, 1, 0, 255);  
+  BoxThresh(sea, sea, sc, 1);
+  OverGate(sea, sea, bad); 
+jtimer_x(41);
+
+  // determine where front of robot can go in traversal basin 
+  ang = raim - 90.0;
+  for (dev = -ndir; dev < ndir; dev++, ang += step)
+    dist[ndir + dev] = traverse(sea, ang);
+  rt0 = -ndir;                                   // all are valid
+  lf1 = ndir - 1;
+
+  // check doormat and restore ROIs (partly for display)
+  known_ahead(known, conf);               
+  obst.MaxRoi();
+  bad.MaxRoi();                       
+  sea.MaxRoi();            
+jtimer_x(33);
+}  
+
+
+//= Draw ray from robot center stopping at first non-floor pixel.
+// returns length (in inches) of full traversable ray from robot center
+
+double jhcLocalOcc::traverse (const jhcImg& basin, double ang) const
+{
+  double rx = basin.XMidF(), ry = basin.YMidF();
+  double rads = D2R * ang, c = cos(rads), s = sin(rads);   
+  double dx, dy, x, y, len, side = rside / ipp, norm = ang;
+
+  // get ray angle in range -180 to + 180 degrees
+  while (norm <= -180.0)
+    norm += 360.0;
+  while (norm > 180.0)
+    norm -= 360.0;
+
+  // step along Y if close to vertical
+  if ((fabs(norm) >= 45.0) && (fabs(norm) <= 135.0))
+  {
+    dy = ((norm > 0.0) ? 1.0 : -1.0);
+    dx = dy * c / s;
+  }
+  else
+  { 
+    dx = ((fabs(norm) < 90.0) ? 1.0 : -1.0);
+    dy = dx * s / c;
+  }
+   
+  // extend ray as long as still in basin
+  x = rx + side * c;
+  y = ry + side * s;
+  while (basin.ARef(ROUND(x), ROUND(y)) != 0)
+  {
+    x += dx;
+    y += dy;
+  }
+
+  // compute physical length and potential robot motion
+  dx = x - rx;
+  dy = y - ry;
+  len = ipp * sqrt(dx * dx + dy * dy) - (rfwd + chute);
+  return __max(0.0, len);
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                  Fancier Map Building and Sensors                     //
+///////////////////////////////////////////////////////////////////////////
+
 //= Update floor map based on depth image taken by camera with given pose.
 // "d16" is frontal depth map from Kinect, should call SetOptics if using Kinect2
 // "pos" is camera position wrt map origin (y forward, x to right, z up)
@@ -283,11 +553,11 @@ void jhcLocalOcc::adj_hist (double fwd, double lf, double dr)
 // other non-zero map areas are likely obstacles (permanent or temporary)
 // should skip if camera is slewing rapidly (esp. tilt) like during a saccade
 // takes about 8.9ms at 2.7GHz - need to call ComputePaths
+// Note: original version for ELI-model robots 
 
-int jhcLocalOcc::RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcMatrix& dir) 
+void jhcLocalOcc::RefineMaps2 (const jhcImg& d16, const jhcMatrix& pos, const jhcMatrix& dir) 
 {
   jhcMatrix p2(4), d2(4);
-  int ok;
 
   // convert camera position using current map orientation 
   p2.RotPan3(pos, raim);
@@ -301,8 +571,8 @@ int jhcLocalOcc::RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcM
   Reproject(map, d16, 0, 0, pos.Z() + hat, 0);
 
   // find deviations from planar floor fit to get obstructions
-  ok = PlaneDev(dev, map, fbump, 2.0 * fbump);
-  if (ok <= 0)
+  PlaneDev(dev, map, fbump, 2.0 * fbump);
+  if (NoPlane())
   {
     LimitMax(dev, map, 2);                       // valid depth as below floor
     Threshold(bad, map, 254);                    // only very tall stuff blocks
@@ -316,7 +586,6 @@ int jhcLocalOcc::RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcM
   
   // do basic combination of new scan with existing map 
   mixin_scan(obst, conf, bad, dev);
-  return 1;
 }
 
 
@@ -376,8 +645,9 @@ void jhcLocalOcc::mixin_scan (jhcImg& obs, jhcImg& cf, const jhcImg& junk, const
 
 
 //= Find allowable travel distances at various orientations.
+// Note: original version for ELI-model robots
 
-void jhcLocalOcc::ComputePaths ()
+void jhcLocalOcc::ComputePaths2 ()
 {
   // clean up new version of map
   block_bot(obst, conf);
@@ -424,38 +694,6 @@ void jhcLocalOcc::erase_blips (jhcImg& obs, const jhcImg& junk) const
     for (x = rw; x > 0; x--, m++, j++)
       if ((*m > 100) && (*j < 255))
         *m = 0;
-}
-
-
-///////////////////////////////////////////////////////////////////////////
-//                           Synthetic Sensors                           //
-///////////////////////////////////////////////////////////////////////////
-
-//= Determine if front 3 paths have very little safe travel.
-
-bool jhcLocalOcc::Tight (double hem) const
-{
-  return((dist[ndir - 1] < hem) && (dist[ndir] < hem) && (dist[ndir + 1] < hem));
-}
-
-
-//= Make up a bunch of local maps for various robot orientations.
-
-void jhcLocalOcc::set_spin (double da)
-{
-  double s = rside + pad, f = __max(rfwd, rback) + lead + pad;
-  int i, nd, sz = ROUND(2.0 * sqrt(s * s + f * f) / ipp) + 3;
- 
-  // figure out number of orientations and pixel size
-  nd = ROUND(180.0 / da) & 0xFE;
-  nd = __min(nd, 18);
-  if ((nd == ndir) && (sz == spin[0].XDim()))
-    return;
-
-  // make individual maps
-  for (i = 0; i < nd; i++)
-    spin[i].SetSize(sz, sz, 1);
-  ndir = nd;
 }
 
 
@@ -581,33 +819,6 @@ int jhcLocalOcc::clr_paths (double& fwd, double& rev, jhcImg& view) const
 }
 
 
-//= See what fraction of pixels in front of robot are relatively fresh.
-// variant of jhcResize::Rigid without source pixel check or scaling
-
-void jhcLocalOcc::known_ahead (double& any, const jhcImg& cf) const
-{
-  double cx = 0.5 * wmat, cy = 0.5 * hmat, off = rfwd + cy, rads = -D2R * raim;
-  double c = cos(rads), s = sin(rads), px = rx + x0 + off * s, py = ry + y0 + off * c; 
-  int x, isx, isx0 = ROUND(65536.0 * (px - cx * c - cy * s) / ipp), is = ROUND(65536.0 * s);
-  int y, isy, isy0 = ROUND(65536.0 * (py + cx * s - cy * c) / ipp), ic = ROUND(65536.0 * c);
-  int v, th = ROUND(rate * tmat / cwait), w = ROUND(wmat / ipp), h = ROUND(hmat / ipp), cnt = 0;
-
-  // find closest source pixel and check against threshold
-  for (y = h; y > 0; y--, isx0 += is, isy0 += ic)
-  {
-    isx = isx0;
-    isy = isy0;
-    for (x = w; x > 0; x--, isx += ic, isy -= is)
-    {
-      v = cf.ARef((isx + 32768) >> 16, (isy + 32768) >> 16);
-      if (v >= th)
-        cnt++;
-    }
-  }
-  any = cnt / (double)(w * h);
-}
-
-
 ///////////////////////////////////////////////////////////////////////////
 //                               Navigation                              //
 ///////////////////////////////////////////////////////////////////////////
@@ -663,26 +874,43 @@ void jhcLocalOcc::Swerve (double& trav, double& head, double td, double ta, doub
 
 
 //= Go mostly forward turning slightly if getting close to something.
-// if blocked then turn directly left
+// looks at several adjacent beams to make sure passageway is big enough
 
 void jhcLocalOcc::Wander (double& trav, double& head)
 {
-  int dev, win = -ndir - 1;
+  double half = R2D * asin((rside + chute) / glide), dr = 180.0 / ndir;
+  int nd2 = 2 * ndir, off = ROUND(half / dr), span = 2 * off + 1;
+  int edge, beam, mid, win = -ndir - 1;
+
+  // backwards compatibility for ELI-model robots
+  if (thin <= 0)
+    span = 1;
 
   // find direction closest to forward that is sufficiently long
-  for (dev = rt0; dev < lf1; dev++)
-    if ((dist[ndir + dev] >= glide) && ((win < -ndir) || (abs(dev) < abs(win))))
-      win = dev;
-
+  for (edge = rt0; edge < lf1; edge++)
+  {
+    // see if composite beam center would be better than current winner
+    mid = edge + off;
+    if ((win < -ndir) || (abs(mid) < abs(win)))
+    {
+      // barf if any interior beam is too short
+      for (beam = 0; beam < span; beam++)
+        if (dist[(ndir + edge + beam) % nd2] < glide)
+          break;
+      if (beam >= span)
+        win = mid;
+    }
+  }
+ 
   // get recommended heading and allowed distance  
   if (win >= -ndir)
-    head = win * 180.0 / ndir;
+    head = win * dr;
   else
     head = 90.0;
   if (fabs(head) > orient)
     trav = 0.0;
   else
-    trav = dist[ndir];        
+    trav = dist[ndir];       // always directly forward
 }
 
 
@@ -782,6 +1010,7 @@ int jhcLocalOcc::RobotDir (jhcImg& dest, int rot) const
 
 //= Show distance robot can move in various directions without regard to reachability.
 // skips if robot orientation is impossible, no guarantee orientation is reachable
+// ray ends at position achievable by front of robot chassis (not middle point)
 
 int jhcLocalOcc::Dists (jhcImg& dest, int rot) const
 {
@@ -799,7 +1028,7 @@ int jhcLocalOcc::Dists (jhcImg& dest, int rot) const
       s = sin(rads);
       len = (rfwd + d) / ipp;
 //      col = ((abs(dev) <= (ndir / 2)) ? 230 : 180);
-      DrawLine(dest, rx0 + off * c, ry0 + off * s, rx0 + len * c, ry0 + len * s, 3, col);
+      DrawLine(dest, rx0 + off * c, ry0 + off * s, rx0 + len * c, ry0 + len * s, 2, col);
     }
   return 1;
 }
@@ -932,6 +1161,12 @@ int jhcLocalOcc::Tail (jhcImg& dest, double secs) const
 
 int jhcLocalOcc::ScanBeam (jhcImg& dest) const
 {
+  if (!dest.Valid(1, 3) || !dest.SameSize(map))
+    return Fatal("Bad images to jhcLocalOcc::ScanBeam");
+  if (minit <= 0)
+    return 0;
+
+  // figure out sides of rangefinder imaging cone
   double hh = 0.5 * hfov, lf = hh - dlf, rt = hh - drt;
   double a1 = D2R * (p0[0] + lf), ej1 = 1.2 * dej / (ipp * cos(D2R * lf));
   double a2 = D2R * (p0[0] - rt), ej2 = 1.2 * dej / (ipp * cos(D2R * rt));
@@ -939,8 +1174,6 @@ int jhcLocalOcc::ScanBeam (jhcImg& dest) const
   double kx1 = kx0 + ej1 * cos(a1), ky1 = ky0 + ej1 * sin(a1);
   double kx2 = kx0 + ej2 * cos(a2), ky2 = ky0 + ej2 * sin(a2);
 
-  if (!dest.Valid(1, 3) || !dest.SameSize(map))
-    return Fatal("Bad images to jhcLocalOcc::ScanBeam");
   DrawLine(dest, kx0, ky0, kx1, ky1, 1, -5);
   DrawLine(dest, kx1, ky1, kx2, ky2, 1, -5);
   DrawLine(dest, kx2, ky2, kx0, ky0, 1, -5);

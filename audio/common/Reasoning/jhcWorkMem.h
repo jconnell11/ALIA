@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,8 +45,6 @@ class jhcWorkMem : public jhcNodePool
 private:
   // main vs halo separation
   int rim, nimbus, mode;     // rim = last LTM, nimbus = last single rule
-  jhcNetNode *self;          // fixed node representing the robot
-  jhcNetNode *user;          // node for current person communicating
 
   // external linkages
   jhcNetNode *nref[emax];
@@ -89,7 +87,7 @@ public:
   jhcNetNode *Robot () const {return self;}
   jhcNetNode *Human () const {return user;}
   jhcNetNode *SetUser (jhcNetNode *n);
-  void AddName (jhcNetNode *n, const char *name, int neg =0);
+  void NameNode (jhcNetNode *n, const char *name, int neg =0);
   jhcNetNode *FindName (const char *full) const;
   bool NameClash (const jhcNetNode *n, const char *name, int neg =0) const;
 
@@ -106,7 +104,7 @@ public:
     {return jhcNodePool::InList(n);}
 
   // halo functions
-  void ClearHalo () {halo.PurgeAll();}
+  void ClearHalo ();
   void AssertHalo (const jhcGraphlet& pat, jhcBindings& b) 
     {halo.Assert(pat, b, 0.0, 0, NULL);} 
   jhcNetNode *CloneHalo (const jhcNetNode& n)

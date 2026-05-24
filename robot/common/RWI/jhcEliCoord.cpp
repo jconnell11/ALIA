@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,8 +34,6 @@
 
 jhcEliCoord::~jhcEliCoord ()
 {
-  // for debugging - only happens when program closes
-  DumpAll();
 }
 
 
@@ -174,10 +172,11 @@ int jhcEliCoord::BindVideo (jhcVideoSrc *v, int vnum)
 
 //= Reset state for the beginning of a sequence.
 // bmode: 0 for no body, 1 or more for init body (2 used for autorun in CBanzaiDoc)
+// cvt: 0 no log file, 1 save input text to network conversions
 // if wds > 0 then assumes vocabulary is complete and build word list
 // returns 2 if robot ready, 1 if ready but no robot, 0 or negative for error
 
-int jhcEliCoord::Reset (int bmode)
+int jhcEliCoord::Reset (int bmode, int cvt)
 {
   int rc = 0;
 
@@ -208,7 +207,7 @@ int jhcEliCoord::Reset (int bmode)
   alert = 0;
 
   // initialize speech and reasoning and add user faces
-  if (jhcAliaSAPI::Reset(body.rname, body.vname, 1) <= 0)
+  if (jhcAliaSAPI::Reset(body.rname, body.vname, cvt) <= 0)
     return 0;
   ((rwi.fn).fr).LoadDB(wrt("config/VIPs.txt"), 0);
 
@@ -296,7 +295,18 @@ int jhcEliCoord::Done (int face)
   if (!rwi.Ghost())
     batt = body.Percent();
 
+  // cleanup old files in some directories (2 weeks)
+  jprintf("Purging old KB, log, and timing files ... ");
+  fflush(stdout);
+  jprintf_purge(wrt("KB"));
+  jprintf_purge(wrt("log"));
+  jprintf_purge(wrt("timing"));
+  jprintf("\n");
+  fflush(stdout);
+
   // save info from run
+  if (acc < 2)                         // for debugging (same as KB)
+    DumpAll();                         
   DumpSession();                       // brand new rules and ops
   jhcAliaSAPI::Done(1, batt);          // incl. accumulated knowledge
   if (face > 0)

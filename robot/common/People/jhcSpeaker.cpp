@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2022-2025 Etaoin Systems
+// Copyright 2022-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -217,7 +217,7 @@ int jhcSpeaker::Analyze (int voice)
 
   // see if new speaker should be sought
   det = 0;
-  if (voice <= 0)
+  if (voice < 1)
   {
     vcnt = 0;
     spk = -1;                // forget previous speaker!
@@ -263,7 +263,7 @@ int jhcSpeaker::pick_dude (const jhcGenMic& m, double& best) const
     {
       // find closest beam point in world coords and see if valid
       hd = (const jhcMatrix *) s3->GetPerson(i, 1);
-      if ((d = m.ClosestPt(NULL, *hd, 0, 1)) < 0.0)
+      if ((d = m.ClosestPt(NULL, *hd, 1, 1)) < 0.0)
         continue;
 
       // compare to best so far and save index

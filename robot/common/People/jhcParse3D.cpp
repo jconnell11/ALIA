@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ jhcParse3D::jhcParse3D ()
   // processing parameters
   Defaults();
   SetScale();
-  SetView();
+  ScanEmbed();
 }
 
 
@@ -123,8 +123,9 @@ void jhcParse3D::SetScale (double lo, double hi, double sc)
 //= Set up to re-space Kinect data by rotating map and shifting origin.
 // rotated by ang around point (w/2 0) then this point is set to (xref yref) 
 // ang is usually head pan - 90 (default beam plotted along y axis, not x)
+// Note: was originally called "SetView"
 
-void jhcParse3D::SetView (double ang, double xref, double yref)
+void jhcParse3D::ScanEmbed (double ang, double xref, double yref)
 {
   rot = ang;
   x0 = xref;
@@ -316,21 +317,22 @@ int jhcParse3D::SaveVals (const char *fname) const
 // generates world coordinates such that middle of bottom = (xmid, ybot)
 // takes about 3.6ms on (624 576) x 0.5", 1.8ms on (446 411) x 0.7"
 // returns number of people detected
+// NOTE: "m2w" takes in map pixels, not 32768-centered 0.02" increments
 
 int jhcParse3D::FindPeople (const jhcImg& map)
 {
-  // check arguments then 
+  // check arguments 
   if (!map.SameFormat(mw, mh, 1) || (z1 <= z0) || (ipp <= 0.0))
     return Fatal("Bad input to jhcParse3D::FindPeople");
 
   // build coordinate transform matrix (just in XY plane)
+  // translates from pixel coords in "map" to full realworld position (inches)
   m2w.Translation(-0.5 * mw, 0.0, 0.0);
   m2w.RotateZ(rot);                       // rotation around map center
-  m2w.Translate(0.5 * mw, 0.0, 0.0);
   m2w.Magnify(ipp, ipp, 1.0);
-  m2w.Translate(-x0, -y0, 0.0);           // global reference frame
+  m2w.Translate(x0, y0, 0.0);             // into global reference frame
 
-  // get inverse transform for graphics
+  // get inverse transform for graphics (physical inches -> map pixels)
   w2m.Invert(m2w);
 
   // remove very tall objects (walls) then parse overhead human forms
@@ -407,7 +409,7 @@ int jhcParse3D::find_heads (const jhcImg& ohd)
   CComps4(cc, chest, ROUND(amin / (ipp * ipp)), sth);
 
   // throw out anything way too big to be a person
-  // potential head blobs have status 1, all others are 0
+  // potential person blobs have status 1, all others are 0
   box.FindBBox(cc);
   box.PixelThresh(-ROUND(amax / (ipp * ipp)));
   if (dbg > 0)
@@ -484,7 +486,7 @@ int jhcParse3D::chk_head (int n, double h, const jhcImg& view,
   if ((h2 = find_max(view, cc0, j, area2)) < h0)
     return -1;
 
-  // convert image coordinates to world coordinates and store
+  // convert image coordinates to WORLD COORDINATES and store
   blob.BlobCentroid(&xc, &yc, j);
   pos.SetVec3(xc, yc, h2 - edn);
   raw[n].MatVec(m2w, pos);
@@ -1204,6 +1206,14 @@ int jhcParse3D::ChestMap (jhcImg& dest) const
 }
 
 
+//= Shows overhead map above chest height with box averaging applied.
+
+const jhcImg *jhcParse3D::ChestShrink () const
+{
+  return &chest;
+}
+
+
 //= Shows components at first level of person/head finding.
 
 int jhcParse3D::ChestBlobs (jhcImg& dest) const
@@ -1532,3 +1542,33 @@ int jhcParse3D::ShowRaysX (jhcImg& dest, const jhcBodyData *items, int n, int in
       }
   return 1;
 }
+
+
+///////////////////////////////////////////////////////////////////////////
+//                       Frontal View Utilities                          //
+///////////////////////////////////////////////////////////////////////////
+
+//= Re-space world point so that it is relative to sensor position.
+// normalized result has sensor at origin and looking along y axis
+
+void jhcParse3D::BeamCoords (jhcMatrix& scan, const jhcMatrix& w) const
+{
+  double wx = w.X() - x0, wy = w.Y() - y0, wz = w.Z();
+  double rads = D2R * -rot, c = cos(rads), s = sin(rads);
+
+  scan.SetVec3(wx * c - wy * s, wx * s + wy * c, wz);
+}
+
+
+//= Re-space scan-relative point into full world coordinates.
+// input point assumes sensor at origin and looking along y axis
+
+void jhcParse3D::InvBeamCoords (jhcMatrix& w, const jhcMatrix& scan) const
+{
+  double sx = scan.X(), sy = scan.Y(), sz = scan.Z();
+  double rads = D2R * rot, c = cos(rads), s = sin(rads);
+
+  w.SetVec3(sx * c - sy * s + x0, sx * s + sy * c + y0, sz);
+}
+
+

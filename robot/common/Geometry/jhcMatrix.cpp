@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1620,6 +1620,7 @@ void jhcMatrix::CrossVec3 (const jhcMatrix& a, const jhcMatrix& b, double homo)
 
 
 //= Rotate self around Z axis by a certain number of degrees.
+// condensed form of RotateZ for 3D vectors
 
 void jhcMatrix::RotPan3 (double pan)
 {
@@ -1637,7 +1638,28 @@ void jhcMatrix::RotPan3 (double pan)
 }
 
 
+//= Rotate self around X axis by a certain number of degrees.
+// condensed form of RotateX for 3D vectors
+// Note: for robot camera apply RotPan3 first then RotTilt3
+
+void jhcMatrix::RotTilt3 (double tilt)
+{
+  double y, z, rads = D2R * tilt, c = cos(rads), s = sin(rads);
+
+#ifdef _DEBUG
+  if (!Vector(4))
+    Fatal("Bad input to jhcMatrix::RotTilt3");
+#endif
+
+  y = c * VRef0(1) - s * VRef0(2);
+  z = s * VRef0(1) + c * VRef0(2);
+  VSet0(1, y);
+  VSet0(2, z);
+}
+
+/*
 //= Rotate self away from Z axis by a certain number of degrees.
+// Note: somewhat funky in that it always aligns self with vector
 
 void jhcMatrix::RotTilt3 (double tilt)
 {
@@ -1663,7 +1685,7 @@ void jhcMatrix::RotTilt3 (double tilt)
     SetVec3(f * VRef0(0), f * VRef0(1), z, VRef0(3));
   }
 }
-
+*/
 
 //= Shows the 3 (or 4) values in the vector using given numeric format.
 // can optionally insert text before this (extra space added)
@@ -2016,7 +2038,7 @@ void jhcMatrix::RotationX (double degs)
 
 void jhcMatrix::RotateX (double degs)
 {
-  jhcMatrix rot(*this);
+  jhcMatrix rot(h, h);
 
   rot.RotationX(degs);
   MatMat(rot, *this);
@@ -2048,7 +2070,7 @@ void jhcMatrix::RotationY (double degs)
 
 void jhcMatrix::RotateY (double degs)
 {
-  jhcMatrix rot(*this);
+  jhcMatrix rot(h, h);
 
   rot.RotationY(degs);
   MatMat(rot, *this);
@@ -2080,7 +2102,7 @@ void jhcMatrix::RotationZ (double degs)
 
 void jhcMatrix::RotateZ (double degs)
 {
-  jhcMatrix rot(*this);
+  jhcMatrix rot(h, h);
 
   rot.RotationZ(degs);
   MatMat(rot, *this);

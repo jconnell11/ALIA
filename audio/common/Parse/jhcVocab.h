@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022-2025 Etaoin Systems
+// Copyright 2022-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ private:
   // temporary outputs
   char clean[200], mark[200];
   char cat[20], unk[nchar], oov[nchar], dup[nchar];
-  int worst;
+  int worst, any;
 
   // category inference
   char sep[6][10], item[6][nchar];
@@ -78,6 +78,7 @@ public:
   const char *Category () const {return cat;}
   const char *Confused () const {return oov;}
   const char *Marked () const   {return mark;}
+  bool NoKnown () const         {return(any <= 0);}
 
   // utilities
   int ListAll () const;

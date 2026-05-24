@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,10 +65,11 @@ jhcActionTree::jhcActionTree ()
   // goal count requisition number
   req = 0;
 
-  // surprise parameters
-  drill = 1.3;         // threshold for explict surprise NOTE
-  dwell = 5.0;         // obsession with contradiction (sec)
-  calm  = 1.0;         // standard surprise decay (sec)
+  // parameters for surprise NOTE generation 
+  distract = 1.0;
+  cruise = 4.0;
+  wow = 1.3;        
+  meh = 0.5;
 
   // thresholds and adjustment parameters
   LoadCfg();
@@ -238,7 +239,7 @@ double jhcActionTree::AdjOpPref (jhcAliaOp *op, int up, int show) const
     if (show > 0)
     {
       jprintf("\n.................................\n");
-      op->Print(0);
+      op->Print();
       jprintf(".................................\n\n");
     }
   }
@@ -303,13 +304,14 @@ bool jhcActionTree::NeverRun (int n) const
 
 
 //= Gives a priority for actions connected to this focus.
-// mostly based on weight with a slight boost for recency
+// originally based on weight with a slight boost for recency
 
 int jhcActionTree::BaseBid (int n) const 
 {
   if ((n < 0) || (n >= fill))
     return 0;
-  return(ROUND(1000.0 * wt[n]) + boost[n]);
+  return boost[n];                               // wt[] not used
+//  return(ROUND(1000.0 * wt[n]) + boost[n]);
 }
 
 
@@ -341,7 +343,7 @@ int jhcActionTree::ServiceWt (double pref)
 {
   if ((svc < 0) || (svc >= fill))
     return 0;
-  wt[svc] = pref;
+  wt[svc] = pref;                      // no longer used
   return BaseBid(svc);
 }
 
@@ -402,7 +404,7 @@ void jhcActionTree::ClrFoci ()
 int jhcActionTree::AddFocus (jhcAliaChain *f, double pref)
 {
   jhcAliaDir *d;
-  int i;
+  int i, bid = 95;                               
 
   // sanity check
   if (fill >= imax)
@@ -412,33 +414,43 @@ int jhcActionTree::AddFocus (jhcAliaChain *f, double pref)
       return -1;
     }
 
-  // possibly announce action
-  if (noisy >= 1)
-  {    
-    jprintf("___________________________________\n");
-    jprintf(">>> New active focus %-3d           \\\n\n", Active() + 1);
-    f->Print(2);
-    jprintf("___________________________________/\n\n");
-  }
-
-  // add to list and mark unfinished and unselected
-  focus[fill] = f;
-  done[fill] = 0;            
-  mark[fill] = 0;
-
-  // set up to copy method preference to weight for NOTEs
+  // simple recency-based subsumption bid
+  wt[fill] = pref;                               // no longer used
+//  boost[fill] = 100 + ver;                       // monotonically increasing
+  for (i = fill - 1; i >= 0; i--)
+    if (done[i] <= 0)
+      bid = __max(bid, boost[i]);
+  bid += 5;                                      // for jhcVisGrok::MapPath
+  boost[fill] = bid;
+/*
+  // boost importance to prevent ties between OPs with same preference
   wt[fill] = pref;
-  if ((d = f->GetDir()) != NULL)
-    if (d->kind == JDIR_NOTE)
-      d->root = 1;
-
-  // importance boost computed from older items
   boost[fill] = 0;
   for (i = fill - 1; i >= 0; i--)
     if (done[i] <= 0)
       break;
   if (i >= 0)
     boost[fill] = boost[i] + 1;
+*/
+
+  // possibly announce action
+  if (noisy >= 1)
+  {    
+    jprintf("___________________________________\n");
+    jprintf(">>> New active focus (bid %3d)     \\\n\n", bid);
+    f->Print(2);
+    jprintf("___________________________________/\n\n");
+  }
+
+  // set up to copy method preference to weight for NOTEs
+  if ((d = f->GetDir()) != NULL)
+    if (d->kind == JDIR_NOTE)
+      d->root = 1;
+
+  // add to list and mark unfinished and unselected
+  focus[fill] = f;
+  done[fill] = 0;            
+  mark[fill] = 0;
 
   // timing (zero active marks beginning)
   active[fill] = 0;      
@@ -503,7 +515,7 @@ int jhcActionTree::Update (int gc)
   // clean up old nodes in main memory
   if (gc > 0)
   {
-//    prune_foci();
+    prune_foci();
     for (i = 0; i < fill; i++)
     {
       focus[i]->MarkSeeds();           // make sure to keep these
@@ -599,7 +611,7 @@ void jhcActionTree::rem_compact (int n)
 
 double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
 {
-//  jhcAliaDesc *evt;
+  jhcAliaDesc *evt;
   const jhcNetNode *mate;
   jhcNetNode *focus;
   jhcAliaRule *r;
@@ -654,15 +666,11 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
         else  
           chg = dec_conf(r, halo);               // tests halo against skep
         mood.RuleAdj(chg);
-        if ((chg != 0.0) && (noisy >= 1))
-          jprintf("  ADJUST: rule %d --> %s conf to %4.2f\n", r->RuleNum(), 
-                  ((chg > 0.0) ? "raise" : "lower"), r->Conf());
       }
     }
 
     // possibly generate a NOTE about this fact if highly unexpected
-/*
-    if (lo > drill)
+    if (lo >= notice())
     {
       StartNote();
       evt = NewAct("surprise");                  // done = 0 -> "surprising"
@@ -670,8 +678,6 @@ double jhcActionTree::CompareHalo (const jhcGraphlet& key, jhcAliaMood& mood)
       AddArg(evt, "obj", Self());
       FinishNote();
     }
-    hi = __max(lo, hi);                          // combine across whole key
-*/
   }
 
   // feedback to main belief threshold if it could have been used
@@ -702,6 +708,16 @@ const jhcNetNode *jhcActionTree::halo_equiv (const jhcNetNode *n, const jhcNetNo
           return h;
       }
   return NULL;
+}
+
+
+//= For number of goals below "cruise" level, map surprise threshold between "wow" and "meh".
+
+double jhcActionTree::notice () const
+{
+  double th = distract * (wow - meh) + meh;
+ 
+  return __min(th, wow);
 }
 
 
@@ -794,6 +810,7 @@ jhcNetNode *jhcActionTree::pick_non_wmem (int& step, const jhcBindings& b, const
   }
   return NULL;
 }
+
 
 //= Make suitably connected main memory node for each halo or LTM node in bindings.
 // saves mapping of correspondences between input nodes and replacements in "h2m"
@@ -1139,8 +1156,8 @@ int jhcActionTree::FinishNote (jhcAliaDesc *fail)
   // make sure something was started then rearrange if needed (could add)
   if (nkey.Empty())
     return ans;
-//  if (fail != NULL)
-//    nkey.SetMain(dynamic_cast<jhcNetNode *>(fail));
+  if (fail != NULL)
+    nkey.SetMain(dynamic_cast<jhcNetNode *>(fail));        // disabled in 2023?
   nkey.MainProp();           
   
   // possibly set failure message for top level focus
@@ -1159,9 +1176,19 @@ int jhcActionTree::FinishNote (jhcAliaDesc *fail)
   ans = AddFocus(ch0);
 
   // general cleanup
+  FlushNote();
+  return ans;
+}
+
+
+//= Clean up after a NOTE generate or attempted.
+// always returns 1 for convenience
+
+int jhcActionTree::FlushNote ()
+{  
   BuildIn(NULL);
   nkey.Clear();
-  return ans;
+  return 1;
 }
 
 
@@ -1252,7 +1279,9 @@ int jhcActionTree::SaveFoci (FILE *out)
       strcpy_s(age, "new");
     else
       sprintf_s(age, "age = %5.3f", jms_secs(now, active[win]));
-    jfprintf(out, "// FOCUS %d: imp = %d, %s\n", n + 1, wt[win], age);
+    jfprintf(out, "// FOCUS %d: bid = %d, %s\n", n + 1, boost[win], age);
+//    jfprintf(out, "// FOCUS %d: imp = %d, %s\n", n + 1, wt[win], age);
+
 
     // dump contents of focus
     s = FocusN(win);

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -96,8 +96,8 @@ public:
 
   // file functions
   int Load (jhcTxtLine& in);
-  int Save (FILE *out) const;
-  int Print () const {return Save(stdout);}
+  int Save (FILE *out, int src =0) const;
+  int Print (int src =0) const {return Save(stdout, src);}
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -118,7 +118,7 @@ private:
   void connect_args (jhcGraphlet& desc, const jhcBindings& m2c) const;
 
   // rule tests
-  bool same_struct (const jhcNetNode *focus, const jhcNetNode *mate) const;
+//  bool same_struct (const jhcNetNode *focus, const jhcNetNode *mate) const;
   void spread_res (jhcNetNode *src, int chk);
 
   // file functions

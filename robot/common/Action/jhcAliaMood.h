@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ private:
 // PRIVATE MEMBER PARAMETERS
 private:
   // reasoning and battery parameters 
-  double btime, engaged, frantic, wtime, surp, vsurp, low, vlow;
+  double btime, idle, engaged, frantic, wtime, surp, vsurp;
 
   // motion drive parameters
   double fhand, fbase, faddr, noise, mtime, mok, bore, vbore;
@@ -93,7 +93,7 @@ private:
   double fconf, fref, rsamp, rtime, sdes, shys, scare, vscare;
 
   // threshold adjustment parameters
-  double whi, wlo, bhi, blo;
+  double whi, wlo, bhi, blo, low, vlow;
 
   // activity weghting factors
   double mhi, mlo, shi, slo, ohi, olo, rhi, rlo;
@@ -124,8 +124,9 @@ public:
   // -------------------- read only access ---------------------
 
   // thought intensity
-  double Busy () const  {return busy;}
-  int MeltDown () const {return melt;}
+  double Busy () const    {return busy;}
+  double Focused () const {return(busy / idle);}
+  int MeltDown () const   {return melt;}
 
   // internal emotional levels
   double Motion () const   {return motion;}

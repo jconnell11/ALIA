@@ -48,7 +48,7 @@
 // indefinite noun phrase
 
 =[%obj-i]
-  <ind> (<desc>) <AKO> (<comp>)
+  <ind> (<desc>) <n> (<comp>)
   <ind> (<desc>) thing (<comp>)
 
 
@@ -79,7 +79,6 @@
 // noun
 
 =[n]
-  thing
   <AKO>
   <AKO-S>
 

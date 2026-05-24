@@ -130,7 +130,7 @@ void jhcSwapLift::Issue ()
 
 int jhcSwapLift::LiftTarget (double high, double rate, int bid)
 {
-  if (bid <= llock)
+  if (bid < llock)
     return 0;
   llock = bid;
   lstop = high;

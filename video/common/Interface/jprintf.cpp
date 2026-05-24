@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2019 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -140,6 +140,24 @@ int jprintf_end (const char *msg, ...)
   printf("Press any key to continue . . .\n");
   _getch();
   return 1;
+}
+
+
+//= Permanently delete older files in some directory (can be slow).
+// Note: "dir" should NOT have trailing slash (e.g. use "//foo/bar")
+
+int jprintf_purge (const char *dir, int days)
+{
+  char cmd[120];
+
+  if ((dir == NULL) || (*dir == '\0') || (days <= 0))
+    return -2;
+#ifndef __linux__
+  sprintf_s(cmd, "forfiles /p %s /d -%d /c \"cmd /c del /q @file\" 2> nul", dir, days);
+#else
+  sprintf_s(cmd, "find %s/* -mtime +%d -exec rm -f {} \\;", dir, days);
+#endif  
+  return system(cmd);
 }
 
 

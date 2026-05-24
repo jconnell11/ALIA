@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,11 +103,11 @@ int jhcAliaSpeech::Reset (const char *rname, int prt, int cvt)
     
   // initialize underlying reasoning system and dump all name phrases 
   jhcAliaCore::Reset(rname, prt, cvt);
-  jprintf(" %3d name phrases for speech recognition\n", gr.SaveNames(wrt("config/all_names.txt")));   
+  jprintf("  %3d speech name phrases in: %s\n", gr.SaveNames(wrt("config/all_names.txt")), wrt("config/all_names.txt"));   
 
-  // initialize speech patches and announce start
-  jprintf(1, noisy, " %3d recognition fixes from: misheard.map\n", fix.LoadFix(Dir(), 1));
-  jprintf(1, noisy, " %3d re-spellings from: pronounce.map\n", fix.LoadPron(Dir(), 1));
+  // initialize speech patches
+  jprintf(1, noisy, "  %3d recognition fixes from: %sconfig/misheard.map\n", fix.LoadFix(Dir(), 1), Dir());
+  jprintf(1, noisy, "  %3d TTS re-spellings  from: %sconfig/pronounce.map\n", fix.LoadPron(Dir(), 1), Dir());
   jprintf(1, noisy, "\n========================= START ==========================\n\n");
   return 1;
 }
@@ -191,6 +191,7 @@ int jhcAliaSpeech::UpdateAttn (int hear, int talk, int eye, double delay)
 
   // report result
   stat.Speech(hear, talk, gate);                 // for graphs
+  hear0 = hear;                                  // cache for SpeechRC()
   return gate;
 }
 
@@ -220,13 +221,14 @@ jtimer(16, "Consider");
   tcyc = jms_now();
 
   // ingest user input, parse, and see if name was mentioned
-  if (src == 1) 
+  // src: 2 for typing, 1 for speech, 0 for nothing 
+ if (src == 1) 
     if (fix.FixUp(input, raw) > 0)
       jprintf(1, noisy, " { Corrected misheard: \"%s\" }\n", raw);
   *echo = '\0';
-  perk = 0;
-  if (*input != '\0')
-    perk = Interpret(input, gate, ((src == 1) ? amode : -1));
+jtimer(14, "Interpret");
+  perk = Interpret(input, gate, ((src == 1) ? amode : -1));
+jtimer_x(14);
 
   // ALIA main - generate body commands and linguistic output
 jtimer(22, "RunAll(1)");

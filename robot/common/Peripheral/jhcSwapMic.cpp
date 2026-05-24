@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2025 Etaoin Systems
+// Copyright 2025-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@
 
 jhcSwapMic::~jhcSwapMic ()
 {
-
 }
 
 
@@ -84,17 +83,18 @@ void jhcSwapMic::Smooth (int dir)
 {
   double diff, mix = 0.7;              // not much averaging
   int gap = -audio, drop = 10;         // about 330ms
+  int dev = ((dir > 180) ? dir - 360 : dir);
 
   // see if any sound heard (1-360 is valid)
-  if (dir <= 0)
+  if ((dir <= 0) || (abs(dev) > sang))
   {
-    audio = __min(audio, 0) - 1;       // "slow" unchange
+    audio = __min(audio, 0) - 1;       // "slow" unchanged
     return;
   }
  
   // start new average if beginning of sound pod
   audio = __max(0, audio) + 1;
-  beam = ((dir > 180) ? dir - 360 : dir);
+  beam = dev;
   if (gap >= drop)
   {
     slow = beam;
@@ -116,3 +116,14 @@ void jhcSwapMic::Smooth (int dir)
     slow += 360.0;
 }
 
+
+//= Use either real sound direction from hardware or current head pan angle.
+// gates pan based on speech recognition when "deaf" parameter is set
+
+void jhcSwapMic::Sensor (int dir, double hpan, int sprc)
+{
+  if (deaf <= 0)
+    Smooth(dir);
+  else 
+    Smooth((sprc <= 0) ? 0 : ROUND(hpan));
+}

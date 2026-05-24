@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,10 +98,10 @@ int jhcSwapBase::Zero ()
   dr = 0.0;
 
   // clear speed estimates
-  ips = 0.0;
+//  ips = 0.0;
   dps = 0.0;
   tupd = 0;
-  parked = 0;
+  parked = 0.0;
   return 1;
 }
 
@@ -131,12 +131,12 @@ void jhcSwapBase::def_cmd ()
 // spin 0 points along map x axis, spin 90 points along map y axis
 // mx, my is robot center in map
 
-void jhcSwapBase::Status (float path, float spin, float mx, float my)
+void jhcSwapBase::Status (float path, float spin, float mx, float my, float up, float ccw)
 {
-  trav0 = path;
-  wind0 = spin;
-  xmap0 = mx;
-  ymap0 = my;
+  trav0  = path;
+  wind0  = spin;
+  xmap0  = mx;
+  ymap0  = my;
 }
 
 
@@ -172,40 +172,41 @@ void jhcSwapBase::Command (float& dist, float& ang, float& skew, float& mvel, fl
 
 void jhcSwapBase::Update ()
 {
-  double mmix = 1.0, rmix = 1.0, scoot = 1.0, swivel = 15.0;    // mix was 0.3, swivel was 2
-  double dx = xmap0 - xmap, dy = ymap0 - ymap, dm = sqrt(dx * dx + dy * dy);
-  double dt, rads = D2R * wind, s0 = sin(rads), c0 = cos(rads);
+  double rmix = 1.0, swivel = 10.0;              // mix was 0.3, swivel was 2
+  double dt = 0.0, dx = xmap0 - xmap, dy = ymap0 - ymap;
+  double rads = D2R * wind, s0 = sin(rads), c0 = cos(rads);
   UL32 last = tupd;
 
-  // incremental movement since last update
-  along = dx * c0 + dy * s0;
-  ortho = dx * s0 - dy * c0;
+  // incremental rotation since last update
   dr = wind0 - wind;
   if (dr > 180.0)
     dr -= 360.0;
   else if (dr <= -180.0)
     dr += 360.0;
 
+  // incremental displacement (ortho is to right)
+  along = dx * c0 + dy * s0;
+  ortho = dx * s0 - dy * c0;
+
   // new total travel, total turn, and map position
-  trav = trav0;
-  wind = wind0;
-  xmap = xmap0;
-  ymap = ymap0;
+  trav  = trav0;
+  wind  = wind0;
+  xmap  = xmap0;
+  ymap  = ymap0;
 
   // mix new speed estimates into longer term averages
   tupd = jms_now();
   if (last != 0)
   {
     dt = jms_secs(tupd, last);
-    ips += mmix * ((dm / dt) - ips); 
-    dps += rmix * ((dr / dt) - dps); 
+    dps += rmix * ((fabs(dr) / dt) - dps); 
   }
 
-  // keep track of how many cycles robot has not moved
-  if ((fabs(ips) >= scoot) || (fabs(dps) >= swivel))
-    parked = __min(0, parked - 1);
+  // keep track of how many secs robot has not turned
+  if (fabs(dps) <= swivel)
+    parked = __max(0.0, parked) + dt;
   else
-    parked = __max(1, parked + 1);
+    parked = __min(0.0, parked) - dt;
 
   // set up for next cycle of command arbitration
   def_cmd();
@@ -275,7 +276,7 @@ double jhcSwapBase::AdjustAng (double& ang) const
 
 int jhcSwapBase::MoveAbsolute (double tr, double rate, int bid, double skew) 
 {
-  if (bid <= mlock)
+  if (bid < mlock)
     return 0;
   mlock = bid;
   mstop = tr;
@@ -293,7 +294,7 @@ int jhcSwapBase::MoveAbsolute (double tr, double rate, int bid, double skew)
 
 int jhcSwapBase::TurnAbsolute (double hd, double rate, int bid)
 {
-  if (bid <= tlock)
+  if (bid < tlock)
     return 0;
   tlock = bid;
   tstop = hd;
@@ -303,15 +304,26 @@ int jhcSwapBase::TurnAbsolute (double hd, double rate, int bid)
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                       Eliminate Residual Error                        //
+//                             Smooth Sliding                            //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Rotate to traverse some angle in a specific amount of time.
-// keeps the commanded rotation rate less than rmax
+//= Move toward incremental tracel but linearly slow down when close.
+// helps compensate for sensor lag during tracking
 
-int jhcSwapBase::TurnFix (double ang, double secs, double rmax, int bid)
+int jhcSwapBase::MoveSoft (double dist, double rate, int bid, double soft)
 {
-  double r = ang / (tsp * secs);
+  double err = MoveErr(trav + dist), f = __min(err / soft, 1.0);
 
-  return TurnAbsolute(wind + ang, __min(r, rmax), bid);
+  return MoveAbsolute(trav + dist, f * rate, bid);
+}
+
+
+//= Rotate toward incremental angle but linearly slow down when close.
+// helps compensate for sensor lag during tracking
+
+int jhcSwapBase::TurnSoft (double ang, double rate, int bid, double soft)
+{
+  double err = TurnErr(wind + ang), f = __min(err / soft, 1.0);
+
+  return TurnAbsolute(wind + ang, f * rate, bid);
 }

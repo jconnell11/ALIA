@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -130,6 +130,7 @@ int jhcTalkFcn::local_start (const jhcAliaDesc& desc, int i)
 {
   JCMD_SET(talk_echo);
   JCMD_SET(talk_wait);
+  JCMD_SET(talk_name);
   return -2;
 }
 
@@ -142,6 +143,7 @@ int jhcTalkFcn::local_status (const jhcAliaDesc& desc, int i)
 {
   JCMD_CHK(talk_echo);
   JCMD_CHK(talk_wait);
+  JCMD_CHK(talk_name);
   return -2;
 }
 
@@ -167,21 +169,32 @@ int jhcTalkFcn::talk_echo0 (const jhcAliaDesc& desc, int i)
 //= Assert already assembled statement as a good thing to say.
 // saves utterance in member variable in case daydreaming
 // returns 1 if done, 0 if still working, -1 for failure
-// NOTE: waits for text to be queued as highest, not for utterance to complete
-
+// NOTE: waits for utterance to complete (not just be queued)
+ 
 int jhcTalkFcn::talk_echo (const jhcAliaDesc& desc, int i)
 {
   double patience = 2.0;     
 
-  if (cbid[i] < imp)
+  // wait until this is the most important thing to say
+  if (cst[i] <= 0)
   {
-    if (jms_elapsed(ct0[i]) > patience)  
-      return -1;
-    return 0;                // still waiting
+    if (cbid[i] < imp)
+    {
+      if (jms_elapsed(ct0[i]) > patience)  
+        return -1;
+      return 0;              // still waiting
+    }
+    strcpy_s(winner, full[i]);        
+    imp = cbid[i];
+//    return 1;                // to just queue
+    cst[i] = 1;
   }
-  strcpy_s(winner, full[i]);        
-  imp = cbid[i];
-  return 1;
+
+  // wait for TTS to finish (reading or speaking)
+  if (cst[i] == 1)
+    if (imp != 0)            // imp = 0 for at least 1 cycle
+      return 0;
+  return 1;   
 }
 
 
@@ -499,4 +512,46 @@ void jhcTalkFcn::convert_all (const char *pat, const char *rep, char *txt, int w
         hit[i] = rep[i];
       hit += r;
     }
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                    Conversation Participants                          //
+///////////////////////////////////////////////////////////////////////////
+
+//= Checks ability to add names to grammar and adjust user identity.
+// returns 1 if okay, -1 for interpretation error
+
+int jhcTalkFcn::talk_name0 (const jhcAliaDesc& desc, int i)
+{
+  if (core == NULL)
+    return -1;
+  return 1;  
+}
+
+
+//= Adds names to grammar categories and adjusts user node identity.
+
+int jhcTalkFcn::talk_name (const jhcAliaDesc& desc, int i)
+{
+  jhcActionTree *atree = &(core->atree);
+  jhcGramExec *gr = &(core->gr);
+  const jhcAliaDesc *bind = desc.Val("arg"), *agt = bind->Val("name");
+  const char *name = bind->Lex();
+  int neg = bind->Neg();
+
+  // possibly change user node 
+  if (strcmp(agt->Lex(), "me") != 0)
+  {
+    if (atree->NameClash(atree->Human(), name, neg))
+      atree->SetUser((neg <= 0) ? atree->FindName(name) : NULL);
+    return 1;
+  }
+
+  // possibly add or remove as attention word
+  if (neg <= 0)
+    gr->ExtendRule("ATTN", name, 3);
+  else
+    gr->RemAttn(name);
+  return 1;
 }

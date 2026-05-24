@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,15 @@
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Node mismatch reasons (must agree with "consistent" return codes).
+
+const char * const jhcSituation::why[10] = {"different prop",  "different arg", 
+                                            "not both \"me\"", "not both \"you\"", 
+                                            "different lex",   "different done", 
+                                            "different arity", "belief too low", 
+                                            "different neg",   "already matched"};
+
 
 //= Default destructor does necessary cleanup.
 
@@ -156,7 +165,7 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
     return -1;
   role = anchor->Role(pnum);
   val = b->LookUp(anchor);
-  jprintf(2, dbg, "%*s  try_props: %s (from %s)\n", 2 * n, "", focus->Nick(), anchor->Nick());
+  jprintf(2, dbg, "%*s  try_props: %s \"%s\" (from %s)\n", 2 * n, "", focus->Nick(), focus->LexStr(), anchor->Nick());
 
   // consider properties of anchor's binding as candidates (most recent first)
   hmax = f.NumBands();
@@ -169,7 +178,7 @@ int jhcSituation::try_props (jhcBindings *m, int& mc, const jhcGraphlet& pat,
         mate = val->PropSurf(i);
         if (!f.InBand(mate, h))
         {
-          jprintf(4, dbg, "%*s   mate = %s --> not band %d\n", 2 * n, "", mate->Nick(), h);
+          jprintf(4, dbg, "%*s   mate = %s \"%s\" --> not band %d\n", 2 * n, "", mate->Nick(), mate->LexStr(), h);
           continue;
         }
         n = try_binding(focus, mate, m, mc, pat, f, f2);
@@ -214,7 +223,7 @@ int jhcSituation::try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat,
     return -1;
   slot = anchor->Slot(anum);
   fact = b->LookUp(anchor);
-  jprintf(2, dbg, "%*s  try_args: %s (from %s)\n", 2 * n, "", focus->Nick(), anchor->Nick());
+  jprintf(2, dbg, "%*s  try_args: %s \"%s\" (from %s)\n", 2 * n, "", focus->Nick(), focus->LexStr(), anchor->Nick());
 
   // consider arguments of anchor's binding as candidates (NumArgs might change during loop)
   hmax = f.NumBands();
@@ -226,7 +235,7 @@ int jhcSituation::try_args (jhcBindings *m, int& mc, const jhcGraphlet& pat,
         mate = fact->ArgSurf(i);
         if (!f.InBand(mate, h))
         {
-          jprintf(4, dbg, "%*s   mate = %s --> not band %d\n", 2 * n, "", mate->Nick(), h);
+          jprintf(4, dbg, "%*s   mate = %s \"%s\" --> not band %d\n", 2 * n, "", mate->Nick(), mate->LexStr(), h);
           continue;
         }
         n = try_binding(focus, mate, m, mc, pat, f, f2);
@@ -265,7 +274,7 @@ int jhcSituation::try_bare (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   // make sure some node to be bound
   if (focus == NULL)
     return -1;
-  jprintf(2, dbg, "%*s  try_bare: %s initial focus\n", b->NumPairs() * 2, "", focus->Nick());
+  jprintf(2, dbg, "%*s  try_bare: %s \"%s\" initial focus\n", b->NumPairs() * 2, "", focus->Nick(), focus->LexStr());
 
   // consider nodes with matching labels as candidates (NextNode list might change during loop)
   while ((mate = f.NextNode(mate)) != NULL)    
@@ -310,7 +319,7 @@ int jhcSituation::try_hash (jhcBindings *m, int& mc, const jhcGraphlet& pat,
   // make sure some node to be bound and some possibiliites exist
   if ((focus == NULL) || (occ <= 0))
     return -1;
-  jprintf(2, dbg, "%*s  try_hash: %s initial focus (%d)\n", b->NumPairs() * 2, "", focus->Nick(), best);
+  jprintf(2, dbg, "%*s  try_hash: %s \"%s\" initial focus (%d)\n", b->NumPairs() * 2, "", focus->Nick(), focus->LexStr(), best);
 
   // only consider nodes with matching hashes as candidate matches
   bin = ((b->LexSub(focus) == NULL) ? -1 : focus->Code());
@@ -337,24 +346,24 @@ int jhcSituation::try_binding (const jhcNetNode *focus, jhcNetNode *mate, jhcBin
 
   // sanity check
   if ((refmode <= 0) && !mate->Visible())
-    return jprintf(3, dbg, "%*s   mate = %s not visible\n", lvl, "", mate->Nick());
+    return jprintf(3, dbg, "%*s   mate = %s \"%s\" not visible\n", lvl, "", mate->Nick(), mate->LexStr());
   
   // make sure superficial pairing is okay
   if (f2 != NULL)
   {
     // matching operator condition against directive
     if (!f.InList(mate))
-      return jprintf(3, dbg, "%*s   mate = %s (%4.2f) not in list\n", lvl, "", mate->Nick(), mate->Blf(bth));
+      return jprintf(3, dbg, "%*s   mate = %s \"%s\" (%4.2f) not in list\n", lvl, "", mate->Nick(), mate->LexStr(), mate->Blf(bth));
     if ((rc = consistent(mate, focus, pat, m + n, -fabs(bth))) <= 0)
-      return jprintf(3, dbg, "%*s   mate = %s (%4.2f) --> fails %d\n", lvl, "", mate->Nick(), mate->Blf(bth), rc);
+      return jprintf(3, dbg, "%*s   mate = %s \"%s\" (%4.2f) --> %s\n", lvl, "", mate->Nick(), mate->LexStr(), mate->Blf(bth), why[-rc]);
   }
   else if (f.Prohibited(mate))
-    return jprintf(3, dbg, "%*s   mate = %s (%4.2f) prohibited\n", lvl, "", mate->Nick(), mate->Blf(bth));
+    return jprintf(3, dbg, "%*s   mate = %s \"%s\" (%4.2f) prohibited\n", lvl, "", mate->Nick(), mate->LexStr(), mate->Blf(bth));
   else if ((rc = consistent(mate, focus, pat, m + n, bth)) <= 0)     // min belief value
-    return jprintf(3, dbg, "%*s   mate = %s (%4.2f) --> fails %d\n", lvl, "", mate->Nick(), mate->Blf(bth), rc);
+    return jprintf(3, dbg, "%*s   mate = %s \"%s\" (%4.2f) --> %s\n", lvl, "", mate->Nick(), mate->LexStr(), mate->Blf(bth), why[-rc]);
 
   // add pair to all remaining bindings (all nb are the same)
-  jprintf(3, dbg, "%*s   mate = %s (%4.2f)\n", lvl, "", mate->Nick(), mate->Blf(bth));
+  jprintf(3, dbg, "%*s   mate = %s \"%s\" (%4.2f)\n", lvl, "", mate->Nick(), mate->LexStr(), mate->Blf(bth));
   for (i = 0; i <= n; i++)
     nb = m[i].Bind(focus, mate->Surf());    
 
@@ -452,3 +461,26 @@ jhcNetNode *jhcSituation::FindRef (const jhcNetNode *focus, const jhcNodeList& w
 }   
 
 
+//= Determine if a reference graphlet fully matches a pattern graphlet (ignoring belief).
+// respects initial correspondences (if any) in given bindings and adds additional pairs
+// Note: generally use with a new vanilla instance of jhcSituation, not a derived class
+
+bool jhcSituation::Isomorphic (const jhcGraphlet& pat, const jhcGraphlet& ref, jhcBindings& b) 
+{
+  jhcGraphlet pat2, ref2;
+  int n, mc = 1;
+
+  // sanity check then setup matcher
+  if (pat.NumItems() != ref.NumItems())          // too strict?
+    return false;
+  bth = 0.0;
+  b.expect += pat.NumItems();                    // beware: retains old expectation !
+
+  // do matching (graphlets need args for full check)
+  pat2.IncludeArgs(pat);
+  ref2.IncludeArgs(ref);
+  n = MatchGraph(&b, mc, pat2, ref2);            // calls virtual match_found() !
+
+  // any match means graphlets are the same 
+  return(n > 0);
+}

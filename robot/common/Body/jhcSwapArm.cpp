@@ -297,7 +297,7 @@ void jhcSwapArm::Issue ()
 int jhcSwapArm::HandTarget (double wf, double rate, int bid)
 {
   // see if previous command takes precedence
-  if (bid <= wlock)
+  if (bid < wlock)
     return 0;
   wlock = bid;
 
@@ -338,7 +338,7 @@ int jhcSwapArm::ArmTarget (const jhcMatrix& pos, const jhcMatrix& dir, double p_
 int jhcSwapArm::PosTarget (const jhcMatrix& pos, double rate, int bid, int mode)
 {
   // see if previous command takes precedence 
-  if (bid <= plock)
+  if (bid < plock)
     return 0;
   plock = bid;
 
@@ -374,7 +374,7 @@ int jhcSwapArm::PosTarget (double ax, double ay, double az, double rate, int bid
 int jhcSwapArm::DirTarget (const jhcMatrix& dir, double rate, int bid, int mode)
 {
   // see if previous command takes precedence 
-  if (bid <= dlock)
+  if (bid < dlock)
     return 0;
   dlock = bid;
 
@@ -407,7 +407,7 @@ int jhcSwapArm::DirTarget (double hp, double ht, double hr, double rate, int bid
 
 int jhcSwapArm::Tuck (double rate, int bid)
 {
-  if (bid <= tlock) 
+  if (bid < tlock) 
     return 0;
   tlock = bid;
   trate = rate;

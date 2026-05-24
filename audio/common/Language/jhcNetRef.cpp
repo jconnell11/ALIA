@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ jhcNetRef::jhcNetRef (jhcNodePool *u, double bmin)
 //           0 = resolve locally else make FIND
 //           1 = resolve locally else make BIND (create > 0)
 //           2 = resolve locally else create item (resolve > 0)
-//           3 = always make EACH/ANY
+//           3 = always make for ALL iterator
 
 jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0, 
                                  double blf, jhcAliaChain **skolem)
@@ -103,7 +103,8 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
   }
   win.Copy(b);
   limit = univ->LocalConvo();                    // search within sentence
-  recent = limit;                                
+  recent = limit;                           
+  sex = 0;     
 
   // generally look for existing node 
   b.expect = cond.NumItems();
@@ -112,6 +113,8 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
     // nothing found now (or did not look)
     if (partial != NULL)
       n0 = partial->NumItems();
+    if ((find == 1) && (cond.NumItems() == 1))   // pronouns require prior item
+      find = 0;
     add.Assert(cond, win, blf, 0, univ);         // force belief
     if ((find == 0) || (find == 1) || (find == 3))
     {
@@ -134,7 +137,7 @@ jhcNetNode *jhcNetRef::FindMake (jhcNodePool& add, int fmode, jhcNetNode *f0,
 
 
 //= Construct an appropriate FIND/BIND directive from newly added description.
-// generally makes a FIND directive unless assume > 0 (BIND can create if none found)
+// generally makes a FIND directive unless assume > 0 (BIND can create item if none found)
 // gets added to end of chain (if any), returns head of chain
 
 jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem, int assume)
@@ -151,7 +154,8 @@ jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem, i
   if ((skolem == NULL) || (n <= n0))
     return NULL;
   ch = new jhcAliaChain;
-  dir = new jhcAliaDir(JDIR_BIND);     // was FIND for assume <= 0      
+  dir = new jhcAliaDir((assume > 0) ? JDIR_BIND : JDIR_FIND);  // was BIND always
+  dir->SetSkolem(1);
   ch->BindDir(dir);
 
   // copy new parts of description (from Assert) to key of directive
@@ -185,7 +189,7 @@ jhcNetNode *jhcNetRef::append_find (int n0, double blf, jhcAliaChain **skolem, i
 int jhcNetRef::match_found (jhcBindings *m, int& mc) 
 {
   jhcNetNode *sub, *mate = m->LookUp(focus);
-  int i, nb = m->NumPairs(), when = mate->LastConvo();
+  int i, keep, nb = m->NumPairs(), mgen = 0, when = mate->LastConvo();
 
   // do not increase count if same binding found through different path
   if ((when <= limit) || win.Same(*m))
@@ -193,7 +197,7 @@ int jhcNetRef::match_found (jhcBindings *m, int& mc)
 
   // handle special case of naked FIND/BIND with just a target variable: FIND[ x ]
   if ((cond.NumItems() == 1) && (focus->Lex() == NULL) && focus->ObjNode())    
-    if (mate->String() || mate->Halo() || (filter_pron(mate) <= 0))
+    if (mate->String() || mate->Halo() || (filter_pron(mgen, mate) <= 0))
       return 0;
 
   // possibly reject variable matches involving halo nodes
@@ -207,9 +211,11 @@ int jhcNetRef::match_found (jhcBindings *m, int& mc)
 
   // prefer most recently mentioned mate for focus
   jprintf(2, dbg, "MATCH - %s %s\n", mate->Nick(), ((when > recent) ? "keep!" : "ignore")); 
-  if (when > recent)
+  keep = ((mgen > sex) ? 1 : ((when > recent) ? 1 : 0));
+  if (keep > 0)
   {
     recent = when;
+    sex = mgen;
     win.Copy(*m);
   }
   return 1;
@@ -217,13 +223,20 @@ int jhcNetRef::match_found (jhcBindings *m, int& mc)
 
 
 //= Enforce any restrictions on naked node choice encoded by grammatical tags.
-// saves best mate for focus in "pron" member variable and sets "recent" > 0
-// returns 0 if rejected, 1 if best so far
+// binds "mgen" which tells how well "mate" matches the gender description of "focus"
+// returns 0 if rejected, 1 if gender compatible
 // NOTE: modified form of jhcAliaDir::filter_pron (which does not need tag check)
 
-int jhcNetRef::filter_pron (const jhcNetNode *mate)
+int jhcNetRef::filter_pron (int& mgen, const jhcNetNode *mate)
 {
   UL32 tags = focus->tags;
+  bool m, f, notm, notf;
+
+  // gather gender information (e.g. for "he", "she", "it") 
+  m    = ((mate->tags & JTAG_MASC) != 0) || (mate->FindProp("hq", "male",   0, bth) != NULL);
+  f    = ((mate->tags & JTAG_FEM)  != 0) || (mate->FindProp("hq", "female", 0, bth) != NULL);
+  notm = (mate->FindProp("hq", "male",   1, bth) != NULL);
+  notf = (mate->FindProp("hq", "female", 1, bth) != NULL);
 
   // generally looking for a physical thing not a fact or idea
   if (!mate->ObjNode())                
@@ -233,24 +246,28 @@ int jhcNetRef::filter_pron (const jhcNetNode *mate)
   }
   else if ((tags & JTAG_FEM) != 0)     // "she"
   {
-    if ((mate->FindProp("hq", "male",   0, bth) != NULL) || ((mate->tags & JTAG_MASC) != 0) ||
-        (mate->FindProp("hq", "female", 1, bth) != NULL))
+    if (m || notf) 
       return jprintf(2, dbg, "MATCH - but reject %s as not female\n", mate->Nick());
   }
   else if ((tags & JTAG_MASC) != 0)    // "he"
   {
-    if ((mate->FindProp("hq", "female", 0, bth) != NULL) || ((mate->tags & JTAG_FEM) != 0) ||
-        (mate->FindProp("hq", "male",   1, bth) != NULL))
+    if (f || notm)
       return jprintf(2, dbg, "MATCH - but reject %s as not male\n", mate->Nick());
   }
   else if ((tags & JTAG_ITEM) != 0)    // "it"
   {
-    if ((mate->FindProp("hq", "male",   0, bth) != NULL) || ((mate->tags & JTAG_MASC) != 0) ||
-        (mate->FindProp("hq", "female", 0, bth) != NULL) || ((mate->tags & JTAG_FEM)  != 0))
+    if (m || f)
       return jprintf(2, dbg, "MATCH - but reject %s as gendered\n", mate->Nick());
   }
   else if (tags == 0)                  // "them" has no args
     return jprintf(2, dbg, "MATCH - but reject %s as object node\n", mate->Nick());
+
+  // check how well gender actually matches (2 = exact, 1 = suggestive, 0 = no info)
+  mgen = 0;
+  if ((tags & JTAG_FEM) != 0)
+    mgen = (f ? 2 : (notm ? 1 : 0));
+  else if ((tags & JTAG_MASC) != 0)
+    mgen = (m ? 2 : (notf ? 1 : 0));
   return 1;                
 }
 

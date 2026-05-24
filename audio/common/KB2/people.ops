@@ -1,12 +1,14 @@
 // respond to person identification and proximity events
 // ======================================================
 
-OP 1 - "If a person becomes visible look at them"
+OP 1 - "If a person becomes very close look at them"
   trig:
-  NOTE[  hq-1 -lex-  visible
-              -hq--> dude-1
+  NOTE[  hq-1 -lex-  close 
+              -hq--> agt-1
+        deg-1 -lex-  very
+              -deg-> hq-1
         ako-1 -lex-  person
-              -ako-> dude-1 ]
+              -ako-> agt-1 ]
 ----------
     DO[ fcn-1 -lex-  look
               -fcn-> act-1
@@ -159,9 +161,6 @@ OP 9 - "If someone named becomes not visible then say where did you go whoever"
     DO[ fcn-1 -lex-   say 
               -fcn--> act-1
         act-1 -obj--> txt-1
-        end-1 -lex-   to
-              -dest-> act-1
-              -ref--> agt-1
         txt-1 -str-   where did you go ?1? 
               -arg1-> ref-1 ]
 
@@ -178,9 +177,6 @@ OP 10 - "If someone named becomes not visible then say whoever please come back"
     DO[ fcn-1 -lex-   say
               -fcn--> act-1 
         act-1 -obj--> txt-1
-        end-1 -lex-   to
-              -dest-> act-1
-              -ref--> agt-1
         txt-1 -str-   ?1 please come back 
               -arg1-> ref-1 ]
 
@@ -213,3 +209,21 @@ OP 12 - "Before acknowledging some person orient toward them."
         loc-2 -lex-  toward
               -loc-> act-2
               -ref-> agt-1 ]
+
+// --------------------------------------
+
+OP 13 - "If a double named person becomes visible then hail them."
+  trig:
+  NOTE[  hq-1 -lex-   visible 
+              -hq---> agt-1 
+        ako-1 -lex-   person 
+              -ako--> agt-1 
+        ref-1 -name-> agt-1 
+        ref-2 -name-> agt-1 ]
+---------------
+    DO[ fcn-1 -lex-  hail
+              -fcn-> act-1 
+        act-1 -obj-> agt-1 ]
+
+
+

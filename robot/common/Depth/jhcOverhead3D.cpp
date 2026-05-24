@@ -419,7 +419,7 @@ void jhcOverhead3D::SetFit (double d, int n, double e, double t, double r, doubl
 
 
 //= Set all parameters of a camera in order that they appear in configuration file.
-// position and orientation often vary over time with neck pose
+// binds c[]: position and orientation often vary over time with neck pose
 
 void jhcOverhead3D::SetCam (int n, double x, double y, double z, double pan, double tilt, 
                             double roll, double rng, int dnum)
@@ -450,7 +450,7 @@ void jhcOverhead3D::SetCamFix (int n, double pcal, double tcal, double rcal)
 
 
 //= Set all parameters of an alternate view in order that they appear in configuration file.
-// position and orientation often vary over time with neck pose
+// sets v[]: position and orientation often vary over time with neck pose
 
 void jhcOverhead3D::SetAlt (int n, double x, double y, double z, 
                             double pan, double tilt, double roll)
@@ -1064,7 +1064,7 @@ int jhcOverhead3D::PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax, doubl
   if (!devs.SameFormat(map) || !hts.SameFormat(map))
     return Fatal("Bad images to jhcOverhead3D::PlaneDev");
 
-  // get plane parameters for heigths near expected surface 
+  // get plane parameters for heights near expected surface 
   fit = 0;
   efit = CamCalib(tfit, rfit, hfit, hts, 0.0, sdev, zlo, zhi, ipp, 0.0, area);
   if ((Pts() < npts) || (efit > rough) || (fabs(tfit) > dt) || (fabs(rfit) > dr) || (fabs(hfit) > dh))
@@ -1085,6 +1085,7 @@ int jhcOverhead3D::PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax, doubl
   havg = f * hfit + cf * havg;
 
   // use surface parameters to give z differences (not orthogonal distance)
+  devs.CopyRoi(hts);
   return z_err(devs, hts, dmax, zlo, zhi);
 }
 
@@ -1093,7 +1094,7 @@ int jhcOverhead3D::PlaneDev (jhcImg& devs, const jhcImg& hts, double dmax, doubl
 
 void jhcOverhead3D::PlaneVals () const
 {
-  jprintf("Plane: pts %d, efit %4.2f, tfit %4.2f, rfit %4.2f, hfit %4.2f\n", Pts(), efit, tfit, rfit, fit);
+  jprintf("Plane: pts %d, efit %4.2f, tfit %4.2f, rfit %4.2f, hfit %4.2f\n", Pts(), efit, tfit, rfit, hfit);
 }
 
 
@@ -1115,23 +1116,24 @@ void jhcOverhead3D::PlaneVals () const
 int jhcOverhead3D::z_err (jhcImg& devs, const jhcImg& hts, double dmax, double lo, double hi) const
 { 
   double k = 100.0 / dmax, sc = 4096.0 * k * ipp;
-  int sum, dx = ROUND(sc * CoefX()), dy = ROUND(sc * CoefY()); 
-  int sum0 = ROUND(4096.0 * (k * Offset() - 128.0)) + 2048;        // for final rounding
+  int dx = ROUND(sc * CoefX()), dy = ROUND(sc * CoefY());
+  int sum, sum0 = ROUND(4096.0 * (k * Offset() - 128.0)) + 2048;   // for final rounding
   int dz, zsc = ROUND(4096.0 * k * (hi - lo) / 252.0);
-  int x, y, rw = hts.XDim(), rh = hts.YDim(), sk = hts.Skip();
-  const UC8 *m = hts.PxlSrc();
-  UC8 *d = devs.PxlDest();
+  int x, y, rw = hts.RoiW(), rh = hts.RoiH(), sk = hts.RoiSkip();
+  const UC8 *m = hts.RoiSrc();
+  UC8 *d = devs.RoiDest(hts);
 
+  sum0 += hts.RoiX() * dx + hts.RoiY() * dy;
   for (y = rh; y > 0; y--, d += sk, m += sk, sum0 += dy)
-   for (sum = sum0, x = rw; x > 0; x--, d++, m++, sum += dx)
-     if (*m <= 1)                                                  // ht 1 is invalid
-       *d = 0;
-     else
-     {
-       dz = (zsc * (*m) - sum) >> 12;
-       dz = __max(1, __min(dz, 255));
-       *d = (UC8) dz;
-     }
+    for (sum = sum0, x = rw; x > 0; x--, d++, m++, sum += dx)
+      if (*m <= 1)                                                 // ht 1 is invalid
+        *d = 0;
+      else
+      { 
+        dz = (zsc * (*m) - sum) >> 12;
+        dz = __max(1, __min(dz, 255));
+        *d = (UC8) dz;
+      }
   return 1;
 }
 
@@ -1269,7 +1271,7 @@ void jhcOverhead3D::SetDepthGeom (int cam)
 }
 
 
-//= Set up geometric transform from map to a particular color camera.
+//= Set up geometric transform (p2v) from map to a particular color camera.
 // if view < 0 then uses the most recent sensor parameters to yield an inverse
 // useful for higher-level graphics functions like ImgPt()
 
@@ -1277,8 +1279,8 @@ void jhcOverhead3D::SetColorGeom (int view)
 {
   int n = __min(view, vmax - 1);
 
-  if (view < 0)
-    MapToRng();
+  if (view < 0)                        
+    MapToRng();                        // range sensor
   else
     MapToCol(vp[n] - 90.0, vt[n] + 90.0, norm_roll(vr[n]), 
              vx[n] + x0 - 0.5 * mw, vy[n] + y0, vz[n], vf[n], vs[n],

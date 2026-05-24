@@ -442,7 +442,7 @@ int jhcEliLift::Issue (double tupd, double lead)
 
 int jhcEliLift::LiftTarget (double height, double rate, int bid)
 {
-  if (bid <= llock)
+  if (bid < llock)
     return 0;
   llock = bid;
   stiff = 1;

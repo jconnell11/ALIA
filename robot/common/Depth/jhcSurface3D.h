@@ -37,9 +37,9 @@ class jhcSurface3D : protected jhcPlaneEst
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  jhcMatrix s2m;               // transform from sensor to map
+  jhcMatrix s2p;               // transform from sensor to plane
   jhcMatrix s2f;               // matrix for floor projection
-  jhcMatrix m2v;               // transform from map to view
+  jhcMatrix p2v;               // transform from plane to view
   int iw, ih, hw, hh;          // expected image size
 
 
@@ -77,11 +77,13 @@ public:
   void SetProject (double lo =36.0, double hi =78.0, double cut =84.0, double sc =0.3, double rng =240.0)
     {z0 = lo; z1 = hi; zmax = cut; ipp = sc; dmax = rng;}
 
-  // access to image sizes
+  // access to image sizes and conversion matrices
   int XDim () const  {return iw;}
   int YDim () const  {return ih;}
   int XDim2 () const {return hw;}
   int YDim2 () const {return hh;}
+  const jhcMatrix& S2P () const {return s2p;}
+  const jhcMatrix& P2V () const {return p2v;}
 
   // local plane fitting
   double CamCalib (double& t, double& r, double& h, const jhcImg& src, double z0, double ztol, 
@@ -92,7 +94,7 @@ public:
   // standard overhead map
   void RngToMap (double cpan, double ctilt, double croll, double x0, double y0, double z0, 
                  double pcal, double tcal, double rcal);
-  void MapToRng () {m2v.Invert(s2m);}
+  void MapToRng () {p2v.Invert(s2p);}
   void MapToCol (double cpan, double ctilt, double croll, double x0, double y0, double z0, 
                  double f, double sc, double pcal, double tcal, double rcal);
   int FloorMap0 (jhcImg& dest, const jhcImg& d16, int clr, 
@@ -143,13 +145,13 @@ public:
   int ViewMask (jhcImg& mask, const jhcImg& d16, double over, double under, const jhcImg& cc, int n);
 
   // coordinate transformations
-  void ToCache (double& mx, double& my, double& mz, double ix, double iy, double iz) const;
-  void FromCache (double& ix, double& iy, double& iz, double mx, double my, double mz) const;
+  void ToCache (double& px, double& py, double& pz, double rx, double ry, double rz) const;
+  void FromCache (double& cx, double& cy, double& cz, double px, double py, double pz) const;
   void WorldPt (double& wx, double& wy, double& wz, 
-                double ix, double iy, double iz, double sc =1.0) const;
-  void WorldPt (jhcMatrix& w, double ix, double iy, double iz, double sc =1.0) const;
-  double ImgPtZ (double& ix, double& iy, double wx, double wy, double wz, double sc =1.0) const; 
-  int ImgPt (double& ix, double& iy, double wx, double wy, double wz, double sc =1.0) const; 
+                double rx, double ry, double rz, double sc =1.0) const;
+  void WorldPt (jhcMatrix& w, double rx, double ry, double rz, double sc =1.0) const;
+  double ImgPtZ (double& cx, double& cy, double wx, double wy, double wz, double sc =1.0) const; 
+  int ImgPt (double& cx, double& cy, double wx, double wy, double wz, double sc =1.0) const; 
   int ImgRect (jhcRoi& box, double wx, double wy, double wz, 
                double xsz, double zsz, double sc =1.0) const;
   int ImgCube (jhcRoi& box, double wx, double wy, double wz, 

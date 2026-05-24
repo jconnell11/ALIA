@@ -47,3 +47,44 @@ OP 4 - "To ask someone something ..."
    GND[ call-1 -lex-   talk_wait
                -targ-> agt-1
                -pat--> txt-1 ]
+
+
+// --------------------------------------
+
+OP 5 - "If your name is something then ..."
+  trig:
+  NOTE[ name-1 -name-> self-1
+        self-1 -lex-   me ]
+-----------
+   GND[ call-1 -lex-  talk_name
+               -arg-> name-1 ]
+
+
+OP 6 - "If your name is not something then ..."
+  trig:
+  NOTE[ name-1 -neg-   1
+               -name-> self-1
+        self-1 -lex-   me ]
+-----------
+   GND[ call-1 -lex-  talk_name
+               -arg-> name-1 ]
+
+
+OP 7 - "If my name is something then ..."
+  trig:
+  NOTE[ name-1 -name-> agt-1
+        agt-1  -lex-   you ]
+-----------
+   GND[ call-1 -lex-  talk_name
+               -arg-> name-1 ]
+
+
+OP 8 - "If my name is not something then ..."
+  trig:
+  NOTE[ name-1 -neg-   1
+               -name-> agt-1
+        self-1 -lex-   me ]
+-----------
+   GND[ call-1 -lex-  talk_name
+               -arg-> name-1 ]
+

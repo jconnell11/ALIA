@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,9 +48,13 @@ private:
   // TOF cam resampling
   int sx[480], fx[480], sy[640], fy[640];
 
+  // body attitude wrt gravity
+  double pitch, roll;        
+
   // double buffered input
   jhcImg img_c0, img_r0, img_a0;
   jhcMatrix pos_r0, dir_r0, pos_c0, dir_c0, pos_a0, dir_a0;
+  double pitch0, roll0;
   int seen0;
 
   // exclusive access
@@ -83,19 +87,26 @@ public:
   int Defaults (const char *fname =NULL);
   int SaveVals (const char *fname) const;
 
+  // attitude
+  double Pitch () const {return pitch;}
+  double Roll () const  {return roll;}
+
   // sensor info
   int RngReady () const  {return seen;} 
-  int RngStatic () const {return __min(base0.Static(), arm0.Static());}
-  int ColStatic () const {return RngStatic();}
-  void RngPose (jhcMatrix& pos, jhcMatrix& dir) const
-    {pos.Copy(pos_r); dir.Copy(dir_r);}
-  void ColPose (jhcMatrix& pos, jhcMatrix& dir) const
-    {pos.Copy(pos_c); dir.Copy(dir_c);}
+  double RngStatic () const {return __min(base0.Oriented(), neck0.Stare());}
+  double ColStatic () const {return RngStatic();}
+  void RngPose (jhcMatrix& pos, jhcMatrix& dir, double zadj =0.0) const
+    {pos.RelVec3(pos_r, 0.0, 0.0, zadj); dir.Copy(dir_r);}   
+  void ColPose (jhcMatrix& pos, jhcMatrix& dir, double zadj =0.0) const
+    {pos.RelVec3(pos_c, 0.0, 0.0, zadj); dir.Copy(dir_c);}  
   void AuxPose (jhcMatrix& pos, jhcMatrix& dir) const
-    {pos.Copy(pos_a); dir.Copy(dir_a);}
+    {pos.Copy(pos_a); dir.Copy(dir_a);}                      // no fudge
 
   // configuration
   void Reset ();
+
+  // overall attitude
+  void Status (double up, double ccw);
 
   // sensor poses
   void ColorPose (double x, double y, double z, double p, double t, double r);

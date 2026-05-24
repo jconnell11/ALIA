@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@ void jhcStdKern::clr_ptrs ()
   cspot = NULL;    // destination 
   csp   = NULL;    // desired speed
   cbid  = NULL;    // importance
+  ccyc  = NULL;
 
   // goal and progress
   camt  = NULL;    // desired amount
@@ -97,6 +98,7 @@ void jhcStdKern::alloc (int n)
     cspot = new jhcAliaDesc * [n];
     csp  = new double [n];
     cbid = new int [n];
+    ccyc = new int [n];
 
     // goal and progress
     camt  = new double [n];
@@ -132,6 +134,7 @@ void jhcStdKern::dealloc ()
   delete [] camt;
 
   // call info
+  delete [] ccyc;
   delete [] cbid;
   delete [] csp;
   delete [] cspot;
@@ -224,6 +227,7 @@ int jhcStdKern::Start (const jhcAliaDesc& desc, int bid)
   cst[inst]  = 0;                      // initial state = 0:0
   cst2[inst] = 0;
   ct0[inst]  = 0;                      // initial time  = 0 (was jms_now)
+  ccyc[inst] = 0;                      // how many cycles have passed
 
   // speculatively bind entry then see if function is in local pool
   strcpy_s(cmd[inst], 40, desc.Lex());
@@ -252,13 +256,16 @@ int jhcStdKern::Status (const jhcAliaDesc& desc, int inst)
   // possibly get the status of some local instance
   if (cbid[inst] > 0)
     if (_stricmp(desc.Lex(), cmd[inst]) == 0)
+    {
+      ccyc[inst] += 1;                           // elapsed cycle count
       rc = local_status(desc, inst);
+    }
 
   // otherwise pass on to next pool in list
   if ((rc <= -2) && (next != NULL))
     return next->Status(desc, inst);
   if (rc > 0)
-    cbid[inst] = 0;                            // free up slot when done
+    cbid[inst] = 0;                              // free up slot when done
   return rc;
 }
 

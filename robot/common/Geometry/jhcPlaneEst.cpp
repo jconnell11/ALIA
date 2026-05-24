@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -61,10 +61,11 @@ void jhcPlaneEst::ClrStats ()
   Syz = 0.0;
 
   // plane fit coefficients
-  err = -1.0;
   a = 0.0;
   b = 0.0;
   c = 0.0;
+  err = -1.0;
+  cache_old();
 }
 
 
@@ -94,10 +95,22 @@ int jhcPlaneEst::Analyze (double xsc, double ysc, double zsc)
 {
   if (num < 3.0)
     return 0;
+  cache_old();
   scale_xyz(xsc, ysc, zsc);
   find_abc();
   find_err();
   return 1;
+}
+
+
+//= Save prior estimate for possible reversion.
+
+void jhcPlaneEst::cache_old ()
+{
+  a0 = a;     
+  b0 = b;
+  c0 = c;
+  err0 = err;                     
 }
 
 
@@ -234,6 +247,17 @@ void jhcPlaneEst::find_err ()
   std /= (a * a + b * b + 1.0);  
   err = sqrt(std);
 } 
+
+
+//= Force values of RMS(), CoefX(), CoefY(), and Offset() to previous estimates.
+
+void jhcPlaneEst::Revert ()
+{
+  a = a0;
+  b = b0;
+  c = c0;
+  err = err0;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////

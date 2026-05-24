@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ public:
   virtual double Travel () const =0;  
   virtual double WindUp () const =0;
   virtual double TravelRate () const =0;
-  virtual int Static () const =0;
+  virtual double Oriented () const =0;
 
   // relative goal adjustment
   virtual double StepFwd () const =0;
@@ -65,12 +65,15 @@ public:
     {return MoveAbsolute(MoveGoal(dist), rate, bid, skew);}
   int TurnTarget (double ang, double rate =1.0, int bid =10)
     {return TurnAbsolute(TurnGoal(ang), rate, bid);}
+  void Park (int bid =10) 
+    {MoveTarget(0.0, 0.0, bid); TurnTarget(0.0, 0.0, bid);}
 
-  // eliminate residual error
-  virtual int TurnFix (double ang, double secs =0.5, double rmax =1.5, int bid =10) =0;
+  // smooth slide to goal
+  virtual int MoveSoft (double dist, double rate =1.0, int bid =10, double soft =2.0) =0;
+  virtual int TurnSoft (double ang, double rate =1.0, int bid =10, double soft =10.0) =0;
 
   // motion progress
-  virtual double MoveErr (double mgoal) const =0;
-  virtual double TurnErr (double tgoal) const =0;
+  virtual double MoveErr (double mgoal, int abs =1) const =0;
+  virtual double TurnErr (double tgoal, int abs =1) const =0;
 
 };

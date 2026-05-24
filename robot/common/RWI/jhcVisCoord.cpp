@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,8 +39,6 @@
 
 jhcVisCoord::~jhcVisCoord ()
 {
-  // for debugging - only happens when program closes
-  DumpAll();
 }
 
 
@@ -232,8 +230,19 @@ int jhcVisCoord::Done (int face, int batt)
   // skip if system never reset
   if (up <= 0)
     return 0;
+
+  // cleanup old files in some directories (2 weeks)
+  printf("\nPurging old KB, log, and timing files ... ");
+  fflush(stdout);
+  jprintf_purge(wrt("KB"));
+  jprintf_purge(wrt("log"));
+  jprintf_purge(wrt("timing"));
+  printf("\n");
+  fflush(stdout);
  
   // save info from run
+  if (acc < 2)                         // for debugging (same as KB)
+    DumpAll();                         
   DumpSession();                       // brand new rules and ops
   jhcAliaSpeech::Done(1, batt);        // incl. accumulated knowledge
   rwi.DumpImages(Dir());               // input and output images
@@ -257,14 +266,22 @@ int jhcVisCoord::Done (int face, int batt)
 // image is normally 640 x 480, fmt <= 0 means not needed
 // returns 0 if not written, 1 if okay 
 
-int jhcVisCoord::GetView (void *pels, int fmt) const
+int jhcVisCoord::GetView (void *pels, int fmt) 
 {
+  char msg[80];
   const jhcImg *src = rwi.HeadView();
   int ok = 0;
 
   // see if desired
   if ((fmt <= 0) || (pels == NULL))
     return 0;
+
+  // add action threshold to camera view (not accessible from jhcVisGrok)
+  if (rwi.probe == 1)
+  {
+    sprintf_s(msg, "pth = %4.2f\nbth = %4.2f", atree.MinPref(), atree.MinBlf());
+    src = rwi.HeadView(msg);
+  }
 
   // choose between some common input formats
   if (fmt == 1)

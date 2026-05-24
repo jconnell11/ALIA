@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -90,7 +90,8 @@ jhcSceneVis::jhcSceneVis ()
 
   // processing parameters
   Defaults();
-  gok = 1;                   // either 1 or -1
+  gok = 1;                   // 0 = no ghost, else cycles to wait (80Hz)
+  dbg = 2;
 }
 
 
@@ -106,12 +107,12 @@ int jhcSceneVis::gaze_params (const char *fname)
   int ok;
 
   ps->SetTag("svis_gaze", 0);
-  ps->NextSpecF( &atol,     5.0, "Close enough direct gaze (deg)");  // was 3
-  ps->NextSpecF( &xbd,      0.1, "X border inset for orient");       // was 0.2
-  ps->NextSpecF( &ybd,      0.1, "Y border inset for orient");
-  ps->NextSpec4( &dwell,    3,   "Stable gaze for features (cyc)");  // was 10
-  ps->NextSpec4( &survey,  15,   "Stable gaze for scene (cyc)");     // VisGrok::ign + SmTrack::gone
-  ps->NextSpec4( &gbid,    50,   "Object-of-interest gaze bid");
+  ps->NextSpecF( &atol,     5.0,  "Close enough direct gaze (deg)");  // was 3
+  ps->NextSpecF( &xbd,      0.1,  "X border inset for orient");       // was 0.2
+  ps->NextSpecF( &ybd,      0.1,  "Y border inset for orient");
+  ps->NextSpecF( &dwell,    0.15, "Stable gaze for features (sec)");  // was 10 cyc
+  ps->NextSpecF( &survey,   0.7,  "Stable gaze for scene (SEC)");     // VisGrok::ign + SmTrack::gone
+  ps->NextSpec4( &gbid,    50,    "Object-of-interest gaze bid");
 
   ps->NextSpecF( &prog,     1.0, "Improvement for progress (deg)");
   ps->NextSpecF( &stim,     1.0, "Give up if no progress (sec)");    // was 0.5
@@ -135,6 +136,9 @@ int jhcSceneVis::rng_params (const char *fname)
   ps->NextSpecF( &dist0,  18.0, "Very close distance (in)");
   ps->NextSpecF( &dvar,    1.0, "Alert dist hysteresis (in)"); 
   ps->NextSpecF( &drop,  144.0, "Abandon object distance (in)");
+
+  ps->NextSpecF( &calm,    0.5, "Focus level for oddity check");
+  ps->NextSpecF( &odd,     2.0, "Report deviation wrt stdev");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -149,12 +153,12 @@ int jhcSceneVis::shape_params (const char *fname)
   int ok;
 
   ps->SetTag("svis_shape", 0);
-  ps->NextSpecF( &len3, 4.0,  "Very long ratio (hi / mid)");
+  ps->NextSpecF( &len3, 2.7,  "Very long ratio (hi / mid)");     // was 4
   ps->NextSpecF( &len2, 1.8,  "Long ratio (hi / mid)");
   ps->NextSpecF( &len1, 1.25, "Compact ratio (hi / mid)");
   ps->NextSpecF( &len0, 1.15, "Very compact ratio (hi / mid)");
-  ps->NextSpecF( &thk3, 0.85, "Very thick ratio (lo / mid)");  
-  ps->NextSpecF( &thk2, 0.6,  "Thick ratio (lo / mid)");  
+  ps->NextSpecF( &thk3, 0.95, "Very thick ratio (lo / mid)");    // was 0.85
+  ps->NextSpecF( &thk2, 0.8,  "Thick ratio (lo / mid)");         // was 0.6
 
   ps->NextSpecF( &thk1, 0.4,  "Thin ratio (lo / mid)");
   ps->NextSpecF( &thk0, 0.1,  "Very thin ratio (lo / mid)");  
@@ -176,7 +180,7 @@ int jhcSceneVis::dims_params (const char *fname)
   ps->NextSpecF( &sz1,  2.0, "Small square (in)");
   ps->NextSpecF( &wid2, 2.5, "Wide threshold (in)");
   ps->NextSpecF( &wid1, 1.5, "Narrow threshold (in)");  
-  ps->NextSpecF( &ht2,  4.0, "Tall threshold (in)");
+  ps->NextSpecF( &ht2,  3.0, "Tall threshold (in)");       // was 4
   ps->NextSpecF( &ht1,  1.5, "Short threshold (in)"); 
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
@@ -269,7 +273,6 @@ void jhcSceneVis::local_reset (jhcAliaNote& top)
 
   // noisy messages
   rpt = &top;
-  dbg = 0;
 
   // state variables
   some = 0;
@@ -289,8 +292,9 @@ void jhcSceneVis::local_reset (jhcAliaNote& top)
 void jhcSceneVis::local_volunteer ()
 {
   update_objs();
-  alert_any();
-  alert_close();
+  if (alert_any() <= 0)
+    if (alert_close() <= 0)
+      alert_odd();
   mark_attn();
 //  gaze_last();
 }
@@ -421,15 +425,16 @@ void jhcSceneVis::mark_gone (int id)
 //   ako-1 -lex-  object
 //         -ako-> obj-N
 // </pre>
+// returns 1 if some NOTE generated, 0 if nothing
 
-void jhcSceneVis::alert_any ()
+int jhcSceneVis::alert_any ()
 {
   jhcAliaDesc *obj;
   int born, prev = some;
 
   // wait for next sensor cycle then lock visual data
   if ((rwi == NULL) || (rpt == NULL) || !rwi->Accepting())
-    return;
+    return 0;
 
   // see if old focal object not fully visible 
   if (some >= 0)
@@ -449,12 +454,14 @@ void jhcSceneVis::alert_any ()
       obj = obj_node(some, born);
       goi = obj;                         // request slew
       gt0 = 0;
-      jprintf(1, dbg, "vis_alert %s\n", obj->Nick());
+      jprintf(1, dbg, "+ vis_alert (static %5.3f) = %s\n", (rwi->body)->RngStatic(), obj->Nick());
       rpt->StartNote();
       std_props(obj, born);
       rpt->FinishNote();
+      return 1;
     }
   }
+  return 0;
 }
 
 
@@ -465,8 +472,9 @@ void jhcSceneVis::alert_any ()
 // </pre>
 // now shares distance threshold across all objects ("nearby" not unique)
 // previously over-generated when two things were almost tied
+// returns 1 if some NOTE generated, 0 if nothing
 
-void jhcSceneVis::alert_close ()
+int jhcSceneVis::alert_close ()
 {
   jhcAliaDesc *obj;
   double dist;
@@ -474,11 +482,11 @@ void jhcSceneVis::alert_close ()
 
   // wait for next sensor cycle then lock visual data
   if ((rwi == NULL) || (rpt == NULL) || !rwi->Accepting())
-    return;
+    return 0;
 
   // wait for surface and object finding to settle
   if (neck->Stare() < survey)
-    return;
+    return 0;
   nearby = sobj->Closest();
 
   // see if newly close (use hysteresis)
@@ -501,7 +509,7 @@ void jhcSceneVis::alert_close ()
   // post message to reasoner if needed (OK to repeat)
   if (close >= 2) 
   {
-    jprintf(1, dbg, "vis_close @ %4.2f\"\n", dist);
+    jprintf(1, dbg, "+ vis_close @ %4.2f\"\n", dist);
     obj = obj_node(nearby, born);
     goi = obj;                         // request slew
     gt0 = 0;
@@ -509,7 +517,82 @@ void jhcSceneVis::alert_close ()
     std_props(obj, born);
     rpt->NewDeg(obj, "hq", "close", ((dist < dist0) ? "very" : NULL)); 
     rpt->FinishNote();
+    return 1;
   }
+  return 0;
+}
+
+
+//= Generate spontaneous message about extreme values of some object.
+// <pre>
+//    hq-1 -lex-  long
+//         -hq--> obj-N
+//   deg-1 -lex-  very
+//         -deg-> hq-1
+// </pre>
+// only notices one peculiar object per cycle (NOTE affects Distracted() level)
+
+void jhcSceneVis::alert_odd ()
+{
+  jhcAliaDesc *obj;
+  double val, sum, ssq, avg, sdev, ext, best;
+  int c, t, n, cat, born, trks = sobj->ObjLimit(), win = -1;
+
+  // wait for next sensor cycle then lock visual data
+  if ((rwi == NULL) || (rpt == NULL) || !rwi->Accepting())
+    return;
+
+  // if not too busy, wait for surface and object finding to settle
+  if ((rpt->Distracted() > calm) || (neck->Stare() < survey))
+    return;
+
+  // consider features: size, length, width, thickness, and height
+  for (c = 1; c <= 5; c++)
+  {
+    // collect stats of all tracked to get average and standard deviation
+    n = 0;
+    sum = 0.0;
+    ssq = 0.0;
+    for (t = 0; t < trks; t++)
+      if (sobj->ObjOK(t))              // all tracked
+      {
+        val = rng_val(c, t);
+        sum += val;
+        ssq += val * val;
+        n++;
+      } 
+    if (n < 2)                         // invalid sdev
+      return;
+    avg = sum / n;
+    sdev = sqrt((ssq / n) - avg * avg);
+
+    // examine unreported objects to find most extreme wrt all tracked
+    for (t = 0; t < trks; t++)
+      if (sobj->ObjOK(t))
+        if (rpt->NodeFor(sobj->ObjID(t)) == NULL)
+        {
+          val = rng_val(c, t);
+          ext = fabs(val - avg) / sdev;
+          if ((win < 0) || (ext > best))
+          {
+            win = t;
+            cat = c;
+            best = ext;
+          }
+        }
+  }
+  if ((win < 0) || (best < odd))
+    return; 
+
+  // generate NOTE about selected object and its unusual property
+  jprintf(1, dbg, "+ vis_extreme @ %3.1f stdev\n", best);
+  obj = obj_node(win, born);
+  goi = obj;                         // request slew
+  gt0 = 0;
+  rpt->StartNote();
+  std_props(obj, born);
+  rng2net(obj, cat, trk2rng(cat, win));
+  rpt->FinishNote();
 }
 
 
@@ -549,6 +632,7 @@ void jhcSceneVis::mark_attn ()
 }
 
 
+/*
 //= Continuously track last object-of-interest if still valid.
 // neck command is low importance and hence easily overridable
 // bulk of code is essentially the same as vis_look()
@@ -597,7 +681,7 @@ void jhcSceneVis::gaze_last ()
   else if (jms_elapsed(gt0) > stim)
     goi = NULL;                        // gaze failure
 }
-
+*/
 
 ///////////////////////////////////////////////////////////////////////////
 //                             Gaze Control                              //
@@ -626,7 +710,7 @@ int jhcSceneVis::vis_orient0 (const jhcAliaDesc& desc, int i)
 int jhcSceneVis::vis_orient (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix view(4);
-  double pan, tilt, da;
+  double da;
   int t;
 
   // make sure target object is still known 
@@ -635,7 +719,7 @@ int jhcSceneVis::vis_orient (const jhcAliaDesc& desc, int i)
   if ((t = node2trk(cobj[i])) < 0)
     return err_miss(cobj[i]);
   if (rwi->Ghost())
-    return gok;
+    return NoHW(gok, i);
   if (neck->CommOK() <= 0)
     return err_neck();
 
@@ -646,12 +730,11 @@ int jhcSceneVis::vis_orient (const jhcAliaDesc& desc, int i)
 
   // send proper neck angles for object centroid
   sobj->World(view, t);
-  neck->AimFor(pan, tilt, view, lift->Height());
-  neck->GazeTarget(pan, tilt, 1.0, 1.0, cbid[i]);    // use GazeFix instead?
+  neck->GazeAt(view, lift->Height(), 0.5, cbid[i]);      
 
   // see if close enough yet (considers image in primary color camera)
   sobj->SetColorGeom(-1);                        // rangefinder
-  da = neck->GazeErr(pan, tilt);
+  da = neck->GazeErr(view, lift->Height());
   if (in_view(t) <= 0)
   {
     if (chk_stuck(i, da) <= 0)
@@ -685,7 +768,7 @@ int jhcSceneVis::vis_look0 (const jhcAliaDesc& desc, int i)
 int jhcSceneVis::vis_look (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix view(4);
-  double pan, tilt, da;
+  double da;
   int t;
 
   // make sure target object is still known 
@@ -694,7 +777,7 @@ int jhcSceneVis::vis_look (const jhcAliaDesc& desc, int i)
   if ((t = node2trk(cobj[i])) < 0)
     return err_miss(cobj[i]);
   if (rwi->Ghost())
-    return gok;
+    return NoHW(gok, i);
   if (neck->CommOK() <= 0)
     return err_neck();
 
@@ -705,11 +788,10 @@ int jhcSceneVis::vis_look (const jhcAliaDesc& desc, int i)
 
   // send proper neck angles for object centroid
   sobj->World(view, t);
-  neck->AimFor(pan, tilt, view, lift->Height());
-  neck->GazeTarget(pan, tilt, 1.0, 1.0, cbid[i]);    // use GazeFix instead?
+  neck->GazeAt(view, lift->Height(), 0.5, cbid[i]);   
 
   // see if close enough yet
-  da = neck->GazeErr(pan, tilt);
+  da = neck->GazeErr(view, lift->Height());
   if (da > atol)
   {
     if (chk_stuck(i, da) <= 0)
@@ -753,12 +835,20 @@ int jhcSceneVis::fixate_read (const jhcAliaDesc& desc, int i)
 
 int jhcSceneVis::chk_stuck (int i, double err)
 {
-  if ((ct0[i] == 0) || ((cerr[i] - err) >= prog))
+  double chg = cerr[i] - err;
+
+  // check for some progress
+  if ((ct0[i] == 0) || (chg >= prog))
   {
-    ct0[i] = jms_now();
     cerr[i] = err;
+    ct0[i] = jms_now();                // reset timer once movement starts
+    return 0;
   }
-  else if (jms_elapsed(ct0[i]) > stim)
+
+  // no progress
+  if (chg < 0.0)                       // only accumulate small positive steps
+    cerr[i] = err;
+  if (jms_elapsed(ct0[i]) > stim)
     return 1;
   return 0;
 }
@@ -1395,12 +1485,13 @@ int jhcSceneVis::vis_enum0 (const jhcAliaDesc& desc, int i)
 //= Basic call to object detector returns one new object matching description each step.
 // enumeration limits kept in ccnt[i], irrelevant if a superlative was used
 // returns 1 if done, 0 if still working, -1 for failure
+// NOTE: because scene can change, starts enumeration from beginning for each call
 
 int jhcSceneVis::vis_enum (const jhcAliaDesc& desc, int i)
 {
   int props[33];
   jhcAliaDesc *ref, *ref2, *obj = desc.Val("arg");
-  int cc, r, r2, sel, t, nt, win, pref, born, cnt = 0;
+  int cc, r, r2, sel, t, nt, win, pref, born, cand;
 
   // sync to sensors, skip a cycle if just made a suggestion
   if (!rwi->Readable())
@@ -1431,6 +1522,7 @@ int jhcSceneVis::vis_enum (const jhcAliaDesc& desc, int i)
   while (ccnt[i] < 8)
   {
     // mark previously unreported objects that pass all criteria 
+    cand = 0;
     nt = sobj->ObjLimit();
     for (t = 0; t < nt; t++)
     {
@@ -1439,19 +1531,19 @@ int jhcSceneVis::vis_enum (const jhcAliaDesc& desc, int i)
         if (sobj->SetState(t, suitable(props, t, r, r2)) > 0)
         {
           win = t;                     // in case only one
-          cnt++;
+          cand++;
           if (sel == 0)                // any eligible one is okay
             break;
         }
     }
-    if (cnt <= 0)
+    if (cand <= 0)                     // no candidates
     {
-      jprintf(1, dbg, "vis_enum %d ==> nothing\n", ccnt[i]);
+      jprintf(1, dbg, "? vis_enum %d ==> nothing\n", ccnt[i] + 1);
       return rwi->ReadDone(-1);
     }
 
     // choose (or gate) either by superlative or innate preference
-    if (cnt > 1)
+    if (cand > 1)
     {
       pref = ((sel != 0) ? sel : pref_prop(props));
       if (pref == 0)
@@ -1481,7 +1573,7 @@ int jhcSceneVis::vis_enum (const jhcAliaDesc& desc, int i)
     std_props(obj, born);    
     prop2net(obj, props, ref, ref2);
     super2net(obj, sel);
-    jprintf(1, dbg, "vis_enum %d ==> %s\n", ccnt[i], obj->Nick());
+    jprintf(1, dbg, "? vis_enum %d ==> %s\n", ccnt[i], obj->Nick());
     if ((rpt->FinishNote() > 0) || (sel > 0))
       break;
   }
@@ -1920,7 +2012,7 @@ double jhcSceneVis::rng_val (int cat, int t) const
   if (cat == 3)
     return min;                // width = abs min(x y)
   if (cat == 4)
-    return lo / mid;           // thickness = ratio
+    return lo / hi;            // thickness = ratio (was lo / mid)
   if (cat == 5)
     return sobj->OverZ(t);     // height = abs top vs. table
   return -1.0;
@@ -2318,18 +2410,11 @@ int jhcSceneVis::net2super (const jhcAliaDesc *obj) const
     {
       // location (leftmost, rightmost, middle, in front, in back)
       if (p->LexMatch(sloc[0]))
-//      if (p->LexIn("middle", "in the middle"))
         return -100;                             // after all props[]
       if (p->LexMatch(sloc[1]))
-//      if (p->LexIn("left", "on the left"))
         return -101;
       if (p->LexMatch(sloc[2]))
-//      if (p->LexIn("right", "on the right"))
         return 101;
-//      if (p->LexIn("in front", "in the front"))  // LOC-V forms for cat = 0
-//        return -1;                               
-//      if (p->LexIn("in back", "in the back"))    // LOC-V forms for cat = 0
-//        return 1;                                
 
       // check for correct reference ("all")
       if ((r = p->Val("alt")) == NULL)
@@ -2606,7 +2691,7 @@ int jhcSceneVis::err_neck ()
 //               -agt-> self-1
 //               -obj-> obj-1 ]
 // </pre>
-// returns -1 always for convenience
+// returns 1 always for convenience (to prevent endless repeats)
 
 int jhcSceneVis::err_miss (jhcAliaDesc *obj)
 {
@@ -2622,7 +2707,7 @@ int jhcSceneVis::err_miss (jhcAliaDesc *obj)
   rpt->AddArg(fail, "agt", rpt->Self());
   rpt->AddArg(fail, "obj", obj);
   rpt->FinishNote(fail);
-  return -1;
+  return 1;
 }
 
 

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,10 +66,13 @@ int jhcGenMic::off_params (const char *fname)
 {
   jhcParam *ps = &ops;
   int ok;
-  ps->SetTag("mic_off", 0);
-  ps->NextSpecF( &oth,  12.0,  "Max match offset (in)");    // was 18
-  ps->NextSpecF( &ath,  15.0,  "Max match angle (in)");
-  ps->NextSpecF( &dth, 120.0,  "Max match distance (in)");
+  ps->SetTag("mic_ctrl", 0);
+  ps->NextSpec4( &deaf,    0,   "Use head pan (no mic)");
+  ps->NextSpec4( &sang,   90,   "Max sound deviation (deg)");
+  ps->NextSpec4( &fresh,  30,   "Reorient after sound (cyc)"); 
+  ps->NextSpecF( &oth,    12.0, "Max lateral offset (in)");    // was 18
+  ps->NextSpecF( &ath,    15.0, "Max angle wrt beam (in)");     
+  ps->NextSpecF( &dth,    96.0, "Max radial distance (in)");   // was 120
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -195,11 +198,11 @@ int jhcGenMic::Reset ()
 {
   loc.SetVec3(x0, y0, z0);
   axis.SetPanTilt3(pan, tilt);
-  beam = 0.0;
-  slow = 0.0;
-  talk = 0.0;
-  audio = 0;                           // no sound heard yet
-  spcnt = 0;                           // no speaking heard yet
+  beam  = 0.0;
+  slow  = 0.0;
+  talk  = 0.0;
+  audio = -60;                         // no sound heard yet
+  spcnt = -60;                         // no speaking heard yet
   mok = -1;
   return mok;
 }
@@ -230,11 +233,13 @@ int jhcGenMic::Update (int voice)
 double jhcGenMic::ClosestPt (jhcMatrix *pt, const jhcMatrix& ref, int src, int chk) const
 {
   jhcMatrix rel(4), norm(4), ortho(4);
-  double off, a = OffsetAng(ref, 0.0), rads = D2R * a, ca = cos(rads), sa = sin(rads);
+  double off, dist, a = OffsetAng(ref, Dir(src));
+  double rads = D2R * a, ca = cos(rads), sa = sin(rads);
 
   // find mic-ref vector, then opposite edge of triangle with angle a
   rel.DiffVec3(ref, loc);
-  off = rel.LenVec3() * sa;
+  dist = rel.LenVec3();
+  off = dist * sa;
 
   if (pt != NULL)
   {
@@ -254,10 +259,10 @@ double jhcGenMic::ClosestPt (jhcMatrix *pt, const jhcMatrix& ref, int src, int c
     pt->SetH(1.0);
   }
 
-  // see if within matching tolerances
+  // see if within matching tolerances then return lateral offset (in inches)
   off = fabs(off);
   if (chk > 0)
-    if ((off > oth) || (a > ath) || (rel.LenVec3() > dth))
+    if ((off > oth) || (fabs(a) > ath) || (rel.LenVec3() > dth))
       return -1.0;
   return off;
 }
@@ -265,12 +270,12 @@ double jhcGenMic::ClosestPt (jhcMatrix *pt, const jhcMatrix& ref, int src, int c
 
 //= Determine angular offset of reference from some sound angle (0 = forward).
 //   rel dot axis = |rel| cos(ang) since |axis| = 1
-// returns signed degrees
+// returns SIGNED degrees (use fabs() for most cases)
 
 double jhcGenMic::OffsetAng (const jhcMatrix& ref, double aim) const
 {
   jhcMatrix rel(4);
 
   rel.DiffVec3(ref, loc);
-  return(rel.DirDiff3(axis) - (aim + 90.0));
+  return((rel.DirDiff3(axis) - 90.0) - aim);
 }

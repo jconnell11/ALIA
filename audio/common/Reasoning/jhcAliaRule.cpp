@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -172,9 +172,9 @@ int jhcAliaRule::match_found (jhcBindings *m, int& mc)
   init_result(*b, tval, ver, h);
 
   // possibly show accepted rule result 
-  if (show > 0) 
+  if ((show > 0) || (dbg >= 2))
   {
-    jprintf("  RULE %d%c ==>", id, 'a' + (hmax - mc));
+    jprintf("  RULE %d.%02d ==>", id, hmax - mc);
     Inferred(inf, b);
     inf.Print(4, -1);
     jprintf("\n\n");
@@ -437,6 +437,20 @@ void jhcAliaRule::connect_args (jhcGraphlet& desc, const jhcBindings& m2c) const
 //                              Rule Tests                               //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Determine if some other rule perfectly matches this one.
+// ignores differences in belief between nodes when judging
+
+bool jhcAliaRule::Identical (const jhcAliaRule& ref) const
+{
+  jhcSituation sit;          // to avoid jhcAliaRule::match_found()
+  jhcBindings b;
+
+  if (!sit.Isomorphic(cond, ref.cond, b))
+    return false;
+  return sit.Isomorphic(result, ref.result, b);
+}
+
+/*
 //= Determine if some other rule essentially matches this one.
 // ignores differences in belief between nodes in result
 // only guards against EXACT duplicate with items in SAME order
@@ -481,7 +495,7 @@ bool jhcAliaRule::same_struct (const jhcNetNode *focus, const jhcNetNode *mate) 
       return false;
   return true;
 }    
-
+*/
 
 //= Determine if rule uselessly infers X -> X (sometimes from consolidation).
 // sees if result satisfies condition (and no more)
@@ -589,6 +603,10 @@ int jhcAliaRule::Load (jhcTxtLine& in)
   const char *item;
   int ans;
 
+  // clear source from file and provenance string of rule
+  *(in.src) = '\0';
+  *prov = '\0';
+
   // required header ("RULE <pnum> - <gist>" where gist is optional)
   if (in.NextContent() == NULL)
     return -1;
@@ -598,6 +616,10 @@ int jhcAliaRule::Load (jhcTxtLine& in)
     return 0;
   if (((item = in.Token()) != NULL) && (strcmp(item, "-") == 0))
     SetGist(in.Head());
+
+  // copy provenance from preceding "src:" comment line (if any)
+  strcpy_s(prov, in.src);
+  *in.src = '\0';
 
   // body of rule
   in.Flush();
@@ -664,13 +686,15 @@ int jhcAliaRule::load_clauses (jhcTxtLine& in)
 //= Save self out in machine readable form to current position in a file.
 // return: 1 = successful, 0 = bad format, -1 = file error
 
-int jhcAliaRule::Save (FILE *out) const
+int jhcAliaRule::Save (FILE *out, int src) const
 {
   int i;
 
-  // header ("RULE <id> - <gist>") and optional provenance
-  if (*prov != '\0')
-    jfprintf(out, "// originally rule %d from %s\n\n", pnum, prov);  
+  // optional provenance comment line
+  if ((src > 0) && (*prov != '\0'))
+    jfprintf(out, "// src: %s\n\n", prov);
+
+  // header ("RULE <id> - <gist>") 
   jfprintf(out, "RULE");
   if (id > 0)
     jfprintf(out, " %d", id);

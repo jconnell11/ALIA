@@ -1,0 +1,9 @@
+// terms associated with "Introspect" ops and rules
+// ================================================
+
+// imperative verbs
+
+=[ACT]
+  explain
+  fail
+

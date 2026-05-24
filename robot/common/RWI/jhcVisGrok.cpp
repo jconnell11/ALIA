@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,10 +23,11 @@
 
 #include "Interface/jms_x.h"           // common video
 #include "Interface/jprintf.h"
+#include "Interface/jtimer.h"          // for profiling
 
 #include "RWI/jhcVisGrok.h"
 
-#include "Interface/jtimer.h"
+
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -43,6 +44,11 @@ jhcVisGrok::~jhcVisGrok ()
 
 jhcVisGrok::jhcVisGrok ()
 {
+  // default debugging image
+  wmap = 640;
+  hmap = 480;
+  strcpy_s(tmap, "Debug");
+
   // no input images (yet)
   raw = NULL;
   rng = NULL;
@@ -74,7 +80,7 @@ jhcVisGrok::jhcVisGrok ()
   fn.dadj = 2.0;                                                 // head is shell
 
   // configure object finding map
-  sobj.SetMap(108.0, 63.0, 24.0, -6.0, -2.0, 18.0, 0.15, 28.5);   // 720 x 421 map
+  sobj.SetMap(108.0, 63.0, 24.0, -6.0, -2.0, 18.0, 0.15, 28.5);  // 720 x 421 map
   sobj.hmix = 0.0;
 
   // set up display strings
@@ -84,6 +90,7 @@ jhcVisGrok::jhcVisGrok ()
   strcpy_s(nmode[3], "--  wander ...");
 
   // processing parameters
+  LoadCfg();
   Defaults();
   space2 = NULL;
   probe = 0;
@@ -98,8 +105,6 @@ void jhcVisGrok::clr_ptrs ()
   arm  = NULL;
   lift = NULL;
   base = NULL;
-//  mic  = NULL;
-//  tk.RemoteMic(NULL);
   phy = 0;
 }
 
@@ -140,7 +145,7 @@ int jhcVisGrok::rng_params (const char *fname)
   ps->NextSpecF( &rflen, 525.0,    "Range-finder focal length");
   ps->NextSpecF( &rsc,     0.9659, "Range-finder depth scaling");
   ps->Skip();
-  ps->NextSpec4( &ign,     3,      "Min stable for objects (cyc)");
+  ps->NextSpecF( &ign,     0.15,   "Min stable for objects (sec)");
   ps->NextSpecF( &west,    0.0,    "Nearness for held width (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
@@ -200,7 +205,7 @@ int jhcVisGrok::vis_params (const char *fname)
   ps->NextSpecF( &tvis,   10.0, "Max top head offset (deg)");
   ps->NextSpecF( &bvis,   10.0, "Max bottom head offset (deg)");
   ps->NextSpecF( &lost,  120.0, "Max head memory dist (in)");      // 10 ft
-  ps->NextSpecF( &gtime,   0.3, "Gaze response (sec)"); 
+  ps->Skip();
 
   ps->NextSpecF( &side,   50.0, "Body rotate thresh (deg)");       // 0 = don't 
   ps->NextSpecF( &btime,   1.5, "Rotate response (sec)");      
@@ -220,13 +225,36 @@ int jhcVisGrok::sacc_params (const char *fname)
   ps->SetTag("grok_sacc", 0);
   ps->NextSpecF( &hem,      6.0, "Forward motion blocked (in)");
   ps->NextSpecF( &umat,     0.5, "Fraction unknown doormat");
-  ps->NextSpecF( &sacp,    25.0, "Saccade lateral pan (deg)");
+  ps->NextSpecF( &sacp,    25.0, "Saccade nearby pan (deg)");
+  ps->NextSpecF( &sacp2,   25.0, "Saccade wide pan (deg)");
   ps->NextSpecF( &sact,   -25.0, "Saccade nearby tilt (deg)");
   ps->NextSpecF( &sact2,  -65.0, "Saccade floor tilt (deg)"); 
-  ps->Skip();
 
   ps->NextSpecF( &road,   -40.0, "Path check tilt (deg)");      
   ps->NextSpecF( &cruise,   2.0, "Path check interval (sec)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters controlling subconcious orienting and flinch behaviors.
+
+int jhcVisGrok::auto_params (const char *fname)
+{
+  jhcParam *ps = &aps;
+  int ok;
+
+  ps->SetTag("grok_auto", 0);
+  ps->NextSpec4( &pbid, 60,   "Person tracking bid");
+  ps->NextSpec4( &obid, 55,   "Object tracking bid");
+  ps->NextSpec4( &mbid, 50,   "Motion seeking bid");
+  ps->NextSpec4( &sbid, 45,   "Sound seeking bid");        // 0 = disabled
+  ps->NextSpec4( &rbid, 40,   "Center restore bid");
+  ps->Skip();
+
+  ps->NextSpecF( &tip,  10.0, "Off-balance tip (deg)");    // 0 = disabled
+  ps->NextSpecF( &back,  2.0, "Balance restore (sec)");    
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -256,10 +284,12 @@ int jhcVisGrok::Defaults (const char *fname)
   ok &= pad_params(fname);
   ok &= vis_params(fname);
   ok &= sacc_params(fname);
+  ok &= auto_params(fname);
   ok &= fn.Defaults(fname);      // does s3 also
   ok &= nav.Defaults(fname);
   ok &= sobj.Defaults(fname);
   ok &= tab.Defaults(fname);
+  ok &= mot.Defaults(fname);
   return ok;
 }
 
@@ -275,10 +305,12 @@ int jhcVisGrok::SaveVals (const char *fname)
   ok &= pps.SaveVals(fname);
   ok &= vps.SaveVals(fname);
   ok &= sps.SaveVals(fname);
+  ok &= aps.SaveVals(fname);
   ok &= fn.SaveVals(fname);      // does s3 also
   ok &= nav.SaveVals(fname);
   ok &= sobj.SaveVals(fname);
   ok &= tab.SaveVals(fname);
+  ok &= mot.SaveVals(fname);
   return ok;
 }
 
@@ -296,14 +328,8 @@ void jhcVisGrok::Reset (int rob, int behaviors, int choke)
 {
   double cflen;
 
-  // disable background threads then reset vision components
+  // disable background threads 
   jhcBgndGrok::Stop();
-  s3.Reset();
-  fn.Reset(0);
-  nav.Reset();
-  sobj.Reset();
-  tab.SetSize(s3.map);
-  tab.Reset();
 
   // configure body 
   phy = rob;
@@ -327,6 +353,15 @@ void jhcVisGrok::Reset (int rob, int behaviors, int choke)
   sobj.SetAltFix(0, cp0, ct0, cr0);
   fn.AltFlen(0, cflen, 1.0);
   fn.SetAltFix(0, cp0, ct0, cr0);  
+  mot.SetSize(640, 480, cflen);
+
+  // reset vision components
+  s3.Reset();
+  fn.Reset(0);
+  nav.Reset();
+  sobj.Reset();
+  tab.SetSize(s3.map);
+  tab.Reset();
 
   // make default status images
   mark.SetSize(640, 480, 3);
@@ -339,6 +374,9 @@ void jhcVisGrok::Reset (int rob, int behaviors, int choke)
   nav.choke  = choke;
   sobj.choke = choke;
 
+  // sensor height adjustment
+  zadj = 0.0;
+
   // high-level commands
   wlock = 0;
   wwin = 0;
@@ -350,14 +388,18 @@ void jhcVisGrok::Reset (int rob, int behaviors, int choke)
   // navigation goal and FSM
   act = 0;
   feet = 0;
-  ahead = 0;
+  ahead = jms_now();
 
   // default finger separation
   sep = 0.0;
 
+  // balance restoration state
+  esc0 = 0;
+
   // restart background loop, which first generates a body Issue call
   reflex = behaviors;
   first = 1;
+  tcyc = 0.033;
   jhcBgndGrok::Reset();
 }
 
@@ -375,7 +417,7 @@ int jhcVisGrok::Update (int voice, UL32 resume)
   if (body->RngReady() >= 2)
   {
     // undo lens distortion
-    if ((cr2 != 1.0) || (cr4 != 1.0) || (cmag != 1.0))
+    if ((cr2 != 0.0) || (cr4 != 0.0) || (cmag != 1.0))
       cw.Warp(flat, *raw);      
     else           
       src = raw;
@@ -431,10 +473,15 @@ jtimer(3, "body_update");
   // get actuator positions, battery, etc. (possibly time-intensive)
   if (phy > 0) 
     body->Update(-1, 0);                  
+  zadj = nav.HtDev();        // camera correction based on floor
 
   // possibly override gripper width based on visual indicators
   if (west > 0.0)
     arm->JawOpen(finger_sep());        
+
+  // do not erase any objects if arm is extended (can occlude)
+  if (arm->TuckErr() > 5.0)
+    sobj.RetainAll();
 
   // use old person map to guess table height for this cycle (many threads need)
   sobj.ztab = tab.PickPlane(s3.map, s3.IPP(), s3.HMIN(), s3.HMAX());
@@ -451,15 +498,20 @@ void jhcVisGrok::umwelt ()
   // needs depth data
   if (body->RngReady() <= 0)
     return;
+  body->RngPose(pos, dir, zadj);          
 
-jtimer(4, "find table (bg1)");
   // find support SURFACE as a target in old map (s3 in other thread)
-  body->RngPose(pos, dir);
+jtimer(4, "find table (bg1)");
   if (first > 0)
     first--;
   else
-    tab.FindSurf(pos, lift->Height());
-jtimer_x(4);  
+    tab.FindSurf(pos, lift->Height());   // needs wmap set by PickPlane
+jtimer_x(4);
+
+jtimer(5, "visual motion (bg1)");
+  // look for waving hands
+  mot.Analyze(*col, dir.P() - 90.0, dir.T(), body->RngStatic());
+jtimer_x(5);
 }
 
 
@@ -473,18 +525,18 @@ void jhcVisGrok::umwelt2 ()
   if (body->RngReady() <= 0)
     return;
 
-jtimer(5, "find objects (bg2)");
+jtimer(6, "find objects (bg2)");
   // color camera choices for Spectralize + debugging
-  body->RngPose(cp, cd);
-  body->ColPose(vp, vd);
+  body->RngPose(cp, cd, zadj);
+  body->ColPose(vp, vd, zadj);
   sobj.SetFront(0, vp, vd, cp, cd);
 
   // detect bump-like objects (ztab already set by body_update)
   sobj.AdjBase(base->StepSide(), base->StepFwd(), base->StepTurn()); 
   sobj.AdjNeck(cp, cd);
-  if ((ign <= 0) || (body->RngStatic() >= ign))  // was !Saccade
+  if ((ign <= 0.0) || (body->RngStatic() >= ign))  // was !neck->Saccade()
     sobj.FindObjects(*col, *rng);
-jtimer_x(5);
+jtimer_x(6);
 }
 
 
@@ -498,18 +550,18 @@ void jhcVisGrok::umwelt3 ()
   if (body->RngReady() <= 0)
     return;
 
-jtimer(6, "find people (bg3)");
+jtimer(7, "find people (bg3)");
   // color camera choices for face analysis + debugging
-  body->RngPose(cp, cd);
-  body->ColPose(vp, vd);
+  body->RngPose(cp, cd, zadj);
+  body->ColPose(vp, vd, zadj);
   fn.SetFront(0, vp, vd, cp, cd);
 
   // find new person locations based on current camera pose
   adjust_heads();
   fn.SetCam(cp, cd);
-  if (!neck->Saccade())
+  if ((ign <= 0) || (body->RngStatic() >= ign))  // was !neck->Saccade()
     fn.Analyze(*col, *rng);
-jtimer_x(6);
+jtimer_x(7);
 }
 
 
@@ -523,14 +575,16 @@ void jhcVisGrok::umwelt4 ()
   if (body->RngReady() <= 0)
     return;
 
-jtimer(7, "navigation (bg4)");
+jtimer(8, "navigation (bg4)");
   // update NAVIGATION map
-  body->RngPose(pos, dir);
+  body->RngPose(pos, dir);             // no height adjustment
   nav.AdjustMaps(base->StepFwd(), base->StepLeft(), base->StepTurn());
-  if (!neck->Saccade())                // needed
+  if (body->RngStatic() > 0.015)       // roughly 3 frames
     nav.RefineMaps(*rng, pos, dir);
-  nav.ComputePaths();
-jtimer_x(7);
+  else
+    nav.RefreshBody();              
+  nav.ComputePaths();                  // might be affected by decay
+jtimer_x(8);
 }
 
 
@@ -538,9 +592,14 @@ jtimer_x(7);
 
 void jhcVisGrok::body_issue ()
 {
-jtimer(8, "body_issue");
-  // record current time
+  double dt, mix = 0.1;
+  UL32 tprev = tnow;
+
+jtimer(9, "body_issue");
+  // record current time and estimate cycle length
   tnow = jms_now();
+  if ((dt = jms_secs(tnow, tprev)) < 0.5)
+    tcyc += mix * (dt - tcyc);
 
   // umwelt high-level commands (in order of priority)
   act = base_mode();
@@ -550,20 +609,24 @@ jtimer(8, "body_issue");
   assert_servo();
   assert_explore();
 
+  // subconcious behaviors
+  assert_gaze();
+  assert_tip();
+
   // start actuator cmds and get new images (possibly time-intensive)
   if (body != NULL)
   {
     if (phy > 0) 
 {
-jtimer(9, "Issue");
+jtimer(10, "Issue");
       body->Issue();                   // for jhcEliBody
-jtimer_x(9);
-}
-jtimer(10, "UpdateImgs");
-    body->UpdateImgs(); 
 jtimer_x(10);
+}
+jtimer(11, "UpdateImgs");
+    body->UpdateImgs(); 
+jtimer_x(11);
   }
-jtimer_x(8);
+jtimer_x(9);
 }
 
 
@@ -744,7 +807,7 @@ int jhcVisGrok::HeadAlong (jhcMatrix& head, double aim, double dev) const
 
 int jhcVisGrok::WatchPerson (int id, double blim, int bid)
 {
-  if (bid <= wlock) 
+  if (bid < wlock) 
     return 0;
   wlock = bid;
   wwin = id;
@@ -797,15 +860,14 @@ void jhcVisGrok::assert_watch ()
 
 void jhcVisGrok::OrientToward (const jhcMatrix *targ, double blim, int bid)
 {
-  double pan, tilt;
-
   if (targ == NULL) 
     return;
-  neck->AimFor(pan, tilt, *targ, lift->Height());
-  neck->GazeFix(pan, tilt, gtime, bid);
+  neck->GazeAt(*targ, lift->Height(), 0.5, bid);
+/*
   if (((side > 0.0) && (fabs(pan) > side)) ||
       ((blim > 0.0) && (fabs(targ->PanVec3() - 90.0) > blim)))
     base->TurnFix(pan, btime, 1.5, bid);         // swivel base
+*/
 }
 
 
@@ -833,7 +895,7 @@ double jhcVisGrok::PersonErr (int id) const
 
 int jhcVisGrok::SeekLoc (double tx, double ty, double sp, int bid)
 {
-  if (bid <= slock)
+  if (bid < slock)
     return 0;
   slock = bid;
   sx = tx;
@@ -872,7 +934,7 @@ void jhcVisGrok::assert_seek ()
 
 int jhcVisGrok::ServoPolar (double td, double ta, double off, double sp, int bid)
 {
-  if (bid <= vlock)
+  if (bid < vlock)
     return 0;
   vlock = bid;           
   vd = td;
@@ -916,7 +978,7 @@ double jhcVisGrok::FrontDist (double td, double ta) const
 
 int jhcVisGrok::Explore (double sp, int bid)
 {
-  if (bid <= xlock)
+  if (bid < xlock)
     return 0;
   xlock = bid;
   xsp = sp;
@@ -929,7 +991,7 @@ int jhcVisGrok::Explore (double sp, int bid)
 
 void jhcVisGrok::assert_explore ()
 {
-  double trav, head;              
+  double trav, head, tsp;             
   int bid = xlock;
 
   // check if some command, then reset arbitration for next round
@@ -939,7 +1001,8 @@ void jhcVisGrok::assert_explore ()
 
   // pick a steering angle and travel speed (gaze ahead and down)
   nav.Wander(trav, head);
-  base->TurnTarget(head, 0.5, bid);
+  tsp = ((fabs(head) < 2.0) ? 0.0 : xsp);        // speed 0 for no oscillation
+  base->TurnTarget(head, tsp, bid);
   base->MoveTarget(trav, xsp, bid);
 }
 
@@ -949,9 +1012,9 @@ void jhcVisGrok::assert_explore ()
 
 int jhcVisGrok::MapPath (int bid)
 {
-  if (bid <= flock)
+  if (bid < flock)
     return 0;
-  flock = bid + 1;           // a bit of a hack
+  flock = bid + 1;                     // +1 hack
   return 1;
 }
 
@@ -961,25 +1024,32 @@ int jhcVisGrok::MapPath (int bid)
 
 void jhcVisGrok::assert_scan ()
 {
-  double gtol = 3.0;
+  double odet2 = 2.0 * (ign + tcyc * sobj.Born()), gtol = 1.0;  // was 3
   int bid = flock;
 
   // check if some command, then reset arbitration for next round
   if (flock <= 0)
   {  
-    // reset state when not in use
-    feet = 0;      
+    feet = 0;                                    // cancel any saccade
     return;
   }
   flock = 0;         
 
-  // look at feet if needed, otherwise occasionally look ahead
-  if ((quick_survey(bid) > 0) || (jms_elapsed(ahead) < cruise))
+  // look at feet whenever needed, otherwise check path occasionally
+  if (quick_survey(bid) > 0)
     return;
-  if (neck->GazeErr(0.0, road) > gtol)
-    neck->GazeTarget(0.0, road, 1.0, 1.0, bid);      
-  else
-    ahead = jms_now();                 // reset cycle timer
+  if (jms_elapsed(ahead) < cruise)               // not time to check yet
+    return;
+
+  // force robot to look straight ahead
+  if ((neck->GazeErr(0.0, road) > gtol) || 
+      (body->RngStatic() <= odet2))              // allow obj detect
+  {
+    neck->GazeTarget(0.0, road, 1.0, bid);       // look down at path (sp was 0.5)    
+    base->TurnTarget(0.0, 0.0, bid);             // in case circling 
+    return;
+  }
+  ahead = jms_now();                             // reset cycle timer
 }
 
 
@@ -989,46 +1059,141 @@ void jhcVisGrok::assert_scan ()
 //         2 = await low-right saccade
 //         3 = await low-left saccade
 //         4 = await mid-left saccade
-//         5 = await reset
-// returns 1 if moving head, 0 if no gaze command
+//         5 = assess whether still blocked
+//         6 = turn left 90 degrees
+// returns 1 if moving robot, 0 if no motion command
+// Note: takes about 4 secs on Ganbei robot
 
 int jhcVisGrok::quick_survey (int bid)
 {
-  double pan, tilt, gtol = 3.0;
+  double p[4] = {-sacp, -sacp2, sacp2, sacp};
+  double t[4] = { sact,  sact2, sact2, sact}; 
+  double pan, tilt, gtol = 1.0, ttol = 5.0;        // gtol was 3
+  double odet2 = 2.0 * (ign + tcyc * sobj.Born());            
 
-  // reset saccade when free to travel or unknown doormat area
-  if (feet >= 5)
-  {
-    if (nav.Tight(hem) && !nav.Blind(umat))
-      return 0;
-    feet = 0;
-  }
-
-  // if contrained movement then start sequence
+  // check if constrained movement or unknown doormat area
   if (feet <= 0)
   {
-    if (!nav.Tight(hem))
+    if (!nav.Tight(hem) && !nav.Blind(umat))
       return 0;
-    feet = 1;
+    feet = 1;                                      // start scan
   }
 
-  // force rapid look at a sequence of 4 fixations (no time gaps)
-  while (feet < 5)
+  // force rapid sequence of 4 fixations on nearby floor
+  while (feet <= 4)
   {
-    pan  = (((feet == 1) || (feet == 2)) ? -sacp : sacp);
-    tilt = (((feet == 1) || (feet == 4)) ?  sact : sact2);
-    if (neck->GazeErr(pan, tilt) <= gtol)
-      feet++;
-    else
+    pan  = p[feet - 1];
+    tilt = t[feet - 1];
+    if ((neck->GazeErr(pan, tilt) > gtol) || 
+        (body->RngStatic() <= odet2))              // allow obj detect
     {
-      // no base motion during saccade
-      neck->GazeTarget(pan, tilt, -1.5, -1.5, bid);      
-      base->MoveTarget(0.0, 1.0, bid);      
-      base->TurnTarget(0.0, 1.0, bid);      
+      base->Park(bid);                             // no base motion
+      neck->GazeTarget(pan, tilt, 1.0, bid);       // was sp = -1.5 then 0.5
       return 1;
     }
+    feet++;                                        // next scan position
   }
-  return 0;        // feet just set to 5
+
+  // check if still blocked right after scan
+  if (feet <= 5)
+  {
+    if (!nav.Tight(hem))                           // path found
+    {
+      feet = 0;
+      return 0;                                    
+    }
+    view = base->TurnGoal(90.0);                   
+    feet++;                                        // start turn
+  }    
+
+  // reorient base to find better path
+  if (base->TurnErr(view) > ttol) 
+  {
+    base->TurnAbsolute(view, 1.0, bid);            // can oscillate!
+    return 1;
+  }
+  if (body->RngStatic() <= odet2)
+  {
+    base->Park(bid);
+    return 1;
+  }
+
+  // check forward path at this new orientation
+  feet = 0;          
+  return 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                       Subconscious Behaviors                          //
+///////////////////////////////////////////////////////////////////////////
+
+//= Set default gaze (bid 0 = disabled, sp 0 = parked).
+// uses GazeSoft() since tracking with no final deadband
+
+void jhcVisGrok::assert_gaze ()
+{
+  jhcMatrix xyz(4);
+  double p, t, ht = lift->Height(), gsp = 0.5, soft = 15.0;
+  int iw = col->XDim(), ih = col->YDim();
+
+  if ((mbid > 0) && mot.Interest(p, t))                    // twitchy fingers
+    neck->GazeSoft(p, t, gsp, mbid, soft);
+  if ((pbid > 0) && fn.Interest(xyz, iw, ih))              // track face
+    neck->GazeSoft(xyz, ht, gsp, pbid, soft);
+  if ((obid > 0) && sobj.Interest(xyz, iw, ih))            // track object
+    neck->GazeSoft(xyz, ht, gsp, obid, soft);
+  if ((sbid > 0) && (mic != NULL) && mic->Interest(p, t))  // look for talking
+    neck->GazeSoft(p, t, gsp, sbid, soft);
+  if ((rbid > 0) && mot.Askew(p, t))                       // back to center
+    neck->GazeSoft(p, t, gsp, rbid, soft);
+}
+
+
+//= Back and turn if front wheels bump up or dip down.
+
+void jhcVisGrok::assert_tip ()
+{
+  double prads, cp, sp, rrads, cr, sr, dev, azm;
+  int bid = 2000; 
+
+  // if behavior enabled 
+  if (tip <= 0.0)
+    return;
+
+  // get current body attitude
+  prads = D2R * body->Pitch();
+  cp = cos(prads);
+  sp = sin(prads);
+  rrads = D2R * body->Roll(); 
+  cr = cos(rrads);
+  sr = sin(rrads);
+
+  // compute deviation from gravity vector and planar direction of "up" hill
+  dev = R2D *  acos(cp * cr);
+  azm = R2D * atan2(cp * sr, -sp);
+//printf("pitch %3.1f, roll %3.1f -> dev %3.1f @ azm %3.1f\n", body->Pitch(), body->Roll(), dev, azm);
+
+  // if non-level for significant time initiate back-and-turn maneuver
+  if (dev >= tip)
+  {
+printf("  off-balance !\n");
+    esc0  = jms_now();
+    esc_t = base->TurnGoal((azm > 0.0) ? 90.0 : -90.0);
+    esc_m = base->MoveGoal(-12.0);
+  }
+
+  // continue commanding back-and-turn if aleady started
+  if ((esc0 == 0) || (jms_elapsed(esc0) > back))
+    return;
+  if ((base->MoveErr(esc_m) < 1.0) && (base->TurnErr(esc_t) < 5.0))
+    esc0 = 0;
+  else
+  {
+printf("  -> back and turn %3.1f (move err %3.1f)\n", jms_elapsed(esc0), base->Travel() - esc_m);
+    base->TurnTarget(esc_t, 0.7, bid);
+    base->MoveTarget(esc_m, 1.0, bid);
+  }
 }
 
 
@@ -1036,15 +1201,27 @@ int jhcVisGrok::quick_survey (int bid)
 //                              User Images                              //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Get forward color camera image, possibly post-labelling lower left corner.
+
+const jhcImg *jhcVisGrok::HeadView (const char *msg) 
+{
+  if (msg != NULL) 
+    LabelSolid(mark, 10, 30, msg, 1, -5); 
+  return &mark;
+}
+
+
 //= Make a pretty version of color image showing relevant items.
 
 void jhcVisGrok::cam_img ()  
 {
   jhcMatrix target(4);
+  char txt[40];
   int t, gz, sp, nt, hc;
 
   // get current color camera view
   mark.CopyArr(*col);
+  LabelSolid(mark, 560, 20, neck_ctrl(txt, 40), 1, -4);
 
   // show people
   gz = fn.GazeNew();
@@ -1067,24 +1244,70 @@ void jhcVisGrok::cam_img ()
 
   // objects (green = focal, yellow = nodified, magenta = others, cyan = target)
   sobj.AttnCam(mark, 2, 3, 5);     
-//  arm->PosGoal(target, lift->Height());
-//  sobj.MarkCam(mark, target, 6);
+//  arm->PosGoal(target, lift->Height());          // where the hand will end up
+//  sobj.MarkCam(mark, target, 6);                
+}
+
+
+//= Generate string telling which behavior is controlling the neck.
+
+const char *jhcVisGrok::neck_ctrl (char *txt, int ssz) const
+{
+  int bid = neck->MaxBid();
+
+  *txt = '\0';
+  if (bid >= 100)
+    strcpy_s(txt, ssz, "conscious");
+  else if (bid > 0)                    // not disabled
+  {
+    if (bid == pbid)
+      strcpy_s(txt, ssz, "person");
+    else if (bid == obid)
+      strcpy_s(txt, ssz, "object");
+    else if (bid == mbid)
+      strcpy_s(txt, ssz, "motion");
+    else if (bid == sbid)
+      strcpy_s(txt, ssz, "sound");
+    else if (bid == rbid)
+      strcpy_s(txt, ssz, "restore");
+  }
+  return txt;
+}
+
+
+//= Get overhead map (or debugging image), possibly post-labelling lower left corner.
+
+const jhcImg *jhcVisGrok::MapView (const char *msg) 
+{
+  if (msg != NULL) 
+    LabelRight(mark2, 35, 40, msg, 16, -3); 
+  return &mark2;
 }
 
 
 //= Make pretty version of overhead map and robot sensors.
 // always returns a color image and saves dims in wmap, hmap
 // probe:  1 = integrated navigation overhead map
-//         2 = input front-facing depth map
+//         2 = front-facing false color depth
+//
 //         3 = object deviations from flat
 //         4 = object overhead height map
-//         5 = object mask, dims, and colors
-//         6 = table location for object deposit
-//         7 = person overhead height map 
-//         8 = person head and shoulders
-//         9 = sound direction wrt heads
-//        10 = current near floor height 
-//        11 = current obstacle classification
+//         5 = forward range with object boxes
+//         6 = object mask, dims, and colors
+//         7 = table location for object deposit
+//
+//         8 = current near floor heights 
+//         9 = deviations from planar floor
+//        10 = current obstacle classification
+//        11 = traversable regions + sensors
+//
+//        12 = person overhead height map 
+//        13 = potential people over min height 
+//        14 = person head and shoulders
+//        15 = person gaze direction
+//
+//        16 = sound direction wrt heads
+//        17 = visual motion regions
 
 void jhcVisGrok::nav_img ()
 {
@@ -1094,26 +1317,38 @@ void jhcVisGrok::nav_img ()
 //    return;
 
   // choose intermediate image
-  if (probe == 2)         
-    src = gray_depth();               
-  else if (probe == 3) 
+  if (probe == 2)                      // forward depth
+    src = front_depth();       
+  else if (probe == 3)                 // object finding        
     src = surface_bumps();              
   else if (probe == 4)     
-    src = object_heights();                  
-  else if (probe == 5)
-    src = color_mask();
+    src = object_heights();   
+  else if (probe == 5) 
+    src = object_clip();                
   else if (probe == 6)
-    src = table_deposit();
+    src = color_mask();
   else if (probe == 7)
-    src = person_heights();
-  else if (probe == 8)
-    src = head_shoulder();
-  else if (probe == 9)
-    src = head_sound();
-  else if (probe == 10)
+    src = table_deposit();
+  else if (probe == 8)                 // navigation
     src = floor_heights();
-  else if (probe == 11)
+  else if (probe == 9)
+    src = plane_devs();
+  else if (probe == 10)
     src = obstacle_scan();
+  else if (probe == 11)
+    src = free_space();
+  else if (probe == 12)                // person finding
+    src = person_heights();
+  else if (probe == 13)
+    src = person_blobs();
+  else if (probe == 14)
+    src = head_shoulder();
+  else if (probe == 15)
+    src = head_gaze();
+  else if (probe == 16)                // attentional cues
+    src = head_sound();
+  else if (probe == 17)
+    src = vis_motion();
   else            
     src = integrated_map();            // default overhead map
   
@@ -1135,15 +1370,17 @@ void jhcVisGrok::nav_img ()
 
 //= Integrated overhead navigation map (normal display).
 // shows robot in center with distance beams amid classes of obstacles 
-// arg = 1
+// demo 1
 
 const jhcImg *jhcVisGrok::integrated_map ()
 {
+  strcpy_s(tmap, "Overhead Map");
+
   // obstacles, sensors, and footprint
   tmp.SetSize(nav.map);
   nav.LocalMap(tmp);               
   nav.Dists(tmp, 1);               
-//  nav.RobotCmd(tmp, base->TurnIncGoal(), base->MoveIncGoal());
+//  nav.RobotCmd(tmp, base->TurnIncGoal(), base->MoveIncGoal());       // robot destination
   nav.RobotBody(tmp);
   
   // recent robot path and target location
@@ -1156,28 +1393,30 @@ const jhcImg *jhcVisGrok::integrated_map ()
 }
 
 
-//= Input depth image as grayscale (for debugging).
-// arg = 2
+//= Input depth image as false color (for debugging).
+// demo 2
 
-const jhcImg *jhcVisGrok::gray_depth ()             
+const jhcImg *jhcVisGrok::front_depth ()             
 {
+  strcpy_s(tmap, "Depth Image");
+
   tmp.SetSize(*rng, 1);
   NightSD(tmp, *rng, 2.0, sobj.choke);
-  mark2.SetSize(tmp, 3);
-  CopyMono(mark2, tmp);                // not false color
-  return &mark2;
+  return &tmp;
 }
 
 
 //= Object deviations from flat (for debugging).
 // shows zoomed depth around surface and corrections from plane fitting
-// arg = 3
+// demo 3
 
 const jhcImg *jhcVisGrok::surface_bumps ()              
 {
   char msg[80];
 
-  tmp.Clone(sobj.det);
+  strcpy_s(tmap, "Surface Bumps");
+
+  sobj.Detection(tmp);
   sprintf_s(msg, "dt %+5.2f\ndr %+5.2f\ndh %+5.2f", 
             sobj.TiltDev(), sobj.RollDev(), sobj.HtDev());
   LabelSolid(tmp, 10, tmp.YDim() - 40, msg);
@@ -1187,7 +1426,7 @@ const jhcImg *jhcVisGrok::surface_bumps ()
 
 //= Object overhead heights (for debugging).
 // shows full height overhead projection with object bounding boxes
-// arg = 4
+// demo 4
 
 const jhcImg *jhcVisGrok::object_heights ()                 
 {
@@ -1195,13 +1434,15 @@ const jhcImg *jhcVisGrok::object_heights ()
   char msg[80];
   int item = sobj.Closest(1);
 
+  strcpy_s(tmap, "Object Heights");
+
   // show full height overhead table view
   tmp.Clone(sobj.map);
   (sobj.blob).DrawOutline(tmp);
  
   // list estimated table height
-  sprintf_s(msg, "table %3.1f", sobj.ztab + sobj.HtDev());
-  LabelRight(tmp, 10, tmp.YDim() - 20, msg);
+  sprintf_s(msg, "table %3.1f", sobj.SurfHt());
+  LabelRight(tmp, 10, tmp.YDim() - 20, msg, 16, -3);
 
   // list coordinates for grabbing
   if (item >= 0)
@@ -1214,14 +1455,32 @@ const jhcImg *jhcVisGrok::object_heights ()
 }
 
 
+//= Input depth image as grayscale with object detections (for debugging).
+// demo 5
+
+const jhcImg *jhcVisGrok::object_clip ()             
+{
+  strcpy_s(tmap, "Object Clipping");
+
+  tmp.SetSize(*rng, 1);
+  NightSD(tmp, *rng, 2.0, sobj.choke);
+  mark2.SetSize(tmp, 3);
+  CopyMono(mark2, tmp);                // not false color
+  sobj.RngClip(mark2);
+  return &mark2;
+}
+
+
 //= Bitmask for biggest object along with dimensions and colors (for debugging).
-// arg = 5
+// demo 6
 
 const jhcImg *jhcVisGrok::color_mask ()
 {
   char msg[80];
   const jhcImg *shrink = sobj.Swatch();
   int item = sobj.Closest(1);
+
+  strcpy_s(tmap, "Object Properties");
 
   // clear bitmask
   tmp.SetSize(*col);
@@ -1238,7 +1497,6 @@ const jhcImg *jhcVisGrok::color_mask ()
       // write dimensions and colors at top
       sprintf_s(msg, "len %3.1f, wid %3.1f, ht %3.1f", 
                 sobj.Major(item), sobj.Minor(item), sobj.SizeZ(item));
-      LabelRight(tmp, 10, tmp.YDim() - 20, msg);
       sobj.Colors(msg, 80);
       LabelRight(tmp, 10, tmp.YDim() - 40, msg);
     }
@@ -1247,30 +1505,117 @@ const jhcImg *jhcVisGrok::color_mask ()
 
 
 //= Object deposit location wrt table free-space (for debugging).
-// arg = 6
+// demo 7
 
 const jhcImg *jhcVisGrok::table_deposit ()
 {
+  strcpy_s(tmap, "Deposit Location");
+
   if (!space2->Valid())
     return &(sobj.map);
   return space2;             // borrowed from jhcManipulate
 }
 
 
+//= Near-floor overhead navigation heights (for debugging).
+// demo 8
+
+const jhcImg *jhcVisGrok::floor_heights ()
+{
+  char msg[80];
+
+  strcpy_s(tmap, "Floor Heights");
+
+  tmp.Clone(nav.map);
+  nav.ScanBeam(tmp);
+  nav.RobotMark(tmp, 0);
+  sprintf_s(msg, "floor %3.1f", nav.SurfHt());
+  LabelRight(tmp, 10, tmp.YDim() - 20, msg, 16, -3);
+  return &tmp;
+}
+
+
+//= Deviations from planar floor fit (for debugging).
+// demo 9
+
+const jhcImg *jhcVisGrok::plane_devs ()
+{
+  char msg[80];
+
+  strcpy_s(tmap, "Planar Deviations");
+
+  tmp.Clone(nav.Deviations());
+  sprintf_s(msg, "dt %+3.1f\ndr %+3.1f\ndh %+3.1f", nav.TiltDev(), nav.RollDev(), nav.HtDev());
+  LabelRight(tmp, 10, tmp.YDim() - 40, msg, 16, -5);
+  if (nav.NoPlane())
+    LabelRight(tmp, 10, tmp.YDim() - 80, "bad fit", 16, -7);
+  return &tmp;
+}
+
+
+//= Single scan overhead obstacle classification (for debugging).
+// demo 10
+
+const jhcImg *jhcVisGrok::obstacle_scan ()
+{
+  strcpy_s(tmap, "Obstacle Scan");
+
+  tmp.Clone(nav.Terrain());
+  if (nav.NoPlane())
+    LabelRight(tmp, 10, tmp.YDim() - 20, "bad fit", 16, -7);
+  return &tmp;
+}
+
+
+//= Traversable regions and sensors rays (for debugging).
+// demo 11
+
+const jhcImg *jhcVisGrok::free_space ()
+{
+  strcpy_s(tmap, "Free Space");
+
+  tmp.SetSize(nav.map);
+  Threshold(tmp, nav.OpenAreas(), 128, 70);          // full = light blue
+  UnderGate(tmp, tmp, nav.Traversable(), 128, 50);   // center = dark blue
+  nav.Dists(tmp, 0);               
+  return &tmp;
+}
+
+
 //= Person-finding overhead heights (for debugging).
-// arg = 7
+// demo 12
 
 const jhcImg *jhcVisGrok::person_heights ()
 {
-  return tab.Heights();     
+  char msg[80];
+
+  strcpy_s(tmap, "Person Heights");
+
+  tmp.Clone(s3.map);
+  sprintf_s(msg, "ztab %+3.1f", sobj.ztab);
+  LabelRight(tmp, 10, tmp.YDim() - 20, msg, 16, -5);
+  return &tmp;
+}
+
+
+//= Blobs tall enough to be people (for debugging).
+// demo 13
+
+const jhcImg *jhcVisGrok::person_blobs ()
+{
+  strcpy_s(tmap,"Potential People");
+
+  return s3.ChestShrink();
 }
 
 
 //= Detected person heads and shoulders (for debugging).
-// arg = 8
+// demo 14
 
 const jhcImg *jhcVisGrok::head_shoulder ()
 {
+  strcpy_s(tmap, "Heads and Shoulders");
+
   s3.dbg = 1;
   tmp.SetSize(s3.map);
   s3.HeadLevels(tmp);
@@ -1279,12 +1624,29 @@ const jhcImg *jhcVisGrok::head_shoulder ()
 }
 
 
+//= Overhead heads and gaze direction from face (for debugging).
+// demo 15
+
+const jhcImg *jhcVisGrok::head_gaze ()
+{
+  strcpy_s(tmap, "Gaze Direction");
+
+  tmp.Clone(s3.map);
+  s3.CamLoc(tmp, 0);
+  s3.AllHeads(tmp);
+  fn.AllGaze(tmp);
+  return &tmp;
+}
+
+
 //= Overhead heads and sound direction beam (for debugging).
-// arg = 9
+// demo 16
 
 const jhcImg *jhcVisGrok::head_sound ()
 {
   int spk = tk.Speaking(), persist = -5;
+
+  strcpy_s(tmap, "Sound Direction");
 
   tmp.Clone(s3.map);
   s3.AllHeads(tmp);                    // magenta
@@ -1297,31 +1659,19 @@ const jhcImg *jhcVisGrok::head_sound ()
 }
 
 
-//= Near-floor overhead navigation heights (for debugging).
-// arg = 10
+//= Areas with high visual motion (for debugging).
+// demo 17
 
-const jhcImg *jhcVisGrok::floor_heights ()
+const jhcImg *jhcVisGrok::vis_motion ()
 {
-  tmp.Clone(nav.map);
-  nav.ScanBeam(tmp);
-  nav.RobotMark(tmp, 0);
-  return &tmp;
-}
+  double mx, my;
 
+  strcpy_s(tmap, "Motion Regions");
 
-//= Single scan overhead obstacle classification (for debugging).
-// arg = 11
-
-const jhcImg *jhcVisGrok::obstacle_scan ()
-{
-  char msg[80];
-
-  tmp.SetSize(nav.map);
-  Threshold(tmp, nav.map, 254, 255);               // white walls
-  MarkTween(tmp, nav.Deviations(), 78, 178, 50);   // blue floor
-  MarkTween(tmp, nav.Deviations(), 1, 1, 128);     // green missing
-  sprintf_s(msg, "dt %+5.2f, dr %+5.2f\n", nav.TiltDev(), nav.RollDev());
-  LabelRight(tmp, 10, tmp.YDim() - 20, msg, 16, -5);
+  tmp.SetSize(mot.sal);
+  Squelch(tmp, mot.sal, 128);
+  if (mot.Center(mx, my))
+    Cross(tmp, mx, my, 17, 17, 3, 50); 
   return &tmp;
 }
 

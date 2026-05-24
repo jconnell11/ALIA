@@ -5,7 +5,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022-2025 Etaoin Systems
+// Copyright 2022-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,6 +85,7 @@ jhcVocab::jhcVocab (int nb)
   *clean = '\0';
   *mark = '\0';
   *oov = '\0';
+  any = 0;
 
   // no messages
   dbg = 0;
@@ -606,6 +607,7 @@ void jhcVocab::InitGuess ()
   *mark = '\0';
   *oov = '\0';
   worst = 0;
+  any = 0;                   // whether at least one known word
 
   // initialize 6 element window
   for (i = 0; i < 6; i++)
@@ -625,7 +627,8 @@ void jhcVocab::InitGuess ()
 
 const char *jhcVocab::NextGuess (const char *txt)
 {
-  const char *s = txt;
+  char word[20];
+  const char *s0, *s2, *s = txt;
   char *d = mark;
   int i, emit = 0;
 
@@ -642,7 +645,11 @@ const char *jhcVocab::NextGuess (const char *txt)
     // add leading separator and current word to marked string
     strcat_s(mark, sep[2]);              
     if (fcn[2] >= 0) 
+    {
+      if (*item[2] != '\0')            // known word (not space) found
+        any = 1;
       strcat_s(mark, item[2]);
+    }
     else
     {
       // indicate unknown words using parentheses
@@ -681,6 +688,19 @@ const char *jhcVocab::NextGuess (const char *txt)
     s = next_word(item[5], s);
     fcn[5] = gram_fcn(item[5]);
 
+    // absorb any "not" that follows an auxiliary verb (for name_ctx)
+    if (fcn[5] == 2)
+    {
+      s0 = s;                                    // prevent weird VC++ pointer corruption
+      if ((s2 = copy_gap(word, s0)) != NULL)
+        if ((s2 = next_word(word, s2)) != NULL)
+          if (strcmp(word, "not") == 0)
+          {
+            strcat_s(item[5], " not");
+            s = s2;
+          }
+    }
+   
     // stop if unknown but guessable word or all words processed
     if (emit > 0)
       return s;
@@ -791,6 +811,9 @@ int jhcVocab::guess_word ()
   if ((strcmp(item[0], "name") == 0) &&          // ["name" "is" ? ] 
       (strcmp(item[1], "is") == 0))    
     return name_ctx(item[2], 0);
+  if ((strcmp(item[0], "name") == 0) &&          // ["name" "is not" ? ] 
+      (strcmp(item[1], "is not") == 0))    
+    return name_ctx(item[2], 0);
   if (strcmp(item[3], "is") == 0) 
   {
     if ((strcmp(item[5], "name") == 0) ||        // [. ? "is" x "name"]
@@ -828,7 +851,7 @@ int jhcVocab::guess_word ()
 }
 
 
-//= Determine proper non-termninal of unknown name-like word.
+//= Determine proper non-terminal of unknown name-like word.
 // always returns 1 if for convenience
 
 int jhcVocab::name_ctx (const char *word, int npl)
@@ -836,8 +859,11 @@ int jhcVocab::name_ctx (const char *word, int npl)
   int n = (int) strlen(word);
   const char *end = word + n;
 
+  // just a noun if ends in -s and not capitalized
   if ((npl > 0) && (*(end - 1) == 's') && !isupper(*word))
     return noun_ctx(word);
+
+  // decide on robot name or other person's name
   jprintf(1, dbg, "    name_ctx: %s\n", word);
   if ((n >= 5) && (strcmp(end - 2, "'s") == 0))
     strcpy_s(cat, "NAME-P");
@@ -845,7 +871,11 @@ int jhcVocab::name_ctx (const char *word, int npl)
     strcpy_s(cat, "NAME-P");
   else
     strcpy_s(cat, "NAME");
+
+  // force capitalization if single word
   strcpy_s(unk, word);
+  if (!isupper(*word) && (strchr(word, ' ') == NULL))
+    unk[0] = (char) toupper(unk[0]);
   return 1;
 }
 
@@ -1019,7 +1049,7 @@ bool jhcVocab::word_part (char c) const
 //                               Utilities                               //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Write out all know words to file "words.txt".
+//= Write out all known words to file "words.txt".
 // returns total number of entries
 
 int jhcVocab::ListAll () const

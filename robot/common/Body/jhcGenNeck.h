@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,29 +38,36 @@ public:
   virtual ~jhcGenNeck () {}
   jhcGenNeck () {}
   virtual int CommOK () {return 1;}
-  virtual void AimFor (double& p, double& t, const jhcMatrix& targ, double lift =0.0) const =0;
+  virtual int MaxBid () const =0;
 
   // current gaze information
   virtual double Pan () const =0;
   virtual double Tilt () const =0;
   virtual void HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift =0.0) const =0;
   virtual bool Saccade (double plim =3.5, double tlim =1.0) const =0;
-  virtual int Stare () const =0;
+  virtual double Stare () const =0;
+
+  // goal conversion
+  virtual void AimFor (double& p, double& t, const jhcMatrix& targ, double lift =0.0) const =0;
 
   // goal specifying commands for view
   virtual int PanTarget (double pan, double rate =1.0, int bid =10) =0;
   virtual int TiltTarget (double tilt, double rate =1.0, int bid =10) =0;
-  virtual int GazeTarget (double pan, double tilt, double p_rate =1.0, double t_rate =0.0, int bid =10) =0;
-  virtual int GazeAt (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10) =0;
+  virtual int GazeTarget (double pan, double tilt, double rate =1.0, int bid =10) =0;
+  virtual int GazeAt (double wx, double wy, double wz, double lift, double rate =1.0, int bid =10) =0;
+  int GazeAt (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10)
+    {return GazeAt(targ.X(), targ.Y(), targ.Z(), lift, rate, bid);}
+  int Park (int bid =10) 
+    {return GazeAt(0.0, 0.0, 0.0, 0.0, 0.0, bid);}
 
-  // eliminate residual error
-  virtual int GazeFix (double pan, double tilt, double secs =0.5, int bid =10) =0;
-  virtual int GazeFix (const jhcMatrix& targ, double lift, double secs =0.5, int bid =10) =0;
+  // smooth slide to goal pose
+  virtual int GazeSoft (double pan, double tilt, double rate =1.0, int bid =10, double soft =15.0) =0;
+  virtual int GazeSoft (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10, double soft =15.0) =0;
 
   // profiled motion progress
   virtual double PanErr (double pan, int abs =1) const =0;
   virtual double TiltErr (double tilt, int abs =1) const =0;
   virtual double GazeErr (double pan, double tilt) const =0;
-  virtual double GazeErr (const jhcMatrix& targ, double lift =0.0) const =0;
+  virtual double GazeErr (const jhcMatrix& targ, double lift =0.0, int abs =1) const =0;
 
 };

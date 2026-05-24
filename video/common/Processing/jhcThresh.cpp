@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -154,8 +154,9 @@ int jhcThresh_0::Thresh16 (jhcImg& dest, const jhcImg& src, int th, int mark) co
 
 
 //= Marks as 255 any pixels in range [lo hi] inclusive while others are zeroed.
+// for reversed limits marks outside of range but if zclr > 0 sets dest = 0 where src = 0
 
-int jhcThresh_0::Between (jhcImg& dest, const jhcImg& src, int lo, int hi, int mark) const
+int jhcThresh_0::Between (jhcImg& dest, const jhcImg& src, int lo, int hi, int mark, int zclr) const
 {
   if (!dest.SameFormat(src))
     return Fatal("Bad images to jhcThresh::Between");
@@ -167,7 +168,20 @@ int jhcThresh_0::Between (jhcImg& dest, const jhcImg& src, int lo, int hi, int m
   UC8 *d = dest.RoiDest();
   const UC8 *s = src.RoiSrc();
   
-  // test all pixels and record result
+  // see if notch instead of band
+  if (lo > hi)
+  {
+    for (y = rh; y > 0; y--, d += rsk, s += rsk)
+      for (x = rcnt; x > 0; x--, d++, s++)
+        if (((zclr > 0) && (*s == 0)) ||
+            ((*s >= hi) && (*s <= lo)))
+          *d = 0;
+        else 
+          *d = m;
+    return 1;
+  }
+
+  // within limits
   for (y = rh; y > 0; y--, d += rsk, s += rsk)
     for (x = rcnt; x > 0; x--, d++, s++)
       if ((*s >= lo) && (*s <= hi))
@@ -277,7 +291,7 @@ int jhcThresh_0::BothWithin (jhcImg& dest, const jhcImg& src1, const jhcImg& src
 
 
 //= Mark areas in destination where src has exactly the key value.
-// works with monochrome of double field images (e.g. connected components)
+// works with monochrome or double field images (e.g. connected components)
 
 int jhcThresh_0::MatchKey (jhcImg& dest, const jhcImg& src, int key, int mark) const 
 {
@@ -1865,7 +1879,7 @@ int jhcThresh_0::SubstOver (jhcImg& dest, const jhcImg& alt, const jhcImg& gate,
   dest.CopyRoi(alt);
   dest.MergeRoi(gate); 
 
-  // general ROI case for an arbitrary number of fields (seldom used)
+  // general ROI case for an arbitrary number of fields (generally only 1)
   int x, y, i;
   UC8 v = BOUND(th);
   int rw = dest.RoiW(), rh = dest.RoiH(), nf = dest.Fields();
@@ -1905,7 +1919,7 @@ int jhcThresh_0::SubstUnder (jhcImg& dest, const jhcImg& alt, const jhcImg& gate
   dest.CopyRoi(alt);
   dest.MergeRoi(gate);
 
-  // general ROI case for an arbitrary number of fields (seldom used)
+  // general ROI case for an arbitrary number of fields (generally only 1)
   int x, y, i;
   UC8 v = BOUND(th);
   int rw = dest.RoiW(), rh = dest.RoiH(), nf = dest.Fields();

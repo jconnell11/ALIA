@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 #include "jhcGlobal.h"
 
 #include "Data/jhcImg.h"               // common video
-#include "Data/jhcParam.h"      
+#include "Data/jhcParam.h"    
 
 #include "Acoustic/jhcAliaSpeech.h"    // common audio 
 
@@ -84,7 +84,7 @@ public:
   int Done (int face =0, int batt =-1);
 
   // output images
-  int GetView (void *pels, int fmt) const;
+  int GetView (void *pels, int fmt);
   int GetMap (void *pels, int fmt);
 
 

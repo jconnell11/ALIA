@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,6 +47,8 @@ jhcEliBody::~jhcEliBody ()
 
 jhcEliBody::jhcEliBody ()
 {
+  int i, n, nsz = 80;
+
   // shared Dynamixel serial port exists but is not open yet
   mok = -1;
   arm.Bind(dyn);
@@ -64,8 +66,15 @@ jhcEliBody::jhcEliBody ()
   bnum = -1;
   tfill = 0;
 
-  // default robot name
-  strcpy_s(rname, "Banzai");
+  // default robot name (and voice to use)
+  *rname = '\0';
+  if (GetComputerNameA(rname, (LPDWORD) &nsz) != 0)
+  {
+    n = (int) strlen(rname);
+    for (i = 1; i < n; i++)
+      rname[i] = (char) tolower(rname[i]);
+    strcat_s(rname, " Banzai");
+  }
   *vname = '\0';
   loud = 0;
 

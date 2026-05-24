@@ -1,7 +1,7 @@
 // respond to internal state changes
 // ================================================
 
-OP 1 - "If you are tired announce that"
+OP 1 - "If you are tired then announce that"
   trig:
   NOTE[  hq-1 -lex-  tired
               -hq--> obj-1
@@ -59,11 +59,12 @@ OP 4 - "To announce that you are tired say I could use a snack"
 
 // ----------------------------------------
 
-OP 5 - "If you are bored then announce that"
+OP 5 - "If you are bored you could announce that"
   trig:
   NOTE[  hq-1 -lex-  bored
               -hq--> obj-1
         obj-1 -lex-  me ]
+  pref: 0.5
 -----------------
       DO[ fcn-1 -lex-  announce
                 -fcn-> act-1
@@ -175,11 +176,12 @@ OP 12 - "To announce that you are overwhelmed say my brain is melting whoever"
 
 // ----------------------------------------
 
-OP 13 - "If you are lonely then announce that"
+OP 13 - "If you are lonely you could announce that"
   trig:
   NOTE[  hq-1 -lex-  lonely
               -hq--> obj-1
         obj-1 -lex-  me ]
+  pref: 0.5
 -----------------
       DO[ fcn-1 -lex-  announce
                 -fcn-> act-1
@@ -304,9 +306,26 @@ OP 21 - "To announce that you are very angry say Darn it whoever"
         txt-1 -str-  Darn it ?0 ]
 
 
+OP 22 - "To announce that you are very angry say oh man this sucks"
+  trig:
+    DO[ fcn-1 -lex-  announce
+              -fcn-> act-1
+        act-1 -obj-> hq-1 
+         hq-1 -lex-  angry
+              -hq--> obj-1
+        deg-1 -lex-  very
+              -deg-> hq-1
+        obj-1 -lex-  me ]
+-----------------
+    DO[ fcn-2 -lex-  say
+              -fcn-> act-2
+        act-2 -obj-> txt-1
+        txt-1 -str-  Oh man this sucks ]
+
+
 // ----------------------------------------
 
-OP 22 - "If you are scared announce that"
+OP 23 - "If you are scared announce that"
   trig:
   NOTE[  hq-1 -lex-  scared
               -hq--> obj-1
@@ -317,7 +336,7 @@ OP 22 - "If you are scared announce that"
         act-1 -obj-> hq-1 ]
 
 
-OP 23 - "To announce that you are scared say Things aren't going well whoever"
+OP 24 - "To announce that you are scared say Things aren't going well whoever"
   trig:
     DO[ fcn-1 -lex-  announce
               -fcn-> act-1
@@ -332,7 +351,7 @@ OP 23 - "To announce that you are scared say Things aren't going well whoever"
         txt-1 -str-  Things aren't going well ?0 ]
 
 
-OP 24 - "If you are very scared announce that"
+OP 25 - "If you are very scared announce that"
   trig:
   NOTE[  hq-1 -lex-  scared
               -hq--> obj-1
@@ -345,7 +364,7 @@ OP 24 - "If you are very scared announce that"
         act-1 -obj-> hq-1 ]
 
 
-OP 25 - "To announce that you are very scared say Save me master"
+OP 26 - "To announce that you are very scared say Save me master"
   trig:
     DO[ fcn-1 -lex-  announce
               -fcn-> act-1

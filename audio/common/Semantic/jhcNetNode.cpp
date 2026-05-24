@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -154,7 +154,9 @@ jhcNetNode::jhcNetNode (int num, jhcNodePool *pool)
   hash = 0;
   gen = 0;
   ref = 0;
+  ref0 = 0;
   vis = 1;
+  mru = 0;                   // for speculation
 
   // default status 
   top = 0;
@@ -191,13 +193,44 @@ bool jhcNetNode::VerbTag () const
 }
 
 
-//= Set the language I/O reference recency to the newest for its pool.
+//= Mark which generation (and timestamp) node was last touched.
+
+void jhcNetNode::GenMax (int ver)
+{
+  if (ver > 0) 
+    gen = __max(gen, ver);
+}
+
+
+//= Set the conversation I/O reference recency to the newest for its pool.
 // NOTE: only for language input and output routines (i.e. user knows about node)
 
 void jhcNetNode::MarkConvo ()
 {
-  if (home != NULL)
-    ref = home->IncConvo();
+  if (home == NULL)
+    return;
+  ref = home->IncConvo();
+  ref0 = ref;
+}
+
+
+//= Steal conversation reference generation number from given node.
+// NOTE: source node reverts to originally assigned reference (not zero)
+
+void jhcNetNode::XferConvo (jhcNetNode *n) 
+{
+  if ((n == NULL) || (n == this)) 
+    return;
+  ref = n->ref; 
+  n->ref = n->ref0;
+}
+
+
+//= Save conversation reference assigned by FIND/BIND more permanently.
+
+void jhcNetNode::SaveConvo () 
+{
+  ref0 = ref;
 }
 
 
@@ -640,6 +673,14 @@ jhcNetNode *jhcNetNode::AnyFact (const char *role) const
           return p;
     }
   return NULL;
+}
+
+
+//= Tells whether this node represents an object vs a predicate or action (even intransitive).
+
+bool jhcNetNode::ObjNode () const 
+{
+  return(NoArgs() && (Fact("fcn") == NULL));     // was just NoArgs()
 }
 
 

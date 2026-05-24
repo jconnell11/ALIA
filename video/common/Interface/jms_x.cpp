@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -207,8 +207,9 @@ char *jms_date (char *dest, int res, int ssz)
 
 
 //= Generate a time string (with optional milliseconds).
-// res: 0 gives 10:27:36           time with seconds
-//      1 gives 10:27:36.145       time with milliseconds
+// res: 0 gives 10:27              time with minutes only
+//      1 gives 10:27:36           time with seconds
+//      2 gives 10:27:36.145       time with milliseconds
 // useful for tagging events
 
 char *jms_time (char *dest, int res, int ssz) 
@@ -233,6 +234,8 @@ char *jms_time (char *dest, int res, int ssz)
 #endif
 
   if (res <= 0)
+    sprintf_s(dest, ssz, "%02d:%02d", hr, min);
+  else if (res == 1)
     sprintf_s(dest, ssz, "%02d:%02d:%02d", hr, min, sec);
   else 
     sprintf_s(dest, ssz, "%02d:%02d:%02d.%03d", hr, min, sec, ms);

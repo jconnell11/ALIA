@@ -1,14 +1,29 @@
 // Responses to command failures  
 // ================================================
 
-OP 1 - "To explain something when that something is because something else then tell me that something else"
+OP 1 - "To explain failing to do something apologize"
+  trig:
+    DO[  fcn-1 -lex-  explain
+               -fcn-> act-1
+         act-1 -obj-> fail-1
+         fcn-2 -lex-  fail
+               -fcn-> fail-1
+        fail-1 -ach-  1
+               -act-> plan-1 ]
+-----------------
+    DO[ fcn-3 -lex-  apologize 
+              -fcn-> act-2 ]
+
+
+OP 2 - "To explain something when that something is because something else then tell me that something else"
   trig:
     DO[  fcn-1 -lex-  explain
                -fcn-> act-1
          act-1 -obj-> fail-1
          fcn-2 -lex-  fail
                -fcn-> fail-1         
-        fail-1 -act-> plan-1
+        fail-1 -ach-  1
+               -act-> plan-1
          cuz-1 -lex-  because
                -why-> fail-1
                -sit-> sit-1 ]
@@ -22,14 +37,15 @@ OP 1 - "To explain something when that something is because something else then 
         user-1 -lex-   you ] 
 
 
-OP 2 - "To explain failing to do something that I asked you about pass"
+OP 3 - "To explain failing to do something that I asked you about pass"
   trig:
     DO[  fcn-1 -lex-   explain
                -fcn--> act-1
          act-1 -obj--> fail-1
          fcn-2 -lex-   fail
                -fcn--> fail-1       
-        fail-1 -act--> plan-1
+        fail-1 -ach-   1
+               -act--> plan-1
          fcn-3 -lex-   ask
                -fcn--> act-2
          act-2 -agt--> agt-1
@@ -42,22 +58,38 @@ OP 2 - "To explain failing to do something that I asked you about pass"
               -fcn-> act-3 ]
 
 
-OP 3 - "To explain failing to do something apologize"
+OP 4 - "To explain failing to do something that I asked you about when that something is because something else then tell me that something else"
   trig:
-    DO[  fcn-1 -lex-  explain
-               -fcn-> act-1
-         act-1 -obj-> fail-1
-         fcn-2 -lex-  fail
-               -fcn-> fail-1
-        fail-1 -act-> plan-1 ]
+    DO[  fcn-1 -lex-   explain
+               -fcn--> act-1
+         act-1 -obj--> fail-1
+         fcn-2 -lex-   fail
+               -fcn--> fail-1       
+        fail-1 -ach-   1
+               -act--> plan-1
+         fcn-3 -lex-   ask
+               -fcn--> act-2
+         act-2 -agt--> agt-1
+               -act--> plan-1 
+         end-2 -lex-   to
+               -dest-> act-2
+               -ref--> self-1 
+         cuz-1 -lex-   because
+               -why--> fail-1
+               -sit--> sit-1 ]
 -----------------
-    DO[ fcn-3 -lex-  apologize 
-              -fcn-> act-2 ]
+    DO[  fcn-4 -lex-   tell
+               -fcn--> act-3 
+         act-3 -obj--> sit-1
+         end-3 -lex-   to
+               -dest-> act-3
+               -ref--> user-1
+        user-1 -lex-   you ] 
 
 
 // ----------------------------------------
 
-OP 4 - "To apologize say sorry I couldn't do that"
+OP 5 - "To apologize say sorry I couldn't do that"
   trig:
     DO[ fcn-1 -lex-  apologize 
               -fcn-> act-1 ]
@@ -68,7 +100,7 @@ OP 4 - "To apologize say sorry I couldn't do that"
         txt-1 -str-  sorry I couldn't do that ]
 
 
-OP 5 - "To apologize say I failed whoever"
+OP 6 - "To apologize say I failed whoever"
   trig:
     DO[ fcn-1 -lex-  apologize 
               -fcn-> act-1 ]
@@ -79,7 +111,7 @@ OP 5 - "To apologize say I failed whoever"
         txt-1 -str-  I failed ?0 ]
 
 
-OP 6 - "To apologize say oops, something went wrong"
+OP 7 - "To apologize say oops, something went wrong"
   trig:
     DO[ fcn-1 -lex-  apologize 
               -fcn-> act-1 ]
@@ -92,17 +124,17 @@ OP 6 - "To apologize say oops, something went wrong"
 
 // ----------------------------------------
 
-OP 7 - "To find the color of something find out what color it is"
+OP 8 - "To find the color of something find out what color it is"
   trig:
   FIND[  hq-1
         ako-1 -lex-  ***-1
               -ako-> hq-1
-              -wrt-> obj-1 ]
+        wrt-1 -lex-  of
+              -wrt-> ako-1 
+              -ref-> obj-1 ]
 -----------------
   FIND[  hq-2 -hq--> obj-1
         ako-2 -lex-  ***-1
               -ako-> hq-2 ]
-
-
 
 

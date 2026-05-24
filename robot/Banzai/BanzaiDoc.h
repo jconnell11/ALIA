@@ -70,7 +70,7 @@ public:
 
   // overall configuration choices
   jhcParam ips;
-  int rob, cam, fsave;
+  int rob, cam, fsave, inter, cvt;
 
 
 // JHC: helper functions
@@ -256,6 +256,7 @@ public:
   afx_msg void OnManipFingerpose();
   afx_msg void OnImagesRangerfinder();
   afx_msg void OnImagesColorcamera();
+  afx_msg void OnDemoPref();
 };
 
 

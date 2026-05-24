@@ -1270,7 +1270,7 @@ void jhcEliArm::jt3x3 (jhcMatrix& f2t) const
 int jhcEliArm::WidthTarget (double sep, double rate, int bid)
 {
   // see if previous command takes precedence
-  if (bid <= wlock)
+  if (bid < wlock)
     return 0;
   wlock = bid;
 
@@ -1289,7 +1289,7 @@ int jhcEliArm::WidthTarget (double sep, double rate, int bid)
 int jhcEliArm::SqueezeTarget (double force, int bid)
 {
   // see if previous command takes precedence
-  if (bid <= wlock)
+  if (bid < wlock)
     return 0;
   wlock = bid;
 
@@ -1509,7 +1509,7 @@ int jhcEliArm::CfgTarget (const jhcMatrix& ang, const jhcMatrix& rates, int bid)
     Fatal("Bad input to jhcEliArm::CfgTarget");
 
   // see if previous command takes precedence (defers to equal xyz)
-  if ((bid <= alock) || (bid <= plock) || (bid <= dlock))
+  if ((bid < alock) || (bid < plock) || (bid < dlock))
     return 0;
 
   // set goal angle and rate for each joint
@@ -1578,7 +1578,7 @@ int jhcEliArm::PosTarget (const jhcMatrix& pos, double rate, int bid, int mode)
 int jhcEliArm::PosTarget (double ax, double ay, double az, double rate, int bid, int mode)
 {
   // see if previous command takes precedence (trumps equal cfg)
-  if ((bid <= plock) || (bid < alock))
+  if ((bid < plock) || (bid < alock))
     return 0;
   plock = bid;
 
@@ -1601,7 +1601,7 @@ int jhcEliArm::PosTarget3D (const jhcMatrix& pos, double ht, double rate, int bi
     Fatal("Bad input to jhcEliArm::PosTarget3D");
 
   // see if previous command takes precedence (trumps equal cfg)
-  if ((bid <= plock) || (bid < alock))
+  if ((bid < plock) || (bid < alock))
     return 0;
   plock = bid;
 
@@ -1626,7 +1626,7 @@ int jhcEliArm::DirTarget (const jhcMatrix& dir, double rate, int bid, int mode)
     Fatal("Bad input to jhcEliArm::DirTarget");
 
   // see if previous command takes precedence (trumps equal cfg)
-  if ((bid <= dlock) || (bid < alock))
+  if ((bid < dlock) || (bid < alock))
     return 0;
   dlock = bid;
 

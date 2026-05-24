@@ -224,13 +224,13 @@ double jhcTable::PickPlane (const jhcImg& hts, double res, double z0, double z1)
 
 
 //= Get height histogram focussing on certain distance from robot.
-// histograms heights in range from close to far inches from center
+// histograms heights in range from close to farout inches from center
 // assumes head will be turned to get proper side (if any)
 // helps find correct height despite larger distractors
 
-void jhcTable::hist_range (jhcArr& hist, const jhcImg& hts, double close, double far)
+void jhcTable::hist_range (jhcArr& hist, const jhcImg& hts, double close, double farout)
 {
-  double cpos = __max(0.0, close), fpos = __max(0.0, far);
+  double cpos = __max(0.0, close), fpos = __max(0.0, farout);
   int c = ROUND(cpos / wipp), f = ROUND(fpos / wipp), c2 = c * c, f2 = f * f;
   int w = hts.XDim(), mx = w / 2, h = hts.YDim(), sk = hts.Skip();
   int x, y, y2, cmy2, fmy2, dx, dx2;

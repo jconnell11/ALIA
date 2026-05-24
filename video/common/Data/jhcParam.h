@@ -24,7 +24,6 @@
 #pragma once
 
 #include "jhcGlobal.h"
-#include <stdlib.h>
 
 
 //= Useful structure for processing parameters.

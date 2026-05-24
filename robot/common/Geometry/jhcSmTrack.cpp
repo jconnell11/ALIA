@@ -364,8 +364,11 @@ void jhcSmTrack::MatchAll (const double * const *detect, int n, int rem, const d
   int i, j, nt = __min(n, total);
 
   // link all reasonable pairs and penalize unlinked tracks
+//printf("distances: old %d, new %d\n", valid, nt);
   score_all(detect, nt, shp);
+//printf("pair tracks\n");
   greedy_pair(detect, nt, 1);    // match established tracks first
+//printf("pair probationary\n");
   greedy_pair(detect, nt, 0);    // probationary tracks get leftovers
   if (rem > 0)
     Prune();
@@ -416,7 +419,10 @@ void jhcSmTrack::score_all (const double * const *detect, int n, const double * 
     for (i = 0; i < valid; i++)
       if (id[i] >= 0) 
         for (j = 0; j < n; j++)
+{
           (dist[i])[j] = get_d2i(i, detect[j], shp[j]);
+//  printf("  old %d to new %d = %4.2f\n", i, j, sqrt((dist[i])[j]));
+}
   }
 }
 
@@ -522,6 +528,7 @@ double jhcSmTrack::get_d2i (int i, const double *item, const double *shp) const
   if ((dz = fabs(trk[2] - item[2])) > ztol)
     return -1.0;
   d2 = d2r + dz * dz;                                      // center offset (squared)
+//printf(" dx %4.2f, dx %4.2f, dz %4.2f -> %4.2f\n", dx, dy, dz, sqrt(d2));
 
   // shape difference (in percent scaled by dsf = in/pct)
   if (dsf > 0.0)
@@ -598,6 +605,7 @@ void jhcSmTrack::greedy_pair (const double * const *detect, int n, int solid)
 
      // record pairing and update tracking info
      PairUp(iwin, detect, jwin);
+//printf("  link %d to %d (d = %4.2f)\n", iwin, jwin, sqrt(best)); 
   }
 }
 

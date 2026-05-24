@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -136,6 +136,7 @@ public:
   void Copy (const jhcGraphlet& ref);
   void Append (const jhcGraphlet& ref);
   int CopyBind (const jhcGraphlet& ref, const jhcBindings& sub);
+  void IncludeArgs (const jhcGraphlet& ref);
   void CutTail (jhcGraphlet& tail, int start);
   jhcNetNode *AddItem (jhcNetNode *item);
   int RemItem (int i);

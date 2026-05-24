@@ -3,4 +3,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Jet|ARM64'">
     <RemoteTarget>1292679620;Benny (username=, port=22, authentication=Password)</RemoteTarget>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Honey|ARM64'">
+    <RemoteTarget>1059909976;Honey (username=, port=22, authentication=Password)</RemoteTarget>
+  </PropertyGroup>
 </Project>

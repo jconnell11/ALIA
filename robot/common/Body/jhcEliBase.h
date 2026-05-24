@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,8 +98,7 @@ private:
   
   // instantaneous speed estimates
   UL32 now;
-  double mvel, tvel, imv, itv;
-  int parked;
+  double mvel, tvel, imv, itv, parked;
 
 
 // PRIVATE MEMBER PARAMETERS
@@ -182,7 +181,7 @@ public:
   double MoveIPS (int abs =1) const {return((abs > 0) ? fabs(imv) : imv);}
   double TurnDPS (int abs =1) const {return((abs > 0) ? fabs(itv) : itv);}
   double TravelRate () const {return fabs(mctrl.rt);}
-  int Static () const {return parked;}
+  double Oriented () const {return parked;}
   void AdjustXY (double& tx, double& ty, double tx0 =0.0, double ty0 =0.0) const;
   void AdjustTarget (jhcMatrix& pos) const;
   double AdjustAng (double& ang) const;
@@ -194,10 +193,6 @@ public:
   int TurnAbsolute (double hd, double rate =1.0, int bid =10);
   int DriveTarget (double dist, double ang, double rate =1.0, int bid =10)
     {return DriveAbsolute(trav + dist, head + ang, rate, rate, bid);}
-//  int MoveTarget (double dist, double rate =1.0, int bid =10)
-//    {return MoveAbsolute(trav + dist, rate, bid);}
-//  int TurnTarget (double ang, double rate =1.0, int bid =10)
-//    {return TurnAbsolute(head + ang, rate, bid);}
   int DriveStop (double rate =1.5, int bid =1)
     {return DriveAbsolute(mctrl.SoftStop(trav, mdead, rate), tctrl.SoftStop(head, tdead, rate), rate, rate, bid);}
   int MoveStop (double rate =1.5, int bid =1)
@@ -207,9 +202,15 @@ public:
   int SetMoveVel (double ips, int bid =10);
   int SetTurnVel (double dps, int bid =10);
 
+  // smooth slide to goal
+  int MoveSoft (double dist, double rate =1.0, int bid =10, double soft =2.0);
+  int TurnSoft (double ang, double rate =1.0, int bid =10, double soft =10.0);
+
   // profiled motion progress
-  double MoveErr (double mgoal) const {return fabs(mgoal - trav);}
-  double TurnErr (double tgoal) const {return fabs(tgoal - head);}
+  double MoveErr (double mgoal, int abs =1) const 
+    {return((abs > 0) ? fabs(mgoal - trav) : mgoal - trav);}
+  double TurnErr (double tgoal, int abs =1) const 
+    {return((abs > 0) ? fabs(tgoal - head) : tgoal - head);}
   bool DriveClose (double dist =0.5, double ang =2.0) const {return(MoveClose(dist) && TurnClose(ang));}
   bool MoveClose (double tol =0.5) const {return(mctrl.RampDist(trav) <= tol);}
   bool TurnClose (double tol =2.0) const {return(tctrl.RampDist(head) <= tol);}
@@ -217,8 +218,6 @@ public:
   // -------------------- BASE EXTRAS ---------------------------
 
   // convert relative goal to absolute
-//  double MoveGoal (double dist) const {return(trav + dist);}
-//  double TurnGoal (double ang) const  {return(head + ang);}
   double RateIPS (double rate =1.0) const {return(rate * mctrl.vstd);}
   double RateDPS (double rate =1.0) const {return(rate * tctrl.vstd);}
 

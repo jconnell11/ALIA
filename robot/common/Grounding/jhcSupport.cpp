@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,7 +62,8 @@ jhcSupport::jhcSupport ()
 
   // processing parameters
   Defaults();
-  gok = 1;                   // either 1 or -1
+  gok = 20;                 // 0 = no ghost, else cycles to wait (80Hz)
+  dbg = 2;
 }
 
 
@@ -240,7 +241,6 @@ void jhcSupport::local_reset (jhcAliaNote& top)
 
   // noisy messages
   rpt = &top;
-  dbg = 1;
 
   // no surfaces nearby yet
   tok = 0;
@@ -494,9 +494,6 @@ int jhcSupport::surf_enum0 (const jhcAliaDesc& desc, int i)
 int jhcSupport::surf_enum (const jhcAliaDesc& desc, int i)
 {
   jhcAliaDesc *obj = desc.Val("arg");
-//  double dmax = dfar + band;
-//  double dhi[4]  = {dmax, dmid, dfar, dmax};
-//  double zavg[5] = {mavg,  0.0, lavg, mavg, havg};
   double sz = 0.0;
   int aqnt = (int) cpos[i].P(), dqnt = (int) cpos[i].X(), hqnt = (int) cpos[i].Z();
   int current, id, idx, born = 0;
@@ -628,7 +625,8 @@ int jhcSupport::surf_orient0 (const jhcAliaDesc& desc, int i)
     return -1;
   if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
-  ct0[0] = 0;                                    // reset timeout
+  ct0[i] = 0;                                    // reset timeout
+  ccnt[i] = 0;
   return 1;
 }
 
@@ -640,16 +638,16 @@ int jhcSupport::surf_orient0 (const jhcAliaDesc& desc, int i)
 int jhcSupport::surf_orient (const jhcAliaDesc& desc, int i)
 {
   jhcMatrix edge(4);
-  double pan, tilt, dp, dt;
+  double da;
   int idx;
 
   // check for known surface and working body
   if ((idx = saved_index(cobj[i])) < 0)
     return err_vis(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (neck->CommOK() <= 0)
     return err_hw("neck");
 
@@ -662,19 +660,17 @@ int jhcSupport::surf_orient (const jhcAliaDesc& desc, int i)
 
   // look slightly beyond edge of table
   tab->SurfEdge(edge, saved[idx], soff[idx] - inset);
-  neck->AimFor(pan, tilt, edge, lift->Height());
-  neck->GazeTarget(pan, tilt, 1.0, 1.0, cbid[i]);    // use GazeFix instead?
+  neck->GazeAt(edge, lift->Height(), 0.5, cbid[i]);    
 
   // see if close enough yet
-  dp = neck->PanErr(pan);
-  dt = neck->TiltErr(tilt);
-  jprintf(3, dbg, "  dp = %3.1f, dt = %3.1f\n", dp, dt);
-  if ((dp > atol) || (dt > atol))
+  da = neck->GazeErr(edge, lift->Height());
+  jprintf(3, dbg, "  da = %3.1f\n", da);
+  if (da > atol)
   {
     // if not making progress see if tolerably close
-    if (chk_neck(i, dp + dt) <= 0)
+    if (chk_neck(i, da) <= 0)
       return 0;
-    jprintf(2, dbg, "    stuck: dp = %3.1f, dt = %3.1f\n", dp, dt);
+    jprintf(2, dbg, "    stuck: da = %3.1f\n", da);
     return -1;
   }
   return 1;                                      // success
@@ -691,7 +687,8 @@ int jhcSupport::surf_look0 (const jhcAliaDesc& desc, int i)
     return -1;
   if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
-  ct0[0] = 0;                                    // reset timeout
+  ct0[i] = 0;                                    // reset timeout
+  ccnt[i] = 0;
   return 1;
 }
 
@@ -708,10 +705,10 @@ int jhcSupport::surf_look (const jhcAliaDesc& desc, int i)
   // check for known surface and working body
   if ((idx = saved_index(cobj[i])) < 0)
     return err_vis(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (neck->CommOK() <= 0)
     return err_hw("neck");
 
@@ -753,6 +750,7 @@ int jhcSupport::surf_goto0 (const jhcAliaDesc& desc, int i)
   if ((cobj[i] = desc.Val("arg")) == NULL)
     return -1;
   ct0[i] = 0;                                    // reset timeout
+  ccnt[i] = 0;
   return 1;
 }
 
@@ -769,10 +767,10 @@ int jhcSupport::surf_goto (const jhcAliaDesc& desc, int i)
   // check for known surface and working body
   if ((idx = saved_index(cobj[i])) < 0)
     return err_vis(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
 //  if ((rwi->body)->CommOK() <= 0)
 //    return err_hw("body");
 
@@ -891,14 +889,20 @@ int jhcSupport::saved_detect ()
 
 int jhcSupport::chk_neck (int i, double err)
 {
-  double prog = 1.0, tim = 0.5;        // 1 deg over about 15 cycles
+  double chg = cerr[i] - err, prog = 1.0, tim = 0.5;       // 1 deg over about 15 cycles
 
-  if ((ct0[i] == 0) || ((cerr[i] - err) >= prog))
+  // check for some progress
+  if ((ct0[i] == 0) || (chg >= prog))
   {
-    ct0[i] = jms_now();
     cerr[i] = err;
+    ct0[i] = jms_now();                // reset timer once movement starts
+    return 0;
   }
-  else if (jms_elapsed(ct0[i]) > tim)
+
+  // no progress
+  if (chg < 0.0)                       // only accumulate small positive steps
+    cerr[i] = err; 
+  if (jms_elapsed(ct0[i]) > tim)
     return 1;
   return 0;
 }
@@ -911,7 +915,7 @@ int jhcSupport::chk_neck (int i, double err)
 
 int jhcSupport::chk_base (int i, double err)
 {
-  double prog = 0.5;                   // 0.5" over about 30 cycles
+  double chg = cerr[i] - err, prog = 0.5;        // 0.5" over about 30 cycles
   int tim = 1000;                      
   UL32 prev = ct0[i];
   
@@ -920,15 +924,17 @@ int jhcSupport::chk_base (int i, double err)
   if (rwi->Survey())
     return 0;
 
-  // possibly reset last error if enough progress made
-  if ((prev == 0) || ((cerr[i] - err) >= prog))
+  // check for some progress
+  if ((prev == 0) || (chg >= prog))
   {
     cerr[i] = err;
-    ccnt[i] = 0;
+    ccnt[i] = 0;                       // reset count once movement starts
     return 0;
   }
 
-  // increment amount of time since noticeable progress
+  // no progress
+  if (chg < 0.0)                       // only accumulate small positive steps
+    cerr[i] = err;   
   if (prev != 0) 
     ccnt[i] += (int)(ct0[i] - prev);
   if (ccnt[i] > tim) 

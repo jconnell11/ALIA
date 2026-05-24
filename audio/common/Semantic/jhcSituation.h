@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,6 +51,9 @@ protected:
   // ref = restrict "you" and "me", chk = ignore neg
   int refmode, chkmode;
 
+  // consistency mismatch reasons
+  static const char * const why[10];
+
 
 // PUBLIC MEMBER VARIABLES
 public:
@@ -79,6 +82,7 @@ public:
   // main functions
   int MatchGraph (jhcBindings *m, int& mc, const jhcGraphlet& pat, const jhcNodeList& f, const jhcNodeList *f2 =NULL);
   jhcNetNode *FindRef (const jhcNetNode *focus, const jhcNodeList& wmem);              
+  bool Isomorphic (const jhcGraphlet& here, const jhcGraphlet& ext, jhcBindings& b); 
 
 
 // PRIVATE MEMBER FUNCTIONS

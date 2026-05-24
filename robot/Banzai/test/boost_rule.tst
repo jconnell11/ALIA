@@ -1,9 +1,13 @@
-orange striped things are occasionally tigers
+orange striped things are sometimes tigers
 
-is the orange striped thing a tiger?
+there is an orange striped thing
+is it a tiger?
 it is a tiger
 
-is the orange striped cat a tiger?
+there is an orange striped cat
+is it a tiger?
 it is a tiger
 
-is the orange striped dog a tiger?
+there is an orange striped dog
+is it a tiger?
+

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,15 @@
  
 #include "Parse/jhcSlotVal.h"          
 
+
+//= Various different kinds of speech acts.
+//                0         1         2         3        4        5         6         7
+enum JSP_ACT {JSP_NONE, JSP_FACT, JSP_CMD,  JSP_YNQ, JSP_WHQ, JSP_EXQ,  JSP_FIND, JSP_REV,
+              JSP_RULE, JSP_OP,   JSP_HAIL, JSP_HI,  JSP_BYE, JSP_WORD, JSP_ERR,  JSP_MAX};
+//                8         9        10        11       12       13        14        15
+
+
+///////////////////////////////////////////////////////////////////////////
 
 //= Turns parser alist into network structures.
 // set "dbg" in base class to 1 to see call sequence on input
@@ -73,20 +82,24 @@ private:
   jhcAliaChain *skolem;
   int create, resolve;
 
-  // for implicit loops
-  jhcAliaChain *multi;                  // "for" multi-step loop (if any)
-  jhcAliaChain *root;                   // outermost looping EACH/ANY
-  jhcAliaChain *loop;                   // innermost looping EACH/ANY
-
 
 // PROTECTED MEMBER VARIABLES
 protected:
+  // name associated with each speech act
+  static const char * const sp_desc[JSP_MAX];
+
+  // pointer to main system  
   class jhcAliaCore *core;
 
   // suggestions to add
   jhcAliaRule *rule;
   jhcAliaOp *oper;
   jhcAliaChain *bulk;       
+
+  // for implicit loops
+  jhcAliaChain *multi;                  // "for" multi-step loop (if any)
+  jhcAliaChain *root;                   // outermost looping ALL
+  jhcAliaChain *loop;                   // innermost looping ALL
 
 
 // PUBLIC MEMBER VARIABLES
@@ -104,10 +117,12 @@ public:
   ~jhcGraphizer ();
   jhcGraphizer ();
   void Bind (class jhcAliaCore *all) {core = all;}
+  const char *SpeechAct (int sp) const 
+    {return(((sp >= 0) && (sp < JSP_MAX)) ? sp_desc[sp] : "unknown");}
 
   // main functions
   void ClearLast ();
-  int Assemble (const char *alist);
+  JSP_ACT Assemble (const char *alist);
   jhcAliaChain *TrySeq () const {return bulk;}
 
 
@@ -121,14 +136,10 @@ protected:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // attention items
-  int cvt_imm (const char *alist);
-  int append_ynq (jhcAliaChain *seq, jhcNodePool& pool) const;  
-  int append_exist (jhcAliaChain *seq, jhcNodePool& pool) const;
-  int append_find (jhcAliaChain *seq, jhcNodePool& pool) const;
-  jhcAliaChain *tell_step (const char *verb, jhcNodePool& pool) const;
+  JSP_ACT cvt_imm (const char *alist);
 
   // rules
-  int cvt_rule (const char *alist);
+  JSP_ACT cvt_rule (const char *alist);
   bool build_fwd (jhcAliaRule& r, const char *alist);
   bool build_rev (jhcAliaRule& r, const char *alist);
   bool build_ifwd (jhcAliaRule& r, const char *alist);
@@ -137,14 +148,14 @@ private:
   int build_graph (jhcGraphlet& gr, const char *alist, jhcNodePool& pool);
 
   // operators
-  int cvt_op (const char *alist);
+  JSP_ACT cvt_op (const char *alist);
   jhcAliaOp *config_op (const char *alist) const;
   const char *kind_op (int& k, const char *alist, int veto) const;
   int build_sit (jhcSituation& sit, const char *alist, const char *ktag =NULL);
   double pref_val (const char *word) const;
 
   // operator revisions
-  int cvt_rev (const char *alist);
+  JSP_ACT cvt_rev (const char *alist);
 
   // command sequences
   jhcAliaChain *build_chain (const char *alist, jhcAliaChain *ult, jhcNodePool& pool);
@@ -164,7 +175,7 @@ private:
   jhcNetNode *build_name (const char *alist, jhcNodePool& pool); 
   jhcNetNode *build_fact (const char **after, const char *alist, jhcNodePool& pool, 
                           jhcNetNode *subj =NULL, int pos =0);
-  const char *act_deg (jhcNetNode *act, const char *amt, const char *alist, jhcNodePool& pool) const;
+  const char *act_deg (jhcNetNode *act, jhcNetNode *dir0, const char *amt, const char *alist, jhcNodePool& pool) const;
   const char *act_amt (jhcNetNode *act, const char *num, const char *alist, jhcNodePool& pool) const;
   int add_quote (jhcNetNode *v, const char *alist, jhcNodePool& pool) const;
   jhcNetNode *add_args (jhcNetNode *v, const char *alist, jhcNodePool& pool);
@@ -175,7 +186,7 @@ private:
                          jhcNetNode *f0 =NULL, double blf =1.0, int qcnt =0);
   void obj_poss (jhcNetNode *obj, jhcNetNode *kind, const char *alist, jhcNodePool& pool);
   void obj_comp (jhcNetNode **fact, jhcNetNode *obj, const char *alist, jhcNodePool& pool);
-  int setup_loop (const char *word);
+  int setup_loop ();
 
   // basic object description
   jhcNetNode *obj_desc (jhcNetNode **last, jhcNetNode *obj, const char *alist, jhcNodePool& pool, double blf);

@@ -144,6 +144,7 @@ int jhcArea::BoxAvg (jhcImg &dest, const jhcImg& src, int wid, int ht,
   dest.CopyRoi(src);
   if ((area * sc) >= 66051.0)
     return box_avg0(dest, src, dx, dy, sc, vic);
+  dest.CopyRoi(src);                             // added 8/25
 
   // generic ROI case
   int i, x, y, wx, rsk4;
@@ -676,7 +677,7 @@ int jhcArea::MaskBoxAvg (jhcImg &dest, const jhcImg& src, const jhcImg& gate, in
 {
   int ans, dx = wid, dy = ((ht == 0) ? wid : ht);
 
-  // chack arguments
+  // check arguments
   if (!dest.Valid(1) || !dest.SameFormat(src) || !dest.SameFormat(gate))
     return Fatal("Bad images to jhcArea::MaskBoxAvg");
   dest.CopyRoi(src);  

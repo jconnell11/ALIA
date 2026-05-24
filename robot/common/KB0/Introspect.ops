@@ -1,14 +1,15 @@
 // basic commands for examining the ALIA action tree
 // ==================================================
 
-OP 1 - "Before explaining why some plan is failing ..."
+OP 1 - "Before explaining that some action failed ..."
   trig:
   ANTE[  fcn-1 -lex-  explain
                -fcn-> act-1
          act-1 -obj-> fail-2
          fcn-2 -lex-  fail
                -fcn-> fail-2
-        fail-2 -act-> plan-3 ]
+        fail-2 -ach-  1
+               -act-> plan-3 ]
 ---------------
    GND[ call-1 -lex-  why_fail
                -arg-> fail-2 ]

@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015 IBM Corporation
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,6 +63,7 @@ public:
   // main functions
   int CopyState (const jhcGramRule *r);
   int SameRule (const jhcGramRule *ref) const;
+  char *Expansion (char *txt, int ssz) const;
   
   // file functions
   void Topic (FILE *out) const;

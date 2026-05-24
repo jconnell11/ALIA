@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2025 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -104,7 +104,7 @@ private:
 
   // currently selected action parameters (for convenience)
   double wid, sp;
-  int inst, bid, pmode, dmode, stare;
+  int inst, bid, pmode, dmode;
 
   // error measurement and reporting (for convenience)
   jhcMatrix perr, derr;
@@ -128,8 +128,7 @@ private:
   double swell, fuzz, iwid, bias, sdev, tween, buddy, hood;
 
   // trajectory control parameters
-  double ttol, hold, wmin, wtim, edge, over, graze;
-  int park;
+  double park, ttol, hold, wmin, wtim, edge, over, graze;
 
   // done tolerance parameters
   double ptol, atol, wtol, ftol, cont, ztol, dtol;
@@ -188,7 +187,8 @@ private:
 
   // recurring functions
   void set_size (const jhcImg& ref);
-  int update_held ();
+  void update_held ();
+  void shift_down ();
 
   // hand information
   JCMD_DEF(man_held);

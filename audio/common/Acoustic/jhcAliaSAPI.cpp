@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,9 +23,11 @@
 
 #include <ctype.h>
 
+#include "Interface/jtimer.h"          // common video - for profiling
+
 #include "Acoustic/jhcAliaSAPI.h"
 
-#include "Interface/jtimer.h"
+
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -41,12 +43,12 @@ jhcAliaSAPI::~jhcAliaSAPI ()
 
 jhcAliaSAPI::jhcAliaSAPI ()
 {
-  spin  = 0;                                   // no speech reco
-  amode = 2;                                   // attn word at front
-  tts   = 0;                                   // no speech out
-  acc   = 0;                                   // forget rules/ops
+  spin  = 0;                           // no speech reco
+  amode = 1;                           // attn word at front or back
+  tts   = 0;                           // no speech out
+  acc   = 0;                           // forget rules/ops
   time_params(NULL);
-  gr.SetBonus("ACT-2");                        // prefer these trees
+  gr.SetBonus("ACT-2");                // prefer these trees
 }
 
 
@@ -133,7 +135,7 @@ int jhcAliaSAPI::Reset (const char *rname, const char *vname, int cvt)
 {
   // dispatch based on interface choice 
   if (spin == 3)
-    jprintf(">>> Windows 11 Live Caption interface not written yet!\n");
+    jprintf(">>> Windows 11 Live Caption interface not available yet!\n");
   else if (spin == 2)
   {
     // configure online speech recognition (requires internet connection)
@@ -144,7 +146,7 @@ int jhcAliaSAPI::Reset (const char *rname, const char *vname, int cvt)
       jprintf(1, noisy, "=========================\n\n");
       return 0;
     }
-    jprintf(1, noisy, "  %d recognition fixes from: misheard.map\n", web.Fixes());
+    jprintf(1, noisy, "  %3d transcript fixes from: misheard.map\n", web.Fixes());
     jprintf(1, noisy, "\nSPEECH -> OK\n");
     jprintf(1, noisy, "=========================\n\n");
   }
@@ -617,14 +619,14 @@ const char *jhcAliaSAPI::NewOutput ()
     mood.Speak((int) strlen(output), shz);
     strcpy_s(pend, output);
     yack = now;
-
+/*
     // start TTS immediately but allow for later override
     if ((spin <= 0) && (tts > 0))
     {
       sp.Say(SenseCnt(), output);               
       sp.Utter();
     }
-
+*/
     // possibly open speech gate for user response
     n = (int) strlen(output);
     if (output[n - 1] == '?')

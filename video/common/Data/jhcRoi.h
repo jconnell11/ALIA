@@ -77,6 +77,8 @@ public:
   int MinDim () const {return __min(w, h);}               /** Smaller of clipping dimensions (image size).   */
   int XDimF (double f =0.5) const {return ROUND(f * w);}  /** Fraction of image width (default = half).      */
   int YDimF (double f =0.5) const {return ROUND(f * h);}  /** Fraction of image height (default = half).     */
+  double XMidF () const {return(0.5 * (w - 1));}          /** Floating point horizontal middle of image.     */
+  double YMidF () const {return(0.5 * (h - 1));}          /** Floating point vertical middle of image.       */
 
   int RoiX () const {return rx;}                    /** Lowest X of region of interest. */
   int RoiY () const {return ry;}                    /** Lowest Y of region of interest. */

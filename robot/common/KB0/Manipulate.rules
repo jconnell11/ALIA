@@ -1,0 +1,19 @@
+// Category definitions and rules for Manipulate kernel
+// ========================================================
+
+RULE 1 - "If something is on something else then it is from that something else"
+    if: loc-1 -lex-  on
+              -loc-> obj-1
+              -ref-> obj-2
+  then: loc-2 -lex-  from
+              -src-> obj-1
+              -ref-> obj-2
+
+
+RULE 2 - "If something is in something else then it is from that something else"
+    if: loc-1 -lex-  in
+              -loc-> obj-1
+              -ref-> obj-2
+  then: loc-2 -lex-  from
+              -src-> obj-1
+              -ref-> obj-2

@@ -28,6 +28,7 @@
 #include "Data/jhcImg.h"          // common video
 #include "Data/jhcParam.h"
 #include "Face/jhcFrontal.h"
+#include "Processing/jhcLabel.h"
 
 #include "People/jhcStare3D.h"    // common robot
 
@@ -50,10 +51,11 @@
 //
 // </pre>
 
-class jhcHeadGaze : public jhcFrontal
+class jhcHeadGaze : public jhcFrontal, private jhcLabel
 {
 // PRIVATE MEMBER VARIABLES
 private:
+  jhcMatrix p2s;
   int gcnt[pmax];
 
 
@@ -119,7 +121,7 @@ public:
     {return((s3 == NULL) ? 0 : s3->PersonID(FrontNew(cam, fmin)));}
 
   // debugging graphics
-  int AllGaze (jhcImg& dest, int trk =1) const;
+  int AllGaze (jhcImg& dest, int trk =1);
   int GazeCam (jhcImg& dest, int i, int cam =0, int trk =1) const;
 
 
@@ -132,9 +134,9 @@ private:
   // main functions
   void head_mid (jhcMatrix& mid, const jhcMatrix& head, int cam) const;
   int search_area (jhcRoi& probe, double& rot, const jhcMatrix& mid, const jhcImg& src) const;
-  int face_pt (jhcMatrix& fc, double fx, double fy, const jhcImg& d16, double sc) const;
+  int face_pt (jhcMatrix& fc, const jhcMatrix& mid, const jhcImg& d16, double fx, double fy) const;
+  double equiv_head (int &hx, int &hy, const jhcMatrix& mid, const jhcImg& d16, double fx, double fy) const;
   void attn_hits (int trk);
-
 
 };
 

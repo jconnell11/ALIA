@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -223,20 +223,10 @@ public:
   bool NewFrame () const {return(vid != NULL);}
   const jhcImg *View () const {return &col;}
   int RngReady () const {return seen;}
-  int RngStatic () const {return __min(base.Static(), neck.Stare());}
-  void RngPose (jhcMatrix& pos, jhcMatrix& dir) const
-    {neck.HeadPose(pos, dir, lift.Height());}
-/*
-// synthetic Ganbei adjustment
-void ColPose (jhcMatrix& pos, jhcMatrix& dir) const
-{
-  RngPose(pos, dir);
-  dir.IncVec3(-5.0, 6.0, 4.5);
-  double fwd = 0.87, up = -1.14;       // lens (f = 384.5)
-  double trads = D2R * dir.T(), c = cos(trads), s = sin(trads); 
-  pos.IncVec3(0.0, fwd * c - up * s, up * c + fwd * s);
-}
-*/  
+  double RngStatic () const {return __min(base.Oriented(), neck.Stare());}
+  void RngPose (jhcMatrix& pos, jhcMatrix& dir, double zadj =0.0) const
+    {neck.HeadPose(pos, dir, lift.Height()); pos.IncZ(zadj);}
+
   // basic actions
   int Freeze (int led =0);
   int Limp ();

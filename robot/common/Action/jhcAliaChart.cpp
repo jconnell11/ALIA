@@ -61,12 +61,13 @@ void jhcAliaChart::Memory (jhcDisplay& d)
     return;
   g = (stat->goal).MaxVal();
   m = (stat->hmem).MaxVal();
-  top  = __max(1, ROUND(pk * m));
-  gtop = __max(1, ROUND(pk * g));
+  top  = ROUND(pk * __max(100, m));
+  gtop = ROUND(pk * __max(100, g));
 
   // show graphs
   resize(d);
-  d.Graph0(d.BelowX(), d.BelowY(), "Total goals (%d max) and total memory (%d max) over %3.1f secs", g / 100, m / 100, stat->Time(hz));
+  d.Graph0(d.BelowX(), d.BelowY(), "Goal recency (%3.1f now) with WMEM + halo (%d now) over %3.1f secs", 
+           (stat->goal).Recent() / 100.0, (stat->hmem).Recent() / 100, stat->Time(hz));
   d.GraphOver(stat->hmem, top, 2); 
   d.GraphOver(stat->wmem, top, 4);
   d.GraphOver(stat->goal, gtop, 8);

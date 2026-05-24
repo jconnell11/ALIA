@@ -43,6 +43,7 @@ public:
   virtual const char *GrammarFile () const  =0;
   virtual int MarkRule (const char *name =NULL, int val =1) =0;
   virtual int ExtendRule (const char *name, const char *phrase, int lvl =0) =0;
+  virtual int OpenClass () const =0;
 
   // parsing status functions
   virtual int NumStates () const {return 0;}

@@ -124,7 +124,7 @@ void jhcFrontal::Reset ()
 }
 
 
-//= Look for a face in a particular area of the source image at a particular orientation.
+//= Look for a face in a particular area of the source image with some in-plane orientation.
 // records results (if any) under person "p" and camera "cam" 
 // tried: 1 = during in-progress cycle, -1 = during finished cycle, 0 = never
 // return -1 for no face, 0 for non-frontal, else frontal count

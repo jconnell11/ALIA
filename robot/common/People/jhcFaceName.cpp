@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -143,19 +143,18 @@ void jhcFaceName::Reset (int local)
 
 void jhcFaceName::SetCam (const jhcMatrix& pos, const jhcMatrix& dir, int full)
 {
-  SetAttn(pos);
   if (s3 == NULL)
     return;
   if (full <= 0)
   {
-    // camera always points upward, fix world coordinates in tracking
-    s3->SetCam(0, 0.0, 0.0, pos.Z(), 90.0, dir.T(), dir.R());
-//    xcomp = pos.X();
-//    ycomp = pos.Y();
-//    pcomp = dir.P();
+    s3->SetCam(0, 0.0, 0.0, pos.Z(), 90.0, dir.T(), dir.R());  // points along y for detection
+    s3->ScanEmbed(dir.P() - 90.0, pos.X(), pos.Y());           // to restore world coordinates
   }
   else
+  {
     s3->SetCam(0, pos, dir);
+    s3->ScanEmbed();
+  }
 }
 
 
@@ -304,3 +303,51 @@ int jhcFaceName::query_track (int trk)
         }
   return win;
 }
+
+
+///////////////////////////////////////////////////////////////////////////
+//                          Person Information                           //
+///////////////////////////////////////////////////////////////////////////
+
+//= Preferred gaze is toward person closest to center of color image.
+// restricted to geometric people who have been validated by having a face
+// returns false if none, else binds full 3D head coordinates (in inches)
+
+bool jhcFaceName::Interest (jhcMatrix& xyz, int iw, int ih) 
+{
+  jhcMatrix rel(4);
+  jhcRoi box;
+  double dx, dy, d2, best, hoff = 0.4 * iw, voff = 0.4 * ih;
+  int i, hw = iw >> 1, hh = ih >> 1, n = s3->PersonLim(), win = -1;
+
+  // find valid people which are currently detected
+  s3->SetColorGeom();
+  for (i = 0; i < n; i++)
+    if (s3->PersonOK(i))
+      if (FaceCnt(i) > 0)
+      {
+        // get center of bounding box in color image
+        s3->BeamCoords(rel, *(s3->GetPerson(i)));
+        s3->ImgCylinder(box, rel, 8.0, 8.0);
+
+        // get offset from center of image
+        dx = box.RoiMidX() - hw;
+        dy = box.RoiMidY() - hh;
+        d2 = dx * dx + dy * dy;
+
+        // check if likely in view and middlemost
+        if ((fabs(dx) <= hoff) && (fabs(dy) <= voff)) 
+          if ((win < 0) || (d2 < best))
+          {
+            win = i;
+            best = d2;
+          }
+      }
+
+  // load up 3D postion if something adequate was found
+  if (win < 0)
+    return false;
+  xyz.Copy(*(s3->GetPerson(win)));
+  return true;
+}
+

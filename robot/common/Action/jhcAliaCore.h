@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -123,6 +123,7 @@ private:
 
   double ver;                  // current code version
   char wdir[200];              // base directory for files
+  char formal[80];             // robot full name (e.g. "Ivy Banzai")
   char myself[80];             // robot first name
   char fname[200];             // temporary absolute file name
   int gnd;                     // whether grounding DLLs are loaded
@@ -135,10 +136,11 @@ private:
   int svc;                     // which focus is being worked on
   int bid;                     // importance of next activity in focus
   int topval;                  // unique ID for active NOTEs
-  int spact;                   // last speech act received
+  JSP_ACT spact;               // last speech act received
 
   UL32 t0;                     // starting time of this run
   FILE *netlog;                // user input to semantic net log
+  char stamp[20];              // last hh:mm time stamp printed
   char time[40];               // temporary time stamp string
 
   // loop timing and cycle counts
@@ -146,15 +148,14 @@ private:
   double rem;
   int sense, think;
 
-  // fake speech input for "ask"
-  int hear0;
-
-
+  
 // PROTECTED MEMBER VARIABLES
 protected:
   char echo[500];              // cleaned up input string
   double thz, shz;             // timing parameters
+  int spec;                    // enable speculation
   UL32 now;
+  int hear0;                   // fake speech input for "ask"
 
 
 // PUBLIC MEMBER VARIABLES
@@ -201,6 +202,7 @@ public:
 
   // timing
   const char *RunTime ()  {return jms_offset(time, t0, 0);}
+  UL32 StartTime () const {return t0;}
   int SenseCnt ()   const {return sense;}
   int ThoughtCnt () const {return think;}
   double Sensing () const 
@@ -216,16 +218,17 @@ public:
   int SaveVals (const char *fname) const;
 
   // extensions
-  int AddName (const char *name, int bot =0);
+  int GramName (const char *name, int bot =0);
   int Accept (jhcAliaRule *r, jhcAliaOp *p);
   int OpEdit (const jhcAliaOp& op0, const jhcNetNode& main, const jhcBindings& s2o, jhcAliaChain *seq =NULL)
     {return pmem.AddVariant(op0, main, s2o, seq, 1);}
+  int Speculate (jhcAliaChain *bulk, int spact);
   void Remove (const jhcAliaRule *rem) {amem.Remove(rem);}
   void Remove (const jhcAliaOp *rem)   {pmem.Remove(rem);}
 
   // main functions
   const char *SetDir (const char *path =NULL);
-  void Reset (const char *rname =NULL, int prt =3, int cvt =1);
+  void Reset (const char *rname =NULL, int prt =3, int cvt =0);
   int Interpret (const char *input =NULL, int gate =1, int amode =2);
   jhcAliaChain *Reinterpret ();
   int RunAll (int gc =1);
@@ -259,6 +262,9 @@ public:
   // debugging
   void KernList () const;
   void ShowMem () {atree.PrintMain(memhyp);}
+  bool ExistKB () const;
+  void LoadKnowledge ();
+  void DumpKnowledge ();
   void LoadLearned ();
   void DumpLearned ();
   void DumpSession ();
@@ -275,21 +281,29 @@ protected:
 private:
   // creation and initialization
   int add_dlls (const char *fname);
-  void init_state (const char *rname);
+  void init_state ();
 
   // processing parameters
   int rate_params (const char *fname);
   int msg_params (const char *fname);
 
+  // extensions
+  int scour_facts (jhcGraphlet& ctx, const jhcGraphlet& refs, const jhcGraphlet& halt) const;
+  int describe (jhcGraphlet& desc, jhcNetNode *item, const jhcGraphlet& refs, const jhcGraphlet& halt) const;
+  int gather_props (jhcGraphlet& desc, const jhcNetNode *item, const jhcGraphlet& halt) const;
+  int gather_rels (jhcGraphlet& desc, const jhcNetNode *item, const jhcGraphlet& refs, const jhcGraphlet& halt) const;
+  void add_convo (jhcGraphlet& ctx) const;
+
   // main functions
-  void log_opts (const char *rname, int prt);
+  void log_opts (int prt);
+  void load_foundation ();
   void kern_extras (const char *kdir);
   int add_info (const char *dir, const char *base, int rpt, int level);
   bool readable (char *fname, int ssz, const char *msg, ...) const;
   int baseline (const char *fname, int add, int rpt);
   void open_cvt (const char *rname);
   int guess_cats (const char *txt);
-  void gram_add_hq (const char *wd);
+  void gram_rollback ();
   int syllables (const char *txt, int th) const;
   void stop_all();
 

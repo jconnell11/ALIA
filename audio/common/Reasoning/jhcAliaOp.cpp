@@ -151,11 +151,11 @@ int jhcAliaOp::FindMatches (jhcAliaDir& dir, const jhcWorkMem& f, double mth, in
   }
 
   // set control parameters
-  jprintf(2, dbg, "  try_mate: %s initial focus\n", focus->Nick()); 
+  jprintf(2, dbg, "  try_mate: %s \"%s\" initial focus\n", focus->Nick(), focus->LexStr()); 
   bin = ((focus->Lex() == NULL) ? -1 : focus->Code());
   omax = dir.MaxOps();
   tval = dir.own;
-  if ((k == JDIR_BIND) || (k == JDIR_EACH) || (k == JDIR_ANY))
+  if ((k == JDIR_BIND) || (k == JDIR_ALL))
     k = JDIR_FIND;
   bth = (((k == JDIR_CHK) || (k == JDIR_FIND)) ? -mth : mth);
   d = &dir;
@@ -207,7 +207,7 @@ int jhcAliaOp::try_mate (const jhcNetNode *focus, jhcNetNode *mate, jhcAliaDir& 
     return -1;               // stops all OP matching
   if (!mate->Visible())
     return 0;
-  jprintf(2, dbg, "   mate = %s (%4.2f)", mate->Nick(), mate->Belief());
+  jprintf(2, dbg, "   mate = %s \"%s\" (%4.2f)", mate->Nick(), mate->LexStr(), mate->Belief());
 
   // test main node compatibility (okay with blank nodes)
   if ((kind == JDIR_NOTE) && !mate->Sure(bth))
@@ -323,6 +323,10 @@ int jhcAliaOp::Load (jhcTxtLine& in)
   const char *item;
   int ans;
 
+  // clear source from file and provenance string of operator
+  *(in.src) = '\0';
+  *prov = '\0';
+
   // required header ("OP <pnum> - <gist>" where gist is optional)
   if (in.NextContent() == NULL)
     return -1;
@@ -332,6 +336,10 @@ int jhcAliaOp::Load (jhcTxtLine& in)
     return 0;
   if (((item = in.Token()) != NULL) && (strcmp(item, "-") == 0))
     SetGist(in.Head());
+
+  // copy provenance from preceding "src:" comment line (if any)
+  strcpy_s(prov, in.src);
+  *in.src = '\0';
 
   // body of operator
   in.Flush();
@@ -430,9 +438,11 @@ int jhcAliaOp::Save (FILE *out, int src)
   jhcAliaDir dir;
   int i;
 
-  // header ("OP <id> - <gist>") and optional provenance
+  // optional provenance comment line
   if ((src > 0) && (*prov != '\0'))
-    jfprintf(out, "// originally operator %d from %s\n\n", pnum, prov);  
+    jfprintf(out, "// src: %s\n\n", prov); 
+
+  // header ("OP <id> - <gist>") 
   jfprintf(out, "OP");
   if (id > 0)
     jfprintf(out, " %d", id);

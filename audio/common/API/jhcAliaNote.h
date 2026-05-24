@@ -107,5 +107,8 @@ public:
   // returns number of focus if added, -2 if empty
   virtual int FinishNote (jhcAliaDesc *fail =NULL) =0;
 
+  //= How busy the main inference engine is (to avoid interruptions).
+  virtual double Distracted () const =0;
+
 };
 

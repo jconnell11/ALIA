@@ -1,0 +1,20 @@
+// terms associated with "acknowledge" ops and rules
+// ================================================
+
+// imperative verbs
+
+=[ACT]
+  understand
+  announce
+  know
+  acknowledge
+  succeed
+
+
+// ================================================
+
+// irregular morphologies (npl, acomp, asup, vpres, vprog, vpast)
+
+=[XXX-morph]
+  understand * vpast = understood
+  know * vpast = knew

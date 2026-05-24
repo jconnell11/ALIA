@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,6 +75,7 @@ public:
   jhcAliaChain *fail, *cont, *alt;     // next step in chain (public for jhcGraphizer)
   class jhcAliaOp *avoid;
   int alt_fail, inum;                  // looping status
+int gen0;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -89,6 +90,10 @@ public:
   jhcBindings *Scope () {return &scoping;}
   class jhcAliaCore *Core () {return core;}
   class jhcActionTree *ATree ();
+  int HasCont () const     {return((cont != NULL) ? 1 : 0);}
+  int HasAlt () const      {return((alt  != NULL) ? 1 : 0);}
+  int HasFail () const     {return((fail != NULL) ? 1 : 0);}
+  bool NoLinks () const    {return((cont == NULL) && (alt == NULL) && (fail == NULL));}
   bool Variations () const {return((cont == NULL) && (spew >= 2) && (backstop != NULL));} 
   bool Fallback () const;
 
@@ -99,13 +104,18 @@ public:
   class jhcAliaPlay *GetPlay () const {return p;}
   bool Empty () const {return((d == NULL) && (p == NULL));}
   bool StepDir (int kind) const;
+  bool Iter () const;
   void RefSteps (jhcNetNode *src, const char *slot, jhcNodePool& pool, int init =1);
   int NumSteps (int init =0);
   int PlayAct (jhcAliaChain *act, int mode);
-  jhcAliaChain *StepN (int n);
+  jhcAliaChain *Norm () const;
+  jhcAliaChain *Dev () const;
   jhcAliaChain *Penult ();
   jhcAliaChain *Last ();
   jhcGraphlet *LastKey ();
+  jhcAliaChain *LastRun ();
+  jhcAliaChain *PostSkolem ();
+  void CollectRefs (jhcGraphlet& refs, jhcGraphlet& halt, jhcGraphlet& fact) const;
   jhcAliaChain *Append (jhcAliaChain *tackon);
   int MaxDepth (int cyc =1);
   int NumGoals (int leaf =0, int cyc =1);
@@ -113,7 +123,7 @@ public:
   void Enumerate ();
 
   // building
-  jhcAliaChain *Instantiate (jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx =NULL);
+  jhcAliaChain *Instantiate (jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx =NULL, int strip =0);
   bool Involves (const jhcNetNode *item, int top =1);
   void MarkSeeds (int head =1);
 
@@ -144,11 +154,12 @@ private:
   void cut_loops ();
 
   // building
-  jhcAliaChain *dup_self (int& node, jhcAliaChain *seen[], jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx);
+  jhcAliaChain *dup_self (int& node, jhcAliaChain *seen[], jhcNodePool& mem, jhcBindings& b, 
+                          const jhcGraphlet *ctx, int strip);
   void clr_labels (int head);
 
   // main functions
-  int start_payload (int lvl);
+  int start_payload ();
 
   // file reading
   int build_chain (jhcNodePool& pool, jhcAliaChain *label[], jhcAliaChain *fix[], int& n, jhcTxtLine& in);

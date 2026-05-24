@@ -372,15 +372,39 @@ RULE 59 - "If something is visible then you see it"
               -hq--> obj-1
   then: fcn-3 -lex-  see
               -fcn-> act-3
-        act-3 -tag-  vimp
+        act-3 -agt-> agt-1
               -obj-> obj-1
+        agt-1 -lex-  me
 
 RULE 60 - "If you see something then it is visible"
     if: fcn-1 -lex-  see
               -fcn-> act-1
-        act-1 -tag-  vimp
+        act-1 -agt-> agt-1
               -obj-> obj-2
+        agt-1 -lex-  me
   then:  hq-3 -lex-  visible
+              -hq--> obj-2
+
+RULE 61 - "If something is not visible then you do not see it"
+    if:  hq-2 -lex-  visible
+              -neg-  1
+              -hq--> obj-1
+  then: fcn-3 -lex-  see
+              -fcn-> act-3
+        act-3 -neg-  1
+              -agt-> agt-1
+              -obj-> obj-1
+        agt-1 -lex-  me
+
+RULE 62 - "If you do not see something then it is not visible"
+    if: fcn-1 -lex-  see
+              -fcn-> act-1
+        act-1 -neg-  1
+              -agt-> agt-1
+              -obj-> obj-2
+        agt-1 -lex-  me
+  then:  hq-3 -lex-  visible
+              -neg-  1
               -hq--> obj-2
 
 

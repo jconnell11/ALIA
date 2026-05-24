@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +41,11 @@ private:
   double pang, tang, rang;   // current camera angles
   double xcam, ycam, zcam;   // location of camera center
   double p0, t0;             // angles on previous cycle
-  int stable;                // number of no-motion cycles
+
+  // speed estimate
+  double dps;                // smoothed slew speed
+  double stable;             // secs with no-motion 
+  UL32 tupd;
 
   // command info
   double pstop, tstop, gazex, gazey, gazez;      // desired angles or coords
@@ -70,6 +74,7 @@ public:
   ~jhcSwapNeck ();
   jhcSwapNeck ();
   int CommOK () {return nok;}
+  int MaxBid () const {return __max(glock0, __max(plock0, tlock0));}
 
   // configuration
   void Reset ();
@@ -89,7 +94,7 @@ public:
   void HeadPose (jhcMatrix& pos, jhcMatrix& aim, double lift =0.0) const;
   bool Saccade (double plim =3.5, double tlim =1.0) const
     {return((fabs(pang - p0) > plim) || (fabs(tang - t0) > tlim));}
-  int Stare () const {return stable;}
+  double Stare () const {return stable;}
 
   // goal conversion
   void AimFor (double& p, double& t, const jhcMatrix& targ, double lift =0.0) const;
@@ -97,19 +102,19 @@ public:
   // goal specifying commands for view
   int PanTarget (double pan, double rate =1.0, int bid =10);
   int TiltTarget (double tilt, double rate =1.0, int bid =10);
-  int GazeTarget (double pan, double tilt, double p_rate =1.0, double t_rate =0.0, int bid =10);
-  int GazeAt (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10);
+  int GazeTarget (double pan, double tilt, double rate =1.0, int bid =10);
+  int GazeAt (double wx, double wy, double wz, double lift, double rate =1.0, int bid =10);
 
-  // eliminate residual error
-  int GazeFix (double pan, double tilt, double secs =0.5, int bid =10);
-  int GazeFix (const jhcMatrix& targ, double lift, double secs =0.5, int bid =10);
+  // smooth slide to goal pose
+  int GazeSoft (double pan, double tilt, double rate =1.0, int bid =10, double soft =10.0);
+  int GazeSoft (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10, double soft =10.0);
 
   // motion progress
   double PanErr (double pan, int abs =1) const;
   double TiltErr (double tilt, int abs =1) const;
   double GazeErr (double pan, double tilt) const
     {return __max(PanErr(pan, 1), TiltErr(tilt, 1));}
-  double GazeErr (const jhcMatrix& targ, double lift =0.0) const;
+  double GazeErr (const jhcMatrix& targ, double lift =0.0, int abs =1) const;
 
 
 // PROTECTED MEMBER FUNCTIONS

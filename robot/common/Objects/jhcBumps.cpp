@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -160,15 +160,15 @@ int jhcBumps::detect_params (const char *fname)
 
   sprintf_s(tag, "%s_det", name);
   ps->SetTag(tag, 0);
-  ps->NextSpec4( &sm,     5,    "Map interpolation (pel)");    // was 9 then 11 then 7
-  ps->NextSpec4( &pmin,   4,    "Min averaging (pel)");        // was 3, 0, 22 then 10
-  ps->NextSpecF( &hobj,   0.5,  "Object ht threshold (in)");   // was 0.75, 1.0, then 0.35
-  ps->NextSpecF( &htol,   0.1,  "Object ht tolerance (in)");   // was 0.25
-  ps->NextSpec4( &sc,     5,    "Evidence smoothing (pel)");   // was 7
-  ps->NextSpec4( &sth,   60,    "Shape binary threshold");     // was 80
+  ps->NextSpec4( &sm,     5,   "Map interpolation (pel)");     // was 9 then 11 then 7
+  ps->NextSpec4( &pmin,   4,   "Min averaging (pel)");         // was 3, 0, 22 then 10
+  ps->NextSpecF( &hobj,   0.5, "Object ht threshold (in)");    // was 0.75, 1.0, then 0.35
+  ps->NextSpecF( &htol,   0.1, "Object ht tolerance (in)");    // was 0.25
+  ps->NextSpec4( &sc,     5,   "Evidence smoothing (pel)");    // was 7
+  ps->NextSpec4( &sth,   60,   "Shape binary threshold");      // was 80
 
-  ps->NextSpec4( &amin, 150,    "Min blob area (pel)");        // was 50, 20, 200, then 100
-  ps->NextSpecF( &hmix,   0.0,  "Height estimate mixing");     // was 0.05 then 1.0
+  ps->NextSpec4( &amin, 150,   "Min blob area (pel)");         // was 50, 20, 200, then 100
+  ps->NextSpecF( &hmix,   0.0, "Height estimate mixing");      // was 0.05 then 1.0
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -192,7 +192,7 @@ int jhcBumps::shape_params (const char *fname)
   ps->NextSpecF( &amix,   0.1,  "Angle update rate");
   ps->NextSpec4( &pcnt,  20,    "Points in height peak");
 
-  ps->NextSpecF( &gmax,   4.0,  "Max grabbable width (in)");
+  ps->NextSpecF( &smax,  10.0,  "Max object dimension (in)");
   ps->NextSpecF( &smin,   0.5,  "Min object dimension (in)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
@@ -389,7 +389,7 @@ int jhcBumps::Analyze (int trk)
 
 //= Find candidate object pixels in overhead map.
 // uses image "map" to yield info in "cc" image and "blob" analyzer
-// NOTE: overridden by jhcSurfObjs
+// NOTE: overridden by jhcSurfObjs!
 
 void jhcBumps::raw_objs (int trk)
 {
@@ -412,7 +412,8 @@ void jhcBumps::raw_objs (int trk)
   BoxAvg(obj, obj, sc);
   CComps4(cc, obj, amin, 180);
   blob.FindParams(cc);
-//  blob.RemBorder(cc, 1);               // no touching image edges (redundant)
+  blob.RemBorder(cc, 2);               // not touching map edges
+  cache_hts(blob);                     // save inches in Val field
 
   // suppress components extending beyond table
   if (surf > 0)
@@ -427,7 +428,7 @@ void jhcBumps::raw_objs (int trk)
 void jhcBumps::obj_boxes (jhcBlob *b, int flat)
 {
   double *xyz;
-  double len, wid, ht, sz, hdef = 0.5 * (hobj - htol);
+  double len, wid, ht, sz0, sz1, hdef = 0.5 * (hobj - htol);
   int i, n;
 
   // assumes nr set to zero outside
@@ -440,9 +441,9 @@ void jhcBumps::obj_boxes (jhcBlob *b, int flat)
     if (b->GetStatus(i) > 0)
     {
       // determine true object height then apply shrinking (zf)
-      ht = zf * find_hmax(i, b->ReadRoi(i));
+      ht = b->BlobValue(i);            // cached
       if (flat > 0)
-        ht = __max(hdef, ht);                    // for flat objects
+        ht = __max(hdef, ht);          // for flat objects
       else if (ht <= 0.0)
       {
         // punt if just noise instead of protrusion
@@ -452,18 +453,19 @@ void jhcBumps::obj_boxes (jhcBlob *b, int flat)
 
       // get dimensions in inches, veto if not grabbable or too big 
       wid = xyf * P2I(b->BlobWidth(i));
-      if ((gmax > 0.0) && (wid > gmax))
-        continue;
       len = xyf * P2I(b->BlobLength(i));
-      sz = __min(__min(len, wid), ht);
-      if ((smin > 0.0) && (sz < smin))           // was smax = 10"
+      sz0 = __min(__min(len, wid), ht);
+      if ((smin > 0.0) && (sz0 < smin))
+        continue;
+      sz1 = __max(__max(len, wid), ht);
+      if ((smax > 0.0) && (sz1 > smax))    
         continue;
 
       // make new entry and record position (bounding box center, not centroid)
       xyz = raw[nr];
       xyz[0] = P2I(b->BoxAvgX(i)) - x0;
       xyz[1] = P2I(b->BoxAvgY(i)) - y0;
-      xyz[2] = 0.5 * ht + ztab;                  // accurate for jhcSurfObjs also
+      xyz[2] = 0.5 * ht + SurfHt();              // incl. HtDev from jhcSurfObjs
 
       // record dimensions (compensate for bloat)
       xyz[3] = xyf * P2I(b->BoxW(i));
@@ -485,6 +487,19 @@ void jhcBumps::obj_boxes (jhcBlob *b, int flat)
       if (++nr >= rlim)
         break;
     }
+}
+
+
+//= Save height estimate (in inches) for each raw detection.
+// used by jhcBumps::obj_boxes() and jhcSurfObjs::rng_box() 
+
+void jhcBumps::cache_hts (jhcBlob& b)
+{
+  int i, n = b.Active();
+
+  for (i = 1; i < n; i++)
+    if (b.GetStatus(i) > 0) 
+      b.SetVal(i, zf * find_hmax(i, b.ReadRoi(i)));
 }
 
 

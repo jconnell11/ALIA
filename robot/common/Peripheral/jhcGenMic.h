@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@
 
 #include "jhcGlobal.h"
 
+#include <math.h>
+
 #include "Data/jhcParam.h"             // common video
 
 #include "Geometry/jhcMatrix.h"        // common robot
@@ -42,8 +44,12 @@ private:
   double x0, y0, z0, pan, tilt;
   int mport, light;
 
-  // beam matching
+
+// PROTECTED MEMBER PARAMETERS
+protected:
+  // matching and orienting
   double oth, ath, dth;
+  int deaf, sang, fresh;
 
 
 // PROTECTED MEMBER VARIABLES
@@ -97,6 +103,8 @@ public:
   double Dir (int src) const {return((src <= 0) ? beam : ((src == 1) ? slow : talk));}
   bool NewVoice () const  {return(spcnt == 1);}
   int VoiceStale () const {return((spcnt < 0) ? -spcnt : __max(0, spcnt));}
+  bool Interest (double& p, double& t) const
+    {if (audio < -fresh) return false; p = pan + slow; t = tilt; return true;}
 
   // head matching
   double ClosestPt (jhcMatrix *pt, const jhcMatrix& ref, int src =0, int chk =1) const;

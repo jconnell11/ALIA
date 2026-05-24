@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ jhcAliaMood::jhcAliaMood ()
 //                         Processing Parameters                         //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Parameters to evaluate reasoning state and battery level.
+//= Parameters to evaluate reasoning state and surprise level.
 
 int jhcAliaMood::core_params (const char *fname)
 {
@@ -61,15 +61,15 @@ int jhcAliaMood::core_params (const char *fname)
   int ok;
 
   ps->SetTag("mood_core", 0);
-  ps->NextSpecF( &btime,    0.3, "Busy decay (sec)");
+  ps->NextSpecF( &btime,   30.0, "Busy decay (sec)");          // was 0.3 then 10
+  ps->NextSpecF( &idle,     4.0, "Goals for no distraction");
   ps->NextSpecF( &engaged, 15.0, "Tolerable goals");      
-  ps->NextSpecF( &frantic, 25.0, "Overwhelmed goals");    
+  ps->NextSpecF( &frantic, 25.0, "Overwhelmed goals");   
+  ps->Skip(); 
   ps->NextSpecF( &wtime,    3.0, "Surprise decay (sec)");
+
   ps->NextSpecF( &surp,     0.7, "Surprised level");
   ps->NextSpecF( &vsurp,    1.3, "Very surprised level");
-
-  ps->NextSpecF( &low,     20.0, "Tired battery (pct)");       // was 30
-  ps->NextSpecF( &vlow,    15.0, "Very tired battery (pct)");  // was 20
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -199,11 +199,15 @@ int jhcAliaMood::adj_params (const char *fname)
   int ok;
 
   ps->SetTag("mood_adj", 0);
-  ps->NextSpecF( &whi,  5.0, "Op success over optimal");
-  ps->NextSpecF( &wlo, -3.0, "Op success under optimal");
+  ps->NextSpecF( &whi,   5.0, "Op success over optimal");
+  ps->NextSpecF( &wlo,  -3.0, "Op success under optimal");
   ps->Skip();
-  ps->NextSpecF( &bhi, -5.0, "Rule correct over optimal");
-  ps->NextSpecF( &blo,  3.0, "Rule correct under optimal");
+  ps->NextSpecF( &bhi,  -5.0, "Rule correct over optimal");
+  ps->NextSpecF( &blo,   3.0, "Rule correct under optimal");
+  ps->Skip();
+
+  ps->NextSpecF( &low,  20.0, "Tired battery (pct)");       // was 30
+  ps->NextSpecF( &vlow, 15.0, "Very tired battery (pct)");  // was 20
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,10 +39,10 @@
 ///////////////////////////////////////////////////////////////////////////
 
 //= Shared array of directive names.
-// strings must remain consistent with JDIR_KIND enumeration
+// Note: strings must remain consistent with JDIR_KIND enumeration!
 
 const char * const jhcAliaDir::ktag[JDIR_MAX] = {"NOTE", "DO", "ANTE", "GATE", "PUNT", "GND", "WAIT", "ACH",
-                                                 "FIND", "BIND", "EACH", "ANY", "CHK", "ESC", "ADD", "EDIT"};
+                                                 "FIND", "BIND", "ALL", "CHK",  "ADD", "EDIT"};
 
 
 //= Default destructor does necessary cleanup.
@@ -70,6 +70,7 @@ jhcAliaDir::jhcAliaDir (JDIR_KIND k)
 {
   // basic info
   kind = k;
+  sfcn = 0;              // not a skolem FIND/BIND
 
   // payload for ADD
   new_rule = NULL;
@@ -94,6 +95,7 @@ jhcAliaDir::jhcAliaDir (JDIR_KIND k)
   cand = 0;              // guess number always increases (never reset)
   subset = 0;            // set if FIND or CHK sub-method needs CHK follow-up
   cand0 = 0;
+  sub0 = 0;
 
   // NOTE perseverance
   t0 = 0;
@@ -197,6 +199,7 @@ int jhcAliaDir::NumGoals (int leaf, int cyc)
 void jhcAliaDir::Copy (const jhcAliaDir& ref)
 {
   kind = ref.kind;
+  sfcn = ref.sfcn;
   key.Copy(ref.key);
 }
 
@@ -210,6 +213,7 @@ int jhcAliaDir::CopyBind (jhcNodePool& pool, const jhcAliaDir& ref, jhcBindings&
 
   // copy directive kind and set up to build key
   key.Clear();
+  sfcn = ref.sfcn;
   kind = ref.kind;
   pool.BuildIn(key);
 
@@ -241,19 +245,7 @@ void jhcAliaDir::share_context (jhcNodePool& pool, const jhcGraphlet *ctx2)
     return;
   if ((old = ctx2->MainAct()) == NULL)
     return;
-/*
-  // add in all old arguments (just extra pointers)
-  cnt = old->NumArgs();
-  for (i = 0; i < cnt; i++)
-  {
-    a = old->Arg(i);
-    if (ctx2->InDesc(a))
-    {
-      act->AddArg(old->Slot(i), a);
-      key.AddItem(a);
-    }
-  }   
-*/
+
   // add in all listed properties of old action
   cnt = old->NumProps();
   for (i = 0; i < cnt; i++)
@@ -456,12 +448,11 @@ int jhcAliaDir::Start (jhcAliaChain *st)
   jhcAliaCore *core = st->Core();
   jhcActionTree *wmem = &(core->atree);
   jhcBindings *scope = st->Scope();
-//  double s;
   int lvl = st->Level(), ver = wmem->Version();
 
   // set up internal state, assume something needs to run
   step = st;
-  subst_key(scope);                              // substitute found variables
+  subst_key(scope, 1);                           // substitute found variables
   noisy = core->noisy;
   dbg = core->finder;
 //noisy = 2;                                     // control structure debugging
@@ -487,15 +478,10 @@ int jhcAliaDir::Start (jhcAliaChain *st)
     wmem->Refresh(key);
     if (wmem->Endorse(key) <= 0)                  // too coarse?
       wmem->CompareHalo(key, core->mood);         // update rule result beliefs
-//    {
-//      s = wmem->CompareHalo(key, core->mood);     // update rule result beliefs
-//      (core->mood).RuleAdj(s);
-//    }
     own = core->Percolate(key);                   // mark nodes for reactive ops
+    wmem->MarkUsed(&key);                         // for speculation
   }
-  else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || 
-           (kind == JDIR_EACH) || (kind == JDIR_ANY)  ||
-           (kind == JDIR_CHK)  || (kind == JDIR_ESC))
+  else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL) || (kind == JDIR_CHK))
     init_cond(ver);                               // situation to search for
 
   // report current status
@@ -602,7 +588,7 @@ int jhcAliaDir::Status ()
     return report(1);
   }
 
-  // see if directive already complete (ACH, WAIT, FIND/BIND/EACH/ANY)
+  // see if directive already complete (ACH, WAIT, FIND/BIND/ALL)
   if ((res = chk_preempt()) != 0)
      return report(res);
   if ((t1 != 0) && (jms_elapsed(t1) > core->Retry()))      // try all operators again
@@ -614,8 +600,6 @@ int jhcAliaDir::Status ()
   }
 
   // find some operator to try if nothing selected yet
-//  if (kind == JDIR_BIND)
-//    return recall_assume();                      // never tries any operators (good?)
   if (kind == JDIR_WAIT)
     return report(0);                            // no associated operators
   if (meth == NULL)
@@ -640,10 +624,6 @@ int jhcAliaDir::Status ()
   chk_state = 0;
   if (res <= -3)
     return report(-3);
-
-  // maybe raise preference threshold
-//  if ((res == -2) && (wait <= 0) && (t1 == 0))
-//    (core->mood).OpEval(1);                 
 
   // generally try next method, but special handling for DO and NOTE 
   if (kind == JDIR_DO)
@@ -682,43 +662,36 @@ int jhcAliaDir::chk_preempt ()
   int lvl = step->Level(), res = 1;                        // assume early success
 
   // check for various sorts of matches
-  if ((kind == JDIR_ACH) || (kind == JDIR_WAIT))           // see if goal achieved
+  if ((cand > 0) && PronFind())                            // no second guess for pronouns
+  {
+    jprintf(2, noisy, "%*s### no pronoun revision for FIND[%s]\n", lvl, "", KeyTag());
+    res = -2;                                              
+  }
+  else if ((kind == JDIR_ACH) || (kind == JDIR_WAIT))      // see if goal achieved
   {
     if (pat_confirm(key, -1) > 0)
       jprintf(2, noisy, "%*s### direct full %s[ %s ] match\n",  lvl, "", KindTag(), KeyTag());
     else
       res = 0;
   }
-  else if ((kind == JDIR_CHK) || (kind == JDIR_ESC))       // look for match or anti-match
+  else if (kind == JDIR_CHK)                               // look for match or anti-match
   {
     if ((res = seek_match()) != 0)
       jprintf(2, noisy, "%*s### direct full %s[ %s ] match = %d\n",  lvl, "", KindTag(), KeyTag(), res);
   }
-  else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) ||   // look for fortuitous matches
-           (kind == JDIR_EACH) || (kind == JDIR_ANY))
+  else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL))  // look for fortuitous matches
   {
     if ((res = me_you()) == 0)
       if ((res = seek_instance()) != 0)
         if (res > 0)
           jprintf(2, noisy, "%*s### direct full %s[ %s ] match = %d\n", lvl, "", KindTag(), KeyTag(), res);
   }
-/*
-  else if (kind == JDIR_NOTE)                              // check for change in key
-  {
-    if (key.Moot())
-      jprintf(2, noisy, "%*s### mooted %s[ %s ]\n", lvl, "", KindTag(), KeyTag());
-    else
-      res = 0;
-  }
-*/
   else
     res = 0;                                               // no match so continue
 
   // possibly stop any on-going method
   if (res != 0)
     halt_subgoal();
-  if (kind == JDIR_ESC)
-    return((res == 1) ? -2 : 1);                           // ESC item true -> fail
   return res;
 }
 
@@ -741,8 +714,7 @@ int jhcAliaDir::first_method ()
   // always try to find some applicable operator 
   if ((found = pick_method()) > 0) 
   {
-    if ((kind == JDIR_FIND) || (kind == JDIR_BIND) ||      // keep generating answers
-        (kind == JDIR_EACH) || (kind == JDIR_ANY))
+    if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL))  // keep generating answers
       meth->Enumerate();
     return report(meth->Start(core, lvl + 1));             // found -> run operator
   }
@@ -764,13 +736,10 @@ int jhcAliaDir::first_method ()
     reset();                                               // clear nri for DO alter_pref
     kind = JDIR_DO;                                        // none -> advance to DO phase 
   }
-  else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) ||
-           (kind == JDIR_EACH) || (kind == JDIR_ANY))
+  else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL))
     verdict = recall_assume();                             // clears guesses
-  else if (((kind == JDIR_CHK) || (kind == JDIR_ESC)) && (chk0 > 0))
+  else if ((kind == JDIR_CHK) && (chk0 > 0))
     chk0 = 0;                                              // fact does not have to be new
-  else if (kind == JDIR_ESC)
-    verdict = 1;                                           // ESC fact unknown -> continue
   else if (kind == JDIR_NOTE)
     verdict = 1;                                           // NOTE always succeeds
   else 
@@ -814,8 +783,7 @@ int jhcAliaDir::next_method ()
   // see if any more applicable operators (most directives try all)
   if ((found = pick_method()) > 0)
   {
-    if ((kind == JDIR_FIND) || (kind == JDIR_BIND) ||      // keep generating answers
-        (kind == JDIR_EACH) || (kind == JDIR_ANY))
+    if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL))  // keep generating answers
       meth->Enumerate();
     return report(meth->Start(core, lvl + 1));             // found -> run operator
   }
@@ -837,10 +805,9 @@ int jhcAliaDir::next_method ()
     reset();                                               // clear nri for DO alter_pref
     kind = JDIR_DO;                                        // none -> advance to DO phase
   }
-  else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) ||
-           (kind == JDIR_EACH) || (kind == JDIR_ANY))
+  else if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL))
     verdict = recall_assume();                             // clears guesses
-  else if (((kind == JDIR_CHK) || (kind == JDIR_ESC)) && (chk0 > 0))
+  else if ((kind == JDIR_CHK) && (chk0 > 0))
     chk0 = 0;                                              // fact does not have to be new
   else if (kind == JDIR_NOTE)
     verdict = 1;                                           // NOTE always succeeds
@@ -852,13 +819,23 @@ int jhcAliaDir::next_method ()
 
 //= Announce success or failure of some branch for debugging.
 // sets verdict to value given (often just verdict itself) and returns this
+// rc: -3 vetoed, -2 failed, -1 stopped, 0 working, 1 success, 2 alternate, 3 special ALL
 
-int jhcAliaDir::report (int val)
+int jhcAliaDir::report (int rc)
 {
   const char hdr[6][20] = {"... blocked", "--- failure", "::: dismiss", "", 
-                           "*** success", "~~~ escaped"};
+                           "*** success", "~~~ partial"};
   jhcAliaCore *core = step->Core();
-  int lvl = step->Level();
+  int val = rc, lvl = step->Level();
+
+  // adjust return code for iteration ALL[ ] 
+  if (kind == JDIR_ALL) 
+  { 
+    if (rc == 1)             // swap to "alt" for normal continuation
+      val = 2;
+    else if (rc == 3)        // special code: no more candidates but some were found
+      val = 1;
+  }
 
   // possibly announce a transition (make indenting line up by level)
   if ((noisy >= 1) && (val >= -3) && (val <= 2) && (val != 0))
@@ -889,22 +866,18 @@ int jhcAliaDir::report (int val)
       (core->atree).ClrFail();
 
     // increment loop count (needed to reset later FIND/BINDs)
-    if ((val == 1) && ((kind == JDIR_EACH) || (kind == JDIR_ANY)))
+    if ((val == 2) && (kind == JDIR_ALL))
       step->inum = ++inum0;
 
     // possibly block halo percolation then remove working memory anchor
     own = 0;
-//    delete meth;
-//    meth = NULL;
     inst = -1;                                   // reset() would bash nri for FIND                     
     fin = jms_now();
   }
 
-  // convert some successes into failures
+  // convert some successes into failures or alternates
   verdict = -2;
-  if ((val == 2) && (step->alt == NULL) && (step->alt_fail > 0))
-    jprintf(1, noisy, "%*s--- failure: %4s[ %s ]  revised since no alt branch\n", lvl, "", KindTag(), KeyTag());
-  else if ((val == 1) && step->Variations() && (kind != JDIR_FIND))             
+  if ((val == 1) && step->Variations() && (kind != JDIR_FIND))             
     jprintf(1, noisy, "%*s--- failure: %4s[ %s ]  revised to generate variants\n", lvl, "", KindTag(), KeyTag());
   else
     verdict = val;                               // restore if reset() erases 
@@ -1004,10 +977,10 @@ void jhcAliaDir::halt_subgoal ()
 // destructively changes nodes in key graphlet but does not eliminate any 
 // this is a relatively clean way to preserve bindings in the rest of chain
 
-void jhcAliaDir::subst_key (jhcBindings *sc)
+void jhcAliaDir::subst_key (jhcBindings *sc, int rem)
 {
   jhcAliaCore *core = step->Core();
-  jhcActionTree *wmem = &(core->atree);
+  jhcWorkMem *wmem = &(core->atree);
   jhcNetNode *item, *arg, *sub;
   int j, na, i = 0;
 
@@ -1016,7 +989,7 @@ void jhcAliaDir::subst_key (jhcBindings *sc)
   revert_key();                                
   if ((sc == NULL) || sc->Empty())     
     return;
-  if (cand > 0)                        // remove any previous guess
+  if ((rem > 0) && (cand > 0))         // remove any previous guess
     sc->RemKey(key.Main());
 
   // go through items in graphlet (which may be changing)
@@ -1098,6 +1071,7 @@ void jhcAliaDir::revert_key ()
 int jhcAliaDir::pick_method ()
 {
   jhcAliaCore *core = step->Core();
+  jhcWorkMem *wmem = &(core->atree);
   jhcGraphlet ctx2;
   int lvl = step->Level(), cnt = 0;
 
@@ -1108,19 +1082,20 @@ int jhcAliaDir::pick_method ()
     return jprintf(2, noisy, "%*s... select wait: %s[ %s ]\n", lvl, "", KindTag(), KeyTag());
   wait = 0;
 
-  // find maximally specific operators that apply
+  // find maximally specific operators that apply (prefer shortest methods)
   if (lvl > core->MaxStack())
     return jprintf("%*s>>> Subgoal stack too deep for %s[ %s ] !\n", lvl, "", KindTag(), KeyTag());
   if (match_ops(sel) > 0)
-    if ((cnt = max_spec(sel)) > 0)
-      cnt = min_proc(sel);
+    if ((cnt = max_spec(sel)) > 0)               // most conditions met
+      cnt = min_proc(sel);                       // fewest operators called
   if (cnt <= 0)
   {
     if (noisy >= 2) 
-      jprintf("%*s  No more applicable operators for %s[ %s ]\n", lvl, "", KindTag(), KeyTag());
-    else if ((noisy >= 1) && (nri <= 0) && 
-             ((kind == JDIR_DO) || (kind == JDIR_ACH) || (kind == JDIR_CHK) || (kind == JDIR_ESC)))
-      jprintf("%*s  No applicable operators for %s[ %s ]\n", lvl, "", KindTag(), KeyTag());
+      jprintf("%*s  No more applicable operators for %s[ %s ] with pref >= %4.2f\n", 
+              lvl, "", KindTag(), KeyTag(), (core->atree).MinPref());
+    else if ((noisy >= 1) && (nri <= 0) && ((kind == JDIR_DO) || (kind == JDIR_ACH) || (kind == JDIR_CHK)))
+      jprintf("%*s  No applicable operators for %s[ %s ] with pref >= %4.2f\n", 
+              lvl, "", KindTag(), KeyTag(), (core->atree).MinPref());
     return -1;
   }
 
@@ -1134,7 +1109,7 @@ int jhcAliaDir::pick_method ()
     jprintf("Selected OP %d for %s[ %s ]:\n", op[sel]->OpNum(), KindTag(), KeyTag());
     match[sel].Print(2);
     jprintf("\n");
-  }
+  } 
 
   // promote halo facts and rebind variables then record what is being tried
   core->MainMemOnly(match[sel], 0);
@@ -1148,13 +1123,12 @@ int jhcAliaDir::pick_method ()
   if (kind == JDIR_DO)                           // copy main verb modifiers
     get_context(&ctx2, key.MainAct(), match[sel]);            
   meth = core->CopyMethod(op[sel], match[sel], &ctx2);     
-  if (root > 0) 
-    core->BidPref(op[sel]->Pref());
+  wmem->MarkUsed(match[sel]);                    // for speculation
 
   // show expansion of operator chosen (possibly a persistent intention)
   if ((noisy >= 1) && (meth != NULL))
   {
-    jprintf("%*sApplying OP %d to %s[ %s ] %4.2f/%4.2f", lvl, "", 
+    jprintf("%*sApplying OP %d to %s[ %s ] pref %4.2f >= %4.2f", lvl, "", 
             op[sel]->OpNum(), KindTag(), KeyTag(), op[sel]->Pref(), (core->atree).MinPref());
     if (cnt > 1)
       jprintf(" (%d choices)", cnt);
@@ -1174,10 +1148,8 @@ int jhcAliaDir::pick_method ()
     }
   }
 
-  // possibly simplify FIND/BIND requirements to allow OPs to match
-  if ((kind == JDIR_FIND) || (kind == JDIR_BIND) ||
-      (kind == JDIR_EACH) || (kind == JDIR_ANY) ||         // ACH also?
-      (kind == JDIR_CHK)  || (kind == JDIR_ESC))
+  // possibly simplify FIND/BIND requirements to allow OPs to match (ACH also?)
+  if ((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL) || (kind == JDIR_CHK)) 
     subset = reduce_cond(op[sel], match[sel]);
   meth->avoid = op[sel];                         // suppress direct recursion
   return 1;
@@ -1291,7 +1263,6 @@ int jhcAliaDir::min_proc (int& sel)
 }
 
 
-
 //= Randomly select between remaining operators using exponential weighting.
 // assumes max specificity (max_spec) has been used so ignores that part
 // uses wt = e^1.73*(pref/wild) = 5.64^(pref/wild) with wild = 0.25 to 1.0
@@ -1358,16 +1329,7 @@ void jhcAliaDir::get_context (jhcGraphlet *ctx2, jhcNetNode *focus, const jhcBin
     return;
   ctx2->Copy(ctx);
   ctx2->ReplaceAct(focus);
-/*
-  // add all relevant associated arguments (skip if part of matching)
-  cnt = focus->NumArgs();
-  for (i = 0; i < cnt; i++)
-  {
-    a = focus->Arg(i);
-    if (key.InDesc(a) && !b.InSubs(a))
-      ctx2->AddItem(a);
-  }
-*/
+
   // add all relevant associated properties 
   cnt = focus->NumProps();
   for (i = 0; i < cnt; i++)
@@ -1421,7 +1383,7 @@ void jhcAliaDir::init_cond (int ver)
 
   // new-ness required for CHK or ESC in first phase
   chk0 = 0;
-  if ((kind == JDIR_CHK) || (kind == JDIR_ESC)) 
+  if (kind == JDIR_CHK) 
     chk0 = ver + 1;
 }
 
@@ -1433,7 +1395,7 @@ void jhcAliaDir::init_cond (int ver)
 int jhcAliaDir::reduce_cond (const jhcAliaOp *op, const jhcBindings& match) 
 {
   const jhcAliaCore *core = step->Core();
-  const jhcActionTree *wmem = &(core->atree);
+  const jhcWorkMem *wmem = &(core->atree);
   const jhcNetNode *item, *a;
   int i, j, na, ni = full.NumItems();
 
@@ -1488,7 +1450,6 @@ int jhcAliaDir::seek_match ()
 
 int jhcAliaDir::pat_confirm (const jhcGraphlet& desc, int chk)
 {
-  jhcBindings match;
   jhcAliaCore *core = step->Core();
   jhcWorkMem *wmem = &(core->atree);
   const jhcNetNode *focus, *mate;
@@ -1498,23 +1459,25 @@ int jhcAliaDir::pat_confirm (const jhcGraphlet& desc, int chk)
   jprintf(2, dbg, "pat_confirm %s~~~~~~~~~~~~~~~~~~~~~~~~~~\n", ((subset > 0) ? "- subset " : ""));
 
   // set up matcher parameters
+  match[0].Clear();
   bth = (core->atree).MinBlf();                  // must be non-hypothetical
   wmem->MaxBand(3);                              // use halo inferences also
   chkmode = chk;                                 // possibly ignore "neg" conflicts
-  match.expect = ni;
+  match[0].expect = ni;
 
   // find full match to key possibly regardless of "neg" flags
   // assumes either only one match will be found or all are equivalent
-  if (MatchGraph(&match, mc, desc, *wmem) <= 0)
+  if (MatchGraph(match, mc, desc, *wmem) <= 0)
     return 0;
-  core->MainMemOnly(match, 0);                   // bring in halo facts
+  core->MainMemOnly(match[0], 0);                // bring in halo facts
+  wmem->MarkUsed(match[0]);                      // for speculation
 
   // determine if bindings confirm or refute description 
   if (chk > 0)
     for (i = 0; i < ni; i++)
     {
       focus = desc.Item(i);
-      if ((mate = match.LookUp(focus)) != NULL)
+      if ((mate = match[0].LookUp(focus)) != NULL)
         if (focus->Neg() != mate->Neg())
           return 2;                              // "alternate" continuation
     }
@@ -1612,10 +1575,12 @@ int jhcAliaDir::seek_instance ()
     }
     if (noisy >= 1)
     {
-      jprintf("\n  << %s", (((kind == JDIR_EACH) || (kind == JDIR_ANY)) ? "LOOP" : "GUESS"));
+      jprintf("\n  << %s", ((kind == JDIR_ALL) ? "LOOP" : "GUESS"));
       jprintf(" %d: %s = %s", cand, focus->Nick(), mate->Nick());
       if (mate->Moored())
         jprintf(" (%s)", (mate->Deep())->Nick());
+      else if (PronFind())
+        jprintf(" (only one allowed)");
       jprintf("\n\n");
     }
     scope->Bind(focus, mate);
@@ -1642,6 +1607,8 @@ int jhcAliaDir::seek_instance ()
     return 0;
   }
   mate->XferConvo((cand > 0) ? guess[cand - 1] : focus);       // conversation target
+  if (cand <= 0)
+    sub0 = subset;                               // block repeat of guess if only partial
   guess[cand++] = mate;
   jprintf(1, noisy, "\n  << CONSIDER: %s = %s\n\n", focus->Nick(), mate->Nick());
     
@@ -1674,9 +1641,8 @@ int jhcAliaDir::seek_instance ()
 jhcNetNode *jhcAliaDir::sat_criteria (const jhcGraphlet& desc, int skip, int after, int ltm) 
 {
   jhcGraphlet desc2;
-  jhcBindings match;
   jhcAliaCore *core = step->Core();
-  jhcActionTree *atree = &(core->atree);
+  jhcActionTree *wmem = &(core->atree);
   jhcNetNode *item, *arg, *mate;
   int i, j, na, ni = desc.NumItems(), mc = 1;
 
@@ -1684,6 +1650,7 @@ jhcNetNode *jhcAliaDir::sat_criteria (const jhcGraphlet& desc, int skip, int aft
   jprintf(2, dbg, "sat_criteria %s~~~~~~~~~~~~~~~~~~~~~~~~~~\n", ((subset > 0) ? "- subset " : ""));
 
   // add each external argument to new graphlet and establish a self-binding
+  match[0].Clear();
   desc2.Copy(desc);
   for (i = 0; i < ni; i++)
   {
@@ -1695,43 +1662,45 @@ jhcNetNode *jhcAliaDir::sat_criteria (const jhcGraphlet& desc, int skip, int aft
       if (!desc.InDesc(arg))
       {
         desc2.AddItem(arg);
-        match.Bind(arg, arg);
+        match[0].Bind(arg, arg);
       }
     }
   }
 
   // record problem description
-  match.expect = desc2.NumItems();               // total variables in pattern
+  match[0].expect = desc2.NumItems();            // total variables in pattern
   focus = desc.Main();                           // free variable sought
   find0 = after;                                 // only accept new facts
   exc = skip;                                    // exclude previous guesses
 
   // set up matcher parameters and status
-  bth = atree->MinBlf();                         // must be non-hypothetical
-  atree->MaxBand(3);                             // use halo inferences also
+  bth = wmem->MinBlf();                          // must be non-hypothetical
+  wmem->MaxBand(3);                              // use halo inferences also
   chkmode = 0;                                   // "neg" is definitely important!
   recent = -1;                                   // no pronoun match yet
+  sex = 0;
 
   // extract new guess from full match (complete_find rejects some)
   if (ltm <= 0)
   {
-    if (MatchGraph(&match, mc, desc2, *atree) <= 0)
+    if (MatchGraph(match, mc, desc2, *wmem) <= 0)
       return NULL;
     if (recent >= 0)
       return pron;                               // should already be in wmem
-    core->MainMemOnly(match, 0);                 // bring any halo facts into wmem
-    return match.LookUp(focus);
+    core->MainMemOnly(match[0], 0);              // bring any halo facts into wmem
+    wmem->MarkUsed(match);                       // for speculation
+    return match[0].LookUp(focus);
   }
 
   // if LTM match found then promote portions into wmem
-  if (MatchGraph(&match, mc, desc2, core->dmem) <= 0)
+  if (MatchGraph(match, mc, desc2, core->dmem) <= 0)
     return NULL;
-  item = match.LookUp(focus);
+  item = match[0].LookUp(focus);
   (core->dmem).Refresh(item);                    // ensure first next time
-  mate = lift_key();                             // copy entire key structure
+  mate = lift_key();                             // copy entire key structure (and mark used)
   mate->MoorTo(item);
   jprintf(":- RECALL creates %s (%s) for memory %s\n", mate->Nick(), mate->LexStr(), item->Nick());
-  atree->NoteSolo(mate);
+  wmem->NoteSolo(mate);
   return mate;
 }
 
@@ -1788,7 +1757,14 @@ int jhcAliaDir::complete_find (jhcBindings *m, int& mc)
 int jhcAliaDir::filter_pron (jhcNetNode *mate)
 {
   UL32 tags = focus->tags;
-  int when = mate->LastConvo();
+  int keep, mgen = 0, when = mate->LastConvo();
+  bool m, f, notm, notf;
+
+  // gather gender information (e.g. for "he", "she", "it") 
+  m    = (mate->FindProp("hq", "male",   0, bth) != NULL);
+  f    = (mate->FindProp("hq", "female", 0, bth) != NULL);
+  notm = (mate->FindProp("hq", "male",   1, bth) != NULL);
+  notf = (mate->FindProp("hq", "female", 1, bth) != NULL);
 
   // generally looking for a physical thing not a fact or idea
   if (!mate->ObjNode())                
@@ -1798,31 +1774,38 @@ int jhcAliaDir::filter_pron (jhcNetNode *mate)
   }
   else if ((tags & JTAG_FEM) != 0)     // "she"
   {
-    if ((mate->FindProp("hq", "male", 0, bth) != NULL) ||
-        (mate->FindProp("hq", "female", 1, bth) != NULL))
+    if (m || notf)
       return jprintf(2, dbg, "MATCH - but reject %s as not female\n", mate->Nick());
   }
   else if ((tags & JTAG_MASC) != 0)    // "he"
   {
-    if ((mate->FindProp("hq", "female", 0, bth) != NULL) ||
-        (mate->FindProp("hq", "male", 1, bth) != NULL))
+    if (f || notm)
       return jprintf(2, dbg, "MATCH - but reject %s as not male\n", mate->Nick());
   }
   else if ((tags & JTAG_ITEM) != 0)    // "it"
   {
-    if ((mate->FindProp("hq", "male", 0, bth) != NULL) ||
-        (mate->FindProp("hq", "female", 0, bth) != NULL))
+    if (f || m)
       return jprintf(2, dbg, "MATCH - but reject %s as gendered\n", mate->Nick());
   }
   else if (tags == 0)                  // "them" has no args
     return jprintf(2, dbg, "MATCH - but reject %s as object node\n", mate->Nick());
 
-  // if most recent then save as current best candidate
-  jprintf(2, dbg, "MATCH - %s %s\n", mate->Nick(), ((when > recent) ? "<== BEST" : "ignore")); 
-  if (when <= recent)
+  // check how well gender actually matches (2 = exact, 1 = suggestive, 0 = no info)
+  if ((tags & JTAG_FEM) != 0)
+    mgen = (f ? 2 : (notm ? 1 : 0));
+  else if ((tags & JTAG_MASC) != 0)
+    mgen = (m ? 2 : (notf ? 1 : 0));
+
+  // see if better gender match or more recent 
+  keep = ((mgen > sex) ? 1 : ((when > recent) ? 1 : 0));   
+  jprintf(2, dbg, "MATCH - %s %s\n", mate->Nick(), ((keep > 0) ? "<== BEST" : "ignore")); 
+  if (keep <= 0)
     return 0;
-  recent = when;
-  pron = mate;           
+
+  // save as current best candidate
+  recent = when;                       // most recent conversational mention
+  sex = mgen;                          // closest match to requested gender
+  pron = mate;          
   return 1;                
 }
 
@@ -1857,7 +1840,7 @@ void jhcAliaDir::pron_gender (jhcNetNode *mate, int note)
 }
 
 
-//= Create method for FIND directive consising of CHK of parts not found.
+//= Create method for FIND directive consisting of CHK of parts not found.
 // returns a suitable CHK chain (delete elsewhere), NULL if not needed
 
 jhcAliaChain *jhcAliaDir::chk_method ()
@@ -1950,7 +1933,7 @@ int jhcAliaDir::recall_assume ()
   }
   if (noisy >= 1)
   {
-    jprintf("\n  << %s", (((kind == JDIR_EACH) || (kind == JDIR_ANY)) ? "LOOP" : "GUESS"));
+    jprintf("\n  << %s", ((kind == JDIR_ALL) ? "LOOP" : "GUESS"));
     jprintf(" %d: %s = %s (%s)\n\n", cand, focus->Nick(), mate->Nick(), (mate->Deep())->Nick());
   }
   scope->Bind(focus, mate);
@@ -1965,10 +1948,9 @@ int jhcAliaDir::recall_assume ()
 int jhcAliaDir::assume_found ()
 {
   jhcAliaCore *core = step->Core();
-  jhcActionTree *wmem = &(core->atree);
+  jhcWorkMem *wmem = &(core->atree);
   jhcBindings *scope = step->Scope();
   jhcNetNode *mate, *focus = full.Main();
-  int sub0 = subset;
 
   // restore full criteria (if needed)
   if (subset > 0)
@@ -1977,11 +1959,22 @@ int jhcAliaDir::assume_found ()
     subset = 0;
   }
 
-  // EACH and ANY return "alt" when out of choices (if EACH had none then "fail")
-  if (kind == JDIR_EACH) 
-    return((cand > 0) ? 2 : -2);
-  if (kind == JDIR_ANY)
-    return 2;
+  // exit from looping control structure
+  if (kind == JDIR_ALL) 
+  {
+    // fail if never any choices
+    if (cand <= 0)
+      return -2;
+
+    // restore last guess (for speculation) 
+    mate = guess[cand - 1];
+    scope->Bind(focus, mate);   
+    subst_key(scope, 0);
+    key.SetMain(mate);
+
+    // special success return code (gets converted)
+    return 3;                      
+  }
 
   // consider re-selecting earlier variables (some dependencies not explicit)
   // no new or recyled item if already made new one, backup possible, or FIND completely struck out
@@ -2021,7 +2014,7 @@ jhcNetNode *jhcAliaDir::lift_key ()
 {
   jhcBindings mt;
   jhcAliaCore *core = step->Core();
-  jhcActionTree *wmem = &(core->atree);
+  jhcWorkMem *wmem = &(core->atree);
   jhcBindings *scope = step->Scope();
   jhcNetNode *mate, *focus = full.Main();
   jhcGraphlet *old;
@@ -2038,6 +2031,7 @@ jhcNetNode *jhcAliaDir::lift_key ()
   wmem->Assert(key, mt, -1.0, 0, NULL);      // makes new nodes as needed
   wmem->BuildIn(old);
   wmem->RevealAll(hyp);                      // make available for matching
+  wmem->MarkUsed(mt);                        // for speculation
 
   // remember hypothesized item as current guess (no FIND retry so no NRI)
   mate = mt.LookUp(focus);
@@ -2190,8 +2184,7 @@ int jhcAliaDir::Save (FILE *out, int lvl, int detail) const
   if ((kind < 0) || (kind >= JDIR_MAX))
     return 0;
   jfprintf(out, "%*s%4s[ ", lvl, "", ktag[kind]);
-  if (((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_EACH) || (kind == JDIR_ANY)) && 
-      (key.NumItems() == 1))
+  if (((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL)) && (key.NumItems() == 1))
     key.Save(out, -(lvl + 6), detail | 0x02);    // always show tags
   else
     key.Save(out, -(lvl + 6), detail);
@@ -2208,8 +2201,7 @@ void jhcAliaDir::Print (const char *tag, int lvl, int detail)
     jprintf("%*sdirective:\n", lvl, "");
   else
     jprintf("%*s%s:\n", lvl, "", tag);
-  if (((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_EACH) || (kind == JDIR_ANY)) && 
-      (key.NumItems() == 1))
+  if (((kind == JDIR_FIND) || (kind == JDIR_BIND) || (kind == JDIR_ALL)) && (key.NumItems() == 1))
     Save(stdout, lvl + 2, detail | 0x02);        // always show tags
   else
     Save(stdout, lvl + 2, detail);

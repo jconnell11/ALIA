@@ -37,6 +37,7 @@
 //   sequentially bind smallest speculative track to detection pairs
 //   penalize any tracks without binds on this cycle
 //   start new tracks for any unbound detections
+// NOTE: as of 10/25 all coords are full world, not sensor-relative
 
 class jhcTrack3D : public jhcParse3D
 {

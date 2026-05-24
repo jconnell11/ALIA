@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,6 +129,10 @@ jhcAliaChain::jhcAliaChain ()
 
   // no goal counting requests yet
   req = 0;
+
+  // starting state
+  mt0 = 0;
+  gen0 = 0;
 }
 
 
@@ -164,6 +168,14 @@ bool jhcAliaChain::Fallback () const
 bool jhcAliaChain::StepDir (int kind) const
 {
   return((d != NULL) && (d->kind == (JDIR_KIND) kind));
+}
+
+
+//= Tell if step is an ALL[ ] iteration directive.
+
+bool jhcAliaChain::Iter () const
+{
+  return StepDir(JDIR_ALL);
 }
 
 
@@ -268,49 +280,81 @@ int jhcAliaChain::PlayAct (jhcAliaChain *act, int mode)
     last->cont = last;
   return p->AddSimul(act);
 }
- 
 
-//= Go to the (N-1)th normal continuation in chain.
-// does not necessarily go to the label N since a play only counts as 1 step
-// returns NULL if chain too short
 
-jhcAliaChain *jhcAliaChain::StepN (int n) 
+//= Return the non-failure step that comes next in the normal flow.
+
+jhcAliaChain *jhcAliaChain::Norm () const 
 {
-  if (n < 0)
-    return NULL;
-  if (n == 1)
-    return this;
-  if (cont == NULL)
-    return NULL;
-  return cont->StepN(n - 1);
+  return((Iter()) ? alt : cont);
+}
+
+
+//= Return the non-failure step that deviates from the normal flow.
+
+jhcAliaChain *jhcAliaChain::Dev () const 
+{
+  return((Iter()) ? cont : alt);
 }
 
 
 //= Return second to last step in normal continuation path.
+//   [this] -cont-> [step-1] -cont-> [*penult] -cont-> [last] -cont-> NULL
+// checks for loops as long as not too many steps
 
 jhcAliaChain *jhcAliaChain::Penult () 
 {
-  jhcAliaChain *prev = NULL, *step = this;
+  const jhcAliaChain *seen[20];
+  jhcAliaChain *next, *step = this, *prev = NULL;
+  int i, n = 0;
 
-  while (step->cont != NULL) 
+  while ((next = step->Norm()) != NULL)  
   {
+    // check for loop back to earlier step
+    for (i = 0; i < n; i++)
+      if (next == seen[i])
+        return step;
+
+    // record that this step has been seen
+    if (n >= 20)
+      jprintf(">>> More than 20 steps in jhcAliaChain::Penult!\n");
+    else
+      seen[n++] = step;
+
+    // advance to next
     prev = step;
-    step = step->cont;
-    if (step == this)
-      break;
+    step = next;
   }
   return prev;
 }
 
 
 //= Return last step in normal continuation path.
+//   [this] -cont-> [step-1] -cont-> [step-2] -cont-> [*last] -cont-> NULL
+// checks for loops as long as not too many steps
 
 jhcAliaChain *jhcAliaChain::Last () 
 {
-  jhcAliaChain *step = this;
- 
-  while (step->cont != NULL)
-    step = step->cont;
+  const jhcAliaChain *seen[20];
+  jhcAliaChain *next, *step = this;
+  int i, n = 0;
+
+  while ((next = step->Norm()) != NULL)
+  {
+    // check for loop back to earlier step
+    for (i = 0; i < n; i++)
+      if (next == seen[i])
+        return step;
+
+    // record that this step has been seen
+    if (n >= 20)
+      jprintf(">>> More than 20 steps in jhcAliaChain::Last!\n");
+    else
+      seen[n++] = step;
+
+    // advance to next
+    step = next;
+  }
   return step;
 }
 
@@ -320,23 +364,159 @@ jhcAliaChain *jhcAliaChain::Last ()
 jhcGraphlet *jhcAliaChain::LastKey ()
 {
   const jhcAliaChain *last = Last();
-  jhcAliaDir *dir;
+  jhcAliaDir *dir = last->GetDir();
 
-  if (last != NULL)
-    if ((dir = last->GetDir()) != NULL)
-      return &(dir->key);
-  return NULL;
+  if (dir == NULL)
+    return NULL;
+  return &(dir->key);
 }
 
 
 //= Add a new step to end of normal continuation path.
+// normal continuation for ALL[ ] is via alt link 
 
 jhcAliaChain *jhcAliaChain::Append (jhcAliaChain *tackon)
 {
   jhcAliaChain *end = Last();
 
-  end->cont = tackon;
+  if (end->Iter())
+    end->alt = tackon;
+  else
+    end->cont = tackon;
   return this;
+}
+
+
+//= Follow "done" markers to find last completed chain step.
+// uses "alt" and "fail" branches as well as "cont", timestamps detect loops
+
+jhcAliaChain *jhcAliaChain::LastRun () 
+{
+  jhcAliaChain *step = this, *prev = NULL;
+  UL32 latest = 0;
+
+  // search execution path
+  while (step != NULL) 
+  {
+    // exit when step is running, stopped, punted, or older than latest
+    if ((step->done == 0) || (step->done == -1) || (step->done == -3))
+      break;
+    if (step->mt0 < latest)
+      break;
+
+    // advance to next step along execution path (not inside plays?)
+    latest = step->mt0;
+    prev = step;
+    if (step->done == 1)
+      step = step->cont;
+    else if (step->done == 2)
+      step = step->alt;
+    else if (step->done == -2)
+      step = step->fail;
+  }
+  return prev;
+}
+
+
+//= Follow "done" markers to find step after last completed FIND or BIND.
+// uses "alt" and "fail" branches as well as "cont", timestamps detect loops
+// if last step in sequence is a FIND then returns this instead (wh-questions)
+
+jhcAliaChain *jhcAliaChain::PostSkolem () 
+{
+  jhcAliaChain *step = this, *prev = NULL;
+  const jhcAliaDir *d;
+  UL32 latest = 0;
+
+  // search execution path
+  while (step != NULL) 
+  {
+    // stop when something other than FIND or BIND encountered
+    if ((d = step->GetDir()) == NULL)
+      return step;                                         // play
+    if ((d->kind != JDIR_FIND) && (d->kind != JDIR_BIND))
+      return step;                                         // action
+
+    // exit when step is running, stopped, punted, or older than latest
+    if ((step->done == 0) || (step->done == -1) || (step->done == -3))
+      break;
+    if (step->mt0 < latest)
+      break;
+
+    // advance to next step along execution path (not inside plays?)
+    latest = step->mt0;
+    prev = step;                       
+    if (step->done == 1)
+      step = step->cont;
+    else if (step->done == 2)
+      step = step->alt;
+    else if (step->done == -2)
+      step = step->fail;
+  }
+  return prev;               // always final FIND or BIND
+}
+
+
+//= Accumulate head variables from FIND/BINDs in completed execution path.
+// adds skolem vars to "refs", non-skolem to "halt" (e.g. wh-question)
+// adds any items in NOTE directives to "fact" (for rule conclusion)
+// NOTE: lists need post-processing before being used in jhcAliaCore::Speculate
+
+void jhcAliaChain::CollectRefs (jhcGraphlet& refs, jhcGraphlet& halt, jhcGraphlet& fact) const
+{
+  const jhcAliaChain *step = this;
+  const jhcAliaDir *d2;
+  const jhcAliaPlay *p2;
+  const jhcBindings *b;
+  const jhcGraphlet *key;
+  UL32 latest = 0;
+  int i, n;
+
+  while (step != NULL)
+  {
+    // exit when step is running, stopped, punted, or older than latest
+    if ((step->done == 0) || (step->done == -1) || (step->done == -3))
+      break;
+    if (step->mt0 < latest)
+      break;
+
+    // check if step is some particular kind of directive
+    if ((d2 = step->d) != NULL)
+    {
+      if (d2->Skolem())
+        refs.AddItem(d2->BestGuess());                     // var bound by skolem 
+      else if (d2->Kind() == JDIR_NOTE)
+        fact.Append(d2->key);                              // final result of rule
+      else
+      {
+        b = &(d2->match[0]);                               // needed for FIND/BIND/CHK
+        key = &(d2->key);
+        n = key->NumItems();
+        for (i = 0; i < n; i++)
+          halt.AddItem(b->LookUp(key->Item(i)));           // whole directive pattern
+      }
+    }
+
+    // search all activites of play (if present)
+    if ((p2 = step->p) != NULL)
+    {
+      n = p2->NumSimul();
+      for (i = 0; i < n; i++)
+        (p2->SimulN(i))->CollectRefs(refs, halt, fact);
+      n = p2->NumReq();
+      for (i = 0; i < n; i++)
+        (p2->ReqN(i))->CollectRefs(refs, halt, fact);
+    }
+
+    // advance to next step along execution path
+    latest = step->mt0;
+    if (step->done == 1)
+      step = step->cont;
+    else if (step->done == 2)
+      step = step->alt;
+    else if (step->done == -2)
+      step = step->fail;
+  }
 }
 
 
@@ -401,9 +581,11 @@ int jhcAliaChain::NumGoals (int leaf, int cyc)
 
 //= Copy a prototype chain but substitute for the nodes in the binding list.
 // allocates a new structure with the same branching as this one
+// "ctx" is typically a collection of adverbs to apply to main action of DO[ ]
+// can optionally strip out all skolem FIND/BINDs from procedure
 // returns NULL if problem, caller must deallocate returned structure
 
-jhcAliaChain *jhcAliaChain::Instantiate (jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx)
+jhcAliaChain *jhcAliaChain::Instantiate (jhcNodePool& mem, jhcBindings& b, const jhcGraphlet *ctx, int strip)
 {
   jhcAliaChain *seen[100];
   jhcAliaChain *ans;
@@ -415,7 +597,7 @@ jhcAliaChain *jhcAliaChain::Instantiate (jhcNodePool& mem, jhcBindings& b, const
   clr_labels(1);
 
   // if copy fails then deallocate all parts created
-  if ((ans = dup_self(n, seen, mem, b, ctx)) == NULL)
+  if ((ans = dup_self(n, seen, mem, b, ctx, strip)) == NULL)
     for (i = 0; i < n; i++)
       delete seen[i];
   return ans;
@@ -424,9 +606,10 @@ jhcAliaChain *jhcAliaChain::Instantiate (jhcNodePool& mem, jhcBindings& b, const
 
 //= Create a new step that is copy of this one including links to other steps.
 // either returns cached copy or updates index and returns new instance
+// NOTE: do no use jhcAliaChain::Print for debugging since messes up idx values!
 
 jhcAliaChain *jhcAliaChain::dup_self (int& node, jhcAliaChain *seen[], jhcNodePool& mem, 
-                                      jhcBindings& b, const jhcGraphlet *ctx)
+                                      jhcBindings& b, const jhcGraphlet *ctx, int strip)
 {
   jhcAliaChain *act, *a2, *s2;
   jhcAliaDir *d2;
@@ -439,6 +622,14 @@ jhcAliaChain *jhcAliaChain::dup_self (int& node, jhcAliaChain *seen[], jhcNodePo
   if (node >= 100)
     return NULL;
 
+  // possibly skip copying skolem FIND/BIND in chain
+  if ((strip > 0) && (d != NULL) && d->Skolem())
+  {
+    if (cont != NULL)
+      return cont->dup_self(node, seen, mem, b, ctx, strip);
+    return NULL;
+  }
+
   // make a new step and cache it at idx-1
   s2 = new jhcAliaChain;
   seen[node] = s2;
@@ -447,6 +638,14 @@ jhcAliaChain *jhcAliaChain::dup_self (int& node, jhcAliaChain *seen[], jhcNodePo
   // duplicate details of payload
   if (d != NULL)
   {
+
+
+if ((strip > 0) && (d->Kind() == JDIR_ALL))
+  d->Print("strip");
+//  jprintf("ALL[ %s ] last binding -> %s\n", d->KeyNick(), (d->BestGuess())->Nick());
+
+
+
     d2 = new jhcAliaDir;
     s2->d = d2;
     if (d2->CopyBind(mem, *d, b, ctx) <= 0)
@@ -463,7 +662,7 @@ jhcAliaChain *jhcAliaChain::dup_self (int& node, jhcAliaChain *seen[], jhcNodePo
     for (i = 0; i < n; i++)
     {
       act = p->ReqN(i);
-      if ((a2 = act->dup_self(node, seen, mem, b, ctx)) == NULL)
+      if ((a2 = act->dup_self(node, seen, mem, b, ctx, strip)) == NULL)
         return NULL;
       p2->AddReq(a2);
     }
@@ -473,7 +672,7 @@ jhcAliaChain *jhcAliaChain::dup_self (int& node, jhcAliaChain *seen[], jhcNodePo
     for (i = 0; i < n; i++)
     {
       act = p->SimulN(i);
-      if ((a2 = act->dup_self(node, seen, mem, b, ctx)) == NULL)
+      if ((a2 = act->dup_self(node, seen, mem, b, ctx, strip)) == NULL)
         return NULL;
       p2->AddSimul(a2);
     }
@@ -482,11 +681,11 @@ jhcAliaChain *jhcAliaChain::dup_self (int& node, jhcAliaChain *seen[], jhcNodePo
   // copy rest of chain (or graph) as needed
   s2->alt_fail = alt_fail;
   if (cont != NULL)
-    s2->cont = cont->dup_self(node, seen, mem, b, ctx);
+    s2->cont = cont->dup_self(node, seen, mem, b, ctx, strip);
   if (alt != NULL)
-    s2->alt = alt->dup_self(node, seen, mem, b, ctx);
+    s2->alt = alt->dup_self(node, seen, mem, b, ctx, strip);
   if (fail != NULL)
-    s2->fail = fail->dup_self(node, seen, mem, b, ctx);
+    s2->fail = fail->dup_self(node, seen, mem, b, ctx, strip);
   return s2;
 }
 
@@ -654,7 +853,8 @@ int jhcAliaChain::Start (jhcAliaCore *all, int lvl)
   parse = 0;
   scoping.Clear();
   backstop = NULL;
-  return start_payload(lvl);
+  gen0 = (core->atree).Version();
+  return start_payload();
 }
 
 
@@ -662,10 +862,18 @@ int jhcAliaChain::Start (jhcAliaCore *all, int lvl)
 // FIND retry calls with prior = NULL to retain previous values
 // returns: 0 = working, -2 = fail 
 
-int jhcAliaChain::Start (jhcAliaChain *prior)
+int jhcAliaChain::Start (jhcAliaChain *prev_step)
 {
+  jhcAliaChain *prior = prev_step;
   jhcAliaDir *d0;
 
+  // do not change "prior" unless first time through ALL[ ] loop
+  if (Iter() && (d->NumGuess() > 0))
+  {
+    scoping.Copy(prior->scoping);      // for final answer (if needed)
+    return start_payload();
+  }
+    
   // possibly remove failed binding if this is a FIND retry
   if (prior == NULL)
     scoping.Pop();
@@ -677,29 +885,29 @@ int jhcAliaChain::Start (jhcAliaChain *prior)
     mt0 = prior->mt0;
     scoping.Copy(prior->scoping);
     inum = prior->inum;
-
+    gen0 = (core->atree).Version();
+ 
     // possibly set a new backtracking point if coming from a FIND/BIND
     d0 = prior->GetDir();
-    if ((d0 != NULL) && d0->IsFind() && !d0->UserSelf())
+    if ((d0 != NULL) && d0->IsFind() && !d0->UserSelf() && !d0->Assumed())
       backstop = prior;
     else
       backstop = prior->backstop;
   }
-  return start_payload(level);
+  return start_payload();
 }
 
 
 //= Start processing whatever payload is bound (directive or play).
-// negative level used to partially restart any initial play
 // returns: 0 = working, -2 = fail 
 
-int jhcAliaChain::start_payload (int lvl)
+int jhcAliaChain::start_payload ()
 {
   prev = 0;
   if (d != NULL)
     done = d->Start(this);
   else if (p != NULL)
-    done = p->Start(core, lvl);
+    done = p->Start(this);
   return done;
 }
 
@@ -742,23 +950,22 @@ int jhcAliaChain::Status ()
 
     // if payload fails, unwind to most recent FIND (if not too far committed yet)
     if ((done == -2) && (backstop != NULL))
-{
-if (jms_elapsed(mt0) > core->Dither())
-{
-  if ((core != NULL) && ((d0 = backstop->d) != NULL))
-    jprintf(1, core->noisy, "\n%*s@@@ forego retry of %s[ %s ] - %3.1f secs\n", level, "", d0->KindTag(), d0->KeyTag(), jms_elapsed(mt0));
-}
-else
-//    if ((done == -2) && (backstop != NULL) && (jms_elapsed(mt0) <= core->Dither()))    <== single original line
     {
-      if ((core != NULL) && ((d0 = backstop->d) != NULL))
+      if (jms_elapsed(mt0) > core->Dither())
       {
-        jprintf(1, core->noisy, "\n%*s@@@ unwind and initiate retry of %s[ %s ]\n", level, "", d0->KindTag(), d0->KeyTag());
-        d0->HideAssume();             // prevent proliferation of imagined items
+        if ((core != NULL) && ((d0 = backstop->d) != NULL))
+          jprintf(1, core->noisy, "\n%*s@@@ forego retry of %s[ %s ] - %3.1f secs\n", level, "", d0->KindTag(), d0->KeyTag(), jms_elapsed(mt0));
       }
-      return backstop->Start(NULL);
+      else
+      {
+        if ((core != NULL) && ((d0 = backstop->d) != NULL))
+        {
+          jprintf(1, core->noisy, "\n%*s@@@ unwind and initiate retry of %s[ %s ]\n", level, "", d0->KindTag(), d0->KeyTag());
+          d0->HideAssume();             // prevent proliferation of imagined items
+        }
+        return backstop->Start(NULL);
+      }
     }
-}
 
     // if method for FIND/BIND can be restarted, use as a generator/enumerator
     if ((d != NULL) && ((d->kind == JDIR_FIND) || (d->kind == JDIR_BIND)))     
@@ -945,6 +1152,7 @@ jhcAliaChain **jhcAliaChain::StepEntry (const jhcNetNode *act, jhcAliaChain **fr
 // </pre>
 // comment markers are "//" or ";"
 // ignores lines starting marker and everything after marker on a line
+// steps are listed in order by normal flow ("cont" for most, "alt" for ALL[ ])
 // returns: 2 = ok + all done, 1 = successful, 0 = syntax error, -1 = end of file, -2 = file error 
 
 int jhcAliaChain::Load (jhcNodePool& pool, jhcTxtLine& in, int play)
@@ -987,7 +1195,7 @@ int jhcAliaChain::build_chain (jhcNodePool& pool, jhcAliaChain *label[], jhcAlia
     return 2;
 
   // check for alternate CHK continuation jump (e.g. "% 15") - must be first 
-  if ((d != NULL) && d->HasAlt() && in.First("%"))
+  if ((d != NULL) && (d->kind == JDIR_CHK) && in.First("%"))
   {
     // see if simple ending
     in.Skip(1);
@@ -1059,7 +1267,8 @@ int jhcAliaChain::build_chain (jhcNodePool& pool, jhcAliaChain *label[], jhcAlia
       return 2;
   }
 
-  // check for blank line (end) else make new step for continuation 
+  // check for blank line (end) else make new step for normal flow
+  // connect via "cont" for most steps, but via "alt" for ALL[ ] iterator
   if (in.Blank())
     return 2;
   s2 = new jhcAliaChain;
@@ -1067,8 +1276,10 @@ int jhcAliaChain::build_chain (jhcNodePool& pool, jhcAliaChain *label[], jhcAlia
     return ans;
   if (s2->Empty())
     delete s2;
-  else if ((cnum <= 0) && (stop <= 0))
-    cont = s2;
+  else if ((stop <= 0) && Iter() && (anum <= 0))
+    alt = s2;                                      // normal flow for ALL[ ]                   
+  else if ((stop <= 0) && !Iter() && (cnum <= 0))
+    cont = s2;                                     // normal flow for most                                   
   return ans;
 }
 
@@ -1176,13 +1387,15 @@ int jhcAliaChain::link_graph (jhcAliaChain *fix[], int n, jhcAliaChain *label[])
 // "step" is the next step number expected, negative if needs end delimiter
 // negates idx field (step label) when step has been reported 
 // detail: 0 no extras, 1 show belief, 2 show tags, 3 show both
+// steps are listed in order by normal flow ("cont" for most, "alt" for ALL[ ])
 // generally returns expected next step number but
 // top level returns 1 if successful, 0 for bad format, -1 for file error
 
 int jhcAliaChain::Save (FILE *out, int lvl, int *step, int detail)
 {
+  jhcAliaChain *norm, *dev;
   int *st = step;
-  int ans, label = 1, sp = ((lvl >= 0) ? lvl : -(lvl + 1));
+  int ans = -1, label = 1, sp = ((lvl >= 0) ? lvl : -(lvl + 1));
 
   // possibly label all steps (negatives are jump targets)
   if (step == NULL)
@@ -1205,39 +1418,33 @@ int jhcAliaChain::Save (FILE *out, int lvl, int *step, int detail)
   // see what kind of payload is present
   *st = abs(*st) + 1;
   if (d != NULL)
-  {
-    // CHK directive might need an alternate, all directives can have a "fail" handler
-    if ((ans = d->Save(out, sp, detail)) <= 0)
-      return ans;
-    if (alt != NULL)
-      jfprintf(out, "%*s   %% %d\n", lvl, "", abs(alt->idx));
-    if (fail != NULL)
-      jfprintf(out, "%*s   # %d\n", lvl, "", abs(fail->idx));
-  }
+    ans = d->Save(out, sp, detail);
   else if (p != NULL)
-  {
-    // plays can also have "fail" handlers
-    if ((ans = p->Save(out, sp, st)) <= 0)
-      return ans;
-    if (fail != NULL)
-      jfprintf(out, "%*s   # %d\n", lvl, "", abs(fail->idx));
-  }
+    ans = p->Save(out, sp, st);
+  if (ans <= 0)
+    return ans;
+
+  // both plays and directives can have "fail" branches
+  if ((dev = Dev()) != NULL)
+    jfprintf(out, "%*s   %c %d\n", lvl, "", ((Iter()) ? '@' : '%'), abs(dev->idx));
+  if (fail != NULL)
+    jfprintf(out, "%*s   # %d\n", lvl, "", abs(fail->idx));
 
   // stop early if only a single step requested
   if (lvl >= 0)
   {
-    // check if next step exists 
-    if (cont == NULL)
+    // check if next step in normal flow exists 
+    if ((norm = Norm()) == NULL)
       *st = -(*st);                                              // request terminator
-    else if (abs(cont->idx) != *st)
-      jfprintf(out, "%*s   @ %d\n", lvl, "", abs(cont->idx));    // add jump to label
-    else if ((ans = cont->Save(out, sp, st, detail)) <= 0)
+    else if (abs(norm->idx) != *st)
+      jfprintf(out, "%*s   %c %d\n", lvl, "", ((Iter()) ? '%' : '@'), abs(norm->idx));   // add jump to label
+    else if ((ans = norm->Save(out, sp, st, detail)) <= 0)
       return ans;
 
-    // go back and start chasing from alternate continuation (if any)
-    if (alt != NULL)
-      if (abs(alt->idx) >= *st)
-        if ((ans = alt->Save(out, sp, st, detail)) <= 0)
+    // go back and start chasing from flow deviation (if any)
+    if ((dev = Dev()) != NULL)
+      if (abs(dev->idx) >= *st)
+        if ((ans = dev->Save(out, sp, st, detail)) <= 0)
           return ans;
 
     // go back and start chasing from fail handler (if any)
@@ -1259,7 +1466,7 @@ int jhcAliaChain::Save (FILE *out, int lvl, int *step, int detail)
 
 int jhcAliaChain::label_all (int *mark)
 {
-  jhcAliaChain *act;
+  jhcAliaChain *act, *norm, *dev;
   int *m = mark;
   int i, n, label = 0;
 
@@ -1296,10 +1503,10 @@ int jhcAliaChain::label_all (int *mark)
   }
 
   // assign labels in all attached steps (full graph)
-  if (cont != NULL)
-    cont->label_all(m);      // first to ensure consecutive numbering
-  if (alt != NULL)
-    alt->label_all(m);
+  if ((norm = Norm()) != NULL)
+    norm->label_all(m);                // first to ensure consecutive numbering
+  if ((dev = Dev()) != NULL)
+    dev->label_all(m);
   if (fail != NULL)
     fail->label_all(m);
   return(*m);
@@ -1312,7 +1519,7 @@ int jhcAliaChain::label_all (int *mark)
 
 void jhcAliaChain::neg_jumps (int *step)
 {
-  jhcAliaChain *s2;
+  jhcAliaChain *s2, *norm, *dev;
   int *st = step;
   int i, n, label = 1;
 
@@ -1341,22 +1548,22 @@ void jhcAliaChain::neg_jumps (int *step)
     }
   }
 
-  // see if continuation is to not to the very next state
-  if (cont != NULL) 
+  // see if normal flow is to not to the very next state
+  if ((norm = Norm()) != NULL) 
   {
-    if ((cont->idx > 0) && (cont->idx != *st))
-      cont->idx = -(cont->idx);
-    if (abs(cont->idx) >= *st)
-      cont->neg_jumps(st);    
+    if ((norm->idx > 0) && (norm->idx != *st))
+      norm->idx = -(norm->idx);
+    if (abs(norm->idx) >= *st)
+      norm->neg_jumps(st);    
   }
 
-  // alternate will always be a jump
-  if (alt != NULL)
+  // flow deviation will always be a jump
+  if ((dev = Dev()) != NULL)
   {
-    if (alt->idx > 0)
-      alt->idx = -(alt->idx);
-    if (abs(alt->idx) >= *st)
-      alt->neg_jumps(st);
+    if (dev->idx > 0)
+      dev->idx = -(dev->idx);
+    if (abs(dev->idx) >= *st)
+      dev->neg_jumps(st);
   }
 
   // fail will always be a jump

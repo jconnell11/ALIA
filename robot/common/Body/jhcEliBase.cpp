@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ jhcEliBase::jhcEliBase ()
   dy0 = 0.0;
   dx  = 0.0;
   dy  = 0.0;
-  parked = 30;               // assume stationary at start
+  parked = 1.0;              // assume stationary at start
 
   // processing parameters
   LoadCfg();
@@ -280,7 +280,7 @@ int jhcEliBase::Reset (int rpt, int chk)
   tvel = 0.0;
   imv  = 0.0;
   itv  = 0.0;
-  parked = 30;               // assumed stationary at start
+  parked = 1.0;              // assumed stationary at start
 
   // finished
   jprintf(1, rpt, "    ** good **\n");
@@ -740,7 +740,7 @@ int jhcEliBase::UpdateContinue ()
 int jhcEliBase::UpdateFinish ()
 {
   UL32 last = now;
-  double s, m, t, t0 = trav, h0 = head, mmix = 0.5, tmix = 0.3, scoot = 1.0, swivel = 2.0;
+  double m, t, s = 0.0, t0 = trav, h0 = head, mmix = 0.5, tmix = 0.3, swivel = 2.0;
 
   // read in 32 bit value (only good to 10 bits --> work with bottom 8)
   BBARF(-1, bcom.RxArray(pod, 6 + c16) < (6 + c16));
@@ -761,12 +761,11 @@ int jhcEliBase::UpdateFinish ()
       itv += tmix * (t - itv); 
     }
 
-  // do qualitative evaluation of motion
-  if ((fabs(imv) >= scoot) || (fabs(itv) >= swivel))
-    parked = __min(0, parked - 1);
+  // keep track of how many cycles robot has not turned
+  if (fabs(itv) <= swivel)
+    parked = __max(0.0, parked) + s;
   else
-    parked = __max(1, parked + 1);
-jprintf("   imv %4.2f, itv %4.2f -> base parked %d\n", imv, itv, parked);
+    parked = __min(0.0, parked) - s;
 
   // set up to receive new round of commands and bids
   clr_locks(0);      
@@ -1131,7 +1130,7 @@ int jhcEliBase::DriveAbsolute (double tr, double hd, double m_rate, double t_rat
 
 int jhcEliBase::MoveAbsolute (double tr, double rate, int bid, double skew) 
 {
-  if (bid <= mlock)
+  if (bid < mlock)
     return 0;
   mlock = bid;
   stiff = 1;
@@ -1148,7 +1147,7 @@ int jhcEliBase::MoveAbsolute (double tr, double rate, int bid, double skew)
 
 int jhcEliBase::TurnAbsolute (double hd, double rate, int bid)
 {
-  if (bid <= tlock)
+  if (bid < tlock)
     return 0;
   tlock = bid;
   stiff = 1;
@@ -1174,6 +1173,32 @@ int jhcEliBase::SetTurnVel (double dps, int bid)
   double rate = fabs(dps) / tctrl.vstd, ang = ((dps < 0.0) ? -180.0 : 180.0);
 
   return TurnTarget(ang, rate, bid);
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                             Smooth Sliding                            //
+///////////////////////////////////////////////////////////////////////////
+
+//= Move toward incremental tracel but linearly slow down when close.
+// helps compensate for sensor lag during tracking
+
+int jhcEliBase::MoveSoft (double dist, double rate, int bid, double soft)
+{
+  double err = MoveErr(trav + dist), f = __min(err / soft, 1.0);
+
+  return MoveAbsolute(trav + dist, f * rate, bid);
+}
+
+
+//= Rotate toward incremental angle but linearly slow down when close.
+// helps compensate for sensor lag during tracking
+
+int jhcEliBase::TurnSoft (double ang, double rate, int bid, double soft)
+{
+  double err = TurnErr(head + ang), f = __min(err / soft, 1.0);
+
+  return TurnAbsolute(head + ang, f * rate, bid);
 }
 
 
@@ -1223,7 +1248,7 @@ double jhcEliBase::DriveAbsRate (double tr2, double hd2, double tr1, double hd1,
 
 int jhcEliBase::AttnLED (int on, int bid)
 {
-  if (bid <= llock)
+  if (bid < llock)
     return 0;
   llock = bid;
   led = on;

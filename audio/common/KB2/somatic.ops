@@ -1,7 +1,7 @@
 // Homeostasis actions for somatic states
 // ================================================
 
-OP 1 - "Before announcing that you are lonely then announce look around"
+OP 1 - "Before announcing that you are lonely look around"
   trig:
   ANTE[ fcn-1 -lex-  announce
               -fcn-> act-1
@@ -79,3 +79,30 @@ OP 5 - "To hail someone say good to see you whoever"
               -dest-> act-3
               -ref--> agt-1
         txt-1 -str-   good to see you ?0 ]
+
+
+// ----------------------------------------
+
+OP 6 - "If you are bored you could wander"
+  trig:
+  NOTE[  hq-2 -lex-  bored
+              -hq--> obj-1
+        obj-1 -lex-  me ]
+  pref: 0.500
+-----------------
+    DO[ fcn-3 -lex-  wander
+              -fcn-> act-4 ]
+
+
+//OP 7 - "If an object is visible you could maybe grab it"
+//  trig:
+//  NOTE[   hq-3 -lex-  visible
+//               -hq--> obj-1
+//        kind-2 -lex-  object
+//               -ako-> obj-1 ]
+//  pref: 0.300
+//-----------------
+//    DO[ fcn-4 -lex-  grab
+//              -fcn-> act-5
+//        act-5 -obj-> obj-1 ]
+

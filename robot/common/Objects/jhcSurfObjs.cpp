@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,11 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
+#include "Interface/jtimer.h"          // common video - for profiling
+
 #include "Objects/jhcSurfObjs.h"
 
-#include "Interface/jtimer.h"
-#include "Interface/jprintf.h"
+
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -55,6 +56,9 @@ jhcSurfObjs::jhcSurfObjs (int n)
   SetFit(0.75, 2000, 0.5, 4.0, 4.0, 3.0, 100);
   pp.SetFind(3, 180, 35, 25, 245, 100, 50);
   pp.SetHue(0, 30, 49, 130, 175, 220);           // R-O was 250
+
+  // nothing in hand 
+  htrk = -1;
 
   // own parameters
   Defaults();
@@ -118,11 +122,12 @@ int jhcSurfObjs::tall_params (const char *fname)
   ps->NextSpecF( &sfar,  96.0, "Max intersect dist (in)");  
   ps->NextSpecF( &wexp,   0.7, "Map width expansion factor");        // was 1.2, 0.8, then 1.0
   ps->NextSpec4( &pth,   40,   "Surface shape threshold");
-  ps->Skip();
   ps->NextSpec4( &cup,  150,   "Occlusion fill width (pel)");        // was 100
   ps->NextSpec4( &bej,    5,   "FOV edge shrinkage (pel)");  
-
   ps->NextSpec4( &rmode,  0,   "Detection (depth, alt, both)");      // was 2
+
+  ps->NextSpec4( &hclip,  2,   "Horizontal image margin (pel)");
+  ps->NextSpec4( &vclip,  2,   "Vertical image margin (pel)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -223,6 +228,9 @@ void jhcSurfObjs::Reset ()
   pat.FillArr(100);          // in case no color analysis
   rbox.ClearRoi();
   pp.Reset();
+
+  // nothing in hand
+  htrk = -1;
 }
 
 
@@ -309,6 +317,10 @@ int jhcSurfObjs::FindObjects (const jhcImg& col, const jhcImg& d16, const jhcImg
 {
   double dz, yhit, rhit, sz = cz[0], tilt = t0[0];         // from SetCam
   int nr;
+
+  // remember input range image size
+  iw = d16.XDim();
+  ih = d16.YDim();
 
   // set up for later color analysis
   pp.SetSize(col);
@@ -459,6 +471,35 @@ void jhcSurfObjs::raw_objs (int trk)
 }
 
 
+//= Find maximum value inside some component given its bounding box.
+// relative to local planar fit for better accuracy (cf. jhcOverhead3D::z_err)
+// assumes last plane fit results (CoefX, CoefY, and Offset) still valid
+// returns converted height value in inches (relative to table)
+// NOTE: overrides "find_hmax" function from base class jhcBumps
+
+double jhcSurfObjs::find_hmax (int i, const jhcRoi *area) 
+{
+  double ipz = (zhi - zlo) / 252.0, sc = 4096.0 / ipz;
+  int x0 = area->RoiX(), y0 = area->RoiY(), rw = area->RoiW(), rh = area->RoiH();
+  int dx = ROUND(sc * ipp * CoefX()), dy = ROUND(sc * ipp * CoefY()); 
+  int sum, sum0 = ROUND(sc * Offset()) + x0 * dx + y0 * dy + 2048;      
+  int x, y, msk = map.RoiSkip(*area), csk = cc.RoiSkip(*area) >> 1;
+  const US16 *c = (const US16 *) cc.RoiSrc(*area);
+  const UC8 *m = map.RoiSrc(*area);
+
+  pks.Fill(0);
+  for (y = rh; y > 0; y--, c += csk, m += msk, sum0 += dy)
+    for (sum = sum0, x = rw; x > 0; x--, c++, m++, sum += dx)
+      if ((*c == i) && (*m > 1))                                     // ht 1 is invalid
+        pks.AIncChk(*m - (sum >> 12), 1);
+  return(ipz * pks.MaxBinN(pcnt));
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                             Object Finding                            //
+///////////////////////////////////////////////////////////////////////////
+
 //= Find potential objects based on depth (results in "cc" and "blob").
 // generates flattened overhead map "det" for fine separation of small objects
 // always returns 1 to shift phase to flat_objs
@@ -476,7 +517,9 @@ jtimer(12, "tall_objs");
   BoxAvg(obj, obj, sc, sc);
   CComps4(cc, obj, amin, sth);
   blob.FindParams(cc);
-  blob.RemBorder(cc, 1);               // not touching edges
+  blob.RemBorder(cc, 5);               // not touching map edges
+  cache_hts(blob);                     // save inches in Val field
+  rem_clipped(blob, hclip, vclip);     // not touching image edges
 
   // clean up basic planar surface
 //  InRange(top, det, 78, 178, dev);
@@ -545,33 +588,52 @@ jtimer_x(13);
 }
 
 
-//= Find maximum value inside some component given its bounding box.
-// relative to local planar fit for better accuracy (cf. jhcOverhead3D::z_err)
-// assumes last plane fit results (CoefX, CoefY, and Offset) still valid
-// returns converted height value in inches (relative to table)
-// NOTE: overrides "find_hmax" function from base class jhcBumps
+///////////////////////////////////////////////////////////////////////////
+//                         Raw Object Filtering                          //
+///////////////////////////////////////////////////////////////////////////
 
-double jhcSurfObjs::find_hmax (int i, const jhcRoi *area) 
+//= Invalidate blobs if their source area in original depth image is too near edges.
+// returns number of blobs weeded out
+
+int jhcSurfObjs::rem_clipped (jhcBlob& b, int hbd, int vbd) 
 {
-  double ipz = (zhi - zlo) / 252.0, sc = 4096.0 / ipz;
-  int x0 = area->RoiX(), y0 = area->RoiY(), rw = area->RoiW(), rh = area->RoiH();
-  int dx = ROUND(sc * ipp * CoefX()), dy = ROUND(sc * ipp * CoefY()); 
-  int sum, sum0 = ROUND(sc * Offset()) + x0 * dx + y0 * dy + 2048;      
-  int x, y, msk = map.RoiSkip(*area), csk = cc.RoiSkip(*area) >> 1;
-  const US16 *c = (const US16 *) cc.RoiSrc(*area);
-  const UC8 *m = map.RoiSrc(*area);
+  jhcRoi region, item;
+  int i, n = b.Active(), cnt = 0;
 
-  pks.Fill(0);
-  for (y = rh; y > 0; y--, c += csk, m += msk, sum0 += dy)
-    for (sum = sum0, x = rw; x > 0; x--, c++, m++, sum += dx)
-      if ((*c == i) && (*m > 1))                                     // ht 1 is invalid
-        pks.AIncChk(*m - (sum >> 12), 1);
-  return(ipz * pks.MaxBinN(pcnt));
+  // sanity check then build valid input region
+  if ((hbd <= 0) && (vbd <= 0))
+    return 0;
+  region.SetRoi(hbd, vbd, iw - (hbd << 1), ih - (vbd << 1));  
+
+  // scan all valid blobs
+  MapToRng();
+  for (i = 1; i < n; i++)
+    if (b.GetStatus(i) > 0) 
+    {
+      rng_box(item, b, i);
+      if (region.RoiContains(item))
+        continue;
+      b.SetStatus(i, -1);              // -1 for graphics
+      cnt++;
+    }
+  return cnt;
+}
+
+
+//= Determine approximately where in input range image a detected object comes from.
+// Note: need to first call MapToRng() or SetColorGeom(-1) to set up p2v matrix properly
+
+void jhcSurfObjs::rng_box (jhcRoi &box, const jhcBlob& b, int i) const
+{
+  double wx = P2I(b.BoxAvgX(i)) - 0.5 * mw, wy = P2I(b.BoxAvgY(i)); 
+  double ht = b.BlobValue(i), wz = 0.5 * ht + ztab;
+
+  ImgCube(box, wx, wy, wz, xyf * P2I(b.BoxW(i)), xyf * P2I(b.BoxH(i)), ht);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                          Object Properties                            //
+//                          Object Selection                             //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Find tracked object closest to robot center in XY plane.
@@ -621,7 +683,7 @@ int jhcSurfObjs::Largest () const
 
 
 //= Find currently detected and tracked object nearest to middle of overhead map.
-// returns index (not id) if successful, negatibe if nothing suitable
+// returns index (not id) if successful, negative if nothing suitable
 
 int jhcSurfObjs::MidMap () const
 {
@@ -630,7 +692,7 @@ int jhcSurfObjs::MidMap () const
 
   for (i = 0; i < n; i++)
     if (pos.Valid(i) > 0) 
-      if (Component(i) >= 0)
+      if (Component(i) >= 0)           // currently detected
       {
         dist = MidDist(i);
         if ((win < 0) || (dist < best))
@@ -642,6 +704,47 @@ int jhcSurfObjs::MidMap () const
   return win;
 }
 
+
+//= Preferred gaze is toward object closest to color pixel coords (iw/2 ih/2).
+// returns false if none, else binds full 3D centroid coordinates (in inches)
+
+bool jhcSurfObjs::Interest (jhcMatrix& xyz, int iw, int ih) const
+{
+  double dx, dy, d2, best, hoff = 0.4 * iw, voff = 0.4 * ih;
+  int i, hw = iw >> 1, hh = ih >> 1, n = pos.Limit(), win = -1;
+
+  // find valid objects which are currently detected (not in hand)
+  for (i = 0; i < n; i++)
+    if ((i != htrk) && (pos.Valid(i) > 0))
+    {
+      // get center of bounding box in color image
+      CamMid(dx, dy, i);             
+
+      // get offset from center of image
+      dx -= hw;
+      dy -= hh;
+      d2 = dx * dx + dy * dy;
+
+      // check if likely in view and middlemost
+      if ((fabs(dx) <= hoff) && (fabs(dy) <= voff)) 
+        if ((win < 0) || (d2 < best))
+        {
+          win = i;
+          best = d2;
+        }
+    }
+
+  // load up 3D postion if something adequate was found
+  if (win < 0)
+    return false;
+  World(xyz, win);
+  return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                          Object Properties                            //
+///////////////////////////////////////////////////////////////////////////
 
 //= Get full world coordinates of object with some index (not ID).
 // returns planar orientation direction if successful, negative for problem
@@ -991,4 +1094,30 @@ int jhcSurfObjs::MarkCam (jhcImg& dest, const jhcMatrix& wpt, int col, int view)
   ImgPt(ix, iy, mx + x0 - 0.5 * mw, my + y0, wpt.Z(), ISC(dest));
   XMark(dest, ix, iy, 17, 3, -col);
   return 1;
+}
+
+
+//= Show valid input range image area compared to detection bounding boxes.
+// typically overlays graphics on NightSD version of d16
+
+int jhcSurfObjs::RngClip (jhcImg& dest)
+{
+  jhcRoi box;
+  int i, st, n = blob.Active();
+
+  // draw valid area in yellow
+  if (!dest.Valid(1, 3))
+    return Fatal("Bad images to jhcSurfObjs::RngClip");
+  box.SetRoi(hclip, vclip, iw - (hclip << 1), ih - (vclip << 1)); 
+  RectEmpty(dest, box, 1, -3); 
+
+  // show accepted detection in green and rejected ones in red
+  MapToRng();
+  for (i = 1; i < n; i++)
+    if ((st = blob.GetStatus(i)) != 0) 
+    {
+      rng_box(box, blob, i);
+      RectEmpty(dest, box, 1, ((st > 0) ? -2 : -1));
+    }
+  return 1;  
 }

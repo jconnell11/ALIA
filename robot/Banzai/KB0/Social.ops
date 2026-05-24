@@ -128,3 +128,15 @@ OP 10 - "Before orienting toward me make sure I am visible"
               -hq--> user-1 ]
 
  
+// --------------------------------------
+
+OP 11 - "Before wandering retract the arm"
+  trig:   
+  ANTE[ fcn-1 -lex-  wander 
+              -fcn-> act-1 ]
+---------------
+    DO[ fcn-2 -lex-  retract
+              -fcn-> act-2
+        act-2 -obj-> obj-1 
+        ako-1 -lex-  arm
+              -ako-> obj-1 ]

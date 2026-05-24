@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 #include "Data/jhcParam.h"
 #include "Processing/jhcGroup.h"
 #include "Processing/jhcLUT.h"
+#include "Processing/jhcStats.h"
 
 #include "Depth/jhcOverhead3D.h"
 
@@ -40,7 +41,7 @@
 // uses obstacles to limit motion, only known floor pixels are assumed okay
 // obstacle = 255 (white), temporary = 200 (red), drop = 128 (green), floor = 50 (blue)
 
-class jhcLocalOcc : public jhcOverhead3D, private jhcGroup, private jhcLUT
+class jhcLocalOcc : public jhcOverhead3D, private jhcGroup, private jhcLUT, private jhcStats
 {
 friend class CBanzaiDoc;  // for debugging
 
@@ -49,7 +50,7 @@ private:
   static const int tail = 500;         /** Position history length. */
 
   // basic map formation
-  jhcImg dev, bad, obst, conf;
+  jhcImg dev, bad, scan, sea, obst, conf;
 
   // robot position 
   double rx, ry, raim;
@@ -70,17 +71,18 @@ private:
 
   // debugging graphics
   double xhist[tail], yhist[tail];
-  int nh, fill;
+  int nh, fill, minit;
 
 
 // PRIVATE MEMBER PARAMETERS
 private:
   // ground mapping parameters
   double dej, hat, fbump;
-  int drop, hole;
+  int thin, drop;
 
   // robot size and map fading parameters 
-  double rside, rfwd, rback, pad, fade, temp;
+  double rside, rfwd, rback, pad, chute, fade, temp;
+  int hole;
 
   // sensors and avoidance parameters
   double veer, lead, wmat, hmat, tmat, glide, orient;
@@ -100,23 +102,33 @@ public:
   jhcLocalOcc ();
   double Nose () const {return rfwd;}
   double Hip () const  {return rside;}
-  const jhcImg& Deviations () const {return dev;}
+  const jhcImg& Deviations () const  {return dev;}
+  const jhcImg& Terrain () const     {return scan;}
+  const jhcImg& OpenAreas () const   {return bad;}
+  const jhcImg& Traversable () const {return sea;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
   int SaveVals (const char *fname) const;
-
-  // main functions
-  void Reset ();
-  int AdjustMaps (double fwd, double lf, double dr);
-  int RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcMatrix& dir);
-  void ComputePaths ();
 
   // synthetic sensors
   double Step () const {return(180.0 / ndir);}
   bool Blind (double umat =0.5) const {return(known < umat);}
   bool Tight (double hem =6.0) const;
   double Forward () const {return dist[ndir];}
+
+  // main functions
+  void Reset ();
+  void AdjustMaps (double fwd, double lf, double dr);
+
+  // map building and sensors
+  void RefineMaps (const jhcImg& d16, const jhcMatrix& pos, const jhcMatrix& dir);
+  void RefreshBody (const jhcRoi *map =NULL);
+  void ComputePaths ();
+
+  // fancier map building and sensors
+  void RefineMaps2 (const jhcImg& d16, const jhcMatrix& pos, const jhcMatrix& dir);
+  void ComputePaths2 ();
 
   // navigation
   void Swerve (double& trav, double& head, double td, double ta, double stop =0.0);
@@ -145,17 +157,20 @@ private:
   int nav_params (const char *fname);
 
   // main functions
+  void set_spin (double da);
   void adj_hist (double fwd, double lf, double dr);
+  void known_ahead (double& any, const jhcImg& cf) const;
+
+  // map building and sensors
+  double traverse (const jhcImg& basin, double ang) const;
+
+  // fancier map building and sensors
   void mixin_scan (jhcImg& obs, jhcImg& cf, const jhcImg& junk, const jhcImg& flat) const;
   void block_bot (jhcImg& obs, jhcImg& cf) const;
   void erase_blips (jhcImg& obs, const jhcImg& junk) const;
-
-  // synthetic sensors
-  void set_spin (double da);
   void build_spin (const jhcImg& env);
   void rigid_samp (jhcImg& dest, const jhcImg& src, double degs) const;
   int clr_paths (double& fwd, double& rwv, jhcImg& view) const;
-  void known_ahead (double& any, const jhcImg& cf) const;
 
   // debugging graphics
   double robot_pose (double& rx0, double& ry0, const jhcImg *ref) const;

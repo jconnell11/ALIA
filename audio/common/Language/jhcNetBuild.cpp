@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,89 +77,77 @@ int jhcNetBuild::NameSaid (const char *alist, int mode) const
 
 //= Build an appropriate structure based on given association list.
 // also save input utterance for new rules or operators
-// return: 10 = vocabulary, 9 = farewell, 8 = greet, 7 = hail, 
-//         6 = op, 5 = rule, 4 = revision, 3 = question, 2 = command, 1 = fact, 
-//         0 = nothing, negative for error
+// most inputs generate: speech-act + payload + user-response
 
-int jhcNetBuild::Convert (const char *alist, const char *sent)
+JSP_ACT jhcNetBuild::Convert (const char *alist, const char *sent)
 {
-  jhcActionTree *atree;
-  jhcAliaChain *ch;
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *main;
+  jhcAliaPlay *pod;
   const char *unk;
-  int spact;
+  JSP_ACT spact;
 
   // sanity check then cleanup any rejected suggestions
   if (core == NULL) 
-    return -1;
-  atree = &(core->atree);
-  add = NULL;                                // deleted elsewhere
+    return JSP_ERR;
+  add = NULL;                                    // deleted elsewhere
   ClearLast();
   unk = (core->vc).Confused();
   if ((alist == NULL) || (*alist == '\0'))               
   {
     if (*unk != '\0')
-      return unk_tag(unk);                   // unknown word
-    return huh_tag();                        // misheard utterance
+      return unk_tag(unk);                       // unknown word
+    return huh_tag();                            // misheard utterance
   }
 
-  // handle user introduction by name (always believes user)
-  if (HasFrag(alist, "$intro"))
-  {
-    intro_name(alist);                       // assign user name
-    return greet_tag();
-  }
-
-  // generate core interpretation then add speech act
+  // generate core interpretation (remains in "bulk")
   spact = Assemble(alist);
-  if ((spact >= 1) && (spact <= 3))
-    return attn_tag(spact, alist);           // fact or command
-  if (spact == 4)
-    return rev_tag(spact, alist);            // operator revision
-  if ((spact >= 5) && (spact <= 6))
-    return add_tag(spact, alist, sent);      // new rule or operator
-
-  // look for naked kudo phrases (always believes user)
-  if ((ch = feedback(spact, alist)) != NULL)
-  {
-    atree->AddFocus(ch);
-    return 1;
-  }
 
   // handle superficial speech acts
-  if (HasSlot(alist, "HELLO"))               // simple greeting
+  if (HasSlot(alist, "HELLO"))         // simple greeting
     return greet_tag();
-  if (HasSlot(alist, "BYE"))                 // simple farewell
+  if (HasSlot(alist, "BYE"))           // simple farewell
     return farewell_tag();
-  if (HasSlot(alist, "ATTN"))                // calling robot name
+  if (HasSlot(alist, "ATTN"))          // calling robot name
     return hail_tag();
-  return huh_tag();                          // no network created
-}
 
+  // look for naked kudo phrases (always believes user)
+  if ((main = feedback(spact, alist)) != NULL)
+  {
+    atree->AddFocus(main);
+    return JSP_FACT;
+  }
 
-//= Possibly change to new user node given name or restriction on name.
+  // check for new rule or operator
+  if ((spact == JSP_RULE) || (spact == JSP_OP))
+    return add_tag(spact, alist, sent);       
+  if (bulk == NULL)                              // needed for other spacts
+    return huh_tag();                   
 
-void jhcNetBuild::intro_name (const char *alist) const
-{
-  char name[80];
-  jhcActionTree *atree = &(core->atree);
-  jhcNetNode *user = atree->Human();
-  int neg = 0;
+  // encapsulate sequence in a try/catch play (even single cmd and plays)
+  main = new jhcAliaChain;
+  pod = new jhcAliaPlay;                       
+  main->BindPlay(pod);
+  pod->AddReq(bulk);
+  pod->SetModel(spact);                          // mark for speculation
 
-  // get name and whether asserted or denied
-  if (FindSlot(alist, "NAME", name) == NULL)
-    return; 
-  if (HasSlot(alist, "NEG"))
-    neg = 1;
+  // add trailing user response (might change interpretation)
+  if (spact == JSP_YNQ)
+    append_ynq(main, *atree);
+  else if (spact == JSP_WHQ) 
+    append_whq(main, *atree);
+  else if (spact == JSP_EXQ)
+    append_exist(main, *atree);
+  else if (spact == JSP_FIND)
+    append_find(main, *atree);
 
-  // possibly change user node 
-  if (atree->NameClash(user, name, neg))
-    user = atree->SetUser((neg <= 0) ? atree->FindName(name) : NULL);
-
-  // add name and person facts to network
-  atree->StartNote();
-  atree->AddName(user, name, neg);
-  atree->AddProp(user, "ako", "person", 0, 1.0, 1);
-  atree->FinishNote();
+  // add leading speech act 
+  if ((spact == JSP_FACT) || (spact == JSP_CMD) || (spact == JSP_YNQ) || 
+      (spact == JSP_WHQ)  || (spact == JSP_EXQ) || (spact == JSP_FIND))
+    return attn_tag(spact, main, alist);         // fact or command or question
+  if (spact == JSP_REV)
+    return rev_tag(spact, main, alist);          // operator revision
+  return huh_tag();                              // should never get here
 }
 
 
@@ -167,7 +155,7 @@ void jhcNetBuild::intro_name (const char *alist) const
 // looks for standalone kudos: HQ, HQ AKO, and AKO
 // as well as possibly embedded kudos: ACC, REJ, YES, and NO
 
-jhcAliaChain *jhcNetBuild::feedback (int spact, const char *alist) const
+jhcAliaChain *jhcNetBuild::feedback (JSP_ACT spact, const char *alist) const
 {
   char first[40], val[40], prop[40] = "hq", term[40] = "";
   jhcActionTree *atree = &(core->atree);
@@ -192,7 +180,7 @@ jhcAliaChain *jhcNetBuild::feedback (int spact, const char *alist) const
       strcpy_s(prop, "ako");
   }
   else if (match_any(first, "YES", "NO") && 
-           ((spact == 2) || (spact == 6)))
+           ((spact == JSP_CMD) || (spact == JSP_OP)))
     strcpy_s(term, "good");                      // change default             
   else if (*term == '\0')
     return NULL;
@@ -211,7 +199,7 @@ jhcAliaChain *jhcNetBuild::feedback (int spact, const char *alist) const
 // basically shows what was produced by jhcGraphizer for last sentence
 // part of jhcNetBuild because needs access to "add" and "bulk"
 
-void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) const
+void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, JSP_ACT spact) const
 {
   // make sure there is somewhere to record stuff
   if (log == NULL)
@@ -226,23 +214,124 @@ void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) con
     fprintf(log, "*** %d parses ***\n\n", nt);
 
   // record interpretation result
-  if (spact == 9)
-    fprintf(log, "-- farewell --\n\n");
-  else if (spact == 8)
-    fprintf(log, "-- greeting --\n\n");
-  else if (spact == 7)
-    fprintf(log, "-- hail --\n\n");
-  else if ((spact == 6) && (add != NULL) && (add->new_oper != NULL))
-    (add->new_oper)->Save(log);
-  else if ((spact == 5) && (add != NULL) && (add->new_rule != NULL))
-    (add->new_rule)->Save(log);
-  else if ((spact <= 4) && (spact >= 1) && (bulk != NULL))
+  if ((spact == JSP_HAIL) || (spact == JSP_HI) || (spact == JSP_BYE))
+    fprintf(log, "-- %s --\n\n", sp_desc[spact]);
+  else if (((spact == JSP_FACT) || (spact == JSP_CMD) || (spact == JSP_REV) ||
+            (spact == JSP_YNQ)  || (spact == JSP_WHQ) || (spact == JSP_EXQ) || (spact == JSP_FIND))
+           && (bulk != NULL))
   {
-    bulk->Save(log, 2);
+    fprintf(log, "-- %s --\n\n", sp_desc[spact]);
+    bulk->Save(log);
+    fprintf(log, "\n");
+  }
+  else if ((spact == JSP_OP) && (add != NULL) && (add->new_oper != NULL))
+  {
+    (add->new_oper)->Save(log); 
+    fprintf(log, "\n");
+  }
+  else if ((spact == JSP_RULE) && (add != NULL) && (add->new_rule != NULL))
+  {
+    (add->new_rule)->Save(log);
     fprintf(log, "\n");
   }
   else if (nt > 0)
     fprintf(log, "-- nothing --\n\n");
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                            User Responses                             //
+///////////////////////////////////////////////////////////////////////////
+
+//= Adds actions to announce verdict for a yes/no question.
+
+void jhcNetBuild::append_ynq (jhcAliaChain *main, jhcNodePool& pool) const
+{
+  main->cont = tell_step("affirm", pool);
+  main->alt  = tell_step("deny",   pool);
+  main->fail = tell_step("pass",   pool);
+}
+
+
+//= Adds action for when telling answer to wh- question fails.
+
+void jhcNetBuild::append_whq (jhcAliaChain *main, jhcNodePool& pool) const
+{
+  jhcAliaChain *seq, *end, *resp;
+  jhcAliaPlay *guard;
+  jhcAliaDir *find, *dir;
+  jhcNetNode *focus, *tell, *dest;
+  jhcGraphlet key;
+
+  // get free variable of final FIND 
+  if ((find = main->GetDir()) == NULL)
+  {
+    if ((guard = main->GetPlay()) == NULL)
+      return;
+    if ((seq = guard->ReqN(0)) == NULL)
+      return;
+    if ((end = seq->Last()) == NULL)
+      return;
+    if ((find = end->GetDir()) == NULL)
+      return;
+  }
+  if (find->kind != JDIR_FIND)
+    return;
+  focus = find->KeyMain();
+
+  // generate guts for a DO directive to tell about node found
+  dir = new jhcAliaDir(JDIR_DO);
+  pool.BuildIn(&(dir->key));
+  tell = pool.MakeAct("tell");
+  tell->AddArg("obj", focus);
+  dest = pool.AddProp(tell, "dest", "to");
+  dest->AddArg("ref", (core->atree).Human());
+  pool.BuildIn(NULL);
+
+  // connect "tell" and failure steps
+  resp = new jhcAliaChain;
+  resp->BindDir(dir);
+  main->cont = resp;
+  main->fail = tell_step("pass", pool);
+}
+
+
+//= Adds action for confirming or denying the existence of something.
+
+void jhcNetBuild::append_exist (jhcAliaChain *seq, jhcNodePool& pool) const
+{
+  seq->cont = tell_step("affirm", pool);
+  seq->fail = tell_step("deny", pool);
+}
+
+
+//= Adds action for confirming shift of attention to specified object.
+
+void jhcNetBuild::append_find (jhcAliaChain *seq, jhcNodePool& pool) const
+{
+  seq->cont = tell_step("confirm", pool);
+  seq->fail = tell_step("apologize", pool);           
+}
+
+
+//= Make a step consisting of a DO directive having a verb with no arguments.
+
+jhcAliaChain *jhcNetBuild::tell_step (const char *verb, jhcNodePool& pool) const
+{
+  jhcAliaChain *step;
+  jhcAliaDir *dir;
+  jhcGraphlet *old;
+
+  // build a DO directive embedded in a step
+  step = new jhcAliaChain;
+  dir  = new jhcAliaDir(JDIR_DO);
+  step->BindDir(dir);
+  
+  // flesh out directive with given action
+  old = pool.BuildIn(dir->key);
+  pool.MakeAct(verb);
+  pool.BuildIn(old);
+  return step;
 }
 
 
@@ -257,9 +346,8 @@ void jhcNetBuild::Summarize (FILE *log, const char *sent, int nt, int spact) con
 //                 -agt-> self-1
 //                 -obj-> user-3 ]
 // </pre>
-// always returns 0 for convenience
 
-int jhcNetBuild::huh_tag () const
+JSP_ACT jhcNetBuild::huh_tag () const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = new jhcAliaChain;
@@ -276,46 +364,46 @@ int jhcNetBuild::huh_tag () const
   ch->BindDir(dir);
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 0;
+  return JSP_NONE;
 }
 
 
 //= Generate speech act noting that the robot's name was called.
 
-int jhcNetBuild::hail_tag () const
+JSP_ACT jhcNetBuild::hail_tag () const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = build_tag(NULL, "hail", NULL, 0);
 
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 7;
+  return JSP_HAIL;
 }
 
 
 //= Generate speech act noting that the user wants to communicate.
 
-int jhcNetBuild::greet_tag () const
+JSP_ACT jhcNetBuild::greet_tag () const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = build_tag(NULL, "greet", NULL, 0);
 
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 8;
+  return JSP_HI;
 }
 
 
 //= Generate speech act noting that the user is leaving.
 
-int jhcNetBuild::farewell_tag () const
+JSP_ACT jhcNetBuild::farewell_tag () const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = build_tag(NULL, "dismiss", NULL, 0);
 
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 9;
+  return JSP_BYE;
 }
 
 
@@ -329,9 +417,8 @@ int jhcNetBuild::farewell_tag () const
 //           ako-1 -lex-  word
 //                 -ako-> txt-1]
 // </pre>
-// always returns 10 for convenience
 
-int jhcNetBuild::unk_tag (const char *word) const
+JSP_ACT jhcNetBuild::unk_tag (const char *word) const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch = new jhcAliaChain;
@@ -351,25 +438,25 @@ int jhcNetBuild::unk_tag (const char *word) const
   ch->BindDir(dir);
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 10;
+  return JSP_WORD;
 }
 
 
 //= Generate speech act followed by a request to add rule or operator.
 // save core of ADD directive in "add" for convenience
-// returns 5 for rule, 6 for operator (echoes input "kind")
 
-int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent) 
+JSP_ACT jhcNetBuild::add_tag (JSP_ACT spact, const char *alist, const char *sent) 
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch, *steps, *tail;
+  jhcAliaChain *ch, *steps, *tail, *main;
+  jhcAliaPlay *pod;
   jhcNetNode *input, *item;
  
   // make a new NOTE directive for speech act
   ch = build_tag(&input, "give", alist, 1);
-  item = atree->MakeNode((spact == 5) ? "rule" : "op");
+  item = atree->MakeNode((spact == JSP_RULE) ? "rule" : "op");
   input->AddArg("obj", item);
-  atree->AddProp(item, "ako", ((spact == 5) ? "rule" : "operator"));
+  atree->AddProp(item, "ako", ((spact == JSP_RULE) ? "rule" : "operator"));
 
   // possibly tack on user feedback ("yes" or "no") after speech act
   if ((tail = feedback(spact, alist)) != NULL)
@@ -384,7 +471,7 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
   steps->BindDir(add);
 
   // move newly create rule or operator into directive (in case slow)
-  if (spact == 5)
+  if (spact == JSP_RULE)
   {
     rule->SetGist(no_fluff(sent, alist));
     add->new_rule = rule;
@@ -397,12 +484,14 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
   rule = NULL;                         // prevent deletion by jhcGraphizer
   oper = NULL;
 
-  // acknowledge if accepted, explain if rejected
-  steps->cont = ack_meta(item);
-  steps->fail = exp_fail(item);        
+  // encapsulate single command in play (helps speculative OP inference)
+  main = new jhcAliaChain;
+  pod = new jhcAliaPlay;            
+  main->BindPlay(pod);
+  pod->AddReq(steps);
 
   // combine with preamble and transfer structure to attention buffer
-  tail->cont = steps;
+  tail->cont = main;
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
   return spact;
@@ -411,12 +500,11 @@ int jhcNetBuild::add_tag (int spact, const char *alist, const char *sent)
 
 //= Insert NOTE directive about source of command or fact before actual statement.
 // gives the opportunity to PUNT and disbelieve fact or reject command
-// returns 4 for valid revision, 0 for problem
 
-int jhcNetBuild::rev_tag (int spact, const char *alist) const
+JSP_ACT jhcNetBuild::rev_tag (JSP_ACT spact, jhcAliaChain *main, const char *alist) const
 {
   jhcActionTree *atree = &(core->atree);
-  jhcAliaChain *ch, *tail, *main;
+  jhcAliaChain *ch, *tail;
   jhcNetNode *input, *item;
 
   // make a new NOTE directive for speech act
@@ -431,32 +519,40 @@ int jhcNetBuild::rev_tag (int spact, const char *alist) const
   else
     tail = ch;
 
-  // tack on a play encapsulating the bulk sequence
-  // then add completed structure to attention buffer
-  main = guard_plan(bulk, item);
-  main->cont = ack_meta(item);
+  // explain any failure at end
   tail->cont = main;
+  main->cont = ack_meta(item);
+  main->fail = exp_fail(item);
+
+  // add completed structure to attention buffer
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
-  return 4;
+  return JSP_REV;
 }
 
 
 //= Insert NOTE directive about source of command or fact before actual statement.
 // gives the opportunity to PUNT and disbelieve fact or reject command
-// returns 3 for question, 2 for command, 1 for fact, 0 for problem
 
-int jhcNetBuild::attn_tag (int spact, const char *alist) const
+JSP_ACT jhcNetBuild::attn_tag (JSP_ACT spact, jhcAliaChain *main, const char *alist) const
 {
   jhcActionTree *atree = &(core->atree);
   jhcAliaChain *ch, *tail;
   jhcNetNode *input, *item;
+  bool query = (spact != JSP_FACT) && (spact != JSP_CMD);
 
-  // make a new NOTE directive for speech act
-  // question "ask act", command "tell act", fact "tell obj"
-  ch = build_tag(&input, ((spact >= 3) ? "ask" : "tell"), alist, 1);
-  item = atree->MakeNode("plan");
-  input->AddArg(((spact >= 2) ? "act" : "obj"), item);
+  // leading NOTE: question = "ask act", command = "tell act", fact = "tell obj"
+  ch = build_tag(&input, (query ? "ask" : "tell"), alist, 1);
+  if (spact == JSP_FACT)
+  {
+    item = atree->MakeNode("fact");
+    input->AddArg("obj", item);
+  }
+  else
+  {
+    item = atree->MakeNode("plan");
+    input->AddArg("act", item);
+  }
 
   // possibly tack on user feedback ("yes" or "no") after speech act
   if ((tail = feedback(spact, alist)) != NULL)
@@ -464,9 +560,12 @@ int jhcNetBuild::attn_tag (int spact, const char *alist) const
   else
     tail = ch;
 
-  // tack on a play encapsulating the bulk sequence
-  // then add completed structure to attention buffer
-  tail->cont = guard_plan(bulk, item);
+  // explain any failure at end (except for facts and find requests)
+  tail->cont = main;
+  if ((spact != JSP_FACT) && (spact != JSP_FIND))
+    main->fail = exp_fail(item);                    
+
+  // add completed structure to attention buffer
   atree->AddFocus(ch);
   atree->BuildIn(NULL);
   return spact;
@@ -573,29 +672,6 @@ jhcAliaChain *jhcNetBuild::ack_meta (jhcNetNode *item) const
 }
 
 
-//= Generate a TRAP directive encapsulating payload (symbolic node "ref").
-// returns chain step with its overall fail branch being an explanation
-
-jhcAliaChain *jhcNetBuild::guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const
-{
-  jhcAliaChain *ch = steps;
-  jhcAliaPlay *pod;
-
-  // encapsulate plan in a play unless just a single activity play
-  if ((steps->GetPlay() == NULL) || (steps->cont != NULL))
-  {
-    ch = new jhcAliaChain;
-    pod = new jhcAliaPlay;
-    ch->BindPlay(pod);
-    pod->AddReq(steps);
-  }
-
-  // request explanation on failure of anything in pod
-  ch->fail = exp_fail(plan);
-  return ch;
-}
-
-
 //= Add a request to explain the failure of some action.
 
 jhcAliaChain *jhcNetBuild::exp_fail (jhcNetNode *plan) const
@@ -607,11 +683,32 @@ jhcAliaChain *jhcNetBuild::exp_fail (jhcNetNode *plan) const
 
   atree->BuildIn(cry->key);
   exp = atree->MakeAct("explain");
-  prob = atree->MakeAct("fail");
+  prob = atree->MakeAct("fail", 0, 1.0, 1);
   prob->AddArg("act", plan);
   exp->AddArg("obj", prob);
   atree->BuildIn(NULL);
   ch->BindDir(cry);
+  return ch;
+}
+
+
+//= Announce that the command (spact = 2) has completed successfully.
+// Note: disrupts normal conversation, better for long tasks (e.g. wander)
+
+jhcAliaChain *jhcNetBuild::ann_done (jhcNetNode *plan) const
+{
+  jhcActionTree *atree = &(core->atree);
+  jhcAliaChain *ch = new jhcAliaChain;
+  jhcAliaDir *win = new jhcAliaDir(JDIR_DO);
+  jhcNetNode *ann, *done;
+
+  atree->BuildIn(win->key);
+  ann = atree->MakeAct("announce");
+  done = atree->MakeAct("succeed", 0, 1.0, 1);
+  done->AddArg("act", plan);
+  ann->AddArg("obj", done);
+  atree->BuildIn(NULL);
+  ch->BindDir(win);
   return ch;
 }
 

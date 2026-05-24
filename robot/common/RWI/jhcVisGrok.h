@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@
 
 #include "Environ/jhcLocalOcc.h"       // common robot
 #include "Environ/jhcTable.h"
+#include "Environ/jhcVisMotion.h"
 #include "Geometry/jhcMatrix.h"
 #include "Objects/jhcSurfObjs.h"
 #include "People/jhcFaceName.h"
@@ -58,8 +59,13 @@ class jhcVisGrok : public jhcBgndGrok, private jhcColor, private jhcDraw, privat
 private:
   jhcWarp cw;
   jhcImg flat, limb, tmp, tmp2, mark, mark2;
+  char tmap[80];
+  double tcyc;
   UL32 tnow;
   int phy, reflex, wmap, hmap, sprc, first;
+
+  // sensor height adjustment
+  double zadj;
 
   // high-level commands
   double wlim, sx, sy, ssp, vd, va, vsp, voff, xsp;
@@ -70,6 +76,9 @@ private:
   int feet, act;
   char nmode[4][20];
 
+  // search for free path
+  double view;
+
   // finger separation estimate
   double sep;
 
@@ -77,8 +86,7 @@ private:
 // PRIVATE MEMBER PARAMETERS
 private:
   // rangefinder parameters
-  double rflen, rsc, west;
-  int ign;
+  double rflen, rsc, ign, west;
 
   // color camera parameters
   double cmx, cmy, cf0, cr2, cr4, cmag;
@@ -91,10 +99,18 @@ private:
   double lpad, hpad, fpad;
 
   // head visibility parameters
-  double lvis, rvis, tvis, bvis, lost, gtime, side, btime;
+  double lvis, rvis, tvis, bvis, lost, side, btime;
 
   // saccade control parameters
-  double hem, umat, sacp, sact, sact2, road, cruise;
+  double hem, umat, sacp, sacp2, sact, sact2, road, cruise;
+
+  // balance restoration
+  UL32 esc0;
+  double esc_t, esc_m;
+
+  // subconscious gaze parameters
+  double tip, back;
+  int pbid, obid, mbid, sbid, rbid;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -106,12 +122,13 @@ public:
   jhcLocalOcc nav;                     // navigation obstacles
   jhcSurfObjs sobj;                    // depth-based object detection
   jhcTable tab;                        // supporting surfaces
+  jhcVisMotion mot;                    // motion areas in image
 
   // input images (possibly shared)
   jhcImg *raw, *rng, *col, *aux;
 
   // parameter sets
-  jhcParam rps, cps, eps, pps, vps, sps;
+  jhcParam rps, cps, eps, pps, vps, sps, aps;
 
   // debugging image to show
   const jhcImg *space2;
@@ -123,11 +140,11 @@ public:
   // creation and initialization
   ~jhcVisGrok ();
   jhcVisGrok ();
-  const jhcImg *HeadView () const {return &mark;}
-  const jhcImg *MapView () const  {return &mark2;}
   int XDim () const {return wmap;}
   int YDim () const {return hmap;}
-  const char *NavGoal () const    {return(((act < 0) || (act > 3)) ? NULL : nmode[act]);}
+  const char *Title () const {return tmap;}
+  const char *NavGoal () const    
+    {return(((act < 0) || (act > 3)) ? NULL : nmode[act]);}
   bool Ghost () const   {return(phy <= 0);}
   UL32 CmdTime () const {return tnow;}
   int SpeechRC () const {return sprc;}
@@ -135,6 +152,7 @@ public:
     {return fn.FaceName(s3.TrackIndex(tk.Speaking()));}
   int VisTips () const {return((west > 0.0) ? 1 : 0);}
   double VisWid () const {return sep;}
+  double Cycle () const  {return tcyc;}
 
   // access to actual input images
   const jhcImg& Color () const  {return *col;} 
@@ -174,6 +192,10 @@ public:
   int MapPath (int bid =10);
   bool Survey () const {return((feet >= 1) && (feet <= 4));}
 
+  // user images
+  const jhcImg *HeadView (const char *msg =NULL);
+  const jhcImg *MapView (const char *msg =NULL);
+
   // log images
   void DumpImages (const char *wdir);
 
@@ -190,6 +212,7 @@ private:
   int pad_params (const char *fname);
   int vis_params (const char *fname);
   int sacc_params (const char *fname);
+  int auto_params (const char *fname);
 
   // high-level people commands
   void assert_watch ();
@@ -200,6 +223,10 @@ private:
   void assert_explore ();
   void assert_scan ();
   int quick_survey (int bid);
+
+  // subconscious behaviors
+  void assert_gaze ();
+  void assert_tip ();
 
   // core processing overrrides 
   void body_update ();
@@ -216,18 +243,29 @@ private:
 
   // user images
   void cam_img ();
+  const char *neck_ctrl (char *txt, int ssz) const;
   void nav_img ();
   const jhcImg *integrated_map ();
-  const jhcImg *gray_depth ();
+  const jhcImg *front_depth ();
+
   const jhcImg *surface_bumps ();
   const jhcImg *object_heights ();
+  const jhcImg *object_clip ();
   const jhcImg *color_mask ();
   const jhcImg *table_deposit ();  
-  const jhcImg *person_heights ();
-  const jhcImg *head_shoulder ();
-  const jhcImg *head_sound ();
+
   const jhcImg *floor_heights ();
+  const jhcImg *plane_devs ();
   const jhcImg *obstacle_scan ();
+  const jhcImg *free_space ();
+
+  const jhcImg *person_heights ();
+  const jhcImg *person_blobs ();
+  const jhcImg *head_shoulder ();
+  const jhcImg *head_gaze ();
+
+  const jhcImg *head_sound ();
+  const jhcImg *vis_motion ();
 
 };
 

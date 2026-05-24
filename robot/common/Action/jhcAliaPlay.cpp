@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include <string.h>
+
+#include "Interface/jtimer.h"          // common video - for profiling
 
 #include "Reasoning/jhcAliaOp.h"       // common audio - since only spec'd as class in header
 
@@ -69,6 +71,10 @@ void jhcAliaPlay::clr ()
 jhcAliaPlay::jhcAliaPlay ()
 {
   int i;
+ 
+  // top level
+  step = NULL;
+  spact = 0;                           // for speculation
 
   // no activities
   for (i = 0; i < amax; i++)
@@ -173,7 +179,7 @@ int jhcAliaPlay::NumGoals (int leaf, int cyc)
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Start processing this parallel set.
+//= Start processing this parallel set as a top level focus.
 // negative level used to partially restart any initial play
 // returns: 0 = working, -2 = fail 
 
@@ -198,17 +204,45 @@ int jhcAliaPlay::Start (jhcAliaCore *all, int lvl)
 }
 
 
+//= Start processing this parallel set and the next step in a chain.
+// returns: 0 = working, -2 = fail 
+
+int jhcAliaPlay::Start (jhcAliaChain *st)
+{
+  int i;
+
+  // containing chain step (for scope bindings)
+  step = st;
+
+  // start any concurrent (looping) activities 
+  for (i = 0; i < ng; i++)
+    if ((gstat[i] = guard[i]->Start(st)) < 0)
+      return fail();
+
+  // start or re-start most main activities (if any)
+  for (i = 0; i < na; i++)
+    if (status[i] <= 0)
+      if ((status[i] = main[i]->Start(st)) < 0)
+        return fail();
+
+  // report current status
+  verdict = 0;
+  return verdict;
+}
+
+
 //= Continue running this parallel set (focus > 0 if top-level attention item).
 // return: 1 (or 2) = done, 0 = working, -2 = fail
 
 int jhcAliaPlay::Status ()
 {
-  int i;
+  int i, val = 1;                                // assume normal success
 
-  // run any concurrent activities (barf when finished)
+  // run any concurrent activities (barf if fail)
   for (i = 0; i < ng; i++)
-    if ((gstat[i] = guard[i]->Status()) != 0)
-      return fail();
+    if (gstat[i] == 0) 
+      if ((gstat[i] = guard[i]->Status()) < 0)   // success okay  
+        return fail();
 
   // run all main activities that have not finished
   for (i = 0; i < na; i++)
@@ -216,14 +250,22 @@ int jhcAliaPlay::Status ()
       if ((status[i] = main[i]->Status()) < 0)
         return fail();
 
-  // see if done (all main activities done)
+  // see if all main activities done (return alt if any returned alt)
   for (i = 0; i < na; i++)
     if (status[i] == 0)
-      return 0;
+      return 0;                                  // something still running
+    else if (status[i] >= 2)     
+      val = 2;                                   // return "alt" from play
 
-  // record completion (never alternate)
-  Stop(1);
-  return 1;
+  // record completion (success or alt) then possibly guess new OP or RULE
+  Stop(val);
+  if (spact > 0)                                 // user supplied payload
+{
+jtimer(26, "Speculate");  
+    (step->Core())->Speculate(main[0], spact);     
+jtimer_x(26);
+}
+  return val;
 }
 
 
@@ -244,7 +286,9 @@ int jhcAliaPlay::fail ()
 
 int jhcAliaPlay::Stop (int ans)
 {
-  int i;
+  jhcAliaChain *end;
+  jhcBindings *sc = step->Scope();
+  int i, n;
 
   // see if everything already stopped for some reason
   if (verdict != 0)
@@ -255,10 +299,22 @@ int jhcAliaPlay::Stop (int ans)
     if (gstat[i] == 0)
       guard[i]->Stop();
 
-  // notify all required activities
+  // notify all required activities and copy final scoping
   for (i = 0; i < na; i++)
+  {
     if (status[i] == 0)
       main[i]->Stop();
+    if ((end = main[i]->LastRun()) != NULL)
+      sc->Merge(end->Scope());
+  }
+
+  // possibly confirm all FIND/BIND guesses as mentioned in conversation
+  if (spact > 0)
+  {
+    n = sc->NumPairs();
+    for (i = 0; i < n; i++)
+      (sc->GetSub(i))->SaveConvo();
+  }
 
   // record forced termination
   verdict = ans;

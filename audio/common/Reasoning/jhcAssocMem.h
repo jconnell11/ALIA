@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,8 +46,9 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  int noisy;                    // controls general diagnostic messages
-  int detail;                   // show detailed matching for some rule
+  char formal[80];           // robot name for provenance
+  int noisy;                 // controls general diagnostic messages
+  int detail;                // show detailed matching for some rule
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -62,12 +63,13 @@ public:
   jhcAliaRule *RuleList () const {return rules;}
   jhcAliaRule *NextRule (jhcAliaRule *r) const 
     {return((r == NULL) ? rules : r->next);} 
-  int AddRule (jhcAliaRule *r, int ann =0, int usr =0);
+  int AddRule (jhcAliaRule *r, int ann =0, int usr =0, int dup =1);
   void Remove (const jhcAliaRule *rem);
 
   // main functions
   int RefreshHalo (jhcWorkMem& wmem, int dbg =0) const;
   int Consolidate (const jhcBindings& b, int dbg =1);
+  int BuildRule (const jhcGraphlet& ctx, const jhcGraphlet& fact, double conf =0.1);
 
   // file functions
   int Load (const char *base, int add =0, int rpt =0, int level =1);

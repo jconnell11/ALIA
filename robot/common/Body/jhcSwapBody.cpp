@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 
 #include "Body/jhcSwapBody.h"
 
-#include "Interface/jtimer.h"
+
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -147,6 +147,10 @@ int jhcSwapBody::SaveVals (const char *fname) const
 
 void jhcSwapBody::Reset ()
 {
+  // clear body attitude
+  pitch = 0.0;
+  roll  = 0.0;
+
   // clear all poses
   pos_r0.Zero();
   dir_r0.Zero();
@@ -167,6 +171,20 @@ void jhcSwapBody::Reset ()
   arm0.Reset();
   lift0.Reset();
   base0.Reset();
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                           Overall Attitude                            //
+///////////////////////////////////////////////////////////////////////////
+
+//= Cache new accelerometer input from robot (call Update to transfer).
+// up is body pitch (pos = front up), ccw is body roll (pos = right up)
+
+void jhcSwapBody::Status (double up, double ccw)
+{
+  pitch0 = up;
+  roll0  = ccw;
 }
 
 
@@ -280,13 +298,15 @@ int jhcSwapBody::set_f32_top (jhcImg& dest, const void *pels) const
 //= Expand original 100x100 image to 640x480 with bilinear interpolation.
 // needs valid sx[], fx[], sy[], and fy[] arrays from tof_sampling()
 // pels are scanned right-to-left, top-down from upper right corner
+// needs a square of 4 valid pixels to make mixed pixel (shrinks mask)
+// will not interpolate across big horizontal or vertical depth jumps
 
 int jhcSwapBody::set_z16_tof (jhcImg& dest, const void *pels) const
 {
-jtimer(26, "set_z16_tof");
   const unsigned short *s = (const unsigned short *) pels;
   unsigned short *d = (unsigned short *) dest.PxlDest();
-  int dx, dy, i, hf, ref, vf, sw, se, nw, ne, bot, top;
+  int dx, dy, i, hf, ref, vf, sw, se, nw, ne, bot, top, pel;
+  int hjump = ROUND(4.0 * 101.6), vjump = ROUND(4.0 * 101.6);  // inches
 
   // rescan and uniformly stretch input image
   for (dy = 0; dy < 480; dy++)
@@ -295,58 +315,71 @@ jtimer(26, "set_z16_tof");
     i = sx[dy];
     if ((i < 0) || (i >= 100))
     {
-      memset(d, 0xFF, 1280);                                   // clear whole line
-      d += 640;
+      memset(d, 0xFF, 1280);                                   // skip whole line
+      d += 640;                                                
       continue;
     }
-    hf = fx[dy];
+    hf = fx[dy];                                               // horizontal mixing
 
     // interpolate source pixels to get destination line
+    // NW:NE:SW:SE square refers to pels array (rotated 90 degs wrt dest)
     for (dx = 0; dx < 640; dx++, d++)
     {
-      // check that reference address is within source 
+      // check that reference address is within source
+      *d = 0xFFFF;                                             // default
       ref = sy[dx] + i;
       if ((ref < 0) || (ref >= 10000))
+        continue;
+      vf = fy[dx];                                             // vertical mixing
+
+      // mix lower quad pixels (SW & SE) but only if valid 
+      sw = s[ref];
+      if (sw == 0xFFFF)                                        // quad partially invalid
+        continue;
+      bot = sw;                                                // left of edge 
+      if (hf > 0)
+      {      
+        se = s[ref + 1];
+        if (se == 0xFFFF)                                      // quad partially invalid
+          continue;
+        if (abs(se - sw) < vjump)
+          bot = ((sw << 8) + hf * (se - sw)) >> 8;             // full mix 
+        else if (hf >= 128)
+          bot = se;                                            // right of edge
+      }
+
+      // check if vertical mix needed
+      if (vf <= 0)                                             
       {
-        *d = 0xFFFF;
+        *d = (US16) bot;
         continue;
       }
 
-      // mix lower quad pixels (SW & SE) but only if valid 
-      bot = 0xFFFF;                                            
-      if ((sw = s[ref]) != 0xFFFF)
-      {
-        bot = sw;                                              // only left
-        if ((hf != 0) && ((se = s[ref + 1]) != 0xFFFF))
-          bot = ((sw << 8) + hf * (se - sw)) >> 8;             // full mix 
-      }
-      else if ((hf != 0) && ((se = s[ref + 1]) != 0xFFFF))
-        bot = se;                                              // only right
-
       // mix upper quad pixels (NW & NE) but only if valid 
-      top = 0xFFFF;                                            
-      if ((vf = fy[dx]) != 0)
-      {
-        if ((nw = s[ref + 100]) != 0xFFFF)
-        {
-          top = nw;                                            // only left
-          if ((hf != 0) && ((ne = s[ref + 101]) != 0xFFFF))
-            top = ((nw << 8) + hf * (ne - nw)) >> 8;           // full mix
-        }
-        else if ((hf != 0) && ((ne = s[ref + 101]) != 0xFFFF))
-          top = ne;                                            // only right
+      nw = s[ref + 100];
+      if (nw == 0xFFFF)                                        // quad partially invalid
+        continue;
+      top = nw;                                                // left of edge 
+      if (hf > 0)
+      {      
+        ne = s[ref + 101];
+        if (ne == 0xFFFF)                                      // quad partially invalid
+          continue;
+        if (abs(ne - nw) < vjump)
+          top = ((nw << 8) + hf * (ne - nw)) >> 8;             // full mix 
+        else if (hf >= 128)
+          top = ne;                                            // right of edge
       }
-     
+      
       // combine interpolated bottom with interpolated top
-      if (top == 0xFFFF)
-        *d = (US16) bot;                                       // 0xFFFF if bot bad
-      else if (bot == 0xFFFF)
-        *d = (US16) top;                                       // 0xFFFF if top bad
-      else
-        *d = (US16)(((bot << 8) + vf * (top - bot)) >> 8);     // four way blend
+      pel = bot;                                               // lower half
+      if (abs(top - bot) < hjump)
+        pel = ((bot << 8) + vf * (top - bot)) >> 8;            // four way blend
+      else if (vf >= 128)
+        pel = top;                                             // upper half
+      *d = (US16) pel;
     }
   } 
-jtimer_x(26);
   return 1;
 }
 
@@ -482,8 +515,12 @@ int jhcSwapBody::set_bgr_top (jhcImg& dest, const void *pels) const
 
 int jhcSwapBody::Update (int voice, int imgs)
 {
-  // swap in new component states
+  // new overall attitude
   Lock();
+  pitch = pitch0;
+  roll  = roll0;
+
+  // swap in new component states
   neck0.Update();
   arm0.Update();
   lift0.Update();
@@ -499,7 +536,6 @@ int jhcSwapBody::Update (int voice, int imgs)
  
   // accept newest input images (quick)
   img_r.CopyArr(img_r0);
-//  img_c.CopyArr(img_c0);
   img_a.CopyArr(img_a0);
   raw.CopyArr(img_c0);       // for later dump
   seen = seen0;

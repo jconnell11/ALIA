@@ -11,19 +11,10 @@
 
 =[toplevel]
   (hey (there)) <ATTN>
-  ((hey) <ATTN>) <HELLO> (<$intro>) (<ATTN>)
-  ((hey) <ATTN>) <$intro> (<ATTN>)
+  ((hey) <ATTN>) <HELLO> (<ATTN>)
   ((hey) <ATTN>) <BYE> (<ATTN>)
   <kudo> (<ATTN>)
   ((hey) <ATTN>) <main> (<ATTN>)
-
-
-// introduction of user by name
-
-=[$intro]
-  I am (<NEG>) <NAME>
-  this is (<NEG>) <NAME>
-  my name is (<NEG>) <NAME>
 
 
 // main categories of utterances
@@ -380,7 +371,9 @@
   <STAY> <%fact> <chain-c>
   <chain-c> <STAY> <%fact>
   <STAY> <%fact> <KEEP> <chain-g> 
+  <STAY> <chain-g> <KEEP> <chain-g>
   <KEEP> <chain-g> <STAY> <%fact>
+  <KEEP> <chain-g> <STAY> <chain-g>
 
 
 // wait for absence or presense of some condition

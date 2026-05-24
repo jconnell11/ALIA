@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022-2024 Etaoin Systems
+// Copyright 2022-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,15 +83,15 @@ int jhcDeclMem::wt_params (const char *fname)
   int ok;
 
   ps->SetTag("ltm_wts", 0);
-  ps->NextSpecF( &nwt,  3.0, "Weight for name match");
-  ps->NextSpecF( &kwt,  2.0, "Weight for kind match");;
-  ps->NextSpecF( &fmod, 0.5, "Derating for modifiers");
+  ps->NextSpecF( &nwt,   3.0, "Weight for name match");
+  ps->NextSpecF( &kwt,   2.0, "Weight for kind match");;
+  ps->NextSpecF( &fmod,  0.5, "Derating for modifiers");
   ps->Skip();
-  ps->NextSpecF( &ath,  1.0, "Min argument similarity");
-  ps->NextSpecF( &farg, 0.2, "Derating for arguments");
+  ps->NextSpecF( &ath,   1.0, "Min argument similarity");
+  ps->NextSpecF( &farg,  0.2, "Derating for arguments");
 
-  ps->NextSpecF( &rth,  3.0, "Min similarity for recall");
-  ps->NextSpec4( &alts, 3,   "Max ambiguity for recall");
+  ps->NextSpecF( &rth,   3.0, "Min similarity for recall");
+  ps->NextSpec4( &alts,  3,   "Max ambiguity for recall");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -136,7 +136,7 @@ int jhcDeclMem::Remember (jhcNetNode *fact)
 {
   jhcGraphlet desc;
   jhcBindings xfer;
-  jhcNetNode *n, *n2;
+  jhcNetNode *n2, *n = NULL;
   int i, j, ni, na, nb, nb0 = -1;
 
   // possibly announce entry and cached belief threshold
@@ -147,6 +147,10 @@ int jhcDeclMem::Remember (jhcNetNode *fact)
 
   // build a unique description from working memory facts
   add_node(desc, fact, NULL, 1);
+  for (i = fact->NumProps() - 1; i >= 0; i--)
+    if ((n = fact->PropMatch(i, "fcn", bth)) != NULL)      // always add verb
+      break;
+  desc.AddItem(n);  
   ni = desc.NumItems();
   if (enc >= 1)
   {
@@ -877,9 +881,9 @@ void jhcDeclMem::buoy_preds (jhcNetNode *n, int tval, int rels, int lvl) const
 // appends to existing facts unless add <= 0
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation
 // for proper level-based saving must load in order starting with lowest level
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".facts"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".facts"
 // assumes most important nodes in each hash bin are listed first 
-// returns number of facts read, 0 or negative for problem
+// returns number of fact nodes read, 0 or negative for problem
 
 int jhcDeclMem::LoadFacts (const char *base, int add, int rpt, int level)
 {
@@ -903,11 +907,7 @@ int jhcDeclMem::LoadFacts (const char *base, int add, int rpt, int level)
     fname = full;
   }
   if (fopen_s(&in, fname, "r") != 0)
-  {
-//    if (rpt < 3)
-//      jprintf("  >>> Could not read fact file: %s !\n", fname);
     return -1;
-  }
 
   // see if there is a hint about number of translations needed
   if (fgets(hdr, 80, in) != NULL)
@@ -919,29 +919,26 @@ int jhcDeclMem::LoadFacts (const char *base, int add, int rpt, int level)
   n = jhcNodePool::Load(fname, add, nt);
   if (level >= 0) 
     for (i = level; i < 3; i++)
-      first[i + 1] = abs(LastLabel()) + 1;     
+      first[i + 1] = abs(LastLabel()) + 1;    
 
   // possibly announce result
-  if (n > 0)
-    jprintf(2, rpt, "  %3d long-term facts  from: %s\n", n, fname);
-  else
-    jprintf(2, rpt, "   -- long-term facts  from: %s\n", fname);
+  jprintf(1, rpt, "  %3d long-term facts   from: %s\n", n, fname);
   return n;
 }
 
 
 //= Save all current facts at or above some level to a file.
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".facts"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".facts"
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
 // saves most recent/important nodes in each two letter hash bin first 
-// returns number of facts saved, zero or negative for problem
+// returns number of predicates saved, zero or negative for problem
 
 int jhcDeclMem::SaveFacts (const char *base, int level) const
 {
   char full[200];
   const char *fname = base;
   FILE *out;
-  int cnt, lvl = __max(0, __min(level, 3));
+  int preds, lvl = __max(0, __min(level, 3));
 
   if (strchr(base, '.') == NULL)
   {
@@ -959,8 +956,8 @@ int jhcDeclMem::SaveFacts (const char *base, int level) const
     fprintf(out, "// ======================================\n");
   }
   fprintf(out, "// Nodes = %d max", NodeCnt(1));
-  cnt = save_bins(out, -1, first[lvl]);
+  preds = save_bins(out, -1, first[lvl]);
   fclose(out);
-  return cnt;
+  return preds;
 }
 

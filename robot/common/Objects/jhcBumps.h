@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016-2019 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,9 +98,7 @@ private:
 
 // PROTECTED MEMBER VARIABLES
 protected:
-public:
   // object detection
-  jhcBlob blob;
   jhcBlob *alt_blob;
   jhcImg *alt_cc;
   jhcImg det, obj, cc;
@@ -114,6 +112,9 @@ public:
 
 // PUBLIC MEMBER VARIABLES
 public:
+  // object properties
+  jhcBlob blob;
+
   // table surface mask
   jhcImg top;
 
@@ -128,7 +129,7 @@ public:
   // shape estimate parameters
   jhcParam sps;
   int pcnt;
-  double xyf, zf, xymix, zmix, amix, gmax, smin;
+  double xyf, zf, xymix, zmix, amix, smax, smin;
 
   // special object detection
   jhcParam tps;
@@ -146,6 +147,8 @@ public:
   jhcBumps (int n =50);
   void SetCnt (int n);
   bool TableMask () const {return(surf > 0);}
+  int Born () const {return pos.born;}
+  void Detection (jhcImg& dup) const {dup.Clone(det);}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -232,6 +235,12 @@ public:
   int FatEllipse (jhcImg& dest, int t, double mag =1.5, int col =4) const;
   int ObjsCam (jhcImg& dest, int view =0, int trk =1, int rev =0, int style =2);
   int DetPels (jhcImg& dest, int t, int col =255) const;
+
+
+// PROTECTED MEMBER FUNCTIONS
+protected:
+  // main functions
+  void cache_hts (jhcBlob& b);
 
 
 // PRIVATE MEMBER FUNCTIONS

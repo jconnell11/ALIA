@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2014-2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -142,8 +142,8 @@ public:
   void MapSize (const jhcImg& ref) {MapSize(ref.XDim(), ref.YDim());}
   void MapSize (int x, int y);
   void SetScale (double lo =20.0, double hi =90.0, double sc =0.5);
-  void SetView (double rot =0.0, double xref =0.0, double yref =0.0);
-  void SetView (const double *p6) {SetView(p6[0] - 90.0, p6[3], p6[4]);}
+  void ScanEmbed (double rot =0.0, double xref =0.0, double yref =0.0);
+  void ScanEmber(const double *p6) {ScanEmbed(p6[0] - 90.0, p6[3], p6[4]);}
   int ParseWid () const {return mw;}
   int ParseHt () const  {return mh;}
   double ParseScale () const {return ipp;}
@@ -176,6 +176,7 @@ public:
   // debugging graphics
   int NoWalls (jhcImg& dest) const;
   int ChestMap (jhcImg& dest) const;
+  const jhcImg *ChestShrink () const;
   int ChestBlobs (jhcImg& dest) const;
   int HeadLevels (jhcImg& dest) const;
   int ArmMap (jhcImg& dest) const;
@@ -203,11 +204,9 @@ public:
   int ShowRaysY (jhcImg& dest, const jhcBodyData *items, int n, int invert =0, double yoff =0.0, int pt =3) const;
   int ShowRaysX (jhcImg& dest, const jhcBodyData *items, int n, int invert =0, double xoff =0.0, int pt =3) const;
 
-  // frontal view utility (original map origin was at middle of bottom)
-  void BeamCoords (jhcMatrix& alt, const jhcMatrix& ref) const
-    {alt.RelVec3(ref, x0 - 0.5 * mw * ipp, y0, 0.0);}
-  void InvBeamCoords (jhcMatrix& alt, const jhcMatrix& ref) const
-    {alt.RelVec3(ref, 0.5 * mw * ipp - x0, -y0, 0.0);}
+  // frontal view utilities (original map origin was at middle of bottom)
+  void BeamCoords (jhcMatrix& scan, const jhcMatrix& w) const;
+  void InvBeamCoords (jhcMatrix& w, const jhcMatrix& scan) const;
 
 
 // PROTECTED MEMBER FUNCTIONS

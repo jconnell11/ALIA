@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -114,7 +114,7 @@ public:
 
   // main functions
   int BindVideo (jhcVideoSrc *v, int vnum =0);
-  int Reset (int bmode =0);
+  int Reset (int bmode =0, int cvt =0);
   int Respond ();
   const jhcImg *View (int num =0);
   int Done (int face =0);

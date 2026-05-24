@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,13 +37,17 @@ public:
   virtual ~jhcGenBody () {}
   jhcGenBody () {}
 
+  // attitude
+  virtual double Pitch () const {return 0.0;}
+  virtual double Roll () const  {return 0.0;}
+
   // sensor info
   virtual int RngReady () const  {return 1;}
-  virtual int RngStatic () const {return 30;}
-  virtual int ColStatic () const {return RngStatic();}
-  virtual int AuxStatic () const {return ColStatic();}
-  virtual void RngPose (jhcMatrix& pos, jhcMatrix& dir) const =0;
-  virtual void ColPose (jhcMatrix& pos, jhcMatrix& dir) const {RngPose(pos, dir);}
+  virtual double RngStatic () const {return 1.0;}
+  virtual double ColStatic () const {return RngStatic();}
+  virtual double AuxStatic () const {return ColStatic();}
+  virtual void RngPose (jhcMatrix& pos, jhcMatrix& dir, double zadj =0.0) const =0;
+  virtual void ColPose (jhcMatrix& pos, jhcMatrix& dir, double zadj =0.0) const {RngPose(pos, dir);}
   virtual void AuxPose (jhcMatrix& pos, jhcMatrix& dir) const {ColPose(pos, dir);}
 
   // basic actions

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -106,6 +106,25 @@ int jhcGraphlet::CopyBind (const jhcGraphlet& ref, const jhcBindings& sub)
     else
       desc[i] = alt;
   return ok;
+}
+
+
+//= Make sure arguments of all predicates are also in this graphlet.
+// Note: typically needed for condition of new rule to avoid disconnect
+
+void jhcGraphlet::IncludeArgs (const jhcGraphlet& ref)
+{
+  const jhcNetNode *item;
+  int i, j, na, n = ref.NumItems();
+
+  Copy(ref);
+  for (i = 0; i < n; i++) 
+  {
+    item = ref.Item(i);
+    na = item->NumArgs();
+    for (j = 0; j < na; j++)
+      AddItem(item->Arg(j));
+  }
 }
 
 

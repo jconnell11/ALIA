@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015 IBM Corporation
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -152,6 +152,32 @@ int jhcGramRule::SameRule (const jhcGramRule *ref) const
   if ((t != NULL) || (rt != NULL))
     return 0;
   return 1;
+}
+
+
+//= Assembles all symbols of tail into a single string.
+// aggregates only leading terminals, stops at first non-terminal
+
+char *jhcGramRule::Expansion (char *txt, int ssz) const
+{
+  const jhcGramStep *t = tail;
+
+  // sanity check
+  if ((txt == NULL) || (ssz <= 0))
+    return NULL;
+  *txt = '\0';
+
+  // walk down list of steps
+  while (t != NULL)
+  {
+    if (t->non > 0)
+      break;
+    if (*txt != '\0')
+      strcat_s(txt, ssz, " ");
+    strcat_s(txt, ssz, t->symbol);
+    t = t->tail;
+  }
+  return txt;
 }
 
 

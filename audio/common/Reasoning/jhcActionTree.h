@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,7 +67,6 @@ private:
 
   // timing for each item
   UL32 active[imax];
-  UL32 now;                  
 
   // which focus has been selected
   int svc;
@@ -85,17 +84,20 @@ private:
   // rule and operator adjustment parameters
   double cinc, cdec, pth0, pinc, pdec, fresh, wsc0;
 
+  // contradiction reporting
+  double cruise, wow, meh;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
   jhcParam aps;
 
-  // surprise parameters
-  double drill, dwell, calm;  
-            
   // NOTE generation variables
   jhcGraphlet nkey;
   int blame;                 // record specific error messages     
+
+  // current cognitive engagement level for surprise NOTE threshold
+  double distract;           
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -104,7 +106,6 @@ public:
   ~jhcActionTree ();
   jhcActionTree ();
   int MaxFoci () const  {return imax;}
-  UL32 TimeMS () const  {return now;}
   int NumFoci () const  {return fill;}
   int Inactive () const {return(fill - Active());}
   int Active () const;
@@ -122,6 +123,8 @@ public:
   double MinPref () const    {return pess;}
   double RestPref () const   {return pth0;}
   void SetMinPref (double p) {pess = __max(0.1, __min(p, 1.0));}
+  double Distracted () const {return distract;}
+  void Niggle (double b)     {distract = __max(0.1, __min(b, 1.0));}
 
   // rule and operator adjustment
   double AdjRuleConf (class jhcAliaRule *rule, double cf) const;
@@ -195,6 +198,7 @@ public:
   int VisEnum (int last, int kind =0) const     
     {return ExtEnum(last, kind);}
   int FinishNote (jhcAliaDesc *fail =NULL);
+  int FlushNote ();
 
   // file functions
   int LoadFoci (const char *fname, int app =0);
@@ -217,6 +221,7 @@ private:
 
   // halo interaction
   const jhcNetNode *halo_equiv (const jhcNetNode *n, const jhcNetNode *h0) const;
+  double notice () const;
   jhcNetNode *pick_non_wmem (int& step, const jhcBindings& b, const jhcBindings& h2m, int stop) const;
   void promote_all (jhcBindings& h2m, const jhcBindings& b);
   int promote (jhcBindings& h2m, jhcNetNode *n);

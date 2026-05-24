@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2021-2025 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ jhcBallistic::jhcBallistic ()
 
   // processing parameters
   Defaults();
-  gok = 1;                   // either 1 or -1
+  gok = 20;                  // 0 = no ghost, else cycles to wait (80Hz)
   dbg = 1;
 //dbg = 3;                   // progress messages
 }
@@ -384,6 +384,7 @@ int jhcBallistic::local_status (const jhcAliaDesc& desc, int i)
 
 int jhcBallistic::ball_stop0 (const jhcAliaDesc& desc, int i)
 {
+  
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
   ct0[i] = jms_now() + ROUND(1000.0 * ftime);
@@ -402,10 +403,10 @@ int jhcBallistic::ball_stop (const jhcAliaDesc& desc, int i)
   jhcGenBase *b = rwi->base;
 
   // lock to sensor cycle 
-  if (rwi->Ghost() || (a == NULL) || (b == NULL))
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost() || (a == NULL) || (b == NULL))
+    return NoHW(gok, i);
   if ((b->CommOK() <= 0) || (a->CommOK() <= 0))
     return err_hw("body");
 
@@ -438,8 +439,8 @@ int jhcBallistic::ball_drive0 (const jhcAliaDesc& desc, int i)
 
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  if (!act->ObjNode())                 // move vs move "something"
-    return -1;
+//  if (!act->ObjNode())                 // move vs move "something"
+//    return -1;
   if (get_vel(csp[i], act) <= 0)
     return -1;
   if (get_dist(camt[i], act) <= 0)
@@ -458,10 +459,10 @@ int jhcBallistic::ball_drive (const jhcAliaDesc& desc, int i)
   double err;
 
   // lock to sensor cycle
-  if (rwi->Ghost() || (b == NULL))
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost() || (b == NULL))
+    return NoHW(gok, i);
   if (b->CommOK() <= 0)
     return err_hw("base");
 
@@ -470,6 +471,7 @@ int jhcBallistic::ball_drive (const jhcAliaDesc& desc, int i)
     // set up absolute target distance
     camt[i] = b->MoveGoal(camt[i]);
     cerr[i] = b->MoveErr(camt[i]);
+    ccnt[i] = 0;
     cst[i]  = 1;
   }
   else 
@@ -599,10 +601,10 @@ int jhcBallistic::ball_turn (const jhcAliaDesc& desc, int i)
   double err;
 
   // lock to sensor cycle
-  if (rwi->Ghost() || (b == NULL))
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost() || (b == NULL))
+    return NoHW(gok, i);
   if (b->CommOK() <= 0)
     return err_hw("base");
 
@@ -611,6 +613,7 @@ int jhcBallistic::ball_turn (const jhcAliaDesc& desc, int i)
     // set up absolute target angle
     camt[i] = b->TurnGoal(camt[i]);
     cerr[i] = b->TurnErr(camt[i]);
+    ccnt[i] = 0;
     cst[i]  = 1;
   }
   else 
@@ -748,10 +751,10 @@ int jhcBallistic::ball_lift (const jhcAliaDesc& desc, int i)
   double err;
 
   // lock to sensor cycle
-  if (rwi->Ghost() || (f == NULL))
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost() || (f == NULL))
+    return NoHW(gok, i);
   if (f->CommOK() <= 0)
     return err_hw("lift stage");
 
@@ -760,6 +763,7 @@ int jhcBallistic::ball_lift (const jhcAliaDesc& desc, int i)
     // set up absolute target angle
     camt[i] = f->LiftGoal(camt[i]);
     cerr[i] = f->LiftErr(camt[i]);
+    ccnt[i] = 0;
     cst[i]  = 1;
   }
   else 
@@ -881,10 +885,10 @@ int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
   double err, stop = __max(0.0, camt[i]);
 
   // lock to sensor cycle
-  if (rwi->Ghost() || (a == NULL))
-    return gok;
   if (!rwi->Accepting())
     return 0;  
+  if (rwi->Ghost() || (a == NULL))
+    return NoHW(gok, i);
   if (a->CommOK() <= 0)
     return err_hw("hand");
 
@@ -894,6 +898,7 @@ int jhcBallistic::ball_grip (const jhcAliaDesc& desc, int i)
     a->Position(cpos[i]);
     a->Direction(cdir[i]);
     cerr[i] = a->WidthErr(camt[i]);
+    ccnt[i] = 0;
     cst[i]  = 1;
   }
   else if (cst[i] <= 2)
@@ -1017,10 +1022,10 @@ int jhcBallistic::ball_arm (const jhcAliaDesc& desc, int i)
   double err, zerr;
 
   // lock to sensor cycle
-  if (rwi->Ghost() || (a == NULL))
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost() || (a == NULL))
+    return NoHW(gok, i);
   if (a->CommOK() <= 0)
     return err_hw("arm");
 
@@ -1031,6 +1036,7 @@ int jhcBallistic::ball_arm (const jhcAliaDesc& desc, int i)
     a->Direction(cdir[i]);
     cpos[i].RotPan3(cdir[i].P());
     cpos[i].IncVec3(now);
+    ccnt[i] = 0;
     cst[i] = 1;
   }
   else if (cst[i] == 0)
@@ -1159,10 +1165,10 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc& desc, int i)
   double err;
 
   // lock to sensor cycle
-  if (rwi->Ghost() || (a == NULL))
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost() || (a == NULL))
+    return NoHW(gok, i);
   if (a->CommOK() <= 0)
     return err_hw("arm");
 
@@ -1173,7 +1179,8 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc& desc, int i)
     a->Direction(now);
     cdir[i].IncVec3(now);
     cdir[i].CycNorm3();
-    cst[i] = 2;
+    ccnt[i] = 0;
+    cst[i]  = 2;
   }
   else if (cst[i] == 1)
   {
@@ -1181,7 +1188,8 @@ int jhcBallistic::ball_wrist (const jhcAliaDesc& desc, int i)
     a->Position(cpos[i]);
     a->Direction(now);
     cdir[i].SubZero3(now);
-    cst[i] = 2;
+    ccnt[i] = 0;
+    cst[i]  = 2;
   }
   else
   {
@@ -1325,10 +1333,10 @@ int jhcBallistic::ball_neck (const jhcAliaDesc& desc, int i)
   double dwell = 1.0, err = 0.0;       // 1 sec to allow new object NOTE
 
   // lock to sensor cycle
-  if (rwi->Ghost() || (n == NULL))
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost() || (n == NULL))
+    return NoHW(gok, i);
   if (n->CommOK() <= 0)
     return err_hw("neck");
 
@@ -1341,6 +1349,7 @@ int jhcBallistic::ball_neck (const jhcAliaDesc& desc, int i)
   {
     // record initial error
     cerr[i] = err;
+    ccnt[i] = 0;
     cst[i] = 1;
   }
   else if (cst[i] == 1)
@@ -1555,15 +1564,23 @@ int jhcBallistic::set_inches (double& dist, const jhcAliaDesc *amt, double clip)
 
 bool jhcBallistic::stuck (int i, double err, double prog, int start, int mid)
 {
+  double chg = cerr[i] - err;
   int wait = ((cst2[i] <= 1) ? start : mid);     // no motion timeout depends on state
 
-  if ((cerr[i] - err) < prog)
-    return(ccnt[i]++ > wait);
-  cerr[i] = err;
-  ccnt[i] = 0;                                   // reset count once movement starts
-  if (cst2[i] == 1)                 
-    cst2[i] = 2;          
-  return false;
+  // check for some progress
+  if (chg >= prog)
+  {
+    cerr[i] = err;
+    ccnt[i] = 0;                       // reset count once movement starts
+    if (cst2[i] == 1)                 
+      cst2[i] = 2;          
+    return false;
+  }
+
+  // no progress
+  if (chg < 0.0)                       // only accumulate small positive steps
+    cerr[i] = err;
+  return(ccnt[i]++ > wait);
 }
 
 

@@ -160,8 +160,8 @@ OP 8 - "To announce that you don't know a word ask what does the word whatever m
     DO[ fcn-3 -lex-   say
               -fcn--> act-3
         act-3 -obj--> txt-2
-        txt-2 -str-    What does the word ?1 mean?
-              -arg1->  txt-1 ]
+        txt-2 -str-   What does the word ?1 mean?
+              -arg1-> txt-1 ]
 
 
 OP 9 - "To announce that you don't know a word ask can you explain the word whatever"
@@ -229,13 +229,18 @@ OP 11 - "If someone tells you something say to them got it whoever"
 
 // ----------------------------------------
 
-OP 12 - "To acknowledge a rule say to them thanks for the tip"
+OP 12 - "If someone gives you a rule say to them thanks for the tip"
   trig:
-    DO[ fcn-1 -lex-   acknowledge
-              -fcn--> act-1
-        act-1 -obj--> obj-3  
-        ako-1 -lex-   rule
-              -ako--> obj-3 ]
+  NOTE[  fcn-1 -lex-   give
+               -fcn--> act-1
+         act-1 -agt--> agt-1
+               -obj--> op-1
+        dest-1 -lex-   to
+               -dest-> act-1
+               -ref--> agt-2
+         ako-1 -lex-   rule
+               -ako--> op-1 
+         agt-2 -lex-   me ]
 -----------------
     DO[ fcn-2 -lex-   say
               -fcn--> act-2
@@ -243,13 +248,18 @@ OP 12 - "To acknowledge a rule say to them thanks for the tip"
         txt-1 -str-   thanks for the tip ]
 
 
-OP 13 - "To acknowledge a rule say to them okay I'll remember whoever"
+OP 13 - "If someone gives you a rule say to them okay I'll remember whoever"
   trig:
-    DO[ fcn-1 -lex-   acknowledge
-              -fcn--> act-1
-        act-1 -obj--> obj-3  
-        ako-1 -lex-   rule
-              -ako--> obj-3 ]
+  NOTE[  fcn-1 -lex-   give
+               -fcn--> act-1
+         act-1 -agt--> agt-1
+               -obj--> op-1
+        dest-1 -lex-   to
+               -dest-> act-1
+               -ref--> agt-2
+         ako-1 -lex-   rule
+               -ako--> op-1 
+         agt-2 -lex-   me ]
 -----------------
     DO[ fcn-2 -lex-   say
               -fcn--> act-2
@@ -259,13 +269,18 @@ OP 13 - "To acknowledge a rule say to them okay I'll remember whoever"
 
 // ----------------------------------------
 
-OP 14 - "To acknowledge an operator say to them I'm glad to learn that"
+OP 14 - "If someone gives you an operator say to them I'm glad to learn that"
   trig:
-    DO[ fcn-1 -lex-   acknowledge
-              -fcn--> act-1
-        act-1 -obj--> obj-3  
-        ako-1 -lex-   operator
-              -ako--> obj-3 ]
+  NOTE[  fcn-1 -lex-   give
+               -fcn--> act-1
+         act-1 -agt--> agt-1
+               -obj--> op-1
+        dest-1 -lex-   to
+               -dest-> act-1
+               -ref--> agt-2
+         ako-1 -lex-   operator
+               -ako--> op-1 
+         agt-2 -lex-   me ]
 -----------------
     DO[ fcn-2 -lex-   say
               -fcn--> act-2
@@ -273,15 +288,72 @@ OP 14 - "To acknowledge an operator say to them I'm glad to learn that"
         txt-1 -str-   I'm glad to learn that ]
 
 
-OP 15 - "To acknowledge an operator say to them good advice whoever"
+OP 15 - "If someone gives you an operator say to them good advice whoever"
   trig:
-    DO[ fcn-1 -lex-   acknowledge
-              -fcn--> act-1
-        act-1 -obj--> obj-3  
-        ako-1 -lex-   operator
-              -ako--> obj-3 ]
+  NOTE[  fcn-1 -lex-   give
+               -fcn--> act-1
+         act-1 -agt--> agt-1
+               -obj--> op-1
+        dest-1 -lex-   to
+               -dest-> act-1
+               -ref--> agt-2
+         ako-1 -lex-   operator
+               -ako--> op-1 
+         agt-2 -lex-   me ]
 -----------------
     DO[ fcn-2 -lex-   say
               -fcn--> act-2
         act-2 -obj--> txt-1
         txt-1 -str-   good advice ?0 ]
+
+
+// ----------------------------------------
+
+OP 16 - "To announce that some action succeeded say finished"
+  trig:
+    DO[  fcn-1 -lex-  announce
+               -fcn-> act-1
+         act-1 -obj-> act-2
+         fcn-2 -lex-  succeed
+               -fcn-> act-2
+         act-2 -ach-  1
+               -act-> plan-1 ]
+-----------------
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -obj--> txt-1
+        txt-1 -str-   finished ]
+
+
+OP 17 - "To announce that some action succeeded say what next whoever"
+  trig:
+    DO[  fcn-1 -lex-  announce
+               -fcn-> act-1
+         act-1 -obj-> act-2
+         fcn-2 -lex-  succeed
+               -fcn-> act-2
+         act-2 -ach-  1
+               -act-> plan-1 ]
+-----------------
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -obj--> txt-1
+        txt-1 -str-   what next ?0?]
+
+
+OP 18 - "To announce that some action succeeded say all done boss"
+  trig:
+    DO[  fcn-1 -lex-  announce
+               -fcn-> act-1
+         act-1 -obj-> act-2
+         fcn-2 -lex-  succeed
+               -fcn-> act-2
+         act-2 -ach-  1
+               -act-> plan-1 ]
+-----------------
+    DO[ fcn-3 -lex-   say
+              -fcn--> act-3
+        act-3 -obj--> txt-1
+        txt-1 -str-   all done boss ]
+
+

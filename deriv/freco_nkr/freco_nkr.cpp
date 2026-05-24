@@ -248,7 +248,7 @@ extern "C" DEXP_R void freco_cleanup ()
   if (running > 0)
     pthread_timedjoin_np(backg, 0, abstime_wait(&one_sec, 1000));
   running = 0;
-  pthread_detach(backg);
+//  pthread_detach(backg);
 
   // deallocate DNN (important if GPU-based)
   DNN = cv::dnn::Net();

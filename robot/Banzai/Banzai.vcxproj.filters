@@ -615,6 +615,9 @@
     <ClCompile Include="..\..\video\common\Processing\jhcWarp.cpp">
       <Filter>Source Files\common video\Processing</Filter>
     </ClCompile>
+    <ClCompile Include="..\common\Environ\jhcVisMotion.cpp">
+      <Filter>Source Files\common robot\Environ</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BanzaiDoc.h">
@@ -834,9 +837,6 @@
       <Filter>Header Files\common audio\Parse</Filter>
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Language\jhcDegrapher.h">
-      <Filter>Header Files\common audio\Language</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\audio\common\Language\jhcNetRef.h">
       <Filter>Header Files\common audio\Language</Filter>
     </ClInclude>
     <ClInclude Include="..\..\audio\common\Language\jhcGraphizer.h">
@@ -1135,6 +1135,12 @@
     </ClInclude>
     <ClInclude Include="..\..\video\common\Processing\jhcWarp.h">
       <Filter>Header Files\common video\Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\Environ\jhcVisMotion.h">
+      <Filter>Header Files\common robot\Environ</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\audio\common\Language\jhcNetRef.h">
+      <Filter>Header Files\common audio\Language</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

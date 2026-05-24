@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,13 @@
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
+
+//= Descriptive names for each category of speech act (must keep in sync with enum!).
+
+const char * const jhcGraphizer::sp_desc[JSP_MAX] = {"no payload", "fact", "command", "yn-question", "wh-question", 
+                                                     "ex-question", "find item", "revision", "rule", "operator", "hail",  
+                                                     "greeting", "farewell", "unknown word", "error"};
+                                           
 
 //= Default destructor does necessary cleanup.
 
@@ -79,19 +86,17 @@ void jhcGraphizer::ClearLast ()
 
 
 //= Build an appropriate structure based on given association list.
-// return: 6 = op, 5 = rule, 4 = revision, 3 = question, 2 = command, 1 = fact, 
-//         0 = nothing, negative for error
 
-int jhcGraphizer::Assemble (const char *alist)
+JSP_ACT jhcGraphizer::Assemble (const char *alist)
 {
   char body[amax], head[80] = "";
-  int spact = 0;                       // default = no network created
+  JSP_ACT spact = JSP_NONE;            // default = no network created (kudo)
 
   // sanity check 
   if (core == NULL) 
-    return -1;
+    return JSP_ERR;                    // error
   if (alist == NULL)
-    return 0;
+    return JSP_NONE;
 
   // determine if a full item has been found
   if (SplitFrag(head, body, alist) != NULL)
@@ -120,9 +125,8 @@ int jhcGraphizer::Assemble (const char *alist)
 //= Interpret association list to build an attention item.
 //   %Immediate -> chain (!dir or %play) or fact
 // "bulk" member variable holds resulting jhcAliaChain
-// returns 1 (fact) or 2 (command) or 3 (question) if successful, 0 for failure
 
-int jhcGraphizer::cvt_imm (const char *alist) 
+JSP_ACT jhcGraphizer::cvt_imm (const char *alist) 
 {
   char head[80], body[amax];
   jhcGraphlet temp;
@@ -135,7 +139,7 @@ int jhcGraphizer::cvt_imm (const char *alist)
 
   // solve references against WMEM
   if (SplitFrag(head, body, alist) == NULL)
-    return 0;
+    return JSP_NONE;
   wmem->InitConvo();                             // start of sentence
   univ = wmem;
   resolve = 0;
@@ -145,16 +149,16 @@ int jhcGraphizer::cvt_imm (const char *alist)
   {
     create = 0;
     if ((bulk = build_chain(alist, NULL, *wmem)) == NULL)
-      return 0;
+      return JSP_NONE;
     if (strcmp(head, "!chk-t") == 0)
-      return append_ynq(bulk, *wmem);
+      return JSP_YNQ;
     if (strcmp(head, "!find-t") == 0) 
-      return 3;
+      return JSP_WHQ;
     if (strcmp(head, "!find-c") == 0)
-      return append_exist(bulk, *wmem);
+      return JSP_EXQ;
     if (strcmp(head, "!find") == 0)
-      return append_find(bulk, *wmem);
-    return 2;
+      return JSP_FIND;
+    return JSP_CMD;
   }
 
   // FACT - build a single NOTE encapsulating factual assertion
@@ -172,7 +176,7 @@ int jhcGraphizer::cvt_imm (const char *alist)
     // cleanup from error
     delete dir;
     wmem->BuildIn(NULL);
-    return 0;
+    return JSP_NONE;
   }
   main->MarkConvo();                             // user speech ("that")
 
@@ -188,116 +192,7 @@ int jhcGraphizer::cvt_imm (const char *alist)
     bulk = skolem->Append(ch);
   else
     bulk = ch;
-  return 1;
-}
-
-
-//= Adds actions to announce verdict for a yes/no question.
-// assumes last directive in sequence is the main CHK
-// returns 3 if successful, 0 if last directive is not a CHK
-
-int jhcGraphizer::append_ynq (jhcAliaChain *seq, jhcNodePool& pool) const
-{
-  jhcAliaChain *chk;
-
-  // make sure last directive in sequence is a CHK
-  if (seq != NULL) 
-    if ((chk = seq->Last()) != NULL)
-      if (chk->StepDir(JDIR_CHK))
-      {
-        // attach normal and alt continuations
-        chk->cont = tell_step("affirm", pool);
-        chk->alt  = tell_step("deny",   pool);
-        return 3;
-      }
-  return 0;
-}
-
-
-//= Adds action for confirming or denying the existence of something.
-// assumes last directive in sequence is an empty find proceeding by the main FIND
-// always returns 3 for convenience
-
-int jhcGraphizer::append_exist (jhcAliaChain *seq, jhcNodePool& pool) const
-{
-  jhcAliaChain *find;
-
-  // no fail branch needed if no FIND in chain
-  if (seq != NULL) 
-    if ((find = seq->Penult()) != NULL)
-      if (find->StepDir(JDIR_FIND))
-      {
-        delete find->cont;
-        find->cont = tell_step("affirm", pool);
-        find->fail = tell_step("deny", pool);
-      }
-  return 3;
-}
-
-
-//= Adds action for confirming shift of attention to specified object.
-// assumes last directive in sequence is the main FIND
-// returns 3 if a question, 2 if really a command
-
-int jhcGraphizer::append_find (jhcAliaChain *seq, jhcNodePool& pool) const
-{
-  jhcAliaChain *find, *tail = seq;
-
-  // sanity check then create confirmation action step
-  if (seq == NULL) 
-    return 3;
-
-  // see if inside some sort of loop
-  if (multi != NULL)
-  {
-    if (multi->alt == NULL)
-    {
-      // exit "for" multi-step loop 
-      multi->alt = tell_step("confirm", pool);
-      return 3;
-    }
-    tail = multi;
-  }
-  else if (root != NULL)
-  {
-    if (root->alt == NULL)
-    {
-      // exit outermost loop
-      root->alt = tell_step("confirm", pool);
-      return 3;
-    }
-    tail = root;
-  }
-    
-  // go to end of linear tail section
-  if ((find = tail->Last()) != NULL)
-    if (find->StepDir(JDIR_FIND))
-    {
-      find->cont = tell_step("confirm", pool);
-      return 3;
-    }
-  return 2;
-}
-
-
-//= Make a step consisting of a DO directive having a verb with no arguments.
-
-jhcAliaChain *jhcGraphizer::tell_step (const char *verb, jhcNodePool& pool) const
-{
-  jhcAliaChain *step;
-  jhcAliaDir *dir;
-  jhcGraphlet *old;
-
-  // build a DO directive embedded in a step
-  step = new jhcAliaChain;
-  dir  = new jhcAliaDir(JDIR_DO);
-  step->BindDir(dir);
-  
-  // flesh out directive with given action
-  old = pool.BuildIn(dir->key);
-  pool.MakeAct(verb);
-  pool.BuildIn(old);
-  return step;
+  return JSP_FACT;
 }
 
 
@@ -308,9 +203,8 @@ jhcAliaChain *jhcGraphizer::tell_step (const char *verb, jhcNodePool& pool) cons
 //= Interpret association list to create instructions for revising some operator.
 //   %Rule -> action description + $proc, if no description then summarizes $proc
 // "bulk" member variable holds resulting jhcAliaChain
-// returns 4 if successful, 0 for failure
 
-int jhcGraphizer::cvt_rev (const char *alist) 
+JSP_ACT jhcGraphizer::cvt_rev (const char *alist) 
 {
   char entry[200];
   jhcWorkMem *wmem = &(core->atree);
@@ -346,7 +240,7 @@ int jhcGraphizer::cvt_rev (const char *alist)
     if ((ch = build_chain(tail, NULL, *wmem)) != NULL)     // PREF ingnored
       bulk->cont = ch;
   if (!(dir->key).Empty())
-    return 4;
+    return JSP_REV;
 
   // if EDIT was empty, copy just verb (no args) from first procedure step
   ch = bulk;
@@ -359,13 +253,13 @@ int jhcGraphizer::cvt_rev (const char *alist)
             wmem->BuildIn(dir->key);
             wmem->MakeAct(fcn->Lex());
             wmem->BuildIn(NULL);
-            return 4;
+            return JSP_REV;
           }
 
   // clean up from error
   delete bulk;
   bulk = NULL;
-  return 0;
+  return JSP_NONE;
 }
 
 
@@ -376,9 +270,8 @@ int jhcGraphizer::cvt_rev (const char *alist)
 //= Interpret association list to build a new rule.
 //   %Rule -> $macro or [$cond $res] or [$cond-i $res-i] or [$cond-s $res-s] or [$res $cond]
 // "rule" member variable holds result
-// returns 5 if successful, 0 for failure
 
-int jhcGraphizer::cvt_rule (const char *alist) 
+JSP_ACT jhcGraphizer::cvt_rule (const char *alist) 
 {
   call_list(1, "cvt_rule", alist);
 
@@ -397,13 +290,13 @@ int jhcGraphizer::cvt_rule (const char *alist)
     rule->conf = (rule->result).MinBelief();
     (rule->result).ForceBelief(rule->conf);
     (rule->result).ActualizeAll(0);              // needed for jhcAliaRule::match_found
-    return 5;
+    return JSP_RULE;
   }
 
   // cleanup from failure
   delete rule;
   rule = NULL;
-  return 0;
+  return JSP_NONE;
 }
 
 
@@ -605,9 +498,8 @@ int jhcGraphizer::build_graph (jhcGraphlet& gr, const char *alist, jhcNodePool& 
 //= Interpret association list to build a new operator.
 //   %Operator -> [$trig $proc] or [$trig-n $proc]
 // "oper" member variable holds result
-// returns 6 if successful, 0 for failure
 
-int jhcGraphizer::cvt_op (const char *alist) 
+JSP_ACT jhcGraphizer::cvt_op (const char *alist) 
 {
   char body[amax];
   const char *t2, *tail = alist;
@@ -616,7 +508,7 @@ int jhcGraphizer::cvt_op (const char *alist)
 
   // try to create correct kind of operator (handles $trig-n)
   if ((oper = config_op(alist)) == NULL)
-    return 0;
+    return JSP_NONE;
   univ = oper;
 
   // allow non-local exit
@@ -652,13 +544,13 @@ int jhcGraphizer::cvt_op (const char *alist)
     // make sure some trigger was found
     if (((oper->cond).NumItems() <= 0) && (oper->nu <= 0))
       break;
-    return 6;
+    return JSP_OP;
   }
 
   // cleanup from some problem
   delete oper;
   oper = NULL;
-  return 0;
+  return JSP_NONE;
 }
 
 
@@ -725,11 +617,9 @@ const char *jhcGraphizer::kind_op (int& k, const char *alist, int veto) const
       break;
     }
 
-  // check specially for ANTE and NONE advice operators
+  // check specially for ANTE advice operators
   if ((k == JDIR_DO) && FragHasSlot(body, "BEFORE"))
     k = JDIR_ANTE;
-//  if ((k == JDIR_FIND) && (FragHasSlot(body, "FAIL") || FragHasSlot(body, "BEFORE")))
-//    k = JDIR_NONE;
   return tail;
 }
 
@@ -766,9 +656,6 @@ int jhcGraphizer::build_sit (jhcSituation& sit, const char *alist, const char *k
       jprintf(1, dbg, "-- %s\n", ktag);
       sit.BuildCond();
       cmd = build_cmd(head, body, sit);
-//      if ((cmd = build_cmd(head, body, sit)) == NULL)
-//        return 0;
-//      sit.CmdHead(cmd);
       jprintf(1, dbg, "----\n\n");
     }
     else if (strncmp(head, "%fact", 5) != 0)
@@ -850,7 +737,7 @@ jhcAliaChain *jhcGraphizer::build_chain (const char *alist, jhcAliaChain *ult, j
   while ((tail = NextFrag(tail, entry)) != NULL)
     if (strncmp(entry, "%play", 5) == 0)
     {
-      // make the next chain step be a new play
+      // make the next chain step be a new play (pod = new play)
       pod = play_step(guard, tail, pool);
       if (ch == NULL)
         start = pod;
@@ -875,7 +762,7 @@ jhcAliaChain *jhcGraphizer::build_chain (const char *alist, jhcAliaChain *ult, j
           break;
         ch = mini->Last();
       }
-      else
+      else 
       {
         if ((mini = single_cmd(entry, tail, pool)) == NULL)
           break;
@@ -925,9 +812,30 @@ jhcAliaChain *jhcGraphizer::play_step (int& mode, const char *alist, jhcNodePool
   if ((tail = FragFindSlot(alist, "STAY", test)) == NULL)
     return pod;
   if (ExtractBody("%fact", body, tail) == NULL)
+  {
+    // try to build directive for !do-g after stripping KEEP
+    if ((tail = NextFrag(alist, test)) != NULL)  
+      if (strncmp(test, "!do", 3) == 0)
+      {
+        // only allow a single command
+        pool.BuildIn(temp);
+        evt = build_do(tail, pool);    
+        pool.BuildIn(NULL);
+        if (evt != NULL)
+        {
+          // attach as a looping guard activity
+          ch = new jhcAliaChain;
+          dir = new jhcAliaDir(JDIR_DO);
+          ch->BindDir(dir);
+          (dir->key).Copy(temp);
+          pod->PlayAct(ch, 2);
+          mode = 2;  
+        }
+      }
     return pod;
+  }
 
-  // extract condition to wait for (negate if "while")
+  // %fact - extract condition to wait for (negate if "while")
   skolem = NULL;
   pool.BuildIn(temp);
   if ((evt = build_fact(NULL, body, pool)) == NULL)
@@ -953,7 +861,7 @@ jhcAliaChain *jhcGraphizer::play_step (int& mode, const char *alist, jhcNodePool
 }
 
 
-//= Build controlling EACH or ANY for some loop with multi-step body.
+//= Build controlling ALL for some loop with multi-step body.
 // returns directive with suitable prefixed BINDs (if any)
 
 jhcAliaChain *jhcGraphizer::overt_loop (const char *alist, jhcNodePool& pool)
@@ -985,16 +893,14 @@ jhcAliaChain *jhcGraphizer::single_cmd (const char *entry, const char *alist, jh
   skolem = NULL;
   pool.BuildIn(key0);
   build_cmd(entry, alist, pool);
-//  if ((cmd = build_cmd(entry, alist, pool)) == NULL)
-//    return NULL; 
-//  key0.SetMain(cmd);
   pool.BuildIn(NULL);
 
   // make up new chain step which is a single directive
-  if ((ch = dir_step(entry + 1)) == NULL)
-    return NULL;
-  dir = ch->GetDir();
-  (dir->key).Copy(key0);
+  if ((ch = dir_step(entry + 1)) != NULL)
+  {
+    dir = ch->GetDir();
+    (dir->key).Copy(key0);
+  }
 
   // prepend any generated BINDs (main command always at end)
   if (skolem == NULL)
@@ -1019,11 +925,13 @@ jhcAliaChain *jhcGraphizer::dir_step (const char *kind) const
   jhcAliaDir *dir;
   jhcAliaChain *ch;
 
+  // result "tell" moved to jhcNetBuild
+  if ((strcmp(kind, "find-t") == 0) || (strcmp(kind, "find-c") == 0))
+    return NULL;
+
   // make up new directive of proper kind based on beginning of string
   dir = new jhcAliaDir;
-  if (strcmp(kind, "find-t") == 0)     // wh-question needs a tell at end
-    dir->SetKind("do");           
-  else if (strcmp(kind, "ach") == 0)
+  if (strcmp(kind, "ach") == 0)
     dir->SetKind("ach");
   else if (dir->SetKind(kind) <= 0)
   {
@@ -1040,7 +948,7 @@ jhcAliaChain *jhcGraphizer::dir_step (const char *kind) const
 
 //= Wire new chain into any ongoing loop structure.
 // ch is previous last step, mini is start of new command 
-// multi, root, and loop are bookkeeping member variables for iteration
+// multi, root, and loop are various ALL directives used in nested iteration
 // returns step (sometimes NULL) to attach any next step to
 
 jhcAliaChain *jhcGraphizer::connect_loop (jhcAliaChain *ch, jhcAliaChain *mini)
@@ -1056,13 +964,13 @@ jhcAliaChain *jhcGraphizer::connect_loop (jhcAliaChain *ch, jhcAliaChain *mini)
   }
   else if (root != NULL) 
   {
-    root->alt = mini;                  // jump here instead when done
+    root->cont = mini;                 // jump here instead when done
     root = NULL;
   }
 
   // tack new composite step onto the sequence somewhere
-  if ((multi != NULL) && (multi->cont == NULL))
-    multi->cont = mini;
+  if ((multi != NULL) && (multi->alt == NULL))
+    multi->alt = mini;
   else if (ch != NULL)                 // possibly NULL after loop 
     ch->cont = mini;
   return last;
@@ -1081,14 +989,14 @@ void jhcGraphizer::finish_loop (jhcAliaChain *ch, jhcAliaChain *ult)
     if (ch != NULL)
       ch->cont = multi;
     else if (root != NULL)
-      root->alt = multi;
+      root->cont = multi;
   }
 
   // tack any extra set of actions onto end
   if (ult != NULL)
   {
     if (root != NULL)                  // main was a loop
-      root->alt = ult;
+      root->cont = ult;
     else if (ch->cont == NULL)
       ch->cont = ult;
   }
@@ -1102,27 +1010,17 @@ void jhcGraphizer::finish_loop (jhcAliaChain *ch, jhcAliaChain *ult)
 jhcNetNode *jhcGraphizer::build_cmd (const char *head, const char *alist, jhcNodePool& pool)
 {
   char body[amax];
-  jhcNetNode *focus, *main, *dest;
-  jhcGraphlet *acc;
+  jhcNetNode *focus;
 
   call_list(1, "build_cmd", alist, 0, head);
 
   // possibly convert question "X?" to command "Tell me X"
-  if (strcmp(head, "!find-t") == 0)
+  if ((strcmp(head, "!find-t") == 0) || (strcmp(head, "!find-c") == 0))
   {
-    // build_chain automatically pre-pends one or more FINDs using "skolem"
-    if ((focus = build_query(alist, pool)) == NULL)
-      return NULL;
-    demote_bind();                                         // no assumption
-
-    // generate guts for a DO directive to tell about node found
-    if ((acc = pool.Accum()) != NULL)
-      acc->Clear();                                        // sometimes me/you?
-    main = pool.MakeAct("tell");
-    main->AddArg("obj", focus);
-    dest = pool.AddProp(main, "dest", "to");
-    dest->AddArg("ref", (core->atree).Human());
-    return main;
+    // build_chain automatically prepends one or more FINDs using "skolem"
+    if (build_query(alist, pool) != NULL)
+      demote_bind();                                       // no assumption
+    return NULL;
   }
 
   // try building structure for other directives
@@ -1288,7 +1186,10 @@ void jhcGraphizer::demote_bind () const
   if (skolem != NULL)
     if ((bind = skolem->Last()) != NULL)
       if ((dir = bind->GetDir()) != NULL)
-        dir->SetKind(JDIR_FIND);                        
+      {
+        dir->SetKind(JDIR_FIND);    
+        dir->SetSkolem(0);
+      }                    
 }
 
 
@@ -1323,7 +1224,7 @@ jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool)
 {
   char next[200];
   const char *val = NULL, *end = alist, *tail = alist;
-  jhcNetNode *act, *iobj, *dest;
+  jhcNetNode *act, *iobj, *dest, *dir0 = NULL;
   UL32 t = 0;      
   int quote = 0, neg = 0;  
 
@@ -1351,11 +1252,11 @@ jhcNetNode *jhcGraphizer::build_do (const char *alist, jhcNodePool& pool)
   // attach all adverbial modifiers (could come before verb)
   while ((tail = FragNextPair(tail, next)) != NULL)
     if ((val = SlotGet(next, "DEG")) != NULL)
-      tail = act_deg(act, val, tail, pool);
+      tail = act_deg(act, dir0, val, tail, pool);
     else if ((val = SlotGet(next, "MOD")) != NULL)
       pool.AddProp(act, "mod", val);
     else if ((val = SlotGet(next, "DIR")) != NULL)
-      pool.AddProp(act, "dir", val);
+      dir0 = pool.AddProp(act, "dir", val);
     else if ((val = SlotGet(next, "AMT")) != NULL)
       pool.AddProp(act, "amt", val);
     else if ((val = SlotGet(next, "^INT")) != NULL)
@@ -1388,16 +1289,17 @@ jhcNetNode *jhcGraphizer::build_name (const char *alist, jhcNodePool& pool)
 {
   char val[80];
   jhcNetNode *dude;
+  int neg = 0;
 
   call_list(1, "build_name", alist);
 
   if (FindSlot(alist, "NAME", val) == NULL)
     return NULL;
-//  if ((dude = build_obj(NULL, alist, pool)) == NULL)
-//    if ((dude = build_obj(NULL, FragStart(alist), pool)) == NULL)
+  if (HasSlot(alist, "NEG"))
+    neg = 1;
   if ((dude = obj_owner(alist, pool)) == NULL)
     dude = pool.MakeNode("agt");
-  return pool.AddProp(dude, "name", val);
+  return pool.AddProp(dude, "name", val, neg);
 }
 
 
@@ -1409,9 +1311,9 @@ jhcNetNode *jhcGraphizer::build_name (const char *alist, jhcNodePool& pool)
 jhcNetNode *jhcGraphizer::build_fact (const char **after, const char *alist, jhcNodePool& pool, 
                                       jhcNetNode *subj, int pos)
 {
-  char word[80], pair[200];
+  char word[80], pair[200], slot[40];
   const char *t2, *post = alist, *tail = alist, *val = NULL;
-  jhcNetNode *act = NULL, *agt = subj;
+  jhcNetNode *act = NULL, *agt = subj, *dir0 = NULL;
   jhcGraphlet *acc;
   double blf = 1.0;
   UL32 t = 0;      
@@ -1425,8 +1327,15 @@ jhcNetNode *jhcGraphizer::build_fact (const char **after, const char *alist, jhc
     // build structure for add-on features ("is nice")
     if (agt == NULL)
       if ((agt = build_obj(&tail, tail, pool)) == NULL)
-        return NULL;
-    act = add_cop(&tail, agt, tail, pool, pos);
+      {
+        // special case for vocabulary addition ("to fry is an action")
+        if ((t2 = NextSlot(tail, slot, word, 1)) == NULL)
+          return NULL;
+        agt = pool.MakeAct(word);
+        tail = t2;
+      }
+    if ((act = add_cop(&tail, agt, tail, pool, pos)) == NULL)
+      return NULL;
     if (after != NULL)
       if ((*after = FragClose(tail, 0)) == NULL) 
         *after = tail + strlen(tail);
@@ -1443,8 +1352,15 @@ jhcNetNode *jhcGraphizer::build_fact (const char **after, const char *alist, jhc
   if (FragHasSlot(alist, "AUX-D"))
     past = 1;
   if (FindSlot(alist, "BLF", word) != NULL)
+  {
     blf = belief_val(word);
-
+    if (blf < 0.0)                              // strong negative belief
+    {
+      blf = -blf;
+      neg = ((neg > 0) ? 0 : 1);
+    }
+  }
+  
   // look for main verb (but also allow naked noun phrase)
   while ((post = FragNextPair(post, pair)) != NULL)
     if ((val = mf.VerbLex(t, pair)) != NULL)                
@@ -1469,11 +1385,11 @@ jhcNetNode *jhcGraphizer::build_fact (const char **after, const char *alist, jhc
   // attach all adverbial modifiers (anywhere in sentence)
   while ((tail = FragNextPair(tail, pair)) != NULL)
     if ((val = SlotGet(pair, "DEG")) != NULL)
-      tail = act_deg(act, val, tail, pool);
+      tail = act_deg(act, dir0, val, tail, pool);
     else if ((val = SlotGet(pair, "MOD")) != NULL)
       pool.AddProp(act, "mod", val);
     else if ((val = SlotGet(pair, "DIR")) != NULL)
-      pool.AddProp(act, "dir", val);
+      dir0 = pool.AddProp(act, "dir", val);
     else if ((val = SlotGet(pair, "AMT")) != NULL)
       pool.AddProp(act, "amt", val);
     else if ((val = SlotGet(pair, "^INT")) != NULL)
@@ -1495,7 +1411,7 @@ jhcNetNode *jhcGraphizer::build_fact (const char **after, const char *alist, jhc
 //= Make nodes for adverbial descriptions with a degree ("very slowly" or "far down").
 // returns unused portion of alist
 
-const char *jhcGraphizer::act_deg (jhcNetNode *act, const char *amt, const char *alist, jhcNodePool& pool) const
+const char *jhcGraphizer::act_deg (jhcNetNode *act, jhcNetNode *dir0, const char *amt, const char *alist, jhcNodePool& pool) const
 {
   char pair[200], slot[80];
   const char *val, *tail;
@@ -1504,10 +1420,15 @@ const char *jhcGraphizer::act_deg (jhcNetNode *act, const char *amt, const char 
 
   // possibly add an adverbial description to node
   if ((tail = FragNextPair(alist, pair)) == NULL)
+  {
+    // trailing directional degree ("down slightly")
+    if (dir0 != NULL)
+      pool.AddProp(dir0, "deg", amt);
     return alist;
+  }
   val = SplitPair(slot, pair, 1);
 
-  // modify the adverbial descriptor ("mod" or "dir" pr "amt")
+  // modify the adverbial descriptor ("mod" or "dir" or "amt")
   if ((strcmp(slot, "mod") != 0) && (strcmp(slot, "dir") != 0) && (strcmp(slot, "amt") != 0))
      return alist;
   pool.AddDeg(act, slot, val, amt); 
@@ -1601,7 +1522,7 @@ jhcNetNode *jhcGraphizer::add_args (jhcNetNode *v, const char *alist, jhcNodePoo
             dobj = NULL;
           }
     }
-        
+       
   // attach arguments (if any)
   if (dobj != NULL)
     v->AddArg("obj", dobj);
@@ -1699,7 +1620,7 @@ void jhcGraphizer::add_rels (jhcNetNode *act, const char *alist, jhcNodePool& po
 //          0 = resolve locally else make FIND
 //          1 = resolve locally else make BIND (create > 0)
 //          2 = resolve locally else create item (resolve > 0)
-//          3 = always make EACH/ANY
+//          3 = always make for ALL iterator
 // if qcnt > 0 then just builds hypothetical description in wmem (never a skolem)
 // returns pointer to newly created object node (and advances alist to after object)
  
@@ -1707,7 +1628,7 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
                                      jhcNetNode *f0, double blf, int qcnt) 
 {
   jhcNetRef nr(univ, (core->atree).MinBlf());
-  char next[200], word[80] = "";
+  char next[200];
   jhcNetNode *obj, *ref, *kind = NULL, *fact = NULL;
   const char *spec;
   int find = 0;
@@ -1757,28 +1678,20 @@ jhcNetNode *jhcGraphizer::build_obj (const char **after, const char *alist, jhcN
   obj_poss(obj, kind, spec, nr);
   obj_comp(&fact, obj, spec, nr);
 
-  // check for implicit looping mode ("each/every X" or plural noun)
+  // check for implicit looping mode ("all" or plural noun)
   if ((find == 0) || (find == 1))
-  {
-    FindSlot(spec, "ENUM", word, 1);
-    if (*word != '\0')
-      if (match_any(word, "each", "every") ||
-          (((obj->tags & JTAG_NPL) != 0) && (strcmp(word, "any of the") != 0)))
-        find = 3;
-  }
+    if ((FindSlot(spec, "ENUM", NULL, 1, 0) != NULL) || ((obj->tags & JTAG_NPL) != 0))
+      find = 3;
 
   // possibly link to existing node else create new graph
   if (after != NULL)
     *after = FragClose(alist);
-//  if ((&pool == rule) || (&pool == oper))
-    nr.bth = -nr.bth;                                      // allow hypotheticals
-//  if ((nr.NumPat() == 1) && (obj->tags == 0))              // for naked "the thing"
-//    obj->tags = JTAG_ITEM;                                 //   (but fouls mem_encode.tst)
+  nr.bth = -nr.bth;                                        // allow hypotheticals
   ref = nr.FindMake(pool, find, f0, blf, &skolem);
 
   // if properties being added to old node, return last such property
   if ((find == 3) && (qcnt <= 0) && (skolem != NULL))
-    setup_loop(word);                                      // jump structure
+    setup_loop();                                          // jump structure
   if (f0 == NULL)
     return ref;
   return nr.LookUp(fact);
@@ -1831,26 +1744,23 @@ void jhcGraphizer::obj_comp (jhcNetNode **fact, jhcNetNode *obj, const char *ali
 }
 
 
-//= Change last skolem FIND to EACH/ANY and install finished jump.
+//= Change last skolem FIND to ALL and install finished jump.
 // sets member variable "loop" and possibly "root"
 // always returns find = 3 for convenience
 
-int jhcGraphizer::setup_loop (const char *word)
+int jhcGraphizer::setup_loop ()
 {
   jhcAliaChain *pick = skolem->Last();
   jhcAliaDir *dir = pick->GetDir();
 
-  call_list(2, "setup_loop", NULL, 0, word);
+  call_list(2, "setup_loop", NULL);
 
-  // reconfigure most recent FIND directive to be EACH or ANY
-  if (strcmp(word, "any") == 0)
-    dir->SetKind(JDIR_ANY);
-  else
-    dir->SetKind(JDIR_EACH);         
+  // reconfigure most recent FIND directive to be ALL
+  dir->SetKind(JDIR_ALL);         
+  dir->SetSkolem(0);
 
   // restart outer loop when no more items
-  pick->alt_fail = 0;                            // succeeds if alt = NULL
-  pick->alt = loop;
+  pick->cont = loop;
   loop = pick;
   if (root == NULL)
     root = pick;                                 // root = outermost loop
@@ -2015,7 +1925,6 @@ jhcNetNode *jhcGraphizer::obj_deg (const char **after, jhcNetNode *obj, const ch
   // modify a location descriptor (gets most recent "loc" property)
   if ((val = SlotGet(pair, "LOC")) != NULL)
   {
-//    prop = add_place(&tail, obj, pair, tail, pool, neg, 0.0);
     prop = add_place(&tail, obj, pair, tail, pool, neg, blf);
     mod = pool.AddProp(prop, "deg", amt, neg, blf);
     if (after != NULL)
@@ -2124,10 +2033,17 @@ jhcNetNode *jhcGraphizer::add_cop (const char **after, jhcNetNode *obj, const ch
   tail = body;
   while ((tail = FragNextPair(tail, next)) != NULL)
   {
-    if ((val = SlotGet(next, "BLF")) != NULL)                  // overall belief ("usually")
-      blf = belief_val(val);                             
-    else if ((SlotStart(next, "NEG") > 0) && (pos <= 0))       // overall negation ("not")
+    if ((SlotStart(next, "NEG") > 0) && (pos <= 0))            // overall negation ("not")
       neg = 1;                                           
+    if ((val = SlotGet(next, "BLF")) != NULL)                  // overall belief ("usually")
+    {
+      blf = belief_val(val);      
+      if (blf < 0.0)                                           // strong negative belief
+      {
+        blf = -blf;
+        neg = ((neg > 0) ? 0 : 1);
+      }
+    }                  
   }
 
   // check for NAKED possessive phrase ("the bowl is Jon's dog's")
@@ -2259,15 +2175,18 @@ jhcNetNode *jhcGraphizer::obj_owner (const char *alist, jhcNodePool& pool)
 
 double jhcGraphizer::belief_val (const char *word) const
 {
-  char term[13][20] = {"definitely", "always", "certainly", "usually",  "probably",     "likely", 
-                          "may",     "might",  "sometimes", "possibly", "occasionally", "unlikely to be", "seldom"};
-  double val[13]    = {    1.2,        1.2,       1.1,         0.9,         0.8,           0.7,     
-                           0.5,        0.5,       0.5,         0.3,         0.3,           0.1,             0.1   };
+  char term[14][20] = {"definitely",   "always", "certainly",      "usually",   "probably",     
+                       "likely",       "may",    "might",          "sometimes", "possibly", 
+                       "occasionally", "seldom", "unlikely to be", "never"};
+                          
+  double val[14]    = {    1.2,          1.2,        1.1,          0.9,         0.8,           
+                           0.7,          0.5,        0.5,          0.3,         0.2,         
+                           0.1,         -0.7,       -0.9,         -1.0    };
   int i;
 
   call_list(3, "belief_val", NULL, 0, word);
 
-  for (i = 0; i < 13; i++)
+  for (i = 0; i < 14; i++)
     if (strcmp(word, term[i]) == 0)
       return val[i];
   return 1.0;

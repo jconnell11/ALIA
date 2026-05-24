@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2022-2024 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -380,7 +380,7 @@ double jhcStats::AvgVal (const jhcImg& src, const jhcRoi& patch, int th) const
   {
     for (x = rcnt; x > 0; x--)
     {
-      if (*s >= v) 
+      if (*s >= v)                     // positive threshold only
       {
         sum += *s;
         cnt++;
@@ -396,6 +396,8 @@ double jhcStats::AvgVal (const jhcImg& src, const jhcRoi& patch, int th) const
 
 
 //= Get the average of values at or above threshold for a patch in a 16 bit image.
+// if threshold is negative, takes average of pixels strictly below level
+// returns negative if no good pixels in average
 
 double jhcStats::AvgVal_16 (const jhcImg& src, const jhcRoi& patch, int th) const 
 {
@@ -416,13 +418,28 @@ double jhcStats::AvgVal_16 (const jhcImg& src, const jhcRoi& patch, int th) cons
   UL32 sum = 0, cnt = 0;
 
   // process specified region
-  for (y = rh; y > 0; y--, s += rsk)
-    for (x = rw; x > 0; x--, s++)
-      if (*s >= th) 
-      {
-        sum += *s;
-        cnt++;
-      }
+  if (th >= 0)
+  {
+    // positive threshold -> above
+    for (y = rh; y > 0; y--, s += rsk)
+      for (x = rw; x > 0; x--, s++)
+        if (*s >= th) 
+        {
+          sum += *s;
+          cnt++;
+        }
+  }
+  else
+  {
+    // negative threshold -> below
+    for (y = rh; y > 0; y--, s += rsk)
+      for (x = rw; x > 0; x--, s++)
+        if (*s < -th) 
+        {
+          sum += *s;
+          cnt++;
+        }
+  }
 
   // derive average from sum and count
   if (cnt == 0)

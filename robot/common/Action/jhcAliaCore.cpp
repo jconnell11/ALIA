@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,9 +24,11 @@
 #include <stdarg.h>
 #include <ctype.h>
 
+#include "Interface/jtimer.h"          // common video - for profiling
+
 #include "Action/jhcAliaCore.h"
 
-#include "Interface/jtimer.h"
+
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -53,9 +55,7 @@ jhcAliaCore::~jhcAliaCore ()
 jhcAliaCore::jhcAliaCore ()
 {
   // global variables
-  ver = 5.70;                // reflected in GUI
-  vol = 1;                   // enable free will reactions
-  acc = 0;                   // forget rules/ops
+  ver = 6.00;                // reflected in GUI
   gnd = 0;                   // no grounding DLLs yet
 
   // connect up required resources for components
@@ -75,33 +75,30 @@ jhcAliaCore::jhcAliaCore ()
   kern.AddFcns(emo);
   kern.AddFcns(tim);
 
-  // standard cycle timing
-  thz = 80.0;
-  shz = 30.0;
-
   // clear state
-  *wdir = '\0';
+  *wdir   = '\0';
+  *cfile  = '\0';
+  *formal = '\0';
   *myself = '\0';
-  *cfile = '\0';
   netlog = NULL;
   Defaults();
-  init_state(NULL);
+  init_state();
 }
 
 
 //= Clear out all focal items and working memory.
 // possibly starts up input conversion log file also
 
-void jhcAliaCore::init_state (const char *rname)
+void jhcAliaCore::init_state ()
 {
   // clear action tree
   stop_all();
-  atree.ResetFoci(rname);    // adds -name-> prop
+  atree.ResetFoci(formal);   // adds -name-> prop
   kern.Reset(atree);
   stat.Reset();
   mood.Reset();
   topval = 0;
-  spact = 0;
+  spact = JSP_NONE;
 
   // possibly forget all rules and operators
   amem.ClearRules();
@@ -132,22 +129,6 @@ void jhcAliaCore::init_state (const char *rname)
 //                         Processing Parameters                         //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Parameters for standard sensing and thinking rates.
-
-int jhcAliaCore::rate_params (const char *fname)
-{
-  jhcParam *ps = &rps;
-  int ok;
-
-  ps->SetTag("core_rate", 0);
-  ps->NextSpecF( &thz, 80.0, "Thought cycle rate (Hz)");   
-  ps->NextSpecF( &shz, 30.0, "Default body rate (Hz)");    
-  ok = ps->LoadDefs(fname);
-  ps->RevertAll();
-  return ok;
-}
-
-
 //= Parameters used for selecting which console messages are displayed.
 
 int jhcAliaCore::msg_params (const char *fname)
@@ -155,7 +136,7 @@ int jhcAliaCore::msg_params (const char *fname)
   jhcParam *ps = &mps;
   int ok;
 
-  ps->SetTag("core_msg", 0);
+  ps->SetTag("core_dbg", 0);
   ps->NextSpec4( &noisy,             1, "Directive calls (std = 1)");
   ps->NextSpec4( &pshow,             2, "Parsing details (std = 2)");
   ps->NextSpec4( &(net.dbg),         0, "Text interpretation (dbg = 3)");
@@ -165,6 +146,26 @@ int jhcAliaCore::msg_params (const char *fname)
 
   ps->NextSpec4( &(amem.detail),     0, "Matching of rule number");    
   ps->NextSpec4( &(pmem.detail),     0, "Matching of op number");   
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for standard sensing and thinking rates.
+
+int jhcAliaCore::rate_params (const char *fname)
+{
+  jhcParam *ps = &rps;
+  int ok;
+
+  ps->SetTag("core_mind", 0);
+  ps->NextSpec4( &acc,  2,   "Mind (KB0/KB2, extras, full)");
+  ps->NextSpec4( &vol,  1,   "Load baseline volition (KB2)");
+  ps->NextSpecF( &thz, 80.0, "Thought cycle rate (Hz)");   
+  ps->NextSpecF( &shz, 30.0, "Default body rate (Hz)"); 
+  ps->Skip();
+  ps->NextSpec4( &spec, 1,   "Allow speculation (dbg = 2)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -181,8 +182,8 @@ int jhcAliaCore::Defaults (const char *fname)
 {
   int ok = 1;
 
-  ok &= rate_params(fname);
   ok &= msg_params(fname);
+  ok &= rate_params(fname);
   ok &= atree.LoadCfg(fname);
   ok &= mood.LoadCfg(fname);
   ok &= emo.Defaults(fname);
@@ -197,8 +198,8 @@ int jhcAliaCore::SaveVals (const char *fname) const
 {
   int ok = 1;
 
-  ok &= rps.SaveVals(fname);
   ok &= mps.SaveVals(fname);
+  ok &= rps.SaveVals(fname);
   ok &= atree.SaveCfg(fname);
   ok &= mood.SaveCfg(fname);
   ok &= emo.SaveVals(fname);
@@ -214,7 +215,7 @@ int jhcAliaCore::SaveVals (const char *fname) const
 //= Add the name of a particular person to parsing and speech grammars.
 // make sure to call Listen(1) afterward to re-engage speech recognition
 
-int jhcAliaCore::AddName (const char *name, int bot)
+int jhcAliaCore::GramName (const char *name, int bot)
 {
   char first[80];
   char *sep;
@@ -226,24 +227,20 @@ int jhcAliaCore::AddName (const char *name, int bot)
   if ((sep = strchr(first, ' ')) != NULL)
     *sep = '\0';
 
-  // update parsing grammar and possibly speech front-end also 
+  // add full (or only) name to grammar and speech
   sp_listen(0);
   if (bot > 0)
-    gram_add("ATTN", name, 0);         // not to NAME
-  else
-  {
-    gram_add("NAME", name, 0);
-    gram_add("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP), 0);
-  }
+    gram_add("ATTN", name, -1);        
+  gram_add("NAME", name, -1);
+  gram_add("NAME-P", (net.mf).SurfWord(name, JTAG_NAMEP), -1);
+
+  // add just first name to grammar and speech
   if (sep == NULL)
     return 1;
   if (bot > 0)
-    gram_add("ATTN", first, 0);        // not to NAME
-  else
-  {
-    gram_add("NAME", first, 0);
-    gram_add("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP), 0);
-  }
+    gram_add("ATTN", first, -1);      
+  gram_add("NAME", first, -1);
+  gram_add("NAME-P", (net.mf).SurfWord(first, JTAG_NAMEP), -1);
   return 1;
 }
 
@@ -255,63 +252,284 @@ int jhcAliaCore::AddName (const char *name, int bot)
 
 int jhcAliaCore::Accept (jhcAliaRule *r, jhcAliaOp *p)
 {
+  char date[40];
   int ans = 1;
 
   if ((r == NULL) && (p == NULL))
     return -2;
   if (r != NULL)
   {
+    sprintf_s(r->prov, "user -> %s at %s", formal, jms_date(date));
     if ((ans = amem.AddRule(r, 2, 1)) > 0)       
       mood.Infer();
   }
   if (p != NULL)
   {
-    if ((ans = pmem.AddOperator(p, 1)) > 0)
+    sprintf_s(p->prov, "user -> %s at %s", formal, jms_date(date));
+    if ((ans = pmem.AddOperator(p, 1, 1)) > 0)
       mood.React();
   }
   return ans;
 }
 
-/*
-//= Generate a new version of operator used by "src" in which action "mark" is replaced by "subst".
 
-int jhcAliaCore::OpEdit (const jhcAliaDir *src, const jhcAliaDir *mark, const jhcBindings& map, const jhcAliaDir *subst)
+//= Create a low preference operator or low belief rule based on user command.
+// gets most general context (most likely to run) that still constraints all refs
+// returns 1 if successful, 0 or negative if not added for some reason
+
+int jhcAliaCore::Speculate (jhcAliaChain *bulk, int spact)
 {
-  if ((src == NULL) || (mark == NULL) || (subst == NULL))
-    return -1;
+  jhcGraphlet ctx, fact, refs, halt, refs2, used;
+  int i, n, ok;
 
-jhcBindings w2o;
-const jhcBindings *inst = src->LastVars();
-const jhcBindings *scope = (mark->step)->Scope();
-const jhcNetNode *k0, *sub, *var, *k;
-int i, nb = map.NumPairs();
+  // possibly announce entry
+  if (spec <= 0)
+    return -6;
+  jprintf(2, spec, "\n==========================\n");
+  jprintf(2, spec, "SPECULATE: \"%s\", gen = %d\n", net.SpeechAct(spact), atree.Version());
 
-jprintf("build wmem -> op bindings:\n");
-for (i = 0; i < nb; i++)
-{
-  // undo any FINDs (invert scope)
-  k0 = map.GetKey(i);
-  sub = map.GetSub(i);
+  // find items in rule condition (refs) and conclusion (fact) 
+  // need to add "fact" into "halt" and remove "refs" from both
+  bulk->CollectRefs(refs, halt, fact);
+  fact.RemAll(refs);
+  halt.RemAll(refs);
+  halt.Append(fact);
 
-  if ((var = scope->FindKey(sub)) == NULL)       // THESE
-    var = sub;                                   // COULD BE A SINGLE 
-  k = inst->FindKey(var);  // but this is const  // FORWARD MAP
+  // for rule generation check "fact" and massage "refs" list
+  if (spact == JSP_FACT)
+  {
+    if (fact.Empty())
+      return -1;                       // barf if nothing to assert
+    used.IncludeArgs(fact);
+    refs2.Copy(refs);                  // because "refs" gets changed below
+    n = refs2.NumItems();              
+    for (i = 0; i < n; i++)
+      if (!used.InList(refs2.Item(i)))
+        refs.RemItem(refs2.Item(i));   // remove unused reference term
+    if (refs.Empty())
+      return -5;                       // barf if no triggering conditions 
+  }
 
-//src->LastVars(inst, dir);
-//AddVar(op, mark, subst, 
+  // build thumbnail description of each item (all operators implicitly use self)
+  if (refs.Empty()) 
+  {
+    jprintf(2, spec, "examining self ...\n");
+    ok = gather_props(ctx, atree.Robot(), halt);
+  }
+  else
+    ok = scour_facts(ctx, refs, halt);
+  if (ok <= 0)           
+  {
+    jprintf(2, spec, "> some items have no description!\n");
+    jprintf(2, spec, "==========================\n");
+    return 0;                          
+  }
+  add_convo(ctx);                      // add "me" or "you" if needed
 
-// could build map
-  
-  jprintf("  %s -map-> %s -inv_guess-> %s -inv_method-> %s\n", k0->Nick(), sub->Nick(), var->Nick(), k->Nick());
-// needs last step of [old-op(k) to new-op(k2)]
+  // possibly show final rule/OP context
+  if (spec >= 2)
+  {
+    jprintf("\n");
+    ctx.ListAll("spec ctx");
+    ctx.Print("situation");
+    jprintf("==========================\n");
+  }
+
+  // try building a new rule or operator
+  if (spact == JSP_FACT)
+    ok = amem.BuildRule(ctx, fact);    // fact combines NOTEs
+  else
+    ok = pmem.BuildSpur(ctx, bulk);    // strip skolem from bulk
+  return ok;
 }
 
-return 0;
 
-  return pmem.AddVariant(src->LastOp(), mark, subst, &w2o, 1);    
-//  return pmem.AddVariant(src->LastOp(), mark, subst, src->LastVars(), 1);    
+//= Search working memory for most recent fact(s) about "refs" and save in "ctx".
+// returns 1 if all items have constraints, 0 if some item has no extra info 
+// Note: erases any original contents of ctx
+
+int jhcAliaCore::scour_facts (jhcGraphlet& ctx, const jhcGraphlet& refs, const jhcGraphlet& halt) const
+{
+  jhcGraphlet desc, xtra;
+  jhcNetNode *item;
+  int i, n = refs.NumItems();
+
+  // go through each node in "refs" list
+  ctx.Clear();
+  for (i = 0; i < n; i++)
+  {
+    // get best unary and n-ary properties 
+    item = refs.Item(i);
+    jprintf(2, spec, "\nCONTEXT for %s ...\n", item->Nick());
+    if (describe(desc, item, refs, halt) <= 0)
+      gather_rels(xtra, item, refs, halt);
+
+    // barf if no description for this item
+    if (desc.Empty())
+      return 0;
+    ctx.Append(desc);
+  }
+  return 1;
 }
-*/
+
+
+//= Fill "spec" with a minimal description of "item".
+// returns mru of newest part of spec if ok, 0 if predication with args in halt
+// Note: erases any original contents of desc
+
+int jhcAliaCore::describe (jhcGraphlet& desc, jhcNetNode *item, const jhcGraphlet& refs, const jhcGraphlet& halt) const
+{
+  jhcGraphlet xtra;
+  jhcNetNode *arg;
+  int i, mru, best, na = item->NumArgs();
+
+  // for predication, quit if any argument invalid
+  jprintf(2, spec, "  describe %s (%s): %d args\n", item->Nick(), item->LexStr(), na);
+  desc.Clear();
+  if (na > 0)
+    for (i = 0; i < na; i++)
+      if (halt.InList(item->Arg(i)))
+      {
+        jprintf(2, spec, "    arg in halt!\n");
+        return 0;
+      }
+    
+  // add best unary property (e.g. "ako" or "fcn") and possibly node itself
+  best = gather_props(desc, item, halt);
+  if ((na > 0) || (item->Lex() != NULL))
+  {
+    jprintf(2, spec, "    + add %s\n", item->Nick());
+    desc.AddItem(item);
+    best = __max(best, item->LastUsed());
+  }
+
+  // add decriptions of predication's arguments
+  if (na > 0)
+  {
+    jprintf(2, spec, "  expand args of %s ...\n", item->Nick());
+    for (i = 0; i < na; i++)
+    {
+      arg = item->Arg(i);
+      if (!refs.InList(arg))           // check if redundant
+        if ((mru = describe(xtra, arg, refs, halt)) > 0)
+          desc.Append(xtra);
+    }
+  }
+  jprintf(2, spec, "  ==> describe(%s) = %d\n", item->Nick(), best);
+  return best;                         // zero if spec empty
+}
+
+
+//= Add valid unary properties of item to specification.
+// skip property if on halt list, only keep if mru >= current best
+// returns best mru if some non-empty description in spec, 0 otherwise
+// Note: erases any original contents of desc
+ 
+int jhcAliaCore::gather_props (jhcGraphlet& desc, const jhcNetNode *item, const jhcGraphlet& halt) const
+{
+  jhcGraphlet xtra;
+  jhcNetNode *prop;
+  int i, mru, n = item->NumProps(), best = 0;
+
+  // find most recently used properties for item
+  jprintf(2, spec, "    gather_props(%s)\n", item->Nick());
+  desc.Clear();
+  for (i = 0; i < n; i++)
+  {
+    // make sure valid and not older than best
+    prop = item->Prop(i);
+    if (prop->Hyp() || prop->Halo() || (prop->NumArgs() != 1) || halt.InList(prop) || !prop->Home(&atree))
+      continue;
+    jprintf(2, spec, "      consider prop %s (%s), mru = %d\n", prop->Nick(), prop->LexStr(), prop->LastUsed());
+    if ((mru = prop->LastUsed()) < best)
+      continue;
+
+    // add property to item specification
+    if (mru > best)
+    {
+      if (!desc.Empty())
+        jprintf(2, spec, "        flush old spec\n");
+      desc.Clear();                    
+    }
+    desc.AddItem(prop);
+    jprintf(2, spec, "        + add %s\n", prop->Nick());
+    best = mru;
+  }
+
+  // find most recently used properties of retained predicates (like "very")
+  if ((n = desc.NumItems()) <= 0)
+    return 0;                          // empty specification
+  for (i = 0; i < n; i++)
+    if (gather_props(xtra, desc.Item(i), halt) > 0)
+      desc.Append(xtra);
+  jprintf(2, spec, "    ==> props(%s) = %d\n", item->Nick(), best);
+  return best;                         // non-zero because spec not empty
+}
+
+
+//= Add valid relation as well as its properties and arguments to specification.
+// skip relation if on halt list, only keep if mru >= current best
+// returns best mru if some non-empty description in spec, 0 otherwise
+// Note: erases any original contents of desc
+
+int jhcAliaCore::gather_rels (jhcGraphlet& desc, const jhcNetNode *item, const jhcGraphlet& refs, const jhcGraphlet& halt) const
+{
+  jhcGraphlet xtra;
+  jhcNetNode *rel;
+  int i, mru, n = item->NumProps(), best = 0;
+
+  // find most recently used relations for item
+  jprintf(2, spec, "gather_rels(%s)\n", item->Nick());
+  desc.Clear();
+  for (i = 0; i < n; i++)
+  {
+    // make sure relation is valid and not too old
+    rel = item->Prop(i);
+    if (rel->Hyp() || rel->Halo() || (rel->NumArgs() < 2) || halt.InList(rel) || !rel->Home(&atree))
+      continue;
+    jprintf(2, spec, " consider rel %s (%s), mru = %d\n", rel->Nick(), rel->LexStr(), rel->LastUsed());
+    if ((mru = rel->LastUsed()) < best)
+      continue;
+
+    // build description and add to description
+    if (describe(xtra, rel, refs, halt) <= 0)
+      continue;                        // invalid arguments
+    if (mru > best)
+    {
+      if (!desc.Empty())
+        jprintf(2, spec, "        flush old spec\n");
+      desc.Clear();                    // flush older relations
+    }
+    desc.Append(xtra);
+    best = mru;
+  }
+  jprintf(2, spec, "==> rels(%s) = %d\n", item->Nick(), best);
+  return best;                         // zero if specification empty
+}
+
+
+//= Make sure conversation participants (me, you) are fully specified.
+
+void jhcAliaCore::add_convo (jhcGraphlet& ctx) const
+{
+  const jhcNetNode *me = atree.Robot(), *you = atree.Human();
+  const jhcNetNode *item;
+  jhcNetNode *arg;
+  int i, j, na, n = ctx.NumItems();
+
+  for (i = 0; i < n; i++)
+  {
+    item = ctx.Item(i);
+    na = item->NumArgs();
+    for (j = 0; j < na; j++)
+    {
+      arg = item->Arg(j);
+      if ((arg == me) || (arg == you))
+        ctx.AddItem(arg);                        // adds "-lex-"
+    }
+  }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////
 //                              Main Functions                           //
@@ -353,10 +571,24 @@ const char *jhcAliaCore::wrt (const char *rel)
 
 void jhcAliaCore::Reset (const char *rname, int prt, int cvt)
 {
+  char *sep;
   int i, n;
 
+  // save full robot name (for learning provenance) and first name
+  strcpy_s(formal, "Nemo Banzai");
+  strcpy_s(myself, "Nemo");
+  if ((rname != NULL) && (*rname != '\0'))
+  {
+    strcpy_s(formal, rname);
+    strcpy_s(myself, rname);                  
+    if ((sep = strchr(myself, ' ')) != NULL)
+      *sep = '\0';
+  }
+  strcpy_s(amem.formal, formal);
+  strcpy_s(pmem.formal, formal);
+
   // determine how to handle voluminous message stream
-  log_opts(rname, prt);
+  log_opts(prt);
   *echo = '\0';                                  // canonicalized input
 
   // potentially add extra grounding functions (needs wdir)
@@ -366,33 +598,26 @@ void jhcAliaCore::Reset (const char *rname, int prt, int cvt)
     gnd = 1;
   }
 
-  // set basic grammar and clear state
+  // set basic grammar and closed-class words and clear state
   jprintf("Initializing ALIA core %4.2f\n\n", Version());
   gr.ClearGrammar();
   gr.LoadGram(wrt("language/alia_top.sgm"), -1);
-  AddName(rname, 1);
+  GramName(formal, 1);
   gr.SetBonus("ACT-2");                          // prefer these trees
   gr.MarkRule("toplevel");
-  (net.mf).AddVocab(gr, wrt("language/vocabulary.sgm"), 0, -1);
-  init_state(rname);
+  init_state();
 
-  // possibly some test LTM facts then support for groundings 
-  if (dmem.LoadFacts(wrt("KB/test.facts"), 0, 3, 0) >= 0)
-    jprintf("\n"); 
-  kern_extras(wrt("KB0/"));                      // operators and rules
-
-  // load main operators and rules (and words)
-  baseline(wrt("KB2/baseline.lst"), 1, 2);       // includes graphizer.sgm
-  if (vol > 0)
-    baseline(wrt("KB2/volition.lst"), 1, 2);
-  if (acc >= 1)
-    LoadLearned();                               // includes KB/learned.sgm
+  // possibly load consolidated OPS and rules
+  if ((acc >= 2) && ExistKB())
+    LoadKnowledge();
+  else
+    load_foundation();
 
   // add the names of important people (keeps "vip" list)
   n = vip.Load(wrt("config/VIPs.txt"), 0);
   for (i = 0; i < n; i++)
-    AddName(vip.Full(i));
-  jprintf("  %2d known users from file: config/VIPs.txt\n\n", n);
+    GramName(vip.Full(i));
+  jprintf("  %3d known user names  from: %s\n\n", n, wrt("config/VIPs.txt"));
 
   // catalog known words and start graphizer log
   vc.GetWords(gr.Expansions());
@@ -401,6 +626,7 @@ void jhcAliaCore::Reset (const char *rname, int prt, int cvt)
 
   // allow printf batching for speed (in case overridden)
   jprintf_fflush = 0;
+  *stamp = '\0';
 }
 
 
@@ -408,24 +634,14 @@ void jhcAliaCore::Reset (const char *rname, int prt, int cvt)
 // prt: 0 = nothing, 1 = log file only, 2 = console only, 3 = log + console
 // NOTE: "log" directory under working directory must already exist!
 
-void jhcAliaCore::log_opts (const char *rname, int prt)
+void jhcAliaCore::log_opts (int prt)
 {
   char fname[200], date[80];
-  char *sep;
 
   // possibly suppress all console printout 
   jprintf_log((prt < 2) ? 1 : 0);
-
-  // extract robot first name
-  *myself = '\0';
-  if ((rname != NULL) && (*rname != '\0'))
-  {
-    strcpy_s(myself, rname);                  
-    if ((sep = strchr(myself, ' ')) != NULL)
-      *sep = '\0';
-  }
   
-  // possibly open a log file using robot's name and date/time
+  // possibly open a log file using robot's first name and date/time
   if ((prt == 1) || (prt >= 3))
   {
     if (*myself != '\0')
@@ -499,6 +715,27 @@ int jhcAliaCore::add_dlls (const char *fname)
 }
 
 
+//= Load OPs and rules for grounding kernels plus those in KB2/baseline.lst file.
+
+void jhcAliaCore::load_foundation ()
+{   
+  // add open-class words 
+  (net.mf).AddVocab(gr, wrt("language/vocabulary.sgm"), 1, 0);
+
+  // possibly load test LTM facts then support for groundings 
+  if (dmem.LoadFacts(wrt("KB2/test.facts"), 0, 3, 0) >= 0)
+    jprintf("\n"); 
+  kern_extras(wrt("KB0/"));                    // operators and rules
+
+  // load main operators and rules (and associated words)
+  baseline(wrt("KB2/baseline.lst"), 1, 2);     // includes graphizer.sgm
+  if (vol > 0)
+    baseline(wrt("KB2/volition.lst"), 1, 2);
+  if (acc >= 1)
+    LoadLearned();                             // includes KB/extras.sgm
+}
+
+
 //= Loads grammars, rules, and operators associated with current kernels.
 // each kernel has a BaseTag like "Social" and then files *.sgm, *.ops, and *.rules
 // grammar for speech altered separately (jhcAliaSpeech::kern_gram)
@@ -507,7 +744,7 @@ void jhcAliaCore::kern_extras (const char *kdir)
 {
   const jhcAliaKernel *k = &kern;
   const char *tag; 
-  int nr0 = amem.NumRules(), nop0 = pmem.NumOperators();
+  int nr0 = amem.NumRules(), nop0 = pmem.NumOperators(), nw0 = gr.OpenClass();
 
   jprintf(1, noisy, "Loading kernel rules and operators:\n");
   while (k != NULL)
@@ -515,11 +752,11 @@ void jhcAliaCore::kern_extras (const char *kdir)
     // read files based on tags in each kernel class (0 = kernel level)
     tag = k->BaseTag();
     if (*tag != '\0')
-      add_info(kdir, tag, noisy + 1, 0);
+      add_info(kdir, tag, noisy, 0);
     k = k->NextPool();
   }
-  jprintf(1, noisy, " TOTAL = %d operators, %d rules\n\n", 
-          pmem.NumOperators() - nop0, amem.NumRules() - nr0);
+  jprintf(1, noisy, " TOTAL = %d operators, %d rules, %d words\n\n", 
+          pmem.NumOperators() - nop0, amem.NumRules() - nr0, gr.OpenClass() - nw0);
 }
 
 
@@ -532,9 +769,6 @@ int jhcAliaCore::add_info (const char *dir, const char *base, int rpt, int lvl)
   char fname[200];
   int cnt = 0;
 
-  if (readable(fname, 200, "%s%s.sgm", dir, base))
-    if ((net.mf).AddVocab(gr, fname, 0, lvl) > 0)
-      cnt++;
   if (readable(fname, 200, "%s%s.ops", dir, base))
     if (pmem.Load(fname, 1, rpt, lvl) > 0)      
       cnt++;
@@ -543,6 +777,9 @@ int jhcAliaCore::add_info (const char *dir, const char *base, int rpt, int lvl)
       cnt++;
   if (readable(fname, 200, "%s%s_v.rules", dir, base))
     if (amem.Load(fname, 1, rpt, lvl) > 0)      
+      cnt++;
+  if (readable(fname, 200, "%s%s.sgm", dir, base))
+    if ((net.mf).AddVocab(gr, fname, rpt, lvl) > 0)
       cnt++;
   return cnt;
 }
@@ -584,7 +821,7 @@ int jhcAliaCore::baseline (const char *list, int add, int rpt)
   char dir[80], line[80];
   FILE *in;
   char *end;
-  int n, r0 = amem.NumRules(), op0 = pmem.NumOperators(), cnt = 0;
+  int n, r0 = amem.NumRules(), op0 = pmem.NumOperators(), cnt = 0, nw0 = gr.OpenClass();
 
   // possibly clear old stuff then try to open file
   if (add <= 0)
@@ -628,8 +865,8 @@ int jhcAliaCore::baseline (const char *list, int add, int rpt)
 
   // clean up
   fclose(in);
-  jprintf(1, rpt, " TOTAL = %d operators, %d rules\n\n", 
-          pmem.NumOperators() - op0, amem.NumRules() - r0);
+  jprintf(1, rpt, " TOTAL = %d operators, %d rules, %d words\n\n", 
+          pmem.NumOperators() - op0, amem.NumRules() - r0, gr.OpenClass() - nw0);
   return cnt;
 }
 
@@ -675,64 +912,53 @@ int jhcAliaCore::Interpret (const char *input, int gate, int amode)
 {
   char alist[1000] = "";
   const char *fix, *sent = alist;
-  int wake, nt = 0;
+  int wake = 0, nt = 0;
 
-  // check if name mentioned (will trigger on unparsable "robot fizzboom")
-//  wake = gr.NameSaid(input, amode);
-//  if ((gate == 0) && (wake <= 0))
-//    return 0;
-
-jtimer(14, "Interpret");
-
-  // sanity check
+  // sanity check 
   if ((input == NULL) || (*input == '\0'))
     return 0;
+  sent = gr.Expand(input, 1);          // undo contractions  
+  hear0 = 0;
 
-  // parse input string to get association list
-  sent = gr.Expand(input, 1);                  // undo contractions  
-jtimer(15, "Parse"); 
+  // try to parse if reasonable
+  wake = gr.NameSaid(sent, amode);     // will trigger on unparsable "robot fizzboom"
+//  if ((gate == 0) && (wake <= 0))                          
+//    return jprintf(1, noisy, " { Ignored input: \"%s\" }\n", input);
+  if ((amode >= 0) && !syllables(sent, 2))         
+    return jprintf(1, noisy, " { Too few syllables in: \"%s\" }\n", input);
   nt = gr.Parse(sent, 0);
-jtimer_x(15);
+
+  // try fixing typing errors for unparsable text inputs 
   if ((nt <= 0) && (amode < 0))
-    if ((fix = vc.FixTypos(sent)) != NULL)     // correct typing errors
+    if ((fix = vc.FixTypos(sent)) != NULL)     
     {
       sent = fix;
       nt = gr.Parse(sent, 0);
       if (nt > 0)
         jprintf(1, noisy, " { Fixed typos in original: \"%s\" }\n", gr.NoContract());
     }
-  if (nt <= 0)
-    if (guess_cats(sent) > 0)                  // handle unknown words
-{
-jtimer(15, "Parse");
-      nt = gr.Parse(sent, 0);
-jtimer_x(15);
-}
-  if (nt > 0)
-    gr.AssocList(alist, 1);
 
-  // check if name mentioned (will NOT trigger on unparsable "robot fizzboom")
-  // if so, causes the robot to complain (later) if input is unparsable
-  hear0 = 0;
-  wake = net.NameSaid(alist, amode);
-  if (nt > 0)                                              // valid sentence
+  // try guessing unknown words for unparsable robot-directed inputs 
+  if ((nt <= 0) && ((amode < 0) || (gate > 0) || (wake > 0)))          
+    if (guess_cats(sent) > 0)          
+      if ((nt = gr.Parse(sent, 0)) <= 0)
+        gram_rollback();                         // remove any additions
+
+  // possibly just ignore unparsable inputs
+  if ((nt <= 0) && (gate <= 0) && (wake <= 0))
+    return jprintf(1, noisy, " { Ignored input: \"%s\" }\n", input);
+
+  // condense parse tree into association list
+  if (nt > 0)
   {
-    if ((gate == 0) && (wake <= 0))                        // not listening
-    {
-      jprintf(1, noisy, " { Ignored input: \"%s\" }\n", input);
-jtimer_x(14);
-      return 0;
-    }
-    if ((amode >= 0) && !syllables(sent, 2))               // spurious noise
-    {
-      jprintf(1, noisy, " { Too few syllables in: \"%s\" }\n", input);
-jtimer_x(14);
-      return 0;
-    }
+    gr.AssocList(alist, 1);
+//    wake = net.NameSaid(alist, amode);   // will NOT trigger on unparsable "robot fizzboom"
+//    if ((gate == 0) && (wake <= 0))             
+//      return jprintf(1, noisy, " { Ignored input: \"%s\" }\n", input);
   }
 
-  // get canonicalized form of input for logs (incl. unparseable)
-  if ((nt > 0) || (gate > 0) || (wake > 0))
+  // get canonicalized form of input for logs (incl. unparsable)
+  if ((gate > 0) || (wake > 0) || (nt > 0))
   {
     if (nt > 0)
       strcpy_s(echo, gr.Clean());                // with typos fixed
@@ -744,14 +970,12 @@ jtimer_x(14);
         strcat_s(echo, "?");                     // save question mark
   }
 
-  // show parsing steps and reduce "lonely" (if robot-directed input) 
+  // show parsing steps and reduce "lonely" 
   gr.PrintInput(NULL, echo, __min(noisy, 1));
   if (nt > 0)
   {
     mood.Hear((int) strlen(input));     
-jtimer(16, "PrintResult");
     gr.PrintResult(pshow, 1);
-jtimer_x(16);
   }
 
   // generate semantic nets (nt = 0 gives huh? response)
@@ -759,9 +983,8 @@ jtimer(17, "Convert");
   spact = net.Convert(alist, sent);     
 jtimer_x(17);
   net.Summarize(netlog, echo, nt, spact);
-  hear0 = ((wake > 0) ? 2 : 1);
-jtimer_x(14);
-  return hear0;
+//  return((wake > 0) ? 2 : 1);
+  return 2;                                      // valid input always wakes
 }
 
 
@@ -774,6 +997,9 @@ int jhcAliaCore::guess_cats (const char *sent)
   const char *txt = sent;
   int cat, cnt = 0;
 
+  // save current grammar state (with no speculative additions)  
+  gr.SaveCats(wrt("KB/checkpoint.sgm"), 0, net.mf);
+
   // go through the input looking for unknown words
   vc.InitGuess();
   while ((txt = vc.NextGuess(txt)) != NULL)
@@ -783,7 +1009,7 @@ int jhcAliaCore::guess_cats (const char *sent)
     if (cnt++ <= 0)
       sp_listen(0);
     cat = (net.mf).GramBase(wd, vc.Mystery(), vc.Category());
-    
+
     // explicitly add morphological variants for some categories
     if (cat == JTV_NAME)
     {
@@ -797,7 +1023,11 @@ int jhcAliaCore::guess_cats (const char *sent)
       gram_add("AKO-P", (net.mf).SurfWord(wd, JTAG_NPOSS), 3);       // possessive
     }
     else if (cat == JTV_APROP)
-      gram_add_hq(wd);
+    {
+      gram_add("HQ", wd, 3);
+      gram_add("HQ-ER",  (net.mf).SurfWord(wd, JTAG_ACOMP), 3);      // comparative
+      gram_add("HQ-EST", (net.mf).SurfWord(wd, JTAG_ASUP), 3);       // superlative
+    }
     else if (cat == JTV_VIMP)
     {
       gram_add("ACT", wd, 3);
@@ -811,7 +1041,7 @@ int jhcAliaCore::guess_cats (const char *sent)
       gram_add("HQ", (net.mf).BaseWord(wd, wd, JTAG_ADV), 3);        // quickly -> quick (+ others?)                                        
     }
     else
-      gram_add(vc.Category(), vc.Mystery(), 3);                      // should not happen
+      gram_add(vc.Category(), vc.Mystery(), 3);                      // possibly robot name (ATTN)
   }
   if (cnt > 0)
     sp_listen(1);
@@ -819,14 +1049,22 @@ int jhcAliaCore::guess_cats (const char *sent)
 }
 
 
-//= For an adjective add base form plus assumed comparative and superlative.
-// Note: does NOT add adverbial form ("MOD")
+//= Restore previous state of the grammar effectively removing any new words added.
 
-void jhcAliaCore::gram_add_hq (const char *wd)
+void jhcAliaCore::gram_rollback ()
 {
-  gram_add("HQ", wd, 3);
-  gram_add("HQ-ER",  (net.mf).SurfWord(wd, JTAG_ACOMP), 3);          // comparative
-  gram_add("HQ-EST", (net.mf).SurfWord(wd, JTAG_ASUP), 3);           // superlative
+  // possibly announce
+  jprintf(1, noisy, " { Rollback grammar additions! }\n");
+
+  // erase everything then reload base grammar
+  gr.ClearGrammar();
+  gr.LoadGram(wrt("language/alia_top.sgm"), -1);
+  GramName(formal, 1);
+  gr.SetBonus("ACT-2");                          // should not be needed
+  gr.MarkRule("toplevel");
+
+  // restore original open-class words
+  (net.mf).AddVocab(gr, wrt("KB/checkpoint.sgm"), 0, 2);
 }
 
 
@@ -874,7 +1112,9 @@ jhcAliaChain *jhcAliaCore::Reinterpret ()
 {
   char alist[1000] = "";
 
-  if ((spact >= 1) && (spact <= 3))              // fact, command, or question
+  // check for fact, command, or question
+  if ((spact == JSP_FACT) || (spact == JSP_CMD) || (spact == JSP_YNQ) ||
+      (spact == JSP_WHQ)  || (spact == JSP_EXQ) || (spact == JSP_FIND))
     while (gr.NextBest() >= 0)
       if (net.Assemble(gr.AssocList(alist, 1)) == spact)
       {   
@@ -896,8 +1136,15 @@ int jhcAliaCore::RunAll (int gc)
   jhcAliaChain *s;
   int res, cnt = 0;
 
+  // possibly timestamp
+  jprintf(4, noisy, "\nSTEP %d ----------------------------------------------------\n\n", atree.Version());  
+  if ((gc > 0) && (strcmp(stamp, jms_time(time)) != 0))
+  {
+    strcpy_s(stamp, time);
+    jprintf("\n[%s] --------------------------------------------------------------\n\n", stamp);
+  }
+
   // get any observations, check expired attentional foci, and recompute halo
-  jprintf(4, noisy, "\nSTEP %d ----------------------------------------------------\n\n", atree.Version());
   kern.Volunteer();
   if (atree.Update(gc) > 0)                      // also if bth or node blfs change?
   {
@@ -915,7 +1162,8 @@ jtimer_x(19);
     now = jms_now();
     stat.Affect(mood);    
     stat.Thought(this);                        
-    mood.Update();                              
+    mood.Update();    
+    atree.Niggle(mood.Focused());                          
   }
 //  if (atree.Active() > 0)
 //    jprintf(3, noisy, "============================= %s =============================\n\n", jms_offset(time, t0, 1));
@@ -990,8 +1238,13 @@ void jhcAliaCore::Done (int save, int batt)
   netlog = NULL;
 
   // possibly save all operators and rules in KB files
-  if ((save > 0) && (acc >= 2))
-    DumpLearned();
+  if ((save > 0) && (acc > 0))
+  {
+    if (acc >= 2)
+      DumpKnowledge();
+    else 
+      DumpLearned();
+  }
 
   // report final memory contents (fflush for setvbuf in console)
   jprintf("\n==========================================================\n");
@@ -1154,35 +1407,102 @@ void jhcAliaCore::KernList () const
 }
 
 
-//= Load all rules and operators beyond baseline and kernels.
-// always loads whatever is in the "learned" version of files
+//= Test that all "KB/knowledge.*" files exist (may be empty).
 
-void jhcAliaCore::LoadLearned ()
+bool jhcAliaCore::ExistKB () const
 {
-  jprintf(1, noisy, "Reloading learned knowledge:\n");
-  pmem.Load(wrt("KB/learned.ops"),   1, noisy + 1, 2);     // 2 = accumulated level
-  pmem.Overrides(wrt("KB/learned.pref"));
-  amem.Load(wrt("KB/learned.rules"), 1, noisy + 1, 2);         
-  amem.Overrides(wrt("KB/learned.conf"));
-  dmem.LoadFacts(wrt("KB/learned.facts"), 1, noisy + 1, 2);  
-  (net.mf).AddVocab(gr, wrt("KB/learned.sgm"), 0, 2);
+  char ext[4][10] = {"ops", "rules", "facts", "sgm"};
+  char fname[80];
+  FILE *in;
+  int i;
+
+  for (i = 0; i < 4; i++)
+  {
+    sprintf_s(fname, "%sKB/knowledge.%s", wdir, ext[i]);
+    if (fopen_s(&in, fname, "r") != 0)
+      return false;
+    fclose(in);
+  }
+  return true;
+}
+
+
+//= Load ALL rules and operators.
+// always loads whatever is in the "knowledge" version of files
+
+void jhcAliaCore::LoadKnowledge ()
+{
+  jprintf(1, noisy, "Reloading consolidated knowledge:\n");
+  pmem.Load(wrt("KB/knowledge.ops"), 0, noisy, 2);         // 2 = accumulated level
+  amem.Load(wrt("KB/knowledge.rules"), 0, noisy, 2);   
+  dmem.LoadFacts(wrt("KB/knowledge.facts"), 0, noisy, 2); 
+  (net.mf).AddVocab(gr, wrt("KB/knowledge.sgm"), noisy, 2);
   jprintf(1, noisy, "\n");
 }
 
 
-//= Save all rules and operators beyond baseline and kernels.
+//= Save ALL rules and operators.
+// saves a copy with time and date stamp as well as "knowledge" version
+// similar to DumpAll()
+
+void jhcAliaCore::DumpKnowledge ()
+{
+  char base[80];
+  int n, nop, nr, nf, nw;
+
+  // build output file name
+  jprintf(1, noisy, "\nSaving consolidated knowledge:\n");
+  sprintf_s(base, "%sKB/%s_", wdir, myself);
+  n = (int) strlen(base);
+  jms_date(base + n, 0, 80 - n);
+
+  // save rules and operators  
+  nop = pmem.Save(base, 0);            // 0 = all sources
+  nr = amem.Save(base, 0);                                 
+  nf = dmem.SaveFacts(base, 0);
+  nw = gr.SaveCats(base, 0, net.mf);
+
+  // make copies as generic database
+  copy_file(wrt("KB/knowledge.ops"),   base);
+  copy_file(wrt("KB/knowledge.rules"), base);
+  copy_file(wrt("KB/knowledge.facts"), base);
+  copy_file(wrt("KB/knowledge.sgm"),   base);
+  jprintf(1, noisy, " TOTAL = %d operators, %d rules, %d facts, %d words\n", nop, nr, nf, nw);
+}
+
+
+//= Load all rules and operators BEYOND baseline and kernels.
+// always loads whatever is in the "extras" version of files
+
+void jhcAliaCore::LoadLearned ()
+{
+  jprintf(1, noisy, "Reloading non-KB0/KB2 learned knowledge:\n");
+  pmem.Load(wrt("KB/extras.ops"), 1, noisy, 2);            // 2 = accumulated level
+  pmem.Overrides(wrt("KB/extras.pref"));
+  amem.Load(wrt("KB/extras.rules"), 1, noisy, 2);         
+  amem.Overrides(wrt("KB/extras.conf"));
+  dmem.LoadFacts(wrt("KB/extras.facts"), 1, noisy, 2);  
+  (net.mf).AddVocab(gr, wrt("KB/extras.sgm"), noisy, 2);
+  jprintf(1, noisy, "\n");
+}
+
+
+//= Save all rules and operators BEYOND baseline and kernels.
 // saves a copy with time and date stamp as well as "learned" version
 
 void jhcAliaCore::DumpLearned ()
 {
   char base[80];
-  int nop, nr, nf, nw;
+  int n, nop, nr, nf, nw;
+
+  // build output file name
+  jprintf(1, noisy, "\nSaving non-KB0/KB2 learned knowledge:\n");
+  sprintf_s(base, "%sKB/add_", wdir);
+  n = (int) strlen(base);
+  jms_date(base + n, 0, 80 - n);
 
   // save rules and operators  
-  jprintf(1, noisy, "\nSaving learned knowledge:\n");
-  sprintf_s(base, "%sKB/kb_", wdir);
-  jms_date(base + 6, 0, 74);
-  nop = pmem.Save(base, 2);                               // 2 = accumulated level
+  nop = pmem.Save(base, 2);            // 2 = accumulated level
   pmem.Alterations(base);
   nr = amem.Save(base, 2);                                 
   amem.Alterations(base);   
@@ -1190,12 +1510,12 @@ void jhcAliaCore::DumpLearned ()
   nw = gr.SaveCats(base, 2, net.mf);
 
   // make copies as generic database
-  copy_file(wrt("KB/learned.ops"),   base);
-  copy_file(wrt("KB/learned.pref"),  base);
-  copy_file(wrt("KB/learned.rules"), base);
-  copy_file(wrt("KB/learned.conf"),  base);
-  copy_file(wrt("KB/learned.facts"), base);
-  copy_file(wrt("KB/learned.sgm"),   base);
+  copy_file(wrt("KB/extras.ops"),   base);
+  copy_file(wrt("KB/extras.pref"),  base);
+  copy_file(wrt("KB/extras.rules"), base);
+  copy_file(wrt("KB/extras.conf"),  base);
+  copy_file(wrt("KB/extras.facts"), base);
+  copy_file(wrt("KB/extras.sgm"),   base);
   jprintf(1, noisy, " TOTAL = %d operators, %d rules, %d facts, %d words\n", nop, nr, nf, nw);
 }
 

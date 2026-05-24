@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,9 +47,10 @@ private:
 
 // PUBLIC MEMBER VARIABLES
 public:
-  jhcAliaOp probe;             // for jhcAliaDir::HaltActive
-  int noisy;                   // controls general diagnostic messages
-  int detail;                  // show detailed for some operator
+  char formal[80];           // robot name for provenance
+  jhcAliaOp probe;           // for jhcAliaDir::HaltActive
+  int noisy;                 // controls general diagnostic messages
+  int detail;                // show detailed for some operator
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -61,13 +62,14 @@ public:
   int ClearOps () {return clear();}
 
   // list functions
-  int AddOperator (jhcAliaOp *p, int ann =0);
+  int AddOperator (jhcAliaOp *p, int ann =0, int usr =0, int dup =1);
   int AddVariant (const jhcAliaOp& op0, const jhcNetNode& main, const jhcBindings& s2o, 
                   jhcAliaChain *seq =NULL, int ann =0);
   void Remove (const jhcAliaOp *rem);
 
   // main functions
   int FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double mth);
+  int BuildSpur (const jhcGraphlet& ctx, jhcAliaChain *trace, double pref =0.1);
 
   // file functions
   int Load (const char *base, int add =0, int rpt =0, int level =1);

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,13 @@ private:
 
   // link to hardware
   jhcVisGrok *rwi;
+
+  // useful subparts of platform
+  jhcStare3D *s3;
+  jhcGenBody *body;
   jhcGenNeck *neck;
+  jhcGenLift *lift;
+  jhcGenBase *base;  
 
   // reported events
   jhcAliaNote *rpt;
@@ -69,16 +75,19 @@ private:
   double pnear, alone, scare, ptol, ttol, btol, lquit, bquit;
 
   // sound localization parameters
-  double pdist, rtime, sdev, aimed, gtime, side, btime;
+  double pdist, rsp, sdev, aimed, gsp, side, bsp;
   int recent;
 
   // motion parameters 
-  double cozy, direct, aquit, ideal, worry, orient, atime, ftime;
+  double cozy, direct, aquit, ideal, worry, atime, ftime;
+
+  // exploration parameters
+  double xsp, wtime, open, wang;
 
 
 // PUBLIC MEMBER VARIABLES
 public:
-  jhcParam aps, sps, mps;
+  jhcParam aps, sps, mps, eps;
   int gok;                   // whether succeeds without body
   int dbg;                   // control of diagnostic messages
 
@@ -100,6 +109,7 @@ private:
   int attn_params (const char *fname);
   int snd_params (const char *fname);
   int move_params (const char *fname);
+  int exp_params (const char *fname);
 
   // overridden virtuals
   void local_platform (void *soma, const char *kind);

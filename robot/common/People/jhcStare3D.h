@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2021-2025 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,11 +50,6 @@
 
 class jhcStare3D : public jhcTrack3D, public jhcOverhead3D
 {
-// PRIVATE MEMBER VARIABLES
-private:
-  jhcMatrix w2b;
-
-
 // PUBLIC MEMBER VARIABLES
 public:
   // depth map interpolation for background thread
@@ -76,6 +71,8 @@ public:
   int Analyze (int sm =7, int pmin =10);
   int CntValid (int trk =1) const;
   int PersonLim (int trk =1) const;
+
+  // basic access
   bool PersonOK (int i, int trk =1) const;
   int PersonID (int i, int trk =1) const;
   int PersonState (int i, int trk =1) const;
@@ -88,10 +85,12 @@ public:
   int TrackIndex (int id, int trk =1) const;
   int PersonTouch (double wx, double wy, int trk =1);
 
-  // useful analysis data
+  // person selection
   int Closest (double front =0.0, int trk =1) const;
   int ClosestID (double front =0.0) const 
     {return PersonID(Closest(front));}
+
+  // geometric properties
   int Head (jhcMatrix& full, int i, int trk =1) const;
   double Height (int i, int trk =1) const;
   int Hand (jhcMatrix& full, int i, int rt =1, int trk =1) const;
@@ -100,6 +99,8 @@ public:
   int TargetY (jhcMatrix& full, int i, int rt =1, int trk =1, double yoff =0.0) const;
   int TargetX (jhcMatrix& full, int i, int rt =1, int trk =1, double xoff =0.0) const;
   int HeadBoxCam (jhcRoi& box, int i, int view =0, int trk =1, double sc =1.0);
+
+  // semantic properties
   const char *GetName (int id, int trk =1) const;
   int SetName (int id, const char *name, int trk =1);
   const void *GetNode (int id, int trk =1) const;

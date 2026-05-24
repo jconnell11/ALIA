@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 
 #include "jhcGlobal.h"
 
-#include <stdio.h>               // needed for FILE
+#include <stdio.h>           // needed for FILE
 #include <string.h>
 
 
@@ -39,6 +39,11 @@ private:
   char line[200], token[80];
   char *head;
   int read;
+
+
+// PUBLIC MEMBER VARIABLES
+public:
+  char src[80];              // extracted from special comment line
 
 
 // PUBLIC MEMBER FUNCTIONS

@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,9 +47,9 @@ private:
   double trav, wind;         // accumulated path and windup
 
   // speed estimation
-  double ips, dps;           // smoothed travel and turn speeds
+  double dps;                // smoothed turn speed
+  double parked;             // secs since the robot rotated
   UL32 tupd;                 // last time update was called
-  int parked;                // how long the robot has stopped
 
   // command info
   double mstop, tstop;       // desired odometric end
@@ -98,7 +98,7 @@ public:
   int Zero ();
 
   // data exchange
-  void Status (float path, float spin, float mx, float my); 
+  void Status (float path, float spin, float mx, float my, float up =0.0, float ccw =0.0); 
   void Command (float& dist, float& ang, float& skew, float& mvel, float& rvel, int& mbid, int& rbid);
   double TravelRate () const {return mrate0;}
                
@@ -107,9 +107,9 @@ public:
   void Issue ();       
 
   // current position information
-  double Travel () const {return trav;}  
-  double WindUp () const {return wind;}
-  int Static () const    {return parked;}
+  double Travel () const   {return trav;}  
+  double WindUp () const   {return wind;}
+  double Oriented () const {return parked;}
 
   // relative goal adjustment
   double StepFwd () const  {return along;}
@@ -122,14 +122,15 @@ public:
   int MoveAbsolute (double tr, double rate =1.0, int bid =10, double skew =0.0); 
   int TurnAbsolute (double hd, double rate =1.0, int bid =10);
 
-  // eliminate residual error
-//  int MoveFix (double dist, double secs =0.5, double rmax =1.5, int bid =10)
-//    {return MoveTarget(dist, MoveRate(dist, secs, rmax), bid);}
-  int TurnFix (double ang, double secs =0.5, double rmax =1.5, int bid =10);
+  // smooth slide to goal
+  int MoveSoft (double dist, double rate =1.0, int bid =10, double soft =2.0);
+  int TurnSoft (double ang, double rate =1.0, int bid =10, double soft =10.0);
 
   // motion progress
-  double MoveErr (double mgoal) const {return fabs(mgoal - trav);}
-  double TurnErr (double tgoal) const {return fabs(tgoal - wind);}
+  double MoveErr (double mgoal, int abs =1) const 
+    {return((abs > 0) ? fabs(mgoal - trav) : mgoal - trav);}
+  double TurnErr (double tgoal, int abs =1) const 
+    {return((abs > 0) ? fabs(tgoal - wind) : tgoal - wind);}
 
 
 // PROTECTED MEMBER FUNCTIONS

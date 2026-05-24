@@ -21,7 +21,6 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
 #include "Interface/jhcMessage.h"
 #include "Processing/jhcDraw.h"
 
@@ -1316,7 +1315,7 @@ void jhcBBox::RemBorder (int w, int h, int dl, int dr, int db, int dt, int sth, 
     dt = db;
   region.SetRoi(dl, db, w - dr - dl, h - dt - db);
 
-  // change status of bboxs that are outside spec
+  // change status of bboxes that are outside spec
   for (i = 1; i < valid; i++)
     if ((status[i] > sth) && !region.RoiContains(items[i]))
       status[i] = bad;

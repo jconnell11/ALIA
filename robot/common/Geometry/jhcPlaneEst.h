@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2016 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ class jhcPlaneEst
 // PRIVATE MEMBER VARIABLES
 private:
   double num, Sx, Sy, Sz, Sxx, Syy, Szz, Sxy, Sxz, Syz;
-  double err, a, b, c;
+  double err, a, b, c, err0, a0, b0, c0;
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -49,6 +49,7 @@ public:
   void ClrStats ();
   int AddPoint (double x, double y, double z);
   int Analyze (double xsc =1.0, double ysc =1.0, double zsc =1.0);
+  void Revert ();
 
   // result interpretation
   int Pose (double& t, double& r, double& h, 
@@ -67,6 +68,7 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // main functions
+  void cache_old ();
   void scale_xyz (double xsc, double ysc, double zsc);
   void find_abc ();
   void find_err ();

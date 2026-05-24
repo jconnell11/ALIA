@@ -194,7 +194,7 @@ void jtimer_x (int n)
   if ((n < TIMERS) && (val64(start[n]) != 0))
   {
     QPC(&now);
-    if (count[n] > 0)                  // ignore very first call for max
+//    if (count[n] > 0)                  // ignore very first call for max
     {
       len = (int)(val64(now) - val64(start[n]));
       maxtime[n] = __max(maxtime[n], len);
@@ -241,10 +241,10 @@ int jtimer_rpt (int tree, const char *fname, int full)
   // open output file and generate report header
   if ((out = jtimer_file(fname, full)) == NULL)
     return 0;
-  fprintf(out, "    total ms    pct max    calls     avg ms");
+  fprintf(out, "    total ms    pct max    calls    avg(n-1)");
   for (i = 0; i < deep; i++)
     fprintf(out, "  ");
-  fprintf(out, "   max ms  timer name\n");
+  fprintf(out, "  max ms  timer name\n");
   fprintf(out, " -------------  -------  ---------  -------");
   for (i = 0; i < deep; i++)
     fprintf(out, "--");
@@ -345,6 +345,7 @@ static int jtimer_depth (int focus, int lvl)
 
      
 //= Find next relevant functions to generate lines in the report.
+// NOTE: "avg" is generally for n-1 calls (excludes longest one, often the first)
 
 static void jtimer_lines (FILE *out, LONGLONG all, double f, int focus, int lvl, int depth)
 {
@@ -369,7 +370,7 @@ static void jtimer_lines (FILE *out, LONGLONG all, double f, int focus, int lvl,
       return;
     done[win] = 1;
 
-    // generate report line for this function
+    // generate report line for this function (avg excludes max time call)
     if (out != NULL)
     {
       fprintf(out, " %13.2f  %6.2f   %9d  ", 
@@ -378,7 +379,10 @@ static void jtimer_lines (FILE *out, LONGLONG all, double f, int focus, int lvl,
               count[win]);
       for (i = 0; i < lvl; i++)              // indent
         fprintf(out, "  ");
-      fprintf(out, "%7.2f", (1000.0 * (double) val64(total[win])) / (count[win] * f));
+      if (count[win] <= 1)
+        fprintf(out, "%7.2f", 1000.0 * (double) val64(total[win]) / f);
+      else
+        fprintf(out, "%7.2f", 1000.0 * (double)(val64(total[win]) - maxtime[win]) / ((count[win] - 1) * f));
       for (i = depth - lvl; i > 0; i--)      // tab
         fprintf(out, "  ");
       fprintf(out, "  %7.2f  %s\n", (1000.0 * maxtime[win]) / f, name[win]);

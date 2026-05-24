@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ public:
   const char *LastTTS () const {return tts;}
 
   // main functions
-  int Reset (const char *rname =NULL, int prt =3, int cvt =1);
+  int Reset (const char *rname =NULL, int prt =3, int cvt =0);
   int SelectSrc (const char *msg, const char *reco =NULL);
   int UpdateAttn (int hear, int talk, int eye =0, double delay =0.0);
   void Consider ();

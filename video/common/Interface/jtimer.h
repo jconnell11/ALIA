@@ -25,8 +25,6 @@
 
 #include "jhcGlobal.h"
 
-#include <stdlib.h>    // needed for definition of NULL !
-
 
 // code profiling
 void jtimer_clr ();

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2022-2024 Etaoin Systems
+// Copyright 2022-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -375,13 +375,13 @@ int jhcDraw::BlockRot (jhcImg& dest, double xc, double yc, double w, double h, d
   if (d0 == 0.0)
   {
     if (set > 0)
-      dest.SetRoi(ix, iy, iw, ih);
+      dest.SetRoi(ix - (iw / 2), iy - (ih / 2), iw, ih);
     return BlockCent(dest, ix, iy, iw, ih, r, g, b);
   }
   if (d0 == 90.0)
   {
     if (set > 0)
-      dest.SetRoi(ix, iy, ih, iw);
+      dest.SetRoi(ix - (ih / 2), iy - (iw / 2), ih, iw);
     return BlockCent(dest, ix, iy, ih, iw, r, g, b);
   }
 

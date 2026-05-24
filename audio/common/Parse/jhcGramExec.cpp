@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include <ctype.h>
 
 #include "Interface/jprintf.h"         // common video
+#include "Interface/jtimer.h"          // for profiling
 
 #include "Language/jhcMorphFcns.h"     // since only spec'd as class in header
 
@@ -273,6 +274,67 @@ int jhcGramExec::ExtendRule (const char *name, const char *phrase, int lvl)
 }
 
 
+//= Remove a robot name from the ATTN grammar category.
+
+int jhcGramExec::RemAttn (const char *name)
+{
+  char entry[80];
+  jhcGramRule *prev = NULL, *r = gram;
+  int i;
+
+  // check if name is in alert[] array (for NameSaid)  
+  for (i = 0; i < nn; i++)
+    if (strcmp(name, alert[i]) == 0)
+      break;
+  if (i >= nn)                         // not a current robot name
+    return 1;                          
+  nn--;                                // splice out and compact
+  while (i++ < nn)
+    strcpy_s(alert[i], alert[i + 1]);  
+
+  // find associated ATTN grammar rule (if any)
+  while (r != NULL)
+  {
+    if (_stricmp(r->head, "ATTN") == 0)
+      if (_stricmp(r->Expansion(entry, 80), name) == 0)
+        break;
+    prev = r;
+    r = r->next;
+  }
+  if (r == NULL)                       // no rule found                    
+    return 1;
+
+  // splice rule out of list 
+  if (prev != NULL)
+    prev->next = r->next;
+  else
+    gram = r->next;
+  delete r;
+  return 2;
+}
+
+
+//= Get total number of open-class words known.
+
+int jhcGramExec::OpenClass () const
+{
+  char open[6][20] = {"ATTN", "NAME", "AKO", "HQ", "ACT", "MOD"};
+  jhcGramRule *r = gram;
+  int i, cnt = 0;
+
+  while (r != NULL)
+  {
+    for (i = 0; i < 6; i++)
+      if (_stricmp(r->head, open[i]) == 0)
+        break;
+    if (i < 6)
+      cnt++;
+    r = r->next;
+  }
+  return cnt;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                              Main Functions                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -317,6 +379,7 @@ int jhcGramExec::Parse (const char *sent, int fix)
 {
   int i, scan;
 
+jtimer(15, "Parse");
   // set up defaults
   *norm = '\0';
   txt2.SetSource(norm);
@@ -325,7 +388,10 @@ int jhcGramExec::Parse (const char *sent, int fix)
 
   // do basic work (assume correct top level rules already activated)
   if (parse_analyze(Expand(sent, fix)) <= 0)
+{
+jtimer_x(15);
     return nt;
+}
 
   // set "tree" to best interpretation
   if (nt > 1)
@@ -347,6 +413,7 @@ int jhcGramExec::Parse (const char *sent, int fix)
   if (normalize(0, nth_full(tree)) > 0)
     norm[strlen(norm) - 1] = '\0';  
   txt2.SetSource(norm);
+jtimer_x(15);
   return nt;
 }
 
@@ -933,7 +1000,9 @@ int jhcGramExec::SaveCats (const char *fname, int lvl, const jhcMorphFcns& mf) c
   fprintf_s(out, "// ================================================\n");
 
   // list items of interest (while caching exceptions)
-  fprintf_s(out, "\n// proper nouns\n\n=[NAME]\n");
+  fprintf_s(out, "\n// robot name\n\n=[ATTN]\n");
+  n += list_cat(out, "ATTN", lvl);
+  fprintf_s(out, "\n\n// proper nouns\n\n=[NAME]\n");
   n += list_cat(out, "NAME", lvl);
   fprintf_s(out, "\n\n// singular nouns\n\n=[AKO]\n");
   n += list_cat(out, "AKO", lvl);
@@ -942,6 +1011,8 @@ int jhcGramExec::SaveCats (const char *fname, int lvl, const jhcMorphFcns& mf) c
   fprintf_s(out, "\n\n// -----------------------------------------\n");
   fprintf_s(out, "\n// imperative verbs\n\n=[ACT]\n");
   n += list_cat(out, "ACT", lvl);
+  fprintf_s(out, "\n\n// imperative verbs requiring object and location or direction\n\n=[ACT-2]\n");
+  n += list_cat(out, "ACT-2", lvl);
   fprintf_s(out, "\n\n// adverbial modifiers\n\n=[MOD]\n");
   n += list_cat(out, "MOD", lvl);
 
@@ -1298,6 +1369,7 @@ char *jhcGramExec::clean_line (char *ans, int len, FILE *in, int ssz)
 
 
 //= Split an expansion with optional parts into many base expansions.
+// returns 1 if successful, 0 if duplicate, -1 for problem
 
 int jhcGramExec::split_optional (const char *rname, const char *line, int lvl)
 {
@@ -1337,6 +1409,7 @@ int jhcGramExec::split_optional (const char *rname, const char *line, int lvl)
 
 
 //= Handle optional parenthesized group by making two copies.
+// returns 1 if successful, 0 if duplicate, -1 for problem
 
 int jhcGramExec::split_paren (const char *rname, char *base, char *start, int lvl)
 {
@@ -1373,6 +1446,7 @@ int jhcGramExec::split_paren (const char *rname, char *base, char *start, int lv
 
 
 //= Handle multi-word dictation by requiring various numbers of words.
+// always returns 1
 
 int jhcGramExec::split_dict (const char *rname, char *base, char *start, int lvl)
 {
@@ -1398,6 +1472,7 @@ int jhcGramExec::split_dict (const char *rname, char *base, char *start, int lvl
 
 
 //= Assemble one path of a rule or an optional conjunct.
+// returns 1 if successful, 0 if duplicate, -1 for problem
 
 int jhcGramExec::build_phrase (const char *rname, const char *line, int lvl)
 {
@@ -1410,7 +1485,7 @@ int jhcGramExec::build_phrase (const char *rname, const char *line, int lvl)
   if ((*rname == '\0') || (*line == '\0'))
     return 0;
   if ((strcmp(rname, "ATTN") == 0) && (nn < 10))
-    strcpy_s(alert[nn++], line);
+    strcpy_s(alert[nn++], line);                           // check duplicate?
 
   // make a new rule for given non-terminal
   if ((t = new jhcGramRule) == NULL)

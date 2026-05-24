@@ -57,9 +57,10 @@ extern "C"
   // dir: base directory for config, language, log, and KB subdirectories
   // rname: robot name (like "Jim Jones"), can be NULL if desired
   // prog: name of program to print on console at beginning
+  // dbg: which debugging image to produce (0 = none, 1 = overhead map, 2-16 = various) 
   // makes file "config/all_names.txt" for speech recognition
   // returns 1 if okay, 0 or negative for problem
-  DEXP_V int alia_reset (const char *dir, const char *rname, const char *prog);
+  DEXP_V int alia_reset (const char *dir, const char *rname, const char *prog, int dbg =0);
 
   //= Exchange command and sensor data then start reasoning a bit.
   // alia_XXX variables only read/written while this function is blocking
@@ -84,13 +85,7 @@ extern "C"
 
   DEXP_V int alia_hear, alia_talk;             // hearing speech or talking now
 
-  // =========================== BODY ===================================
-
-  //= Specify which hardware susbsystems are present and working.
-  // set to 1 or 0: nok = neck, aok = arm, fok = fork lift, bok = base
-  // call before alia_reset, can also be called if something breaks
-  // dbg: which debugging image to produce (2-10 special, others = overhead map) 
-  DEXP_V void alia_body (int nok, int aok, int fok, int bok, int dbg =0);
+  // --------------------------- BODY -----------------------------------
 
   DEXP_V int alia_mood;                        // mood bit vector (happy, angry)
 
@@ -160,7 +155,10 @@ extern "C"
   DEXP_V int alia_wmap ();                     
 
   //= Get height of alternate debugging "map" image (only valid after reset).
-  DEXP_V int alia_hmap ();                     
+  DEXP_V int alia_hmap ();    
+
+  //= Get title of alternate debugging "map" image (only valid after reset).
+  DEXP_V const char *alia_tmap ();       
 
   DEXP_V void *alia_view, *alia_map;           // object, map destination buffers  
   DEXP_V int alia_vfmt, alia_mfmt;             // object and map write formats

@@ -42,6 +42,7 @@ jhcHeadGaze::~jhcHeadGaze ()
 
 jhcHeadGaze::jhcHeadGaze ()
 {
+  p2s.SetSize(4, 4);
   s3 = NULL;
   SetGaze(0.0, 0.0, 14.0, 6.0, 20.0, 10.0);
   SetAttn(0.0, 64.0, 96.0);
@@ -107,6 +108,7 @@ int jhcHeadGaze::attn_params (const char *fname)
 ///////////////////////////////////////////////////////////////////////////
 
 //= Read all relevant defaults variable values from a file.
+// Note: does not load s3 parameters!
 
 int jhcHeadGaze::Defaults (const char *fname)
 {
@@ -160,10 +162,12 @@ int jhcHeadGaze::SaveCfg (const char *fname) const
 
 //= Set the frontal view camera pose relative to the input camera pose.
 // needed since projection is normalized with cx = 0, cy = 0, and cpan = 90
+// NOTE: cpos and cdir not saved - used only to get relative pose of color camera
 
 void jhcHeadGaze::SetFront (int view, const jhcMatrix& vpos, const jhcMatrix& vdir,
                             const jhcMatrix& cpos, const jhcMatrix& cdir)
 {
+  SetAttn(vpos);             // robot eyes = color camera
   s3->SetAlt(view, vpos.X() - cpos.X(), vpos.Y() - cpos.Y(), vpos.Z(), 
                    vdir.P() - cdir.P() + 90.0, vdir.T(), vdir.R());
 }
@@ -197,7 +201,7 @@ void jhcHeadGaze::Reset ()
 void jhcHeadGaze::ScanRGB (const jhcImg& src, const jhcImg& d16, int view, int trk)
 {
   jhcRoi probe;
-  jhcMatrix mid(4), rel(4), fc(4), dir(4);
+  jhcMatrix mid(4), rel(4), fc(4), diff(4);
   jhcBodyData *guy;
   double rot, fx, fy, sc = ((src.YDim() > 640) ? 2.0 : 1.0);
   int p, n;
@@ -206,29 +210,30 @@ void jhcHeadGaze::ScanRGB (const jhcImg& src, const jhcImg& d16, int view, int t
     Fatal("Unbound person detector in jhcHeadGaze::ScanRGB");
   if ((view < 0) || (view >= cmax) || !src.Valid(1, 3))
     Fatal("Bad input to jhcHeadGaze::ScanRGB");
-    
+ 
   // consider all potential people as viewed from this camera
   s3->SetColorGeom(view);
+  p2s.Invert(s3->S2P());                         // member var
   n = s3->PersonLim(trk);
   for (p = 0; p < n; p++)
     if (s3->PersonOK(p, trk))
     {
-      // set search area around rotational midpoint of head
+      // set 3D search area around midpoint of head (and guess in-plane rotation)
       guy = s3->RefPerson(p, trk);
-      head_mid(mid, *guy, 0);                        // wrt main depth sensor
+      head_mid(mid, *guy, 0);                    // wrt main depth sensor
       if (search_area(probe, rot, mid, src) <= 0)
         continue;
 
-      // look for face in search area
+      // look for face in search area with given orientation
       if (FaceChk(p, src, probe, rot, view) >= 0)
       {
-        // get realworld face center location
-        FaceMid(fx, fy, p, view, sc);                // was 0.5 * sc ?
-        if (face_pt(fc, fx, fy, d16, sc) > 0)
+        // get realworld 3D face center location given color detection at (fx fy)
+        FaceMid(fx, fy, p, view, sc);  
+        if (face_pt(fc, mid, d16, fx, fy) > 0)
         {
-          // accumulate vector sum of estimates
-          dir.DirVec3(fc, mid);
-          guy->GazeEst(dir);
+          // accumulate vector sum of head->face estimates
+          diff.DiffVec3(fc, mid);
+          guy->GazeEst(diff);
         }
       }
     }
@@ -244,7 +249,7 @@ void jhcHeadGaze::head_mid (jhcMatrix& mid, const jhcMatrix& head, int cam) cons
   jhcMatrix kin(4);
   double d;
 
-  // move head outward by dadj along viewing direction
+  // move head outward by dadj along viewing direction (rotates around spine not center)
   s3->DumpLoc(kin, cam);
   mid.DiffVec3(head, kin);
   d = mid.LenVec3();
@@ -256,7 +261,8 @@ void jhcHeadGaze::head_mid (jhcMatrix& mid, const jhcMatrix& head, int cam) cons
 }
 
 
-//= Set up image area to search for face based on head midpoint position.
+//= Set up color image area to search for face based on head midpoint 3D position.
+// also binds "rot" which is the in-plane rotation of the face (around view direction)
 // assumes "s3" already has its geometry adjusted for the current camera
 // returns 1 if successful, 0 if no good area in this view
 
@@ -271,13 +277,13 @@ int jhcHeadGaze::search_area (jhcRoi& probe, double& rot, const jhcMatrix& mid, 
   if ((sz < 20.0) || (sz > 500.0))
     return 0;
 
-  // setup to search image in a square around this point
+  // setup to search color image in a square around this point
   s3->ImgPt(ix, iy, rel, sc);
   probe.SetCenter(ix, iy, sz);
-  if (src.RoiOverlap(probe) < (0.75 * probe.RoiArea()))
+  if (src.RoiOverlap(probe) < (0.5 * probe.RoiArea()))     // was 0.75
     return 0;
 
-  // find likely rotation of head by looking at a point above it
+  // find likely rotation of head by looking at a point straight up from center
   dir.RelVec3(mid, 0.0, 0.0, up);
   s3->BeamCoords(rel, dir); 
   s3->ImgPt(ix2, iy2, rel, sc);
@@ -286,26 +292,84 @@ int jhcHeadGaze::search_area (jhcRoi& probe, double& rot, const jhcMatrix& mid, 
 }
 
 
-//= Gets realworld face position given center coordinates in color image.
+//= Gets realworld face position given equivalent center coordinates in range image.
 // assumes "s3" already has its geometry adjusted for the current camera
 // return 1 if computed, 0 if no good estimate
 
-int jhcHeadGaze::face_pt (jhcMatrix& fc, double fx, double fy, const jhcImg& d16, double sc) const
+int jhcHeadGaze::face_pt (jhcMatrix& fc, const jhcMatrix& mid, const jhcImg& d16, double fx, double fy) const
 {
   jhcRoi samp;
   jhcMatrix rel(4);
-  double fz;
+  double hz, ftol = 2.0;
+  int hx, hy;
 
-  // determine depth near face center
-  samp.SetCenter(fx / sc, fy / sc, 5.0);
-  if (AnyOver_16(d16, samp, 40000) != 0)
+  // determine depth in small patch near face center
+  if (equiv_head(hx, hy, mid, d16, fx, fy) > ftol)
     return 0;
-  fz = AvgVal(d16, samp, 1);
+  samp.SetCenter(hx, hy, 5.0);
+  if ((hz = AvgVal_16(d16, samp, -0xFFFF)) < 0.0)
+    return 0;
 
-  // undo camera geometric transforms
-  s3->WorldPt(rel, fx, fy, fz, sc);
+  // undo camera geometric transforms 
+  s3->WorldPt(rel, hx, hy, hz);             
   s3->InvBeamCoords(fc, rel);
   return 1;
+}
+
+
+//= Find head pixel in depth image that is closest to face center from color image.
+// assumes depth image and color image are oriented similarly wrt pixel errors 
+// returns pixel error of projected pixel wrt color image face center
+
+double jhcHeadGaze::equiv_head (int &hx, int &hy, const jhcMatrix& mid, const jhcImg& d16, double fx, double fy) const
+{
+  jhcMatrix hrel(4), hproj(4), hrng(4);
+  double hfmix = 0.7;  
+  double rxf, ryf, dx, dy, d2, mx, my, mz, cxf, cyf, czf, best = 10000.0;
+  int i, rx, ry, rz, w = s3->XDim(), h = s3->YDim(), rx0 = 0, ry0 = 0;
+
+  // start at head center point (rz = depth in 4 x mm, p2s = member var)
+  s3->BeamCoords(hrel, mid);
+  hproj.SetVec3(32768.0 + 50.0 * hrel.X(), 32768.0 + 50.0 * hrel.Y(), 32768.0 + 50.0 * hrel.Z());
+  hrng.MatVec(p2s, hproj);
+  rxf = (s3->XDim2() - 1) + (2.0 * hrng.X() / hrng.Z());
+  ryf = (s3->YDim2() - 1) + (2.0 * hrng.Y() / hrng.Z());
+  rz  = ROUND(hrng.Z());                      
+
+  for (i = 0; i < 10; i++)
+  {
+    // get depth reading at newly chosen depth image pixel
+    rx = ROUND(rxf);
+    ry = ROUND(ryf);
+    if ((i > 0) && (rx == rx0) && (ry == ry0))
+      break;
+    if ((rx < 0) || (ry < 0) || (rx >= w) || (ry >= h))
+      break;
+    if ((rz = d16.ARef16(rx, ry)) >= 40000)
+      break;
+
+    // convert depth point to color image point and compare to face center
+    s3->ToCache(mx, my, mz, 0.5 * rxf, 0.5 * ryf, rz);
+    s3->FromCache(cxf, cyf, czf, mx, my, mz);
+    dx = fx - 2.0 * cxf;
+    dy = fy - 2.0 * cyf;    
+    d2 = dx * dx + dy * dy;  
+
+    // save if best guess so far
+    if ((i == 0) || (d2 < best))
+    {
+      hx = rx;
+      hy = ry;
+      best = d2;
+    }
+
+    // move depth pixel to make equivalent face pixel closer
+    rxf += hfmix * dx;
+    ryf += hfmix * dy;
+    rx0 = rx;
+    ry0 = ry;
+  }
+  return sqrt(best);
 }
 
 
@@ -410,11 +474,12 @@ int jhcHeadGaze::GazeNew (int trk, int gmin) const
 
 //= Show gaze rays radiating from center of head in overhead map view.
 
-int jhcHeadGaze::AllGaze (jhcImg& dest, int trk) const
+int jhcHeadGaze::AllGaze (jhcImg& dest, int trk) 
 {
   jhcMatrix tip(4), head(4), tail(4);
+  char degs[40];
   const jhcBodyData *guy;
-  double len;
+  double tilt, len = 240.0;            // 20 feet to end 
   int i, col, n;
 
   if (s3 == NULL)
@@ -423,7 +488,6 @@ int jhcHeadGaze::AllGaze (jhcImg& dest, int trk) const
     return Fatal("Bad input to jhcHeadGaze::AllGaze");
 
   // check all people
-  len = s3->I2P(240.0);               // 20 feet to end
   n = s3->PersonLim(trk);
   for (i = 0; i < n; i++)
   {
@@ -438,9 +502,12 @@ int jhcHeadGaze::AllGaze (jhcImg& dest, int trk) const
     tail.MatVec(s3->ToMap(), tip);
     head.MatVec(s3->ToMap(), *guy);
 
-    // draw a heavy line for pan 
-    col = ((gcnt[i] > 0) ? -3 : -2);
+    // draw a heavy line for pan (yellow when staring)
+    tilt = tip.TiltVec3();
+    col = ((gcnt[i] > 0) ? -3 : ((tilt > 0.0) ? -6 : -2));
+    sprintf_s(degs, "%d", ROUND(fabs(tilt)));
     DrawLine(dest, head.X(), head.Y(), tail.X(), tail.Y(), 3, col);
+    LabelOver(dest, head.X(), head.Y(), degs);
   }
   return 1;
 } 
@@ -463,7 +530,7 @@ int jhcHeadGaze::GazeCam (jhcImg& dest, int i, int cam, int trk) const
   FaceMid(fx2, fy2, i, cam);
   box = GetFace(i, cam);
 
-  // draw colored box
+  // draw colored box 
   RectCent(dest, fx2, fy2, box->RoiW(), box->RoiH(), GetAngle(i, cam), 3, -3);
   return 1;
 }

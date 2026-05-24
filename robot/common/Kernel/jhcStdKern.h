@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ class jhcStdKern : public jhcAliaKernel
 {
 // PRIVATE MEMBER VARIABLES
 private:
-  int nc;                          /** Max number of instances.   */
+  int nc;                          /** Max number of instances. */
 
 
 // PROTECTED MEMBER VARIABLES
@@ -81,6 +81,7 @@ protected:
   jhcAliaDesc **cspot;             /** Description of destination. */
   double *csp;                     /** Desired speed of action.    */
   int *cbid;                       /** Importance of instance.     */
+  int *ccyc;                       /** Number of cycles running.   */
 
   // goal and progress
   double *camt;                    /** Desired amount of action.     */
@@ -100,6 +101,10 @@ public:
   jhcStdKern (int n =100);
   int MaxInst () const {return nc;}
   void AddFcns (jhcAliaKernel& pool);
+
+  // instance helpers
+  int NoHW (int gok, int inst) const 
+    {return((gok <= 0) ? -1 : ((ccyc[inst] >= gok) ? 1 : 0));}
 
   // main functions
   void Platform (void *soma, const char *kind);

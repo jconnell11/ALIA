@@ -1,3 +1,5 @@
+// for use with image environ/blocks_t512.bmp
+
 what color is the object
 
 where is the red thing

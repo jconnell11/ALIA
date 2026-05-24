@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -114,10 +114,13 @@ public:
   bool SameEffect (const jhcBindings& b1, const jhcBindings& b2) const;
   void AdjTime (double secs);
 
+  // operator tests
+  bool Identical (const jhcAliaOp& ref);
+
   // file functions
   int Load (jhcTxtLine& in); 
-  int Save (FILE *out, int src =1);
-  int Print (int src =1) {return Save(stdout, src);}
+  int Save (FILE *out, int src =0);
+  int Print (int src =0) {return Save(stdout, src);}
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -125,10 +128,13 @@ private:
   // creation and initialization
   ~jhcAliaOp ();                       // private dtor requires "final"
   jhcAliaOp (JDIR_KIND k =JDIR_DO);
-  void cnt_steps ();
  
   // main functions
   int try_mate (const jhcNetNode *focus, jhcNetNode *mate, jhcAliaDir& dir, const jhcWorkMem& f);
+
+  // operator tests
+  bool iso_method (const jhcAliaChain *step, const jhcAliaChain *step2, 
+                   jhcBindings& b, const jhcAliaChain *seen[], int& n) const;
 
   // file functions
   int load_pattern (jhcTxtLine& in);

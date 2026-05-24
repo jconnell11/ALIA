@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -87,7 +87,7 @@ public:
   void UserVoice (const char *name);
 
   // main functions
-  int Reset (const char *rname =NULL, const char *vname =NULL, int cvt =1);
+  int Reset (const char *rname =NULL, const char *vname =NULL, int cvt =0);
   int VoiceInit ();
   int UpdateSpeech ();
   int Consider (int stare =0);

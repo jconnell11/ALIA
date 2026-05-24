@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,8 +58,7 @@ private:
 
   // angular speed estimate
   UL32 now;
-  double p0, t0, ipv, itv;
-  int stable;
+  double p0, t0, ipv, itv, stable;
 
   // control loop performance
   double pvel, tvel;
@@ -96,6 +95,7 @@ public:
   // configuration
   void Bind (jhcDynamixel& ctrl);
   int CommOK () const {return nok;}
+  int MaxBid () const {return __max(plock0, tlock0);}
   int Reset (int rpt =0, int chk =1);
   int Check (int rpt =0, int tries =2);
   double Voltage ();
@@ -133,36 +133,33 @@ public:
   double TiltStep (int abs =0) const {return((abs > 0) ? fabs(Tilt() - t0) : Tilt() - t0);}
   bool Saccade (double plim =3.5, double tlim =1.0) const 
     {return((PanStep(1) > plim) || (TiltStep(1) > tlim));}
-  int Stare () const {return stable;}
+  double Stare () const {return stable;}
 
   // goal specifying commands for view
   void GazeClear () {jt[0].RampReset(); jt[1].RampReset();}
-  int GazeTarget (double pan, double tilt, double p_rate =1.0, double t_rate =0.0, int bid =10);
+  int GazeTarget (double pan, double tilt, double rate =1.0, int bid =10);
   int PanTarget (double pan, double rate =1.0, int bid =10);
   int TiltTarget (double tilt, double rate =1.0, int bid =10);
   int ShiftTarget (double dp, double dt, double rate =1.0, int bid =10)
-    {return GazeTarget(Pan() + dp, Tilt() + dt, rate, rate, bid);}
-  int GazeAt (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10);
-//  int GazeAt (const jhcMatrix *targ, double lift, double rate =1.0, int bid =10)
-//    {return((targ == NULL) ? 0 : GazeAt(*targ, lift, rate, bid));}
-  int GazeFix (const jhcMatrix& targ, double lift, double secs =0.5, int bid =10);
+    {return GazeTarget(Pan() + dp, Tilt() + dt, rate, bid);}
+  int GazeAt (double wx, double wy, double wz, double lift, double rate =1.0, int bid =10);
   int GazeStop (double rate =1.5, int bid =1)
     {return GazeTarget(jt[0].SoftStop(Pan(), ndone, rate), jt[1].SoftStop(Tilt(), ndone, rate), rate, bid);}
+
+  // smooth slide to goal pose
+  int GazeSoft (double pan, double tilt, double rate =1.0, int bid =10, double soft =10.0);
+  int GazeSoft (const jhcMatrix& targ, double lift, double rate =1.0, int bid =10, double soft =10.0);
 
   // progress irrespective of controlling behavior
   double PanErr (double pan, int abs =1) const;
   double TiltErr (double tilt, int abs =1) const;
   double GazeErr (double pan, double tilt) const
     {return __max(PanErr(pan, 1), TiltErr(tilt, 1));}
-  double GazeErr (const jhcMatrix& targ, double lift =0.0) const;
+  double GazeErr (const jhcMatrix& targ, double lift =0.0, int abs =1) const;
   bool PanDone (double p, double tol =3.0) const  
     {return(PanErr(p) <= tol);}
   bool TiltDone (double t, double tol =3.0) const 
     {return(TiltErr(t) <= tol);}
-//  bool GazeDone (double p, double t, double tol =3.0) const 
-//    {return(PanDone(p, tol) && TiltDone(t, tol));}
-//  bool GazeDone (const jhcMatrix& targ, double lift =0.0, double tol =3.0) const 
-//    {return(GazeErr(targ, lift) <= tol);}
 
   // profiled motion progress
   bool GazeClose (double tol =1.0) const {return(PanClose(tol) && TiltClose(tol));}
@@ -211,8 +208,6 @@ public:
     {return ShiftRate(dp, dt, Pan(), Tilt(), secs, rmax);}
 
   // eliminate residual error
-  int GazeFix (double pan, double tilt, double secs =0.5, int bid =10)
-    {return GazeTarget(pan, tilt, PanRate0(pan, secs), TiltRate0(tilt, secs), bid);}
   int PanFix (double pan, double secs =0.5, int bid =10)
     {return PanTarget(pan, PanRate0(pan, secs), bid);}
   int TiltFix (double tilt, double secs =0.5, int bid =10)

@@ -1396,7 +1396,7 @@ int jhcSpeechX::Say (int bid, const char *msg, ...)
   va_list args;
 
   // see if previous command takes precedence
-  if (bid <= tlock)
+  if (bid < tlock)
     return 0;
   tlock = bid;
 
@@ -1440,7 +1440,7 @@ int jhcSpeechX::Utter ()
 
     // turn off recognition engine and start new sentence
     Listen(0, 0);
-    jprintf("\n==> \"%c%s\"\n\n", toupper(emit[0]), emit + 1);
+//    jprintf("\n==> \"%c%s\"\n\n", toupper(emit[0]), emit + 1);
     rc = tts_say(alt_pron(emit));
     talk = 1;
   }

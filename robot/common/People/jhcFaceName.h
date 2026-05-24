@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@
 #include "Data/jhcImg.h"               // common video
 #include "Data/jhcParam.h"
 #include "Face/jhcFRecoDLL.h"
+
+#include "Geometry/jhcMatrix.h"        // common robot
 
 #include "People/jhcHeadGaze.h"
 
@@ -80,13 +82,16 @@ public:
 
   // main functions
   void Reset (int local =0);
-  void SetCam (const jhcMatrix& pos, const jhcMatrix& dir, int full =1);
+  void SetCam (const jhcMatrix& pos, const jhcMatrix& dir, int full =0);
   int Analyze (const jhcImg& col, const jhcImg& d16);
   int FindNames (int trk =1);
+
+  // person information
   int JustNamed () const {return spot;}
   int JustUpdated () const {return tweak;}
   const char *FaceName (int i) const 
     {return(((i >= 0) && (i < pmax)) ? name[i] : NULL);}
+  bool Interest (jhcMatrix& xyz, int iw =640, int ih =480);
 
 
 // PRIVATE MEMBER FUNCTIONS

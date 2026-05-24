@@ -45,9 +45,19 @@ RULE 5 - "If something is some kind which is a kind of something else the the th
               -ako-> obj-1
           
 
+RULE 6 - "If something is some color then that color is the color of the thing"
+
+    if:  hq-1 -hq--> obj-1
+        ako-1 -lex-  ***-1
+              -ako-> hq-1 
+  then: wrt-1 -lex-  of
+              -wrt-> ako-1 
+              -ref-> obj-1 
+
+
 // --------------------------------------
 
-RULE 6 - "If a thing is between something and something else then it is between the something else and the something."
+RULE 7 - "If a thing is between something and something else then it is between the something else and the something."
     if: loc-1 -lex-   between
               -loc--> obj-1
               -ref--> obj-2
@@ -58,29 +68,44 @@ RULE 6 - "If a thing is between something and something else then it is between 
               -ref2-> obj-2 
 
 
-RULE 7 - "To the left means left"
+RULE 8 - "To the left means left"
     if: dir-1 -lex-  to the left
               -dir-> act-2
   then: dir-3 -lex-  left
               -dir-> act-2
 
 
-RULE 8 - "To the right means right"
+RULE 9 - "To the right means right"
     if: dir-1 -lex-  to the right
               -dir-> act-2
   then: dir-3 -lex-  right
               -dir-> act-2
 
 
-RULE 9 - "Upwards means up"
+RULE 10 - "Upwards means up"
     if: dir-1 -lex-  upwards
               -dir-> act-2
   then: dir-3 -lex-  up
               -dir-> act-2
 
 
-RULE 10 - "Downwards means down"
+RULE 11 - "Downwards means down"
     if: dir-1 -lex-  downwards
               -dir-> act-2
   then: dir-3 -lex-  down
               -dir-> act-2
+
+
+// --------------------------------------
+
+RULE 12 - "You are always a robot"
+    if: self-1 -lex-  me
+  then:  ako-2 -lex-  robot
+               -ako-> self-1
+
+
+RULE 13 - "The user is always a person"
+    if: user-1 -lex-  you
+  then:  ako-2 -lex-  person
+               -ako-> user-1
+

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,8 +54,8 @@ public:
 
   // main functions
   int NameSaid (const char *alist, int mode =2) const;
-  int Convert (const char *alist, const char *sent =NULL);
-  void Summarize (FILE *log, const char *sent, int nt, int spact) const;
+  JSP_ACT Convert (const char *alist, const char *sent =NULL);
+  void Summarize (FILE *log, const char *sent, int nt, JSP_ACT spact) const;
 
   // value range rules
   int AutoVals (const char *kern);
@@ -67,23 +67,29 @@ public:
 // PRIVATE MEMBER FUNCTIONS
 private:
   // main functions
-  void intro_name (const char *alist) const;
-  jhcAliaChain *feedback (int spact, const char *alist) const;
+  jhcAliaChain *feedback (JSP_ACT spact, const char *alist) const;
+
+  // user responses
+  void append_ynq (jhcAliaChain *main, jhcNodePool& pool) const; 
+  void append_whq (jhcAliaChain *main, jhcNodePool& pool) const; 
+  void append_exist (jhcAliaChain *main, jhcNodePool& pool) const;
+  void append_find (jhcAliaChain *main, jhcNodePool& pool) const;
+  jhcAliaChain *tell_step (const char *verb, jhcNodePool& pool) const;
 
   // speech acts
-  int huh_tag () const;
-  int hail_tag () const;
-  int greet_tag () const;
-  int farewell_tag () const;
-  int unk_tag (const char *unk) const;
-  int add_tag (int spact, const char *alist, const char *sent);
-  int rev_tag (int spact, const char *alist) const;
-  int attn_tag (int spact, const char *alist) const;
+  JSP_ACT huh_tag () const;
+  JSP_ACT hail_tag () const;
+  JSP_ACT greet_tag () const;
+  JSP_ACT farewell_tag () const;
+  JSP_ACT unk_tag (const char *unk) const;
+  JSP_ACT add_tag (JSP_ACT spact, const char *alist, const char *sent);
+  JSP_ACT rev_tag (JSP_ACT spact, jhcAliaChain *main, const char *alist) const;
+  JSP_ACT attn_tag (JSP_ACT spact, jhcAliaChain *main, const char *alist) const;
   const char *no_fluff (const char *sent, const char *alist);
   jhcAliaChain *build_tag (jhcNetNode **node, const char *fcn, const char *alist, int dest) const;
   jhcAliaChain *ack_meta (jhcNetNode *item) const;
-  jhcAliaChain *guard_plan (jhcAliaChain *steps, jhcNetNode *plan) const;
   jhcAliaChain *exp_fail (jhcNetNode *plan) const;
+  jhcAliaChain *ann_done (jhcNetNode *plan) const;
 
   // value range rules
   int range_rules (FILE *out, const char *cat, const char *lo, const char *hi, int nr) const;

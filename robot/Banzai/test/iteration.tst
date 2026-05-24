@@ -1,3 +1,5 @@
+// mostly verified by looking at net conversions
+
 lift each red object on the table
 remove any screws then lift the object
 take all the objects from the tables then drive forward and turn left

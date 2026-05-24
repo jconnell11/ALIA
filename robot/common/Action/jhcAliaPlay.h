@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,8 @@
 //= Play contains group of coordinated FSMs in ALIA system.
 //   main = things to accomplish before continuing (all must succeed)
 //   guard = background things to do while working on main activities 
-//           if any terminates (success or fail) whole play fails
+//           if any fails whole play fails, can succeed without penalty
+//           automatically stopped when all main activities are done
 // runs all activities in guard list and main list on every cycle
 //   order of lists reflects priorities of activities but
 //   all guard activities are higher priority than any main activity
@@ -52,6 +53,10 @@ class jhcAliaPlay
 // PRIVATE MEMBER VARIABLES
 private:
   static const int amax = 10;        /** Maximum activities in a set. */
+
+  // calling environment
+  jhcAliaChain *step;
+  int spact;                         /** User utterance encapsulated. */
 
   // sets of activities
   jhcAliaChain *main[amax], *guard[amax]; 
@@ -72,7 +77,8 @@ public:
   void MarkSeeds ();
   int MaxDepth (int cyc =1);
   int NumGoals (int leaf =0, int cyc =1);
-  int Overall () const {return verdict;}
+  int Overall () const  {return verdict;}
+  void SetModel (int n) {spact = n;}
   int ReqStatus (int i) const
     {return(((i >= 0) && (i < na)) ? status[i] : -1);}
   int SimulStatus (int i) const
@@ -88,6 +94,7 @@ public:
 
   // main functions
   int Start (class jhcAliaCore *all, int lvl);
+  int Start (jhcAliaChain *st);
   int Status ();
   int Stop (int ans =-1);
 

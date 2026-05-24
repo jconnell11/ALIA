@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,11 +56,16 @@ private:
 
 // PROTECTED MEMBER VARIABLES
 protected:
+  // conversation participants
+  jhcNetNode *self;                    // fixed node representing the robot
+  jhcNetNode *user;                    // node for current person communicating
+
   // for special node nick names
   char sep0;
 
   // version useful for FIND directive
   int vis0, ltm0, ver; 
+  UL32 now;                  
 
 
 // PUBLIC MEMBER FUNCTIONS
@@ -73,6 +78,7 @@ public:
   int NodeMax () const   {return psz;}
   int LastLabel () const {return label;}
   int Version () const   {return ver;}
+  UL32 TimeMS () const   {return now;}
   int VisDef () const    {return vis0;}
   int BinCnt (int bin) const;
   int LexHash (const char *wd) const;
@@ -87,6 +93,7 @@ public:
   void Dirty (int cnt =1) {xmod += cnt;}
 
   // main functions
+  void Pronouns (jhcNetNode *me, jhcNetNode *you)   {self = me; user = you;}
   class jhcGraphlet *BuildIn (class jhcGraphlet& g) {return BuildIn(&g);}
   class jhcGraphlet *BuildIn (class jhcGraphlet *g) {class jhcGraphlet *old = acc; acc = g; return old;}
   class jhcGraphlet *Accum () const {return acc;}
@@ -119,6 +126,8 @@ public:
   // utilities
   jhcNetNode *FindNode (const char *desc, int make =0, int omit =0);
   jhcNetNode *Wash (const jhcNetNode *ref) const;
+  void MarkUsed (const jhcBindings& b);
+  void MarkUsed (const class jhcGraphlet *g);
 
   // list access (overrides virtual)
   virtual jhcNetNode *NextNode (const jhcNetNode *prev =NULL, int bin =-1) const
@@ -140,7 +149,7 @@ public:
   // reading functions
   void ClrTrans (int n =100);
   int Load (const char *fname, int add =0, int nt =100);
-  int Load (jhcTxtLine& in, int tru);
+  int Load (jhcTxtLine& in, int tru, int *preds =NULL);
   int LoadGraph (class jhcGraphlet& g, jhcTxtLine& in, int tru =0);
 
 

@@ -20,10 +20,7 @@
 // 
 ///////////////////////////////////////////////////////////////////////////
 
-#ifndef _JHCRCVZMQ_
-/* CPPDOC_BEGIN_EXCLUDE */
-#define _JHCRCVZMQ_
-/* CPPDOC_END_EXCLUDE */
+#pragma once
 
 #include "jhcGlobal.h"
 
@@ -78,12 +75,5 @@ private:
   int stream_start ();
   int stream_stop ();
 
-
 };
-
-
-#endif  // once
-
-
-
 

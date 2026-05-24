@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
 #include <stdio.h>
 
 #include "Interface/jprintf.h"         // common video
+#include "Interface/jms_x.h"
 
 #include "Parse/jhcTxtLine.h"          // common audio
 
@@ -65,6 +66,7 @@ int jhcAssocMem::clear ()
 
 jhcAssocMem::jhcAssocMem ()
 {
+  *formal = '\0';
   rules = NULL;
   nr = 0;
   noisy = 1;                 // defaulted from jhcAliaCore
@@ -77,53 +79,54 @@ jhcAssocMem::jhcAssocMem ()
 //                             List Functions                            //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Add new rule onto tail of list.
+//= Add item onto tail of list after possibly checking for duplicates (dup > 0).
 // ann: 0 = no msgs, 1 = fail only, 2 = fail with rule, 3 = new rule 
-// returns 1 if successful, 0 or negative for some problem (consider deleting)
+// returns 1 if added, 0 if duplicate, neg for problem (consider deleting)
 
-int jhcAssocMem::AddRule (jhcAliaRule *r, int ann, int usr)
+int jhcAssocMem::AddRule (jhcAliaRule *r, int ann, int usr, int dup)
 {
   jhcAliaRule *r0 = rules, *prev = NULL;
 
   // check for likely duplication or other format problems
   if (r == NULL)
-    return 0;
+    return -1;
   if ((r->result).Empty())
   {
     jprintf(1, ann, "  ... REJECT: new rule result is empty\n");
-    return -1;
+    return -4;
   }
   if (r->Tautology())
   {
     jprintf(1, ann, "  ... REJECT: new rule is a tautology\n");
-    return -2;
+    return -3;
   }
   if (r->Bipartite())
   {
     jprintf(1, ann, "  ... REJECT: new rule is disconnected\n");
-    return -3;
+    return -2;
   }
-  while ((prev = NextRule(prev)) != NULL)
-    if (r->Identical(*prev))
-    {
-      if (usr > 0)
+  if (dup > 0)
+    while ((prev = NextRule(prev)) != NULL)
+      if (r->Identical(*prev))
       {
-        // possibly revise old rule instead of adding
-        jprintf(1, ann, "  ... KNOWN: set old rule %d confidence = %4.2f\n", 
-                prev->RuleNum(), r->conf);
-        prev->conf = r->conf;
-        if ((ann >= 2) && (noisy >= 1))
+        if (usr > 0)
         {
-          jprintf("\n.................................\n");
-          prev->Print();
-          jprintf(".................................\n\n");
+          // possibly revise old rule instead of adding
+          jprintf(1, ann, "  ... KNOWN: set old rule %d confidence = %4.2f\n", 
+                  prev->RuleNum(), r->conf);
+          prev->conf = r->conf;
+          if ((ann >= 2) && (noisy >= 1))
+          {
+            jprintf("\n.................................\n");
+            prev->Print();
+            jprintf(".................................\n\n");
+          }
+          delete r;                      // clean up since not saved
+          return 1;
         }
-        delete r;                      // clean up since not saved
-        return 1;
+        jprintf(1, ann, "  ... DUPLICATE: identical to old rule %d\n", prev->RuleNum());
+        return 0;
       }
-      jprintf(1, ann, "  ... DUPLICATE: identical to old rule %d\n", prev->RuleNum());
-      return -4;
-    }
 
   // add to end of list
   if (r0 == NULL)
@@ -238,6 +241,7 @@ int jhcAssocMem::RefreshHalo (jhcWorkMem& wmem, int dbg) const
 
 int jhcAssocMem::Consolidate (const jhcBindings& b, int dbg)
 {
+  char date[40];
   jhcBindings list, list2, m2c;
   jhcAliaRule *r2 = NULL, *r1 = NULL, *mix = NULL;
   jhcBindings *b2 = NULL, *b1 = NULL;
@@ -258,6 +262,7 @@ int jhcAssocMem::Consolidate (const jhcBindings& b, int dbg)
       {
         jprintf(1, dbg, "\nCONSOLIDATE: rule %d <== rule %d", r2->RuleNum(), r1->RuleNum());
         mix = new jhcAliaRule;
+        sprintf_s(mix->prov, "consolidate <- %s at %s", formal, jms_date(date));
         m2c.Clear();
       }
       else
@@ -270,7 +275,7 @@ int jhcAssocMem::Consolidate (const jhcBindings& b, int dbg)
     {
       jprintf(1, dbg, "\n");
       mix->LinkCombo(m2c, *r2, *b2);
-      if (AddRule(mix, 1 + dbg, 0) <= 0)
+      if (AddRule(mix, 1 + dbg) <= 0)
         delete mix;                        // possibly a duplicate
       mix = NULL;                          
       cnt++;
@@ -310,6 +315,36 @@ int jhcAssocMem::next_halo (jhcAliaRule **r, jhcBindings **b, jhcBindings& list,
 }
 
 
+//= Create a speculative new rule with condition "ctx" and result "fact".
+// returns 1 if added, 0 if rejected for some reason
+
+int jhcAssocMem::BuildRule (const jhcGraphlet& ctx, const jhcGraphlet& fact, double conf)
+{
+  char date[40];
+  jhcGraphlet pat;
+  jhcBindings mt;
+  jhcAliaRule *r = new jhcAliaRule;
+
+  // announce entry and ensure cond and result are connected
+  jprintf("\nSPECULATE: new rule based on user assertion\n");
+  pat.IncludeArgs(ctx);               
+
+  // copy ctx and fact using local nodes
+  r->BuildIn(r->cond);
+  r->Assert(pat, mt);
+  r->BuildIn(r->result);
+  r->Assert(fact, mt);
+
+  // set overall features of rule and try adding to collection
+  sprintf_s(r->prov, "speculative <- %s at %s", formal, jms_date(date));
+  r->SetConf(conf);
+  if (AddRule(r, 2, 0, 1) > 0)
+    return 1;
+  delete r;                  // delete if problem (e.g. duplicate)
+  return 0;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                            File Functions                             //
 ///////////////////////////////////////////////////////////////////////////
@@ -318,7 +353,7 @@ int jhcAssocMem::next_halo (jhcAliaRule **r, jhcBindings **b, jhcBindings& list,
 // appends to existing rules unless add <= 0
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation
 // ignores actual rule IDs from file and assigns new ones
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".rules"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".rules"
 // returns number of rules read, 0 or negative for problem
 
 int jhcAssocMem::Load (const char *base, int add, int rpt, int level)
@@ -370,8 +405,9 @@ int jhcAssocMem::Load (const char *base, int add, int rpt, int level)
     {
       // add rule to list if not a duplicate (unlikely)
       r->lvl = level;
-      strcpy_s(r->prov, src);
-      if (AddRule(r, 1, 0) > 0)
+      if (level < 2)
+        sprintf_s(r->prov, "rule %d from %s", r->pnum, src);
+      if (AddRule(r, 1, 0, 0) > 0)
         n++;
       else
       {
@@ -382,16 +418,13 @@ int jhcAssocMem::Load (const char *base, int add, int rpt, int level)
   }
 
   // possibly announce result
-  if (n > 0)
-    jprintf(2, rpt, "  %3d inference rules  from: %s\n", n, fname);
-  else
-    jprintf(2, rpt, "   -- inference rules  from: %s\n", fname);
+  jprintf(1, rpt, "  %3d inference rules   from: %s\n", n, fname);
   return n;
 }
 
 
 //= Save all current rules at or above some level to a file.
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".rules"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".rules"
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
 // returns number of rules saved, negative for problem
 
@@ -434,7 +467,7 @@ int jhcAssocMem::save_rules (FILE *out, int level) const
   while (r != NULL)
   {
     if (r->lvl >= level)
-      if (r->Save(out) > 0)
+      if (r->Save(out, 1) > 0)
       {
         fprintf(out, "\n\n");
         cnt++;
@@ -446,13 +479,13 @@ int jhcAssocMem::save_rules (FILE *out, int level) const
 
 
 //= Store alterations of confidence values relative to KB0 and KB2 rules.
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".conf"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".conf"
 // returns number of exceptions stored (writes file)
 
 int jhcAssocMem::Alterations (const char *base) const
 {
   char full[200];
-  const char *fname = base;
+  const char *sf, *fname = base;
   FILE *out;
   const jhcAliaRule *r = rules;
   int na = 0;
@@ -473,9 +506,10 @@ int jhcAssocMem::Alterations (const char *base) const
   // scan through rules for altered values
   while (r != NULL)
   {
-    if ((*(r->prov) != '\0') && (r->conf != r->conf0))
+    sf = strrchr(r->prov, ' ');
+    if ((sf != NULL) && (r->conf != r->conf0))
     {
-      fprintf(out, "%s %d = %4.2f\n", r->prov, r->pnum, r->conf);
+      fprintf(out, "%s %d = %4.2f\n", sf + 1, r->pnum, r->conf);
       na++; 
     }  
     r = r->next;
@@ -488,14 +522,14 @@ int jhcAssocMem::Alterations (const char *base) const
 
 
 //= Change default confidence values of KB0 and KB2 rules based on learning.
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".conf"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".conf"
 // returns number of rules altered (reads file)
 
 int jhcAssocMem::Overrides (const char *base)
 {
   jhcTxtLine in;
   char full[200], src[40];
-  const char *item, *fname = base;
+  const char *item, *sf, *fname = base;
   jhcAliaRule *r;
   double cf;
   int n, na = 0;
@@ -538,7 +572,8 @@ int jhcAssocMem::Overrides (const char *base)
     r = rules;
     while (r != NULL)
     {
-      if ((*(r->prov) != '\0') && (r->pnum == n) && (strcmp(r->prov, src) == 0))
+      sf = strrchr(r->prov, ' ');      // trim "rule 3 from KB2/bar"
+      if ((sf != NULL) && (r->pnum == n) && (strcmp(sf + 1, src) == 0))
       {
         // update confidence value
         r->conf = cf;

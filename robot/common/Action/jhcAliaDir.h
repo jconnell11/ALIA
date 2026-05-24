@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,10 +38,10 @@
 //= Various different kinds of directives.
 // NOTE is a special bridge between declarative and procedural
 // must remain consistent with "ktag" strings
-//                  0          1          2          3          4          5          6          7      
-enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_GATE, JDIR_PUNT, JDIR_GND,  JDIR_WAIT, JDIR_ACH, 
-                JDIR_FIND, JDIR_BIND, JDIR_EACH, JDIR_ANY,  JDIR_CHK,  JDIR_ESC,  JDIR_ADD,  JDIR_EDIT, JDIR_MAX};
-//                  8          9         10         11         12         13         14         15         16  
+//                  0          1          2          3          4          5         6              
+enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_GATE, JDIR_PUNT, JDIR_GND, JDIR_WAIT, 
+                JDIR_ACH,  JDIR_FIND, JDIR_BIND, JDIR_ALL,  JDIR_CHK,  JDIR_ADD, JDIR_EDIT, JDIR_MAX};
+//                  7          8          9         10         11         12        13         14         
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -86,7 +86,7 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_GATE, JDIR_PUNT, JDIR_GND,
 //       never a trigger for operators
 // 
 // WAIT: holds up execution until fact is matched
-//       suceeds (cont) when fact is true
+//       succeeds (cont) when fact is true
 //       never a trigger for operators
 // 
 //  ACH: work towards making item true
@@ -104,13 +104,10 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_GATE, JDIR_PUNT, JDIR_GND,
 //       only used for referential phrases, never a command
 //       triggers FIND operators
 //
-// EACH: similar to FIND but unlimited guesses
+// ALL:  similar to FIND but unlimited guesses
 //       fails if no first binding, never backtracks
-//       succeeds (alt) when no more bindings 
+//       body attached to alt, succeeds (cont) when no more bindings 
 //       typically used for implicit "all" loops
-//       triggers FIND operators
-//
-//  ANY: similar to EACH but succeeds (alt) if no bindings
 //       triggers FIND operators
 //
 //  CHK: continue if assertion is newly known to be true/false
@@ -119,13 +116,6 @@ enum JDIR_KIND {JDIR_NOTE, JDIR_DO,   JDIR_ANTE, JDIR_GATE, JDIR_PUNT, JDIR_GND,
 //       succeeds (alt) when item is definitely false 
 //       fails when no more operators and no matching facts
 // 
-//  ESC: escape if assertion is newly known to be true/false
-//       tries all applicable operators one-by-one
-//       succeeds (cont) when item is definitely false
-//       succeeds (cont) when no more operators and no matching facts
-//       fails when item is definitely true
-//       triggers CHK operators
-//
 //  ADD: accept new rule or operator into system
 //       comes after speech act to allow rejection 
 //       never a trigger for operators
@@ -145,10 +135,10 @@ private:
   static const int omax = 20;      /** Max number of operator choices.   */
   static const int hmax = 20;      /** Max non-return inhibit history.   */
   static const int smax = 20;      /** Max key variable substitutions.   */
-  static const int emax = 20;      /** Maximum EACH/ANY instantiations.  */    
+  static const int emax = 20;      /** Maximum ALL instantiations.       */    
   static const int gmax = 3;       /** Maximum FIND/BIND guesses to try. */    
 
-  // name associated with each "kind"
+  // name associated with each directive "kind"
   static const char * const ktag[JDIR_MAX];
 
   // calling environment and scoping
@@ -161,12 +151,12 @@ private:
   jhcGraphlet full;
   const jhcNetNode *focus;
   jhcNetNode *pron;
-  int subset, find0, chk0, exc, recent;
+  int subset, find0, chk0, exc, recent, sex;
 
   // choices for FIND directive
   jhcNetNode *guess[emax];
   jhcGraphlet hyp;
-  int cand, cand0, fdbg;
+  int cand, cand0, fdbg, sub0;
 
   // already tried operators
   class jhcAliaOp *op0[hmax];
@@ -187,7 +177,7 @@ public:
   // basic configuration
   jhcGraphlet key; 
   JDIR_KIND kind;
-  int root, own;
+  int root, own, sfcn;
 
   // payload for ADD 
   class jhcAliaRule *new_rule;
@@ -213,8 +203,10 @@ public:
   ~jhcAliaDir ();
   jhcAliaDir (JDIR_KIND k =JDIR_NOTE);
   JDIR_KIND Kind () const      {return kind;}
+  bool Skolem () const         {return(sfcn > 0);}
   bool IsNote () const         {return(kind == JDIR_NOTE);}
   bool IsFind () const         {return((kind == JDIR_FIND) || (kind == JDIR_BIND));}
+  bool PronFind () const       {return((kind == JDIR_FIND) && (cond.NumItems() == 1) && cond.Main()->ObjNode());}
   const char *KindTag () const {return ktag[kind];}
   jhcNetNode *KeyMain () const {return key.Main();}
   jhcNetNode *KeyAct () const  {return key.MainAct();}
@@ -228,7 +220,9 @@ public:
   int NumGoals (int leaf =0, int cyc =1);
   const jhcAliaChain *Method () const {return meth;}
   int NumGuess () const {return __max(cand, cand0);}
+  jhcNetNode *BestGuess () const {return (step->Scope())->LookUp(KeyMain());}
   int NumTries () const {return nri;}
+  UL32 FinishTime () const {return fin;}
   bool Assumed () const {return !hyp.Empty();}
   void HideAssume () 
     {jhcNetNode *n = hyp.Main(); if (n != NULL) n->SetBelief(0.0);}
@@ -240,8 +234,9 @@ public:
   int CopyBind (jhcNodePool& pool, const jhcAliaDir& ref, jhcBindings& b, const jhcGraphlet *ctx =NULL);
   void SetKind (JDIR_KIND k2) {kind = k2;}
   int SetKind (const char *tag);
+  void SetSkolem (int sk) {sfcn = sk;}
   void SetMethod (jhcAliaChain *ch) {meth = ch;}
-  bool HasAlt () const {return((kind == JDIR_CHK) || (kind == JDIR_EACH) || (kind == JDIR_ANY));}
+  bool HasAlt () const {return((kind == JDIR_CHK) || (kind == JDIR_ALL));}
   bool Involves (const jhcNetNode *item) const;
   int RefDir (jhcNetNode *src, const char *slot, jhcNodePool& pool) const;
   void MarkSeeds ();
@@ -280,13 +275,13 @@ private:
   int first_method ();
   int do_status (int res, int more);
   int next_method ();
-  int report (int val);
+  int report (int rc);
   void alter_pref () const;
   void err_rule ();
   void halt_subgoal ();
 
   // variable scoping
-  void subst_key (jhcBindings *sc);
+  void subst_key (jhcBindings *sc, int rem);
   void revert_key ();
 
   // method selection

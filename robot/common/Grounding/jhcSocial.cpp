@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2019-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ jhcSocial::jhcSocial ()
 
   // processing parameters
   Defaults();
-  gok = 1;                   // either 1 or -1
+  gok = 20;                  // 0 = no ghost, else cycles to wait (80Hz)
   dbg = 2;
 }
 
@@ -107,13 +107,13 @@ int jhcSocial::snd_params (const char *fname)
   ps->SetTag("soc_snd", 0);
   ps->NextSpec4( &recent, 60,   "Max speech lag (cyc)");
   ps->NextSpecF( &pdist,  36.0, "Close person offset (in)");
-  ps->NextSpecF( &rtime,   1.5, "Rise time for tall (sec)");
+  ps->NextSpecF( &rsp,     0.5, "Rise rate for tall");
   ps->NextSpecF( &sdev,   15.0, "Face sound offset (deg)");
   ps->NextSpecF( &aimed,   2.0, "Gaze final offset (deg)");
-  ps->NextSpecF( &gtime,   0.3, "Gaze response (sec)"); 
+  ps->NextSpecF( &gsp,     0.5, "Gaze rate for sound"); 
 
   ps->NextSpecF( &side,   30.0, "Body rotate thresh (deg)");    // 0 = don't 
-  ps->NextSpecF( &btime,   1.5, "Rotate response (sec)");      
+  ps->NextSpecF( &bsp,     1.0, "Body rotate rate");      
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -133,10 +133,28 @@ int jhcSocial::move_params (const char *fname)
   ps->NextSpecF( &aquit,  30.0, "Timeout for approach (sec)");
   ps->NextSpecF( &ideal,  28.0, "Following distance (in)");
   ps->NextSpecF( &worry,  48.0, "Too far distance (in)");
-  ps->NextSpecF( &orient, 60.0, "Rotate until aligned (deg)");
+  ps->Skip();
 
   ps->NextSpecF( &atime,   2.0, "Approach response (sec)");
   ps->NextSpecF( &ftime,   1.0, "Follow response (sec)");
+  ok = ps->LoadDefs(fname);
+  ps->RevertAll();
+  return ok;
+}
+
+
+//= Parameters for exploratory motion.
+
+int jhcSocial::exp_params (const char *fname)
+{
+  jhcParam *ps = &eps;
+  int ok;
+
+  ps->SetTag("soc_exp", 0);
+  ps->NextSpecF( &xsp,    0.5, "Wander motion rate");    
+  ps->NextSpecF( &wtime, 60.0, "Wander timeout (sec)");
+  ps->NextSpecF( &open,   0.4, "Camera stable at end (sec)");
+  ps->NextSpecF( &wang,  40.0, "Final wander tilt (deg)");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -156,6 +174,7 @@ int jhcSocial::Defaults (const char *fname)
   ok &= attn_params(fname);
   ok &= snd_params(fname);
   ok &= move_params(fname);
+  ok &= exp_params(fname);
   return ok;
 }
 
@@ -169,6 +188,7 @@ int jhcSocial::SaveVals (const char *fname) const
   ok &= aps.SaveVals(fname);
   ok &= sps.SaveVals(fname);
   ok &= mps.SaveVals(fname);
+  ok &= eps.SaveVals(fname);
   return ok;
 }
 
@@ -185,7 +205,11 @@ void jhcSocial::local_platform (void *soma, const char *kind)
   if (strcmp(kind, "jhcVisGrok") != 0)           // type check
     return;
   rwi = (jhcVisGrok *) soma;
+  s3 = &(rwi->s3);
+  body = rwi->body;
   neck = rwi->neck;
+  lift = rwi->lift;
+  base = rwi->base;
 }
 
 
@@ -279,9 +303,12 @@ void jhcSocial::bind_user (int sp)
   if (dude == user)                              // already correct
     return;
 
-  // see if user needs to be changed
-  t = (rwi->s3).TrackIndex(sp);
+  // get name associated with head (if any)
+  t = s3->TrackIndex(sp);
   name = (rwi->fn).FaceName(t);
+  jprintf(1, dbg, "  ... SPEAKER ... visual head %s (%s)\n", dude->Nick(), name);
+
+  // see if user needs to be changed
   id = atree->ExtRef(user, 1);
   if (((id > 0) && (id != sp)) || ((id <= 0) && atree->NameClash(user, name)))
   {
@@ -292,7 +319,7 @@ void jhcSocial::bind_user (int sp)
   // keep user but steal track ID (unlinks dude node if any) - no NOTEs
   atree->BuildIn(chg);
   link_track(user, t);
-  atree->AddName(user, name); 
+  atree->NameNode(user, name); 
   atree->AddProp(user, "hq", "visible", 0, -1.0, 1);
   atree->RevealAll(chg);
   atree->BuildIn(NULL);
@@ -309,11 +336,11 @@ void jhcSocial::vip_seen ()
 
   // see if newly recognized person is different from last one
   if ((t = (rwi->fn).JustNamed()) >= 0)
-    if ((reco = (rwi->s3).PersonID(t)) != prev)
+    if ((reco = s3->PersonID(t)) != prev)
     {
       // find wmem node compatible with name or make new one
       if ((agt = rpt->Person((rwi->fn).FaceName(t))) == NULL)
-        if ((agt = rpt->NodeFor((rwi->s3).PersonID(t), 1)) == NULL)
+        if ((agt = rpt->NodeFor(s3->PersonID(t), 1)) == NULL)
           agt = rpt->NewObj("dude");
       link_track(agt, t);
 
@@ -347,7 +374,7 @@ void jhcSocial::dude_seen ()
   if ((prev == 0) || (jms_secs(seen, prev) > alone))
   {
     // generally make new node for person        
-    if ((agt = rpt->NodeFor((rwi->s3).PersonID(t), 1)) == NULL)
+    if ((agt = rpt->NodeFor(s3->PersonID(t), 1)) == NULL)
       agt = rpt->NewObj("dude");
     link_track(agt, t);
 
@@ -378,8 +405,8 @@ void jhcSocial::dude_close ()
   }
 
   // find distance of closest person to front of robot
-  id = (rwi->s3).PersonID(t);
-  dist = rwi->FrontDist((rwi->s3).RefPerson(t));  
+  id = s3->PersonID(t);
+  dist = rwi->FrontDist(s3->RefPerson(t));  
   close = (((dist < pnear) && (id != pal)) ? 1 : 0);
   very  = (((dist < scare) && ((prox <= 0) || (id != pal))) ? 1 : 0);
 
@@ -387,7 +414,7 @@ void jhcSocial::dude_close ()
   if ((close > 0) || (very > 0))
   {
     // generally make new node for person        
-    if ((agt = rpt->NodeFor((rwi->s3).PersonID(t), 1)) == NULL)
+    if ((agt = rpt->NodeFor(s3->PersonID(t), 1)) == NULL)
       agt = rpt->NewObj("dude");
     link_track(agt, t);
 
@@ -422,7 +449,7 @@ void jhcSocial::lost_dudes ()
   int id = 0;
 
   while ((id = rpt->VisEnum(id, 1)) > 0)
-    if ((rwi->s3).TrackIndex(id) < 0)   
+    if (s3->TrackIndex(id) < 0)   
     {
       rpt->StartNote();
       rpt->NewProp(rpt->NodeFor(id, 1), "hq", "visible", 1);
@@ -440,12 +467,12 @@ void jhcSocial::wmem_heads ()
   jhcBodyData *p;
   jhcAliaDesc *agt;
   const char *name;
-  int i, nlim = (rwi->s3).PersonLim();
+  int i, nlim = s3->PersonLim();
 
   for (i = 0; i < nlim; i++)
-    if ((rwi->s3).PersonOK(i))
+    if (s3->PersonOK(i))
     {
-      p = (rwi->s3).RefPerson(i);
+      p = s3->RefPerson(i);
       if ((agt = rpt->NodeFor(p->id, 1)) == NULL)
       {
         p->state = 0;                            // do not draw
@@ -491,13 +518,13 @@ int jhcSocial::soc_talk (const jhcAliaDesc& desc, int i)
   int t;
 
   // lock to sensor cycle 
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (rwi->CommOK() <= 0)
     return err_body();
-  ht = (rwi->lift)->Height();
+  ht = lift->Height();
 
   // possibly announce entry and set likely lowest head position
   if (cst[i] <= 0)
@@ -509,22 +536,22 @@ int jhcSocial::soc_talk (const jhcAliaDesc& desc, int i)
 
     caux[i] = (rwi->mic)->VoiceDir();
     rads = D2R * (caux[i] + 90.0);
-    cpos[i].SetVec3(pdist * cos(rads), pdist * sin(rads), (rwi->s3).h0);
+    cpos[i].SetVec3(pdist * cos(rads), pdist * sin(rads), s3->h0);
     cst[i] = 2;
   }
   else 
-    (rwi->base)->AdjustAng(caux[i]);   
+    base->AdjustAng(caux[i]);   
     
   // always check for head aligned with sound direction (speaker = user)
   if ((t = rwi->HeadAlong(cpos[i], caux[i], sdev)) >= 0)
   {
-    bind_user((rwi->s3).PersonID(t)); 
+    bind_user(s3->PersonID(t)); 
     if (cst[i] > 1)
       ct0[i] = 0;
     cst[i] = 1;
   }
   else
-    (rwi->base)->AdjustTarget(cpos[i]);   
+    base->AdjustTarget(cpos[i]);   
 
   // look directly at chosen spot (head or guess)
   if (cst[i] <= 2)
@@ -539,14 +566,14 @@ int jhcSocial::soc_talk (const jhcAliaDesc& desc, int i)
     {
       if (chk_neck(i, gerr + berr) > 0)
         return -1;
-      neck->GazeFix(pan, tilt, gtime, cbid[i]);
+      neck->GazeTarget(pan, tilt, gsp, cbid[i]);
       if (berr > 0.0)
-        (rwi->base)->TurnFix(((pan >= 0.0) ? side : -side), btime, 1.5, cbid[i]);  
+        base->TurnTarget(((pan >= 0.0) ? side : -side), bsp, cbid[i]);  
       return 0;
     }
     if (cst[i] == 1)
       return 1;
-    cpos[i].SetZ((rwi->s3).h1);
+    cpos[i].SetZ(s3->h1);
     ct0[i] = 0;
     cst[i] = 3;
     jprintf(2, dbg, "|- Social %d: rise for head\n", cbid[i]);
@@ -559,7 +586,7 @@ int jhcSocial::soc_talk (const jhcAliaDesc& desc, int i)
     {
       if (chk_neck(i, gerr) > 0)
         return -1;
-      neck->GazeFix(cpos[i], ht, rtime, cbid[i]);
+      neck->GazeAt(cpos[i], ht, rsp, cbid[i]);
       return 0;
     }
     ct0[i] = 0;
@@ -572,7 +599,7 @@ int jhcSocial::soc_talk (const jhcAliaDesc& desc, int i)
   {
     if (chk_neck(i, gerr) > 0)
       return -1;
-    neck->GazeFix(0.0, 0.0, rtime, cbid[i]);
+    neck->GazeTarget(0.0, 0.0, rsp, cbid[i]);
     return 0;
   }
   return 1;
@@ -611,21 +638,21 @@ int jhcSocial::soc_orient (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle 
   if ((id = rpt->VisID(cobj[i], 1)) <= 0)
     return err_person(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (rwi->CommOK() <= 0)
     return err_body();
 
   // see if timeout then check if person is still there 
   if (jms_diff(jms_now(), ct0[i]) > 0)
     return -1;
-  if ((targ = (rwi->s3).GetID(id)) == NULL)
+  if ((targ = s3->GetID(id)) == NULL)
     return -1;
 
   // re-issue basic command if face not in view
-  neck->AimFor(pan, tilt, *targ, (rwi->lift)->Height());
+  neck->AimFor(pan, tilt, *targ, lift->Height());
   if ((fabs(pan) <= ptol) && (fabs(tilt) <= ttol))
     return 1;
   if (cst[i] <= 0)
@@ -664,17 +691,17 @@ int jhcSocial::soc_look (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle 
   if ((id = rpt->VisID(cobj[i], 1)) <= 0)
     return err_person(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (rwi->CommOK() <= 0)
     return err_body();
 
   // see if timeout then check if person is still there 
   if (jms_diff(jms_now(), ct0[i]) > 0)
     return -1;
-  if ((rwi->s3).GetID(id) == NULL)
+  if (s3->GetID(id) == NULL)
     return -1;
 
   // re-issue basic command if face not centered
@@ -717,17 +744,17 @@ int jhcSocial::soc_align (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle 
   if ((id = rpt->VisID(cobj[i], 1)) <= 0)
     return err_person(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (rwi->CommOK() <= 0)
     return err_body();
 
   // see if timeout then check if person is still there
   if (jms_diff(jms_now(), ct0[i]) > 0)
     return -1;
-  if ((targ = (rwi->s3).GetID(id)) == NULL)
+  if ((targ = s3->GetID(id)) == NULL)
     return -1;
 
   // re-issue basic command if face not centered and body aligned
@@ -776,10 +803,10 @@ int jhcSocial::soc_approach (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle 
   if ((id = rpt->VisID(cobj[i], 1)) <= 0)
     return err_person(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (rwi->CommOK() <= 0)
     return err_body();
 
@@ -789,7 +816,7 @@ int jhcSocial::soc_approach (const jhcAliaDesc& desc, int i)
     jprintf(1, dbg, " { soc_approach: timeout %3.1f secs }\n", xs);
     return -1;
   }
-  if ((targ = (rwi->s3).GetID(id)) == NULL)
+  if ((targ = s3->GetID(id)) == NULL)
   {
     jprintf(1, dbg, " { soc_approach: lost person %s }\n", cobj[i]->Nick()); 
     return -1;
@@ -852,10 +879,10 @@ int jhcSocial::soc_retreat (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle 
   if ((id = rpt->VisID(cobj[i], 1)) <= 0)
     return err_person(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (rwi->CommOK() <= 0)
     return err_body();
 
@@ -865,7 +892,7 @@ int jhcSocial::soc_retreat (const jhcAliaDesc& desc, int i)
     jprintf(1, dbg, " { soc_retreat: timeout %3.1f secs [%3.1f] }\n", aquit + xs, aquit);
     return -1;
   }
-  if ((targ = (rwi->s3).GetID(id)) == NULL)
+  if ((targ = s3->GetID(id)) == NULL)
   {
     jprintf(1, dbg, " { soc_retreat: lost person %s }\n", cobj[i]->Nick()); 
     return -1;
@@ -919,15 +946,15 @@ int jhcSocial::soc_follow (const jhcAliaDesc& desc, int i)
   // lock to sensor cycle 
   if ((id = rpt->VisID(cobj[i], 1)) <= 0)
     return err_person(cobj[i]);
-  if (rwi->Ghost())
-    return gok;
   if (!rwi->Accepting())
     return 0;
+  if (rwi->Ghost())
+    return NoHW(gok, i);
   if (rwi->CommOK() <= 0)
     return err_body();
 
   // check if person is still there 
-  if ((targ = (rwi->s3).GetID(id)) == NULL)
+  if ((targ = s3->GetID(id)) == NULL)
   {
     jprintf(1, dbg, " { soc_follow: lost person %s }\n", cobj[i]->Nick()); 
     return -1;
@@ -965,11 +992,9 @@ int jhcSocial::soc_follow (const jhcAliaDesc& desc, int i)
 
 int jhcSocial::soc_explore0 (const jhcAliaDesc& desc, int i)
 {
-  double wtime = 60.0;                 // timeout in secs
-
   if ((rwi == NULL) || (rpt == NULL))
     return -1;
-  ct0[i] = jms_now() + ROUND(1000.0 * wtime);
+  ct0[i] = jms_now();
   return 1;
 }
 
@@ -979,29 +1004,53 @@ int jhcSocial::soc_explore0 (const jhcAliaDesc& desc, int i)
 
 int jhcSocial::soc_explore (const jhcAliaDesc& desc, int i)
 {
-  double xs, wtime = 120.0;
+  double run, tol = 1.0;
 
-  // check for timeout then lock to sensor cycle 
-  if ((xs = jms_elapsed(ct0[i])) > 0.0)
-  {
-    jprintf(1, dbg, " { soc_wander: timeout %3.1f secs [%3.1f] }\n", wtime + xs, wtime);
-    return 1;
-  }
-  if (rwi->Ghost())
-    return gok;
+  // lock to sensor cycle
   if (!rwi->Accepting())
     return 0;
-  if (rwi->CommOK() <= 0)
+  if (rwi->Ghost())
+    return NoHW(gok, i);
+  if ((rwi->BaseOK() <= 0) || (rwi->NeckOK() <= 0))
     return err_body();
 
-  // go forward as long as obstacles fairly far away
+  // possibly announce entry
   if (cst[i] <= 0)
   {
     jprintf(2, dbg, "|- Social %d: wander\n", cbid[i]);
     cst[i] = 1;
   }
-  rwi->MapPath(cbid[i]);
-  rwi->Explore(0.5, cbid[i]);
+
+  // always timeout but prefer ending when facing open space
+  run = jms_elapsed(ct0[i]);
+  if (run > (1.2 * wtime))
+    cst[i] = 3;                        // end now
+  if ((run > wtime) && (body->RngStatic() > open))
+    cst[i] = 2;                        // gaze up
+
+  // generally go forward as long as obstacles fairly far away 
+  if (cst[i] <= 1)
+  {
+    rwi->MapPath(cbid[i]);
+    rwi->Explore(xsp, cbid[i]);          
+    return 0;
+  }
+
+  // stop and look upwards (for people) at end 
+  if (cst[i] == 2)
+  {
+    base->Park(cbid[i]);
+    neck->GazeTarget(0.0, wang, 0.5, cbid[i]);
+    if (neck->TiltErr(wang) <= tol)            
+      cst[i] = 3;                      // end now
+  }
+
+  // possibly announce end
+  if (cst[i] >= 3)
+  {
+    jprintf(1, dbg, " { soc_wander: timeout %3.1f secs [%3.1f] }\n", jms_elapsed(ct0[i]), wtime);
+    return 1;
+  }
   return 0;
 }
 
@@ -1016,14 +1065,20 @@ int jhcSocial::soc_explore (const jhcAliaDesc& desc, int i)
 
 int jhcSocial::chk_neck (int i, double err)
 {
-  double prog = 1.0, tim = 0.5;        // 0.1 deg about 15 cycles
+  double chg = cerr[i] - err, prog = 1.0, tim = 0.5;       // 0.1 deg about 15 cycles
 
-  if ((ct0[i] == 0) || ((cerr[i] - err) >= prog))
+  // check for some progress
+  if ((ct0[i] == 0) || (chg >= prog))
   {
-    ct0[i] = jms_now();
     cerr[i] = err;
+    ct0[i] = jms_now();                // reset timer once movement starts
+    return 0;
   }
-  else if (jms_elapsed(ct0[i]) > tim)
+
+  // no progress
+  if (chg < 0.0)                       // only accumulate small positive steps
+    cerr[i] = err;
+  if (jms_elapsed(ct0[i]) > tim)
     return 1;
   return 0;
 }
@@ -1035,26 +1090,26 @@ int jhcSocial::chk_neck (int i, double err)
 
 int jhcSocial::chk_base (int i, double err)
 {
-  double prog = 0.5;                   // 0.5" over about 1 sec
+  double chg = cerr[i] - err, prog = 0.5;        // 0.5" over about 1 sec
   int tim = 30;                      
   
   // record cycle timestamp but ignore err if in saccade
   if (rwi->Survey())
     return 0;
 
-  // possibly reset last error if enough progress made
-  if ((ccnt[i] <= 0) || (fabs(cerr[i] - err) >= prog))
+  // check for some progress
+  if ((ccnt[i] <= 0) || (chg >= prog))
   {
     cerr[i] = err;
-    ccnt[i] = 1;
+    ccnt[i] = 0;                       // reset count once movement starts
     return 0;
   }
 
-  // increment amount of time since noticeable progress
+  // no progress
+  if (chg < 0.0)                       // only accumulate small positive steps
+    cerr[i] = err;
   ccnt[i] += 1;
-  if (ccnt[i] > tim) 
-    return 1;
-  return 0;
+  return((ccnt[i] > tim) ? 1 : 0);
 }
 
 
@@ -1064,8 +1119,9 @@ int jhcSocial::chk_base (int i, double err)
 
 //= Complain about the body not working.
 // <pre>
-//   NOTE[ act-1 -lex-  work
-//               -neg-  1
+//   NOTE[ fcn-1 -lex-  work
+//               -fcn-> act-1
+//         act-1 -neg-  1
 //               -agt-> obj-1
 //         ako-1 -lex-  body
 //               -ako-> obj-1
@@ -1076,6 +1132,8 @@ int jhcSocial::chk_base (int i, double err)
 int jhcSocial::err_body ()
 {
   jhcAliaDesc *part, *own, *arm, *fail;
+
+rwi->Broken();
 
   rpt->StartNote();
   part = rpt->NewObj("sys");
@@ -1118,7 +1176,7 @@ int jhcSocial::err_person (jhcAliaDesc *dude)
 
 void jhcSocial::link_track (jhcAliaDesc *agt, int t)
 {
-  jhcBodyData *p = (rwi->s3).RefPerson(t);
+  jhcBodyData *p = s3->RefPerson(t);
   jhcAliaDesc *old = rpt->NodeFor(p->id, 1);
 
   // associate id for track with given node (if changed)

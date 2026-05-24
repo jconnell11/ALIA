@@ -11,6 +11,7 @@
 //  <%obj-i> <$add>
   <%obj> <$add>
   there is <%obj-i>
+  to <ACT> <$add>
 
 
 // fact about some indeterminate object
@@ -35,8 +36,8 @@
 
 =[%fact-n]
   <NAME> (is) a name
-  <NAME> (is) (<art>) <desc-p> name
-  (<art>) <desc-p> name (is) <NAME>
+  <NAME> (is) (<NEG>) (<art>) <desc-p> name
+  (<art>) <desc-p> name (is) (<NEG>) <NAME>
 
 
 // verb phrase
@@ -343,6 +344,7 @@
 
 =[dir3]
   (<DEG>) <DIR> (((<DEG>) <DIR>) and (<DEG>) <DIR>)
+  <DIR> <DEG>
 
 
 // manner of acting

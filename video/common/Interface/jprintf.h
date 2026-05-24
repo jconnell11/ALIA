@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2019 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ const char *jprintf_log (int only =0);
 void jprintf_sync ();
 int jprintf_close ();
 int jprintf_end (const char *msg =NULL, ...);
+int jprintf_purge (const char *dir, int days =14);
 
 int jprintf (const char *msg, ...);
 int jprintf (int th, int lvl, const char *msg, ...);

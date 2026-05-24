@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ public:
   // creation and initialization
   ~jhcBindings ();
   jhcBindings (const jhcBindings *ref =NULL);
-  void Clear () {nb = 0;}
+  void Clear () {nb = 0; expect = 0;}            // added clear of "expect"
   jhcBindings *Copy (const jhcBindings& ref);
   void Copy (const jhcBindings *ref) 
     {if (ref != NULL) Copy(*ref);}
@@ -96,6 +96,7 @@ public:
   void ReplaceSubs (const jhcBindings& alt);
   void CopyReplace (const jhcBindings& ref, const jhcBindings& alt)
     {Copy(ref); ReplaceSubs(alt);}
+  void Merge (const jhcBindings& extra);
   void Print (const char *prefix =NULL, int lvl =0, int num =0) const;
   void Print (int lvl, int num =0) const {Print(NULL, lvl, num);}
 

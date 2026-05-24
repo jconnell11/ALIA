@@ -194,6 +194,7 @@ public:
   double TiltDev () const {return((fit > 0) ? tfit : tavg);}
   double RollDev () const {return((fit > 0) ? rfit : ravg);}
   double HtDev () const   {return((fit > 0) ? hfit : havg);}
+  double SurfHt () const  {return(ztab - HtDev());}
 
   // position and size conversion routines
   double W2X (double wx) const {return((wx + x0) / ipp);}

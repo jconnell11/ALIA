@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,6 +48,8 @@ public:
   virtual int LiftTarget (double high, double rate =1.0, int bid =10) =0;
   int LiftShift (double dz, double rate =1.0, int bid =10) 
     {return LiftTarget(Height() + dz, rate, bid);}
+  int Park (int bid =10)
+    {return LiftTarget(0.0, 0.0, bid);}
 
   // profiled motion progress
   virtual double LiftErr (double high, int abs =1) const =0;

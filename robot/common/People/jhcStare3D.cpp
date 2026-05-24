@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2021-2025 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@
 
 jhcStare3D::jhcStare3D ()
 {
-  w2b.SetSize(4, 4);
   strcpy_s(name, "s3d");
   sm_bg = 7;                // background thread parameters
   pmin_bg = 10;
@@ -94,7 +93,7 @@ void jhcStare3D::Reset (double ftime)
 
   // make jhcParse3D consistent with jhcOverhead3D
   jhcParse3D::SetScale(ztab + zlo, ztab + zhi, IPP());  
-  jhcParse3D::SetView(0.0, MX0(), MY0()); 
+  jhcParse3D::ScanEmbed(0.0, MX0(), MY0()); 
   jhcParse3D::MapSize(map);
 }
 
@@ -128,6 +127,10 @@ int jhcStare3D::PersonLim (int trk) const
   return((trk > 0) ? NumPotential() : NumRaw());
 }
 
+
+///////////////////////////////////////////////////////////////////////////
+//                              Basic Access                             //
+///////////////////////////////////////////////////////////////////////////
 
 //= See if a particular person index is valid.
 
@@ -294,7 +297,7 @@ int jhcStare3D::PersonTouch (double wx, double wy, int trk)
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                              Main Functions                           //
+//                            Person Selection                           //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Find person closest in 3D to camera origin in projection space.
@@ -324,6 +327,10 @@ int jhcStare3D::Closest (double front, int trk) const
   return win;
 }
 
+
+///////////////////////////////////////////////////////////////////////////
+//                         Geometric Properties                          //
+///////////////////////////////////////////////////////////////////////////
 
 //= Gives position of center of person's head.
 // returns 1 if okay, 0 if invalid
@@ -435,6 +442,10 @@ int jhcStare3D::HeadBoxCam (jhcRoi& box, int i, int view, int trk, double sc)
   return 1;
 }
 
+
+///////////////////////////////////////////////////////////////////////////
+//                         Semantic Properties                           //
+///////////////////////////////////////////////////////////////////////////
 
 //= Find the display tag associated with a particular ID.
 // returns NULL if bad ID given
@@ -612,7 +623,7 @@ int jhcStare3D::PersonCam (jhcImg& dest, int i, int view, int trk, int rev, int 
 {
   jhcRoi box;
   jhcMatrix rel(4);
-  jhcBodyData *guy = RefPerson(i, trk); 
+  jhcBodyData *guy = RefPerson(i, trk);                        
   double sz0 = fabs(sz), sc = dest.YDim() / (double) InputH();
   int id, w = dest.XDim(), c = abs(col);
 
@@ -625,7 +636,7 @@ int jhcStare3D::PersonCam (jhcImg& dest, int i, int view, int trk, int rev, int 
   // find image footprint of cylinder around head point
   if (col >= 0)
     SetColorGeom(view);
-  BeamCoords(rel, *guy);
+  BeamCoords(rel, *guy);       
   ImgCylinder(box, rel, sz0, sz0, sc);
   if (rev > 0)
     box.MirrorRoi(w);

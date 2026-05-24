@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2012-2018 IBM Corporation
-// Copyright 2024-205 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -359,6 +359,8 @@ int jhcLabel::make_label (const char *txt, int mag, int just)
   int cnt, w, y0, x0 = 0;
 
   // check for font then setup output image
+  if ((txt == NULL) || (*txt == '\0'))
+    return 0;
   if (font_users <= 0)
     return 0;
   cnt = set_size(txt, mag);

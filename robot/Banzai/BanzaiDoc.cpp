@@ -205,7 +205,8 @@ BEGIN_MESSAGE_MAP(CBanzaiDoc, CDocument)
     ON_COMMAND(ID_MANIP_FINGERPOSE,&CBanzaiDoc::OnManipFingerpose)
     ON_COMMAND(ID_IMAGES_RANGERFINDER,&CBanzaiDoc::OnImagesRangerfinder)
     ON_COMMAND(ID_IMAGES_COLORCAMERA,&CBanzaiDoc::OnImagesColorcamera)
-    END_MESSAGE_MAP()
+      ON_COMMAND(ID_DEMO_PREF,&CBanzaiDoc::OnDemoPref)
+      END_MESSAGE_MAP()
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -285,7 +286,7 @@ BOOL CBanzaiDoc::OnNewDocument()
   //         =  2 for restricted operation, expiration enforced
   cripple = 0;
   ver = ec.Version();
-  LockAfter(12, 2025, 7, 2025);
+  LockAfter(10, 2026, 5, 2026);
 
   // JHC: if this function is called, app did not start with a file open
   // JHC: initializes display object which depends on document
@@ -1848,9 +1849,9 @@ int CBanzaiDoc::interact_params (const char *fname)
   ps->NextSpec4( &(ec.amode), 2, "Wake (on, ends, front, solo)");
   ps->NextSpec4( &(ec.tts),   0, "Vocalize output");
   ps->NextSpec4( &fsave,      0, "Face model update");
-
-  ps->NextSpec4( &(ec.vol),   1, "Load baseline volition");
-  ps->NextSpec4( &(ec.acc),   0, "Skills (none, load, update)");
+ 
+  ps->NextSpec4( &inter,      0, "User interaction log");
+  ps->NextSpec4( &cvt,        0, "Net conversion log");
   ok = ps->LoadDefs(fname);
   ps->RevertAll();
   return ok;
@@ -1864,26 +1865,6 @@ void CBanzaiDoc::OnDemoDemooptions()
 	jhcPickVals dlg;
 
   dlg.EditParams(ips); 
-}
-
-
-// Control what basic info gets printed to console window
-
-void CBanzaiDoc::OnDemoConsolemsgs()
-{
-	jhcPickVals dlg;
-
-  dlg.EditParams(ec.mps); 
-}
-
-
-// Control debugging messages from action kernels
-
-void CBanzaiDoc::OnDemoKerneldebug()
-{
-	jhcPickVals dlg;
-
-  dlg.EditParams(ec.kps); 
 }
 
 
@@ -1904,6 +1885,36 @@ void CBanzaiDoc::OnDemoAttn()
 	jhcPickVals dlg;
 
   dlg.EditParams(ec.tps); 
+}
+
+
+// Preference and confidence threshold adjustments
+
+void CBanzaiDoc::OnDemoPref()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams((ec.atree).aps); 
+}
+
+
+// Control what basic info gets printed to console window
+
+void CBanzaiDoc::OnDemoConsolemsgs()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(ec.mps); 
+}
+
+
+// Control debugging messages from action kernels
+
+void CBanzaiDoc::OnDemoKerneldebug()
+{
+	jhcPickVals dlg;
+
+  dlg.EditParams(ec.kps); 
 }
 
 
@@ -1950,12 +1961,12 @@ void CBanzaiDoc::OnDemoTextfile()
   system("cls");
   ec.spin = 0;
   d.StatusText("Initializing robot ...");
-  if (ec.Reset(rob) <= 0)
+  if (ec.Reset(rob, cvt) <= 0)
   {
     jprintf_close();
     return;
   }
-  chat.Reset(0, "log", eb->rname);
+  chat.Reset(0, ((inter > 0) ? "log" : NULL), eb->rname);
   SetForegroundWindow(chat);
   if (next_line(in, 200, f))
     chat.Inject(in);
@@ -2074,7 +2085,7 @@ void CBanzaiDoc::OnDemoInteractive()
   // reset all required components
   system("cls");
   d.StatusText("Initializing robot ...");
-  if (ec.Reset(rob) <= 0)
+  if (ec.Reset(rob, cvt) <= 0)
   {
     if (cmd_line > 0)
       ec.SpeakError("My body is not working");
@@ -2083,7 +2094,7 @@ void CBanzaiDoc::OnDemoInteractive()
     d.StatusText("Failed.");
     return;
   }
-  chat.Reset(0, "log", eb->rname);
+  chat.Reset(0, ((inter > 0) ? "log" : NULL), eb->rname);
   SetForegroundWindow(chat);
 
   // announce start and input mode
@@ -3756,7 +3767,8 @@ void CBanzaiDoc::OnDetectionGazesurface()
       (eb->neck).HeadLoc(head, (eb->lift).Height());
       tab->SurfEdge(edge);
       (eb->neck).AimFor(pan, tilt, edge, (eb->lift).Height());
-      (eb->neck).GazeFix(pan, tilt, 0.5);
+      (eb->neck).PanFix(pan, 0.5);
+      (eb->neck).TiltFix(tilt, 0.5);
 
       // make pretty pictures
       omap.Clone(sobj->map);
@@ -5423,4 +5435,5 @@ int CBanzaiDoc::set_z16_tof (jhcImg& dest, const void *pels) const
   } 
   return 1;
 }
+
 

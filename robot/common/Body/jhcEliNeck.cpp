@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ jhcEliNeck::jhcEliNeck ()
   LoadCfg();
   Defaults();
   current_pose(pos0, dir);
-  stable = 30;                         // assume static at start
+  stable = 1.0;                        // assume static at start
 }
 
 
@@ -302,7 +302,7 @@ int jhcEliNeck::Reset (int rpt, int chk)
   t0 = Tilt();
   ipv = 0.0;
   itv = 0.0;
-  stable = 30;  
+  stable = 1.0;  
 
   // control loop performance
   pvel = 0.0;
@@ -451,7 +451,7 @@ int jhcEliNeck::Limp ()
 int jhcEliNeck::Update ()
 {
   UL32 last = now;
-  double s, p, t, mix = 0.5;
+  double p, t, s = 0.0, mix = 0.5;
 
   // make sure hardware is working
   if ((nok < 0) || (dyn == NULL))
@@ -480,9 +480,9 @@ int jhcEliNeck::Update ()
 
   // update stable count
   if ((fabs(dir.P() - p0) <= ndone) && (fabs(dir.T() - t0) <= ndone))
-    stable = __max(0, stable) + 1;
+    stable = __max(0.0, stable) + s;
   else
-    stable = __min(0, stable) - 1;
+    stable = __min(0.0, stable) - s;
 
   // set up for new target arbitration
   clr_locks(0);
@@ -645,17 +645,15 @@ void jhcEliNeck::AimFor (double& p, double& t, const jhcMatrix& targ, double lif
 ///////////////////////////////////////////////////////////////////////////
 
 //= Copy parameters for motion target pose and slew speed.
-// if tilt rate = 0 then copies pan rate
 // bid value must be greater than previous command to take effect
 // returns 1 if newly set (both parts), 0 if pre-empted by higher priority (perhaps partially)
 
-int jhcEliNeck::GazeTarget (double pan, double tilt, double p_rate, double t_rate, int bid)
+int jhcEliNeck::GazeTarget (double pan, double tilt, double rate, int bid)
 {
-  double r = ((t_rate != 0.0) ? t_rate : p_rate);
   int pok, tok;
 
-  pok = PanTarget(pan, p_rate, bid);
-  tok = TiltTarget(tilt, r, bid);
+  pok = PanTarget(pan, rate, bid);
+  tok = TiltTarget(tilt, rate, bid);
   return __min(pok, tok);
 }
 
@@ -665,7 +663,7 @@ int jhcEliNeck::GazeTarget (double pan, double tilt, double p_rate, double t_rat
 
 int jhcEliNeck::PanTarget (double pan, double rate, int bid)
 {
-  if (bid <= plock)
+  if (bid < plock)
     return 0;
   plock = bid;
   stiff = 1;
@@ -679,7 +677,7 @@ int jhcEliNeck::PanTarget (double pan, double rate, int bid)
 
 int jhcEliNeck::TiltTarget (double tilt, double rate, int bid)
 {
-  if (bid <= tlock)
+  if (bid < tlock)
     return 0;
   tlock = bid;
   stiff = 1;
@@ -692,23 +690,45 @@ int jhcEliNeck::TiltTarget (double tilt, double rate, int bid)
 // only approximate at start since head position changes
 // does NOT coordinate pan and tilt speeds for straight arc
 
-int jhcEliNeck::GazeAt (const jhcMatrix& targ, double lift, double rate, int bid)
+int jhcEliNeck::GazeAt (double wx, double wy, double wz, double lift, double rate, int bid)
 {
+  jhcMatrix targ(4);
   double pan, tilt;
 
+  targ.SetVec3(wx, wy, wz);
   AimFor(pan, tilt, targ, lift);
-  return GazeTarget(pan, tilt, rate, rate, bid);
+  return GazeTarget(pan, tilt, rate, bid);
 }
 
 
-//= Move gaze toward target position reducing residual over given number of seconds.
 
-int jhcEliNeck::GazeFix (const jhcMatrix& targ, double lift, double secs, int bid)
+///////////////////////////////////////////////////////////////////////////
+//                             Smooth Sliding                            //
+///////////////////////////////////////////////////////////////////////////
+
+//= Slew toward goal pose but linearly slow down when close.
+// helps compensate for sensor lag during tracking
+// Note: path might be curvy rather than linear
+
+int jhcEliNeck::GazeSoft (double pan, double tilt, double rate, int bid, double soft)
 {
-  double pan, tilt;
+  double pf = __min(PanErr(pan, 1) / soft, 1.0), tf =  __min(PanErr(pan, 1) / soft, 1.0); 
+  int pok, tok;
 
-  AimFor(pan, tilt, targ, lift);
-  return GazeFix(pan, tilt, secs, bid);
+  pok = PanTarget(pan, pf * rate, bid);
+  tok = TiltTarget(tilt, tf * rate, bid);
+  return __min(pok, tok);
+}
+
+
+//= Slew toward aiming at target position but linearly slow down when close.
+// helps compensate for sensor lag during tracking
+
+int jhcEliNeck::GazeSoft (const jhcMatrix& targ, double lift, double rate, int bid, double soft)
+{
+  double err = GazeErr(targ, lift), f = __min(err / soft, 1.0);
+
+  return jhcGenNeck::GazeAt(targ, lift, f * rate, bid);
 }
 
 
@@ -754,12 +774,15 @@ double jhcEliNeck::norm_ang (double degs) const
 
 //= Gives the max absolute pan or tilt error between current gaze and target position.
 
-double jhcEliNeck::GazeErr (const jhcMatrix& targ, double lift) const
+double jhcEliNeck::GazeErr (const jhcMatrix& targ, double lift, int abs) const
 {
-  double pan, tilt;
+  double pan, tilt, cp, ct, big;
 
   AimFor(pan, tilt, targ, lift);
-  return GazeErr(pan, tilt);      
+  cp = PanErr(pan, 0);
+  ct = TiltErr(tilt, 0);
+  big = ((fabs(cp) > fabs(ct)) ? cp : ct);
+  return((abs > 0) ? fabs(big) : big);
 }
 
 

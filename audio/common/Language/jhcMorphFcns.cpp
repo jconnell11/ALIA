@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,8 @@
 // strings must remain consistent with JTAG_VAL enumeration
 
 const char * const jhcMorphFcns::gcat[JTV_MAX] = {"", "", "NAME", "NAME-P", "", "AKO", "AKO-S", "AKO-S", "AKO-P", 
-                                                  "HQ", "HQ-ER", "HQ-EST", "ACT", "ACT-S", "ACT-D", "ACT-G", "", "", "MOD"};
+                                                  "HQ", "HQ-ER", "HQ-EST", "ACT", "ACT-S", "ACT-D", "ACT-G", "", "", "MOD", 
+                                                  "", "", "", "", "", ""};
 
 
 //= Default destructor does necessary cleanup.
@@ -367,22 +368,14 @@ int jhcMorphFcns::SaveExcept (const char *fname) const
 int jhcMorphFcns::AddVocab (jhcGenParse& p, const char *fname, int rpt, int lvl)
 {
   const char deriv[80] = "jhc_temp.txt";
-  char strip[80];
-  char *end;
+  int w0 = p.OpenClass();
 
   // load basic grammar file like usual
   if ((fname == NULL) || (*fname == '\0'))
     return -3;
   if (p.LoadGram(fname, lvl) <= 0)
     return -2;
-  if (rpt > 0)
-  {
-    // list file as loaded
-    strcpy_s(strip, fname);
-    if ((end = strrchr(strip, '.')) != NULL)
-      *end = '\0';
-    jprintf("   %s\n", strip);
-  }
+  jprintf(1, rpt, "  %3d open-class words  from: %s\n", p.OpenClass() - w0, fname);
 
   // read and apply morphology to add derived forms as well
   if (LoadExcept(fname) < 0)
@@ -925,18 +918,20 @@ bool jhcMorphFcns::vowel (char c) const
 
 const char *jhcMorphFcns::NounLex (UL32& tags, char *pair) const
 {
-  char dummy[2][40] = {"thing", "something"};
   char *val = SlotRef(pair);
   const char *irr;
   UL32 t;
-  int i;
 
   // check for special non-informative words
   if (val == NULL)
     return NULL;
-  for (i = 0; i < 2; i++)
-    if (strcmp(val, dummy[i]) == 0)
-      return NULL;
+  if (strcmp(val, "something") == 0)
+    return NULL;
+  if (strcmp(val, "thing") == 0)
+  {
+    tags = JTAG_ITEM;                  // for use in BIND[ ]
+    return NULL;
+  }
 
   // determine tags then generate base form
   t = gram_tag(pair) & (JTAG_NOUN | JTAG_PROPER);
@@ -1078,7 +1073,7 @@ int jhcMorphFcns::GramBase (char *wd, const char *w0, const char *c0, int ssz) c
   int cat = GramTag(c0);
 
   // get normalized form (no change for adverbs)
-  if (cat == JTV_ADV)
+  if ((cat == JTV_MAX) || (cat == JTV_ADV))
     strcpy_s(wd, ssz, w0);
   else
     BaseWord(wd, w0, 0x01 << cat, ssz);          // needs JTAG_MASK
@@ -1124,7 +1119,7 @@ const char *jhcMorphFcns::GramCat (int tag) const
 
 
 ///////////////////////////////////////////////////////////////////////////
-//                           Degugging Tools                             //
+//                           Debugging Tools                             //
 ///////////////////////////////////////////////////////////////////////////
 
 //= Generate a derived lexicon grammar file from a base open-class grammar file.

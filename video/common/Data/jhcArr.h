@@ -24,7 +24,6 @@
 #pragma once
 
 #include "jhcGlobal.h"
-#include <stdlib.h>
 
 #include "Interface/jhcMessage.h"
 
@@ -99,6 +98,8 @@ public:
   void Rewind () {fn = 0;}
   void Scroll (int val) 
     {ASet(fn % sz, val); fn++;}
+  int Recent () const
+    {return((fn <= 0) ? ARef(0) : ARef((fn - 1) % sz));}
   int RollRef (int n) const
     {return((fn <= sz) ? ARef(n) : ARef((fn + n) % sz));}
 

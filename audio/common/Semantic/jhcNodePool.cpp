@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@
 #include <ctype.h>
 #include <math.h>
 
-#include "Interface/jprintf.h"         // common video
+#include "Interface/jms_x.h"           // common video
+#include "Interface/jprintf.h"         
 
 #include "Language/jhcMorphTags.h"     // common audio
 #include "Semantic/jhcGraphlet.h"      // since only spec'd as class in header
@@ -75,6 +76,10 @@ jhcNodePool::jhcNodePool ()
   surf = NULL;
   tmax = 0;
   nt = 0;
+
+  // conversational agents
+  self = NULL;
+  user = NULL;
 }
 
 
@@ -97,6 +102,7 @@ void jhcNodePool::init_pool ()
   // collections and generations
   acc = NULL;
   ver = 1;
+  now = jms_now();
   refnum = 0;
   ref0 = 0;
 
@@ -337,10 +343,17 @@ jhcNetNode *jhcNodePool::lookup_make (jhcNetNode *n, jhcBindings& b, const jhcNo
 
   if ((focus == NULL) && ((univ == NULL) || !univ->InList(n)))
   {
-    // make a new node similar to reference (adds to acc)
-    focus = MakeNode(n->Kind(), b.LexSub(n), n->Neg(), n->Default(), n->Done());  
-    focus->tags = n->tags;
-    focus->SetString(n->Literal());
+    // get or make node similar to reference (adds new to acc)
+    if ((univ == NULL) && (self != NULL) && n->LexMatch("me"))
+      focus = self;
+    else if ((univ == NULL) && (user != NULL) && n->LexMatch("you"))
+      focus = user;
+    else
+    {
+      focus = MakeNode(n->Kind(), b.LexSub(n), n->Neg(), n->Default(), n->Done());  
+      focus->tags = n->tags;
+      focus->SetString(n->Literal());
+    }
     b.Bind(n, focus);                  // might be used later
     if (focus->Halo())
       focus->SetDefault(0.0);          // default blf = 0 in halo
@@ -432,6 +445,7 @@ jhcNetNode *jhcNodePool::MakeNode (const char *kind, const char *word, int neg, 
     item->SetBelief(fabs(def));     // force belief right now
   if (word != NULL)
     update_lex(item, word, dn);
+  item->SetUsed(ver);               // for speculation
   return item;
 }
 
@@ -473,6 +487,7 @@ jhcNetNode *jhcNodePool::create_node (const char *kind, int id, int chk, int omi
     acc->AddItem(n2);
   n2->Reveal(vis0);                    // can default to invisible
   n2->ltm = ltm0;                      // whether LTM-dependent
+  n2->mru = ver;
   xadd++;
   return n2;
 }
@@ -944,6 +959,33 @@ jhcNetNode *jhcNodePool::Wash (const jhcNetNode *ref) const
 }
 
 
+//= Mark all substitution nodes as being used at current generation.
+// most recently used in OP match (not rule) = most likely good descriptor
+
+void jhcNodePool::MarkUsed (const jhcBindings& b) 
+{
+  int i, nb = b.NumPairs();
+
+  for (i = 0; i < nb; i++)
+    (b.GetSub(i))->SetUsed(ver);
+}
+
+
+//= Mark all nodes in graphlet as being used at current generation.
+// most recently used in OP match (not rule) = most likely good descriptor
+
+void jhcNodePool::MarkUsed (const jhcGraphlet *g)
+{
+  int i, n;
+
+  if (g == NULL)
+    return;
+  n = g->NumItems();
+  for (i = 0; i < n; i++)
+    (g->Item(i))->SetUsed(ver);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                           Virtual Overrides                           //
 ///////////////////////////////////////////////////////////////////////////
@@ -977,7 +1019,7 @@ bool jhcNodePool::InList (const jhcNetNode *n) const
 
 //= Save all nodes sorted by instance number for human perusal.
 // if "hyp" <= 0 then omits hypothetical items (those with blf <= 0)
-// returns: positive = number of nodes saved, 0 = format problem, -1 = file problem
+// returns: 1 = okay, 0 = format problem, -1 = file problem
 // NOTE: to preserve recency order on reload use SaveBin instead
 
 int jhcNodePool::Save (const char *fname, int lvl, int hyp) const
@@ -1044,7 +1086,7 @@ int jhcNodePool::sort_nodes (FILE *out, int lvl, int imin, int hyp) const
 //= Save all nodes in one or all bins to a file in listed order.
 // this is the order in which they would be matched (e.g. Refresh)
 // nodes must be visible but can be hypothetical or nor
-// returns: positive = number of nodes saved, 0 = format problem, -1 = file problem
+// returns: positive = number of predicates saved, 0 = format problem, -1 = file problem
 
 int jhcNodePool::SaveBin (const char *fname, int bin, int imin) const
 {
@@ -1060,7 +1102,7 @@ int jhcNodePool::SaveBin (const char *fname, int bin, int imin) const
 
 
 //= Save all nodes from a particular bin (or all if bin < 0).
-// returns: positive = nodes daved, 0 = format problem, -1 = file problem
+// returns: positive = predicates saved, 0 = format problem, -1 = file problem
 
 int jhcNodePool::save_bins (FILE *out, int bin, int imin) const
 {
@@ -1132,7 +1174,7 @@ void jhcNodePool::ClrTrans (int n)
 int jhcNodePool::Load (const char *fname, int add, int nt)
 {
   jhcTxtLine in;
-  int ans, psz0;
+  int ans, preds = 0;
 
   // possibly clear all assertions then try opening file
   if (add <= 0)
@@ -1140,12 +1182,11 @@ int jhcNodePool::Load (const char *fname, int add, int nt)
   if (!in.Open(fname))
     return -2;
   ClrTrans(nt);
-  psz0 = psz;
 
   // get assertions then cleanup
   if (in.NextContent() != NULL)                  // skip blank or node count
   {
-    ans = Load(in, 1);
+    ans = Load(in, 1, &preds);
     ClrTrans(0);
     if (ans <= 0)
     {
@@ -1153,21 +1194,26 @@ int jhcNodePool::Load (const char *fname, int add, int nt)
       return -1;
     }
   }
-  return(psz - psz0);
+  return preds;
 }
 
 
 //= Read at current location in a file to fill in details of self.
 // stops after first syntax error, some nodes may be only partially filled
 // can optionally set default belief to 1.0 if "tru" > 0
+// can optionally count the number of predicate (non-object) nodes added
 // returns: 2 = ok + delimiter, 1 = success, 0 = bad format, -1 = file problem
 
-int jhcNodePool::Load (jhcTxtLine& in, int tru)
+int jhcNodePool::Load (jhcTxtLine& in, int tru, int *preds)
 {
   char arrow[40];
   const char *desc, *link;
-  jhcNetNode *topic = NULL;
+  jhcNetNode *t0 = NULL, *topic = NULL;
   int ans, sz0 = psz;
+
+  // clear optional predicate count
+  if (preds != NULL)
+    *preds = 0;
 
   // keep reading through file until terminator or end
   while (1)
@@ -1179,8 +1225,11 @@ int jhcNodePool::Load (jhcTxtLine& in, int tru)
     // possibly get new topic node (always need one)
     if (in.Blank())
       return 1;
+    t0 = topic;
     if ((topic = chk_topic(topic, in, tru)) == NULL)
       return 0;
+    if ((topic != t0) && (preds != NULL))       
+      *preds += 1;
     if (acc != NULL)
       acc->AddItem(topic);
 
@@ -1428,7 +1477,6 @@ jhcNetNode *jhcNodePool::find_trans (const char *name, int tru)
   if (tru > 0)
     n->SetBelief(1.0);
 
-  
   // add pair to translation table
   trans[nt] = n;
   strcpy_s(surf[nt], 40, desc);

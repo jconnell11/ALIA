@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -165,11 +165,11 @@ private:
 // PRIVATE MEMBER PARAMETERS
 private:
   // gaze control parameters
-  double atol, xbd, ybd, prog, stim;
-  int dwell, survey, gbid;
+  double atol, xbd, ybd, prog, dwell, survey, stim;
+  int gbid;
 
   // distance category parameters
-  double dist0, dist1, dist2, dist3, dvar, drop;
+  double dist0, dist1, dist2, dist3, dvar, drop, calm, odd;
 
   // object shape categories
   double len0, len1, len2, len3, thk0, thk1, thk2, thk3;
@@ -220,10 +220,11 @@ private:
   void update_objs ();
   int in_view (int t) const;
   void mark_gone (int id);
-  void alert_any ();
-  void alert_close ();
+  int alert_any ();
+  int alert_close ();
+  void alert_odd ();
   void mark_attn ();
-  void gaze_last ();
+//  void gaze_last ();
                
   // gaze control
   JCMD_DEF(vis_look);

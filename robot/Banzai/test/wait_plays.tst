@@ -1,3 +1,6 @@
+// mostly verified by looking at net conversions
+
+Dave is a person
 wait until Dave is visible then say wassup
 Dave is visible
 
@@ -6,6 +9,7 @@ turn slowly until Dave is visible
 turn the knob while Dave is visible
 
 while Dave is visible keep turning around
+Dave is not visible
 keep turning the knob until Dave is not visible
 while Dave is not visible keep turning the knob and holding the hammer
 

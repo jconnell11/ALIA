@@ -23,10 +23,11 @@
 
 #include "Interface/jms_x.h"           // common video
 #include "Interface/jprintf.h" 
+#include "Interface/jtimer.h"          // for profiling
 
 #include "RWI/jhcBgndGrok.h"
 
-#include "Interface/jtimer.h"
+
 ///////////////////////////////////////////////////////////////////////////
 //                      Creation and Initialization                      //
 ///////////////////////////////////////////////////////////////////////////
@@ -248,7 +249,7 @@ int jhcBgndGrok::digest_loop ()
       return 1;   
     }
 
-jtimer(1, "digest (issue + update + umwelts)");
+jtimer(1, "digest (issue update umwelts)");
     // END OF CYCLE - run local behaviors (if any) then send arbitrated commands to body 
     body_issue();
 

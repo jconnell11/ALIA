@@ -225,6 +225,7 @@
 #define ID_MANIP_FINGERPOSE             32953
 #define ID_IMAGES_RANGERFINDER          32954
 #define ID_IMAGES_COLORCAMERA           32955
+#define ID_DEMO_PREF                    32956
 
 // Next default values for new objects
 // 
@@ -232,7 +233,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32956
+#define _APS_NEXT_COMMAND_VALUE         32957
 #define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

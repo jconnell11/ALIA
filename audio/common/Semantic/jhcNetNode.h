@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2020 IBM Corporation
-// Copyright 2020-2023 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@
 //   "vis" field: 0 = hidden, 1 = eligible for matching 
 //   "ref" field: last language I/O of node for pronouns (bigger = more recent)
 //   "gen" field: cycle when node was added (use only new for CHK subset of FIND)
+//   "mru" field: time when node most recently matched or asserted (ms since boot)
 //   "top" field: which action focus (if any) node is associated with
 //   "ltm" field: dependent on long term memory ghost fact in halo (1 = yes)
 //  "keep" field: preserve node during garbage collection (1 = spread from this) 
@@ -78,7 +79,8 @@ private:
 
   // membership and id (largely for jhcNodePool)
   jhcNetNode *next;  
-  int id, hash, gen, ref, vis, keep;
+  int id, hash, ref, ref0, vis, keep;
+  int gen, mru;
 
 
 // PUBLIC MEMBER VARIABLES
@@ -96,7 +98,7 @@ public:
 public:
   jhcNetNode *NodeTail () const {return next;}
   void SetTail (jhcNetNode *n)  {next = n;}
-  void SetConvo (int val)       {ref = val;}  
+  void SetUsed (int v)          {mru = v;} 
   void SetHash (int h)          {hash = h;}
   void SetWord (const char *wd) {strcpy_s(lex, wd);}
 
@@ -115,6 +117,7 @@ public:
   bool Halo () const       {return(id < 0);}
   bool Visible () const    {return(vis > 0);}
   int LastConvo () const   {return ref;}
+  int LastUsed () const    {return mru;}
   bool String () const     {return(Literal() != NULL);}
 
   // reading negation and belief, etc.
@@ -136,11 +139,11 @@ public:
 
   // altering basic information 
   void Reveal (int doit =1) {vis = doit;}
-  void TopMax (int tval)    {top = __max(top, tval);}
-  void GenMax (int ver)     {if (ver > 0) gen = __max(gen, ver);}
+  void TopMax (int tval) {top = __max(top, tval);}
+  void GenMax (int ver); 
   void MarkConvo ();
-  void XferConvo (jhcNetNode *n) 
-    {if ((n != NULL) && (n != this)) {ref = n->ref; n->ref = 0;}}
+  void XferConvo (jhcNetNode *n);
+  void SaveConvo ();
   void SetKind (const char *k, char sep ='\0');
   void SetString (const char *txt);
 
@@ -157,7 +160,7 @@ public:
   // argument functions
   int NumArgs () const   {return((moor != NULL) ? moor->na : na);}
   bool ArgsFull () const {return(NumArgs() >= amax);}
-  bool ObjNode () const  {return(NumArgs() <= 0);}
+  bool NoArgs () const   {return(NumArgs() <= 0);}
   int Arity (int all =1) const;
   bool HypAny () const;
   jhcNetNode *Arg (int i =0) const;
@@ -186,6 +189,7 @@ public:
   int NumFacts (const char *role) const;
   jhcNetNode *Fact (const char *role, int n =0) const;
   jhcNetNode *AnyFact (const char *role) const;
+  bool ObjNode () const;
 
   // long term memory linkage
   jhcNetNode *Buoy () const {return buoy;}

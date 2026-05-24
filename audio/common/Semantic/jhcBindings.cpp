@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -426,6 +426,23 @@ void jhcBindings::ReplaceSubs (const jhcBindings& alt)
   for (i = 0; i < nb; i++)
     if ((s = alt.LookUp(sub[i])) != NULL)
       sub[i] = s;                                // term[i] unchanged
+}
+
+
+//= Add any new bindings from "extra" to this set.
+// ignores duplicates and conflicts
+
+void jhcBindings::Merge (const jhcBindings& extra)
+{
+  const jhcNetNode *key;
+  int i, n = extra.NumPairs();
+
+  for (i = 0; i < n; i++)
+  {
+    key = extra.GetKey(i);
+    if (LookUp(key) == NULL)          
+      Bind(key, extra.GetSub(i));
+  }
 }
 
 

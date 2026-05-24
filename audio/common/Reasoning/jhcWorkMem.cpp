@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2019 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,8 +58,6 @@ jhcWorkMem::jhcWorkMem ()
   mode = 0;
 
   // conversational agents
-  self = NULL;
-  user = NULL;
   InitPeople(NULL);
   clr_ext();
 
@@ -111,13 +109,13 @@ void jhcWorkMem::InitPeople (const char *rname)
   // ALIA system itself (never changes)
   BuildIn(gr);
   self = MakeNode("self", "me", 0, -1.0);
-  AddProp(self, "ako", "robot", 0, -1.0);
   if ((rname != NULL) && (*rname != '\0'))
-    AddName(self, rname);
+    NameNode(self, rname);
+//  AddProp(self, "ako", "robot", 0, -1.0);        // uses rule instead
 
   // default human who is generating input
   user = MakeNode("user", "you", 0, -1.0);
-  AddProp(user, "ako", "person", 0, -1.0);
+//  AddProp(user, "ako", "person", 0, -1.0);       // uses rule instead
   RevealAll(gr);
 }
 
@@ -157,7 +155,7 @@ jhcNetNode *jhcWorkMem::SetUser (jhcNetNode *n)
 // always checks to see if name already present
 // NOTE: this needs StartNote/FinishNote or equivalent to be realized
 
-void jhcWorkMem::AddName (jhcNetNode *n, const char *name, int neg)
+void jhcWorkMem::NameNode (jhcNetNode *n, const char *name, int neg)
 {
   char first[80];
   char *sep;
@@ -445,6 +443,15 @@ bool jhcWorkMem::InBand (const jhcNetNode *n, int part) const
 //                            Halo Functions                             //
 ///////////////////////////////////////////////////////////////////////////
 
+//= Clear all facts from halo space and set current conversation participants.
+
+void jhcWorkMem::ClearHalo () 
+{
+  halo.Pronouns(self, user);
+  halo.PurgeAll();
+}
+
+
 //= Tell if a node is visible and in either main memory or an LTM ghost fact.
 // LTM ghost facts have halo instance numbers less than "rim"  
 // generally ghost facts are dis-preferred for language generation and tried second
@@ -471,6 +478,8 @@ bool jhcWorkMem::VisMem (const jhcNetNode* n, int ghost) const
 int jhcWorkMem::CleanMem (int dbg)
 {
   jhcNetNode *n = NULL;
+  double bth = MinBlf();
+  int i, np;
 
   // all things are potential garbage
   jprintf(1, dbg, "\nCleaning memory ...\n");
@@ -485,8 +494,14 @@ int jhcWorkMem::CleanMem (int dbg)
       keep_from(n, dbg);
 
   // mark definite keepers (conversation participants)
-  keep_party(self);
-  keep_party(user);
+  user->SetKeep(2);
+  self->SetKeep(2);
+  np = self->NumProps();
+  for (i = 0; i < np; i++)
+    if ((n = self->PropMatch(i, "name", bth)) != NULL)
+      n->SetKeep(2);
+//  keep_party(user);
+//  keep_party(self);
   return rem_unmarked(dbg);                      // sweep out anything not marked
 }
 
@@ -512,8 +527,10 @@ void jhcWorkMem::keep_party (jhcNetNode *anchor) const
     // always keep AKO and NAME but reject HQ and WRT for self
     prop = anchor->PropSurf(i);
     if (!prop->Hyp() && InPool(prop))
-      if (anchor->RoleIn(i, "name", "ako") || 
-          ((anchor != self) && anchor->RoleIn(i, "hq", "wrt")))      
+//      if (anchor->RoleIn(i, "name", "ako") || 
+//          ((anchor != self) && anchor->RoleIn(i, "hq", "wrt")))      
+      if (anchor->RoleIn(i, "name", "ako", "hq") || 
+          ((anchor != self) && anchor->RoleIn(i, "wrt")))      
       {
         // keep this property and all arguments
         prop->SetKeep(2);
@@ -728,12 +745,14 @@ int jhcWorkMem::ann_link (const jhcNetNode *obj, const jhcNetNode *former, int k
 
   if ((kind < 0) || (kind > 2) || (noisy < 1))
     return 1;
-  if (obj == NULL)
-    jprintf("  .. unlinking tracked %s from %s %s\n", item[kind], former->Nick(), ((former == user) ? "(user)" : ""));
-  else if (former == NULL)
-    jprintf("  .. linking tracked %s to %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
-  else
-    jprintf("  .. switching tracked %s to %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
+  if (former != NULL)
+  {
+    jprintf("  .. unlinking visual %s from node %s %s\n", item[kind], former->Nick(), ((former == user) ? "(user)" : ""));
+    if (obj != NULL)
+      jprintf("  .. re-linking visual %s as node %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
+  }
+  else if (obj != NULL)
+    jprintf("  .. linking visual %s to node %s %s\n", item[kind], obj->Nick(), ((obj == user) ? "(user)" : ""));
   return 1;
 }
 

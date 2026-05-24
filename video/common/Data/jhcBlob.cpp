@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -172,6 +172,16 @@ void jhcBlob::InitBlob ()
   Angle  = NULL;
   Val    = NULL;
   Label  = NULL;
+}
+
+
+//= Set spare field for some blob to a particular value.
+// Note: this field is overwritten by AvgEach(), MinEach(), and MaxEach()
+
+void jhcBlob::SetVal (int index, double v)
+{
+  if ((index >= 0) && (index < total))
+    Val[index] = v;
 }
 
 

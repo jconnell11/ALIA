@@ -59,16 +59,17 @@ public:
   virtual ~jhcGenGrok () {};
   jhcGenGrok () 
     {body = NULL; neck = NULL; arm = NULL; lift = NULL; base = NULL; mic = NULL;}
-  int CommOK () 
-  {
-    if (((neck != NULL) && (neck->CommOK() <= 0)) ||
-        ((arm  != NULL) && (arm->CommOK()  <= 0)) ||
-        ((lift != NULL) && (lift->CommOK() <= 0)) ||
-        ((base != NULL) && (base->CommOK() <= 0)) ||
-        ((mic  != NULL) && (mic->CommOK()  <= 0)))
-      return 0;
-    return 1;
-  }
+  int CommOK () const
+    {return(((NeckOK() <= 0) || (ArmOK() <= 0) || (LiftOK() <= 0) || (BaseOK() <= 0) || (MicOK() <= 0)) ? 0 : 1);}
+  int NeckOK () const  {return(((neck != NULL) && (neck->CommOK() <= 0)) ? 0 : 1);}
+  int ArmOK () const   {return(((arm  != NULL) && (arm->CommOK()  <= 0)) ? 0 : 1);}
+  int LiftOK () const  {return(((lift != NULL) && (lift->CommOK() <= 0)) ? 0 : 1);}
+  int BaseOK () const  {return(((base != NULL) && (base->CommOK() <= 0)) ? 0 : 1);}
+  int MicOK () const   {return(((mic  != NULL) && (mic->CommOK()  <= 0)) ? 0 : 1);}
+  void Broken () const 
+    {jprintf("Broken:%s%s%s%s%s\n", 
+             ((NeckOK() <= 0) ? " neck" : ""), ((ArmOK() <= 0) ? " arm" : ""), ((LiftOK() <= 0) ? " lift" : ""), 
+             ((BaseOK() <= 0) ? " base" : ""), ((MicOK() <= 0) ? " mic" : ""));}
 
   // runtime status
   virtual bool Ghost () const {return false;}

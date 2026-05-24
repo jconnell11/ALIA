@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2018-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,6 +98,8 @@ private:
   void fix_num (char *txt);
   void convert_all (const char *pat, const char *rep, char *txt, int wd);
 
+  // conversation participants
+  JCMD_DEF(talk_name);
 
 };
 

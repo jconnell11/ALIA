@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2018 IBM Corporation
-// Copyright 2021-2023 Etaoin Systems
+// Copyright 2021-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ void jhcTxtLine::init ()
   *line = '\0';
   *token = '\0';
   head = NULL;
+  *src = '\0';
 }
 
 
@@ -164,12 +165,19 @@ const char *jhcTxtLine::Next (int force)
     head = line;
     line[strcspn(line, "\n\r\x0A")] = '\0';
 
+    // look for special provenance comment and cache source string
+    if (strncmp(line, "// src: ", 8) == 0)
+    {
+      strcpy_s(src, line + 8);         // must be cleared manually
+      continue;
+    }
+
     // find comment start (if any) and terminate earlier
     if ((end = strchr(line, ';')) != NULL)
       *end = '\0';
     if ((end2 = strstr(line, "//")) != NULL)
       *end2 = '\0';
-    strip_wh();              // trim front of remainder
+    strip_wh();                        // trim front of remainder
 
     // skip over full line comments, but return true blank lines
     if (*head == '\0')

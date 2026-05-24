@@ -4,7 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020-2025 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,6 +55,9 @@ friend class CBanzaiDoc;     // for debugging
 
 // PRIVATE MEMBER VARIABLES
 private:
+  // input range image size
+  int iw, ih;
+
   // current camera pose 
   double xcomp, ycomp, pcomp;
 
@@ -78,6 +81,9 @@ private:
   int **cvec;
   int ntrk;
 
+  // object track supposedly in hand
+  int htrk;
+
 
 // PUBLIC MEMBER VARIABLES
 public:
@@ -87,7 +93,7 @@ public:
   // depth segmentation parameters
   jhcParam zps;
   double sfar, wexp;
-  int pth, cup, bej, rmode;
+  int pth, cup, bej, rmode, hclip, vclip;
 
   // color segmentation parameters
   jhcParam gps;
@@ -105,6 +111,7 @@ public:
     {return((cmsk.Valid()) ? pp.Mask() : NULL);}
   void Colors (char *list, int ssz) const
     {pp.MainColors(list, ssz);}
+  void Holding (int t) {htrk = t;}
 
   // processing parameter bundles 
   int Defaults (const char *fname =NULL);
@@ -116,10 +123,13 @@ public:
   void AdjNeck (const jhcMatrix& loc, const jhcMatrix& dir);
   int FindObjects (const jhcImg& col, const jhcImg& d16, const jhcImg *mask =NULL);
 
-  // object properties
+  // object selection
   int Closest (int vis =0) const;
   int Largest () const;
   int MidMap () const;
+  bool Interest (jhcMatrix& xyz, int iw =640, int ih =480) const;
+
+  // object properties
   double DistXY (int i) const;
   double World (jhcMatrix& loc, int i) const;
   double World (double& wx, double& wy, int i) const;
@@ -145,6 +155,7 @@ public:
   // debugging graphics
   int AttnCam (jhcImg& dest, int pick =2, int known =3, int all =5, int view =0);
   int MarkCam (jhcImg& dest, const jhcMatrix& wpt, int col =6, int view =0);
+  int RngClip (jhcImg& dest);
 
 
 // PRIVATE MEMBER FUNCTIONS
@@ -156,14 +167,18 @@ private:
   int tall_params (const char *fname);  
   int flat_params (const char *fname);
 
-  // segmentation
-  int tall_objs ();
-  int flat_objs ();
-
   // overrides
   void raw_objs (int trk);
   virtual double find_hmax (int i, const jhcRoi *area);
   void occluded () {}
+
+  // segmentation
+  int tall_objs ();
+  int flat_objs ();
+
+  // raw object filtering
+  int rem_clipped (jhcBlob& b, int hbd, int vbd);
+  void rng_box (jhcRoi& box, const jhcBlob& b, int i) const;
 
   // object properties
   void obj_slice (jhcImg& dest, int lab, double up) const;

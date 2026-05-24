@@ -97,16 +97,16 @@ int jhcIntrospect::why_run (const jhcAliaDesc& desc, int i)
   const jhcAliaDesc *act = desc.Val("arg");
   jhcNetNode *act2;
 
-  // only respond if known to be doing or did something (else unknown)
-  if (!atree->Recent(atree->nkey, act->Done()))
-    return 1;
-
-  // generate positive NOTE
+  // create template to search for
   atree->StartNote();
-  act2 = atree->CloneAct(dynamic_cast<const jhcNetNode *>(desc.Val("arg")));
-  act2->AddArg("agt", atree->Robot());           // restore after search
+  act2 = atree->CloneAct(dynamic_cast<const jhcNetNode *>(act));
   if ((act->Done()) > 0)
     act2->SetDone(1);
+
+  // only respond if known to be doing or did something (else unknown)
+  if (!atree->Recent(atree->nkey, act->Done()))
+    return atree->FlushNote();    
+  act2->AddArg("agt", atree->Robot());           // restore after search
   atree->FinishNote();
   return 1;
 }
@@ -183,7 +183,7 @@ int jhcIntrospect::why_fail (const jhcAliaDesc& desc, int i)
 
   // craft custom reason for various failed directive types
   k = (int) dir->Kind();
-  if ((k == JDIR_FIND) || (k == JDIR_BIND) || (k == JDIR_EACH))
+  if ((k == JDIR_FIND) || (k == JDIR_BIND) || (k == JDIR_ALL))
     return cuz_find(fail, dir);
   if (k == JDIR_GATE)
     return cuz_gate(fail, dir);
@@ -317,5 +317,4 @@ int jhcIntrospect::cuz_do (jhcAliaDesc *fail, const jhcAliaDir *dir)
   atree->FinishNote();
   return 1;
 }
-
 

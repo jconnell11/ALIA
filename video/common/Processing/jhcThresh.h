@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ public:
   // sharp thresholds
   int Threshold (jhcImg& dest, const jhcImg& src, int th, int mark =255) const;
   int Threshold (jhcImg& dest, const jhcImg& src, const jhcRoi& area, int th, int mark =255) const;
-  int Between (jhcImg& dest, const jhcImg& src, int lo, int hi, int mark =255) const;
+  int Between (jhcImg& dest, const jhcImg& src, int lo, int hi, int mark =255, int zclr =0) const;
   int AbsOver (jhcImg& dest, const jhcImg& src, int th) const;
   int Trinary (jhcImg& dest, const jhcImg& src, int lo, int hi) const;
   int BothWithin (jhcImg& dest, const jhcImg& src1, const jhcImg& src2, int lo, int hi) const;

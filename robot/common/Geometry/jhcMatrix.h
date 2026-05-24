@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2011-2020 IBM Corporation
-// Copyright 2021-2024 Etaoin Systems
+// Copyright 2021-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,8 +24,6 @@
 #pragma once
 
 #include "jhcGlobal.h"
-
-#include <stdlib.h>           // needed for NULL !
 
 #define JMT_DIM  36           // size of local array (no allocation needed)
 

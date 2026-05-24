@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2019 IBM Corporation
-// Copyright 2024 Etaoin Systems
+// Copyright 2024-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ public:
   jhcBlob (const jhcBBox& ref);
   void SetSize (int ni);
   void SetSize (const jhcBBox& ref);
+  void SetVal (int index, double v);
 
   // read only access
   int BlobArea (int index) const;

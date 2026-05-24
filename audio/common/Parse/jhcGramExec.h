@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2015-2020 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2025 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -178,6 +178,8 @@ public:
   int NumRules () const;
   virtual int MarkRule (const char *name =NULL, int val =1);
   virtual int ExtendRule (const char *name, const char *phrase, int lvl =0);
+  int RemAttn (const char *name);
+  int OpenClass () const;
 
   // main functions
   const char *Expand (const char *sent, int fix =2);

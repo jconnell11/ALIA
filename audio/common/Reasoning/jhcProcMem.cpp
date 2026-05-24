@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2017-2019 IBM Corporation
-// Copyright 2020-2024 Etaoin Systems
+// Copyright 2020-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,10 @@
 #include <stdio.h>
 
 #include "Interface/jhcMessage.h"   // common video
+#include "Interface/jms_x.h"
 #include "Interface/jprintf.h"
+
+#include "Action/jhcAliaPlay.h"     // common robot
 
 #include "Reasoning/jhcProcMem.h"
 
@@ -64,6 +67,7 @@ int jhcProcMem::clear ()
 
 jhcProcMem::jhcProcMem ()
 {
+  *formal = '\0';
   ops = NULL;
   np = 0;
   noisy = 2;                 // defaulted from jhcAliaCore
@@ -76,20 +80,48 @@ jhcProcMem::jhcProcMem ()
 //                             List Functions                            //
 ///////////////////////////////////////////////////////////////////////////
 
-//= Add item onto tail of list.
-// returns 1 if successful, 0 or negative for some problem (consider deleting)
+//= Add item onto tail of list after possibly checking for duplicates (dup > 0).
+// returns 1 if added, 0 if duplicate, neg for problem (consider deleting)
 
-int jhcProcMem::AddOperator (jhcAliaOp *p, int ann)
+int jhcProcMem::AddOperator (jhcAliaOp *p, int ann, int usr, int dup)
 {
   jhcAliaOp *p0 = ops;
 
-  // add to end of appropriate list
+  // check for likely duplication or other format problems
   if (p == NULL)
-    return 0;
-  if (p0 == NULL)
+    return -1;
+  if (dup > 0)
+    while (p0 != NULL)
+    {
+      if (p->Identical(*p0))
+      {
+        if (usr > 0)
+        {
+          // possibly revise old operator instead of adding
+          jprintf(1, ann, "  ... KNOWN: set old operator %d preference = %4.2f\n", 
+                  p0->OpNum(), p->pref);
+          p0->pref = p->pref;
+          if ((ann >= 2) && (noisy >= 1))
+          {
+            jprintf("\n.................................\n");
+            p0->Print();
+            jprintf(".................................\n\n");
+          }
+          delete p;                    // clean up since not saved
+          return 1;
+        }
+        jprintf(1, ann, "  ... DUPLICATE: identical to old operator %d\n", p0->OpNum());
+        return 0;
+      }
+      p0 = p0->next;
+    }
+
+  // add to end of operator list
+  if (ops == NULL)
     ops = p;
   else
   {
+    p0 = ops;
     while (p0->next != NULL)
       p0 = p0->next;
     p0->next = p;
@@ -243,10 +275,8 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
   k = dir->kind;
   if ((k < 0) || (k >= JDIR_MAX))
     return -1;
-  if ((k == JDIR_BIND) || (k == JDIR_EACH) || (k == JDIR_ANY))
+  if ((k == JDIR_BIND) || (k == JDIR_ALL))
     k = JDIR_FIND;
-  else if (k == JDIR_ESC)
-    k = JDIR_CHK;
 
   // set up to get up to bmax bindings using halo as needed
   mmax = dir->MaxOps();
@@ -293,6 +323,128 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
 }
 
 
+//= Create action-initiating operator based on trace and triggered by given context.
+// returns 1 if added, 0 if rejected for some reason
+
+int jhcProcMem::BuildSpur (const jhcGraphlet& ctx, jhcAliaChain *trace, double pref)
+{
+  char date[40];
+  jhcGraphlet pat;
+  jhcBindings mt;
+  jhcAliaOp *op = new jhcAliaOp(JDIR_NOTE);
+  int rc;
+
+  // announce entry and augment trigger specification
+  jprintf("\nSPECULATE: new operator based on user command\n");
+  pat.IncludeArgs(ctx);
+
+  // create trigger using local nodes and copy procedure minus skolem 
+  op->BuildCond();
+  op->Assert(pat, mt);
+  op->BuildIn(NULL);  
+  op->meth = trace->Instantiate(*op, mt, NULL, 1);
+
+  // set overall features of rule and try adding to collection
+  sprintf_s(op->prov, "speculative <- %s at %s", formal, jms_date(date));
+  op->SetPref(pref);
+  if ((rc = AddOperator(op, 1)) > 0)
+    return 1;
+  delete op;                 // delete if problem (e.g. duplicate)
+  return rc;
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//                           Operator Tests                              //
+///////////////////////////////////////////////////////////////////////////
+
+//= Determine if some other operator perfectly matches this one.
+// only guards against EXACT duplicate, ignores preference differences
+
+bool jhcAliaOp::Identical (const jhcAliaOp& ref) 
+{
+  const jhcAliaChain *seen[100];
+  jhcSituation sit;                    // to avoid jhcAliaOp::match_found()
+  jhcBindings b;
+  int nst = 0;
+
+  if (ref.kind != kind)
+    return false;
+  if (!sit.Isomorphic(cond, ref.cond, b))
+    return false;
+  return iso_method(meth, ref.meth, b, seen, nst);
+}
+
+
+//= Determine if two procedures are identical by comparing all paths.
+// takes initial variable mapping "b" from trigger or prior steps
+// "seen" array used to detect loops, filled from 0 to n-1
+
+bool jhcAliaOp::iso_method (const jhcAliaChain *step, const jhcAliaChain *step2, 
+                            jhcBindings& b, const jhcAliaChain *seen[], int& nst) const
+{
+  jhcSituation sit;                    // to avoid jhcAliaOp::match_found()
+  const jhcAliaDir *d, *d2;
+  const jhcAliaPlay *p, *p2;
+  int i, nr, ns;
+
+  // sanity check then detect any loopback
+  if ((step == NULL) || (step2 == NULL) || (seen == NULL))
+    return true;                       // blocks most follow-ons
+  for (i = 0; i < nst; i++)
+    if (step == seen[i])
+      return true;                     // all prior steps matched
+
+  // check for matching outgoing transitions
+  if ((step->HasCont() != step2->HasCont()) || 
+      (step->HasAlt()  != step2->HasAlt()) || 
+      (step->HasFail() != step2->HasFail()))
+    return false;
+
+  // register step as started
+  if (nst >= 100)
+    return false;                      // default to non-match
+  seen[nst++] = step;
+
+  // examine payload
+  if (((d = step->GetDir()) != NULL) && ((d2 = step2->GetDir()) != NULL))
+  {
+    // compare kind and key of directive
+    if (d->kind != d2->kind)
+      return false;
+    if (!sit.Isomorphic(d->key, d2->key, b))
+      return false;
+  }
+  else if (((p = step->GetPlay()) != NULL) && ((p2 = step2->GetPlay()) != NULL))
+  {
+    // compare all activities of play (assumes listed in same order!)
+    if (((nr = p->NumReq())   != p2->NumReq()) ||
+        ((ns = p->NumSimul()) != p2->NumSimul()))
+      return false;
+    for (i = 0; i < nr; i++)
+      if (!iso_method(p->ReqN(i), p2->ReqN(i), b, seen, nst))
+        return false;
+    for (i = 0; i < ns; i++)
+      if (!iso_method(p->SimulN(i), p2->SimulN(i), b, seen, nst))
+        return false;
+  }
+  else
+    return false;                      // different payload types
+
+  // make sure remainder of procedure also matches
+  if (step->cont != NULL)
+    if (!iso_method(step->cont, step2->cont, b, seen, nst))
+      return false;
+  if (step->alt != NULL) 
+    if (!iso_method(step->alt, step2->alt, b, seen, nst))
+      return false;
+  if (step->fail != NULL) 
+    if (!iso_method(step->fail, step2->fail, b, seen, nst))
+      return false;
+  return true;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////
 //                            File Functions                             //
 ///////////////////////////////////////////////////////////////////////////
@@ -300,7 +452,7 @@ int jhcProcMem::FindOps (jhcAliaDir *dir, jhcWorkMem& wmem, double pth, double m
 //= Read a list of procedures from a file.
 // appends to existing advice unless add <= 0
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".ops"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".ops"
 // returns number of operators read, 0 or negative for problem
 
 int jhcProcMem::Load (const char *base, int add, int rpt, int level)
@@ -352,25 +504,23 @@ int jhcProcMem::Load (const char *base, int add, int rpt, int level)
     {
       // successful addition
       p->lvl = level;
-      strcpy_s(p->prov, src);
-      if (AddOperator(p, 0) <= 0)
+      if (level < 2)
+        sprintf_s(p->prov, "operator %d from %s", p->pnum, src);
+      if (AddOperator(p, 0, 0, 0) <= 0)
         delete p;
       n++;
     }
   }
 
   // possibly announce result
-  if (n > 0)
-    jprintf(2, rpt, "  %3d action operators from: %s\n", n, fname);
-  else
-    jprintf(2, rpt, "   -- action operators from: %s\n", fname);
+  jprintf(1, rpt, "  %3d action operators  from: %s\n", n, fname);
   return n;
 }
 
 
 //= Save all current operators at or above some level to a file.
 // level: 0 = kernel, 1 = extras, 2 = previous accumulation, 3 = newly added
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".ops"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".ops"
 // returns number of operators saved, negative for problem
 
 int jhcProcMem::Save (const char *base, int level) const
@@ -412,7 +562,7 @@ int jhcProcMem::save_ops (FILE *out, int level) const
   while (p != NULL)
   {
     if (p->lvl >= level)
-      if (p->Save(out) > 0)
+      if (p->Save(out, 1) > 0)
       {
         fprintf(out, "\n\n");
         cnt++;
@@ -424,13 +574,13 @@ int jhcProcMem::save_ops (FILE *out, int level) const
 
 
 //= Store alterations of preference values relative to KB0 and KB2 operators.
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".pref"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".pref"
 // returns number of exceptions stored (writes file)
 
 int jhcProcMem::Alterations (const char *base) const
 {
   char full[200];
-  const char *fname = base;
+  const char *sf, *fname = base;
   FILE *out;
   const jhcAliaOp *p = ops;
   int na = 0;
@@ -451,9 +601,10 @@ int jhcProcMem::Alterations (const char *base) const
   // scan through operators for altered values
   while (p != NULL)
   {
-    if ((*(p->prov) != '\0') && ((p->pref != p->pref0) || (p->Budget() != p->time0)))
+    sf = strrchr(p->prov, ' ');
+    if ((sf != NULL) && ((p->pref != p->pref0) || (p->Budget() != p->time0)))
     {
-      fprintf(out, "%s %d = %4.2f", p->prov, p->pnum, p->pref);
+      fprintf(out, "%s %d = %4.2f", sf + 1, p->pnum, p->pref);
       if (p->Budget() != p->time0)
         fprintf(out, " : %3.1f + %3.1f", p->tavg, p->tstd);
       fprintf(out, "\n");
@@ -469,14 +620,14 @@ int jhcProcMem::Alterations (const char *base) const
 
 
 //= Change default preference values of KB0 and KB2 operators based on learning.
-// typically give base file name like "KB/kb_072721_1038", fcn adds ".pref"
+// typically give base file name like "KB/Nemo_072721_1038", fcn adds ".pref"
 // returns number of operators altered (reads file)
 
 int jhcProcMem::Overrides (const char *base)
 {
   jhcTxtLine in;
   char full[200], src[40];
-  const char *item, *fname = base;
+  const char *item, *sf, *fname = base;
   jhcAliaOp *p;
   double pf, ta, ts;
   int n, dur, na = 0;
@@ -540,7 +691,8 @@ int jhcProcMem::Overrides (const char *base)
     p = ops;
     while (p != NULL)
     {
-      if ((*(p->prov) != '\0') && (p->pnum == n) && (strcmp(p->prov, src) == 0))
+      sf = strrchr(p->prov, ' ');      // trim "operator 2 from KB0/Foo"
+      if ((sf != NULL) && (p->pnum == n) && (strcmp(sf + 1, src) == 0))
       {
         // update preference value and possibly duration
         p->pref = pf;

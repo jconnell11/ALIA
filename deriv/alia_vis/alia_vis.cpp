@@ -133,11 +133,11 @@ BOOL APIENTRY DllMain (HANDLE hModule,
 // dir: base directory for config, language, log, and KB subdirectories
 // rname: robot name (like "Herbie Ganbei") where last name encodes body type
 // prog: name of test program to print on console at beginning
-// should configure hardware present flags before calling this function
+// dbg: which debugging image to produce (0 = none, 1 = overhead map, 2-17 = various) 
 // returns 1 if okay, 0 or negative for problem
 // NOTE: robot hardware should be reset before this is called
 
-extern "C" DEXP_V int alia_reset (const char *dir, const char *rname, const char *prog)
+extern "C" DEXP_V int alia_reset (const char *dir, const char *rname, const char *prog, int dbg)
 {
   char cfile[80];
   char *end;
@@ -177,6 +177,7 @@ extern "C" DEXP_V int alia_reset (const char *dir, const char *rname, const char
 
   // initialize reasoner state (log file, no console output)
   active = 0;
+  (vc.rwi).probe = dbg;
   ok = vc.Reset(dir, rname, 1);
 
   // announce entry on console output
@@ -191,6 +192,7 @@ extern "C" DEXP_V int alia_reset (const char *dir, const char *rname, const char
 
 
 //= Exchange command and sensor data then start reasoning a bit.
+// commands are from LAST thought cycle (so hardware does not get blocked)
 // returns 2 if okay, 1 if not ready, 0 for quit, negative for problem
 // NOTE: can take up to 100ms to finish on Raspberry Pi 4 (typical = 4ms)
 
@@ -227,7 +229,11 @@ jtimer_x(24);
   // OUT - refresh status images
   vc.GetView(alia_view, alia_vfmt);
   vc.GetMap(alia_map, alia_mfmt);
-  
+
+  // IN - alter recognition status if unused speech text in cache
+  if (*sp_in != '\0')
+    alia_hear = 2; 
+
   // IN - refresh body sensor variables (neck = range-finder)
   n->Status(alia_rp, alia_rt, alia_rx, alia_ry, alia_rz);
   a->Status(alia_ax, alia_ay, alia_az, alia_ap, alia_at, alia_ar, 
@@ -235,8 +241,11 @@ jtimer_x(24);
   f->Status(alia_fh);
   b->Status(alia_bt, alia_bw, alia_bx, alia_by);
   (vc.mood).Battery(alia_batt);
-  (vc.mic0).Smooth(alia_snd);
-  
+  (vc.mic0).Sensor(alia_snd, alia_rp, alia_hear);         
+
+  // IN - refresh body pitch and roll
+  r->Status(alia_tilt, alia_roll);  
+
   // IN - refresh camera positions and orientations (pan = 0 is to right)
   r->RangePose(alia_rx, alia_ry, alia_rz, alia_rp + 90.0, alia_rt, alia_rr);
   r->ColorPose(alia_cx, alia_cy, alia_cz, alia_cp + 90.0, alia_ct, alia_cr);
@@ -255,10 +264,8 @@ jtimer_x(24);
   strcpy_s(sp_out, vc.LastTTS());
   emit = 0;
   if (vc.SelectSrc(io.Get(), sp_in) == 1)
-    *sp_in = '\0';
+    *sp_in = '\0';                               // clear text cache
   alia_attn = vc.UpdateAttn(alia_hear, alia_talk, vc.Stare(), sp_delay);
-  if (alia_hear >= 2)
-    alia_hear = 0;
   r->Unlock();
 
   // start several cycles of reasoning in background
@@ -320,23 +327,6 @@ extern "C" DEXP_V void alia_spin (const char *reco, int ms)
 }
 
 
-//= Specify which hardware susbsystems are present and working.
-// set to 1 or 0: nok = neck, aok = arm, fok = fork lift, bok = base
-// call before alia_reset, can also be called if something breaks
-// dbg: which debugging image to produce (2-10 special, others = overhead map) 
-
-extern "C" DEXP_V void alia_body (int nok, int aok, int fok, int bok, int dbg)    
-{
-  jhcSwapBody *r = &(vc.body0);
-
-  (r->neck0).nok = nok;
-  (r->arm0).aok  = aok;
-  (r->lift0).lok = fok;
-  (r->base0).bok = bok;
-  (vc.rwi).probe = dbg;
-}
-
-
 //= Get width of alternate debugging "map" image (only valid after reset).
 
 extern "C" DEXP_V int alia_wmap ()
@@ -350,4 +340,12 @@ extern "C" DEXP_V int alia_wmap ()
 extern "C" DEXP_V int alia_hmap ()                    
 {
   return (vc.rwi).YDim();
+}
+
+
+//= Get title of alternate debugging "map" image (only valid after reset).
+
+extern "C" DEXP_V const char *alia_tmap () 
+{
+  return (vc.rwi).Title();          
 }

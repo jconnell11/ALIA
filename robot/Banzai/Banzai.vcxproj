@@ -302,6 +302,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\video\common\Processing\jhcWarp.cpp" />
+    <ClCompile Include="..\common\Environ\jhcVisMotion.cpp" />
     <ClCompile Include="..\common\Objects\jhcGenObjects.cpp" />
     <ClCompile Include="..\common\Peripheral\jhcGenMic.cpp" />
     <ClCompile Include="..\common\Peripheral\jhcVt2Mic.cpp" />
@@ -538,6 +539,7 @@
     <ClInclude Include="..\common\Depth\jhcSurface3D.h" />
     <ClInclude Include="..\common\Environ\jhcLocalOcc.h" />
     <ClInclude Include="..\common\Environ\jhcTable.h" />
+    <ClInclude Include="..\common\Environ\jhcVisMotion.h" />
     <ClInclude Include="..\common\Geometry\jhcKalVec.h" />
     <ClInclude Include="..\common\Geometry\jhcPlaneEst.h" />
     <ClInclude Include="..\common\Geometry\jhcSmTrack.h" />
