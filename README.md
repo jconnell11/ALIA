@@ -14,7 +14,10 @@ Building an agent by incrementally uploading (as opposed to DNN batch training) 
 ALIA is good at learning sequential procedures, but it can also understand action prohibitions and even ignore certain users, as shown in this 
 [video](https://youtu.be/EjzdjWy3SKM). Yet often the information needed to accomplish some task is not readily apparent, but instead must be sought out. Fortunately, ALIA can [take advice](https://arxiv.org/abs/1911.11620) about what sensing actions to perform, as illustrated in this [demo](https://youtu.be/jZT1muSBjoc) of guided perception.
 
+| prohibitions | guided perception |
+| --- | --- |
 | [![MensEt advice taking](doc/grab_Mary.jpg)](https://youtu.be/EjzdjWy3SKM) | [![MensEt guided perception](doc/tiger.jpg)](https://youtu.be/jZT1muSBjoc) |
+
 
 ALIA can also perform visual question answering as shown in the interaction below. This involves active information gathering, spatial inference, and hypothesis testing. To appreciate the complexity of the reasoning process, you can download the Banzai program (see below) and try some of your own questions while watching the log console.
 
