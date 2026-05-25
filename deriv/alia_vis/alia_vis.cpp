@@ -95,7 +95,7 @@ BOOL APIENTRY DllMain (HANDLE hModule,
                        DWORD ul_reason_for_call, 
                        LPVOID lpReserved)
 {
-  int mon = 6, yr = 2025, smon = 1, syr = 2025, strict = 0; 
+  int mon = 10, yr = 2026, smon = 5, syr = 2026, strict = 0; 
   char cwd[200];
   char *tail;
 
