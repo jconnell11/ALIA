@@ -570,6 +570,9 @@
     <ClInclude Include="..\..\video\common\Processing\jhcWarp.h">
       <Filter>Header Files\common video\Processing</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\robot\common\Environ\jhcVisMotion.h">
+      <Filter>Header Files\common robot\Environ</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="alia_vis.cpp">
@@ -913,6 +916,9 @@
     </ClCompile>
     <ClCompile Include="..\..\video\common\Processing\jhcWarp.cpp">
       <Filter>Source Files\common video\Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\robot\common\Environ\jhcVisMotion.cpp">
+      <Filter>Source Files\common robot\Environ</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

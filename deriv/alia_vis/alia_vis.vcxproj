@@ -76,6 +76,7 @@
     <ClInclude Include="..\..\robot\common\Depth\jhcSurface3D.h" />
     <ClInclude Include="..\..\robot\common\Environ\jhcLocalOcc.h" />
     <ClInclude Include="..\..\robot\common\Environ\jhcTable.h" />
+    <ClInclude Include="..\..\robot\common\Environ\jhcVisMotion.h" />
     <ClInclude Include="..\..\robot\common\Geometry\jhcKalVec.h" />
     <ClInclude Include="..\..\robot\common\Geometry\jhcMatrix.h" />
     <ClInclude Include="..\..\robot\common\Geometry\jhcPlaneEst.h" />
@@ -201,6 +202,7 @@
     <ClCompile Include="..\..\robot\common\Depth\jhcSurface3D.cpp" />
     <ClCompile Include="..\..\robot\common\Environ\jhcLocalOcc.cpp" />
     <ClCompile Include="..\..\robot\common\Environ\jhcTable.cpp" />
+    <ClCompile Include="..\..\robot\common\Environ\jhcVisMotion.cpp" />
     <ClCompile Include="..\..\robot\common\Geometry\jhcKalVec.cpp" />
     <ClCompile Include="..\..\robot\common\Geometry\jhcMatrix.cpp" />
     <ClCompile Include="..\..\robot\common\Geometry\jhcPlaneEst.cpp" />
