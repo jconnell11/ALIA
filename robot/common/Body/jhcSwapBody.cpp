@@ -33,6 +33,7 @@
 
 jhcSwapBody::~jhcSwapBody ()
 {
+  pthread_mutex_destroy(&io_lock);
 }
 
 
@@ -64,6 +65,9 @@ jhcSwapBody::jhcSwapBody ()
   img_c0.SetSize(img_c);
   img_a0.SetSize(img_a);
   raw.SetSize(img_c);
+
+  // exclusive data access
+  pthread_mutex_init(&io_lock, NULL);
 
   // helper arrays for TOF image expansion
   tof_sampling();
