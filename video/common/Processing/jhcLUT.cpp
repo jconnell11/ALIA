@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 1999-2020 IBM Corporation
-// Copyright 2024-2025 Etaoin Systems
+// Copyright 2024-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1214,6 +1214,31 @@ int jhcLUT_0::NightSD (jhcImg& d8, const jhcImg& d16, double sdf, int choke) con
   lo16 = ROUND(avg - sdf * sdev);
   hi16 = ROUND(avg + sdf * sdev);
   return Remap16(d8, d16, __max(bot, lo16), __min(hi16, top), 1, 255, choke);
+}
+
+
+//= Convert 16 bit pixels to linearly span region from lowest to highest value.
+
+int jhcLUT_0::NightAll (jhcImg& d8, const jhcImg& d16, int choke) const
+{
+  if (!d8.Valid(1) || !d8.SameSize(d16, 2))
+    return Fatal("Bad images to jhcLUT::NightAll");
+  d8.CopyRoi(d16);
+
+  // general ROI case
+  int x, y, bot = 65535, top = 0;
+  int rw = d16.RoiW(), rh = d16.RoiH(), sk2 = d16.RoiSkip() >> 1;
+  const US16 *v = (const US16 *) d16.RoiSrc();
+
+  // gather statistical data (ignores over 40000)
+  for (y = rh; y > 0; y--, v += sk2)
+    for (x = rw; x > 0; x--, v++)
+      if ((*v >= choke) && (*v <= 40000))
+      {
+        top = __max(top, *v);
+        bot = __min(bot, *v);
+      }
+  return Remap16(d8, d16, bot, top, 1, 255, choke);
 }
 
    

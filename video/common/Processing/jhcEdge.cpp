@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2000-2013 IBM Corporation
+// Copyright 2026 Etaoin Systems 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -952,6 +953,54 @@ int jhcEdge::SobelFullRGB2 (jhcImg& mag, jhcImg& dir, const jhcImg& src, double 
     *m = 0;
     *d = 0;
   }
+  return 1;
+}
+
+
+//= Find maximum Sobel edge magnitude for any color field of an image.
+// magnitude scaled (by 1/sqrt(2)) to fit in range [0 255]
+// if clr <= 0 will only overwrite original value if new one is higher
+
+int jhcEdge::SobelMaxRGB (jhcImg& dest, const jhcImg& src, double sc, int clr)
+{
+  if (!dest.Valid(1) || !dest.SameSize(src, 3))
+    return Fatal("Bad images to jhcEdge::SobelMaxRGB2");
+  dest.CopyRoi(src);
+  if (clr > 0)
+    dest.FillArr(0);
+
+  // general ROI case
+  int val, win, sf = ROUND(sc * 256.0);
+  int x, y, dx, dy, rw = dest.RoiW(), rh = dest.RoiH();
+  int ln = src.Line(), dsk = dest.RoiSkip() + 1, ssk = src.RoiSkip() + 3;
+  UC8 *d = dest.RoiDest() + dest.Line() + 1;
+  const UC8 *b = src.RoiSrc(), *s = b + ln, *a = s + ln;
+
+  // compute in interior (except for left and right border)
+  for (y = rh - 2; y > 0; y--, d += dsk, a += ssk, s += ssk, b += ssk) 
+    for (x = rw - 2; x > 0; x--, d++, a += 3, s += 3, b += 3)
+    {
+      // blue
+      dy = abs((a[0] + (a[3] << 1) + a[6]) - (b[0] + (b[3] << 1) + b[6])) >> 2;
+      dx = abs((a[6] + (s[6] << 1) + b[6]) - (a[0] + (s[0] << 1) + b[0])) >> 2;
+      val = (sf * root[dy][dx]) >> 16;
+      win = __max(*d, val);
+
+      // green
+      dy = abs((a[1] + (a[4] << 1) + a[7]) - (b[1] + (b[4] << 1) + b[7])) >> 2;
+      dx = abs((a[7] + (s[7] << 1) + b[7]) - (a[1] + (s[1] << 1) + b[1])) >> 2;
+      val = (sf * root[dy][dx]) >> 16;
+      win = __max(val, win);
+
+      // red
+      dy = abs((a[2] + (a[5] << 1) + a[8]) - (b[2] + (b[5] << 1) + b[8])) >> 2;
+      dx = abs((a[8] + (s[8] << 1) + b[8]) - (a[2] + (s[2] << 1) + b[2])) >> 2;
+      val = (sf * root[dy][dx]) >> 16;
+      win = __max(val, win);
+
+      // write best value
+      *d = (UC8) __min(win, 255);
+    }
   return 1;
 }
 

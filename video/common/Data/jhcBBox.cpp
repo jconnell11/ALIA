@@ -499,7 +499,7 @@ int jhcBBox::CopyItem (int index, const jhcBBox& src, int si)
 
 //= Fills bbox list with parameters based on segmented image.
 // ignores blobs labelled as zero (presumably the background)
-// records intial ranges of pixels in xlo, xhi, ylo, yhi variables
+// records initial ranges of pixels in xlo, xhi, ylo, yhi variables
 // sets "valid" to reflect range of entries filled
 // unused indices have status "val0"
 // returns total span of active boxes (scan 1 to n-1 checking status > 0)

@@ -5,7 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2013-2019 IBM Corporation
-// Copyright 2025 Etaoin Systems
+// Copyright 2025-2026 Etaoin Systems
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,6 +70,7 @@ public:
   void Rotate (double degs);
   void Flatten (double r2f, double r4f, double mag =1.0);
   double Flatten5 (double cx, double cy, double flen0, double r2f, double r4f, double mag =1.0);
+  double Flatten6 (double cx, double cy, double flen0, double r2f, double r4f, double r6f, double mag =1.0);
   void Rectify (double r2f, double r4f, double mag =1.0, double degs =0.0);
 
 

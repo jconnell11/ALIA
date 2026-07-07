@@ -5,6 +5,7 @@
 ///////////////////////////////////////////////////////////////////////////
 //
 // Copyright 2000-2013 IBM Corporation
+// Copyright 2026 Etaoin Systems 
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,6 +65,7 @@ public:
   int SobelAngRGB2 (jhcImg& dest, const jhcImg& src, int mth =40) const;
   int SobelFullRGB (jhcImg& mag, jhcImg& dir, const jhcImg& src, double sc =1.0, int nz =0) const;
   int SobelFullRGB2 (jhcImg& mag, jhcImg& dir, const jhcImg& src, double sc =1.0, int nz =0) const;
+  int SobelMaxRGB (jhcImg& mag, const jhcImg& src, double sc =1.0, int clr =1);
 
   // categorized directions
   int SobelHV (jhcImg& mag, jhcImg& dir, const jhcImg& src, double hi =15.0, double lo =10.0) const;

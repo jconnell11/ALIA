@@ -371,17 +371,17 @@ void jhcWarp::Flatten (double r2f, double r4f, double mag)
 }
 
 
-//= Remove barrel distortion of lens as characterized by 5 parameters.
+//= Remove barrel distortion of lens as characterized by 5 parameters (uses r2 and r4 only).
 // sx0 and sy0 are source lens center (in pels), flen0 is raw focal length (in pels)
 // f2 and f4 are distortion coefficients for flen normalized radial distances 
 // recenters to middle of output image, mag < 1.0 shows more black borders
-// returns altered focal length for destination image
+// returns altered focal length for destination image (mag dependent)
 
 double jhcWarp::Flatten5 (double sx0, double sy0, double flen0, double f2, double f4, double mag)
 {
   double dx0 = 0.5 * (dw - 1), dy0 = 0.5 * (dh - 1);
   double sc = sh / (dh * mag), norm2 = 1.0 / (flen0 * flen0);
-  double dx, dy, r2, r4, warp, wx, wy;
+  double dx, dy, r2, warp, wx, wy;
   int x, y;
 
   // assumes square pixels (hflen = vflen)
@@ -394,10 +394,44 @@ double jhcWarp::Flatten5 (double sx0, double sy0, double flen0, double f2, doubl
       // compute radial offset from center
       dx = sc * (x - dx0);
       r2 = norm2 * (dx * dx + dy * dy);
-      r4 = r2 * r2;
 
       // determine lens warped coordinates
-      warp = 1.0 + f2 * r2 + f4 * r4;
+      warp = 1.0 + (f2 + f4 * r2) * r2;
+      wx = sx0 + warp * dx;
+      wy = sy0 + warp * dy;
+      SetWarp(x, y, wx, wy);          
+    }
+  }
+  return(mag * flen0);
+}
+
+
+//= Remove barrel distortion of lens as characterized by 6 parameters (uses r2, r4, and r6).
+// sx0 and sy0 are source lens center (in pels), flen0 is raw focal length (both x and y, in pels)
+// f2, f4, and f6 are distortion coeffs (OpenCV k1, k2, k3) for flen normalized radial distances 
+// recenters to middle of output image, mag < 1.0 shows more black borders
+// returns altered focal length for destination image (mag dependent)
+
+double jhcWarp::Flatten6 (double sx0, double sy0, double flen0, double f2, double f4, double f6, double mag)
+{
+  double dx0 = 0.5 * (dw - 1), dy0 = 0.5 * (dh - 1);
+  double sc = sh / (dh * mag), norm2 = 1.0 / (flen0 * flen0);
+  double dx, dy, r2, warp, wx, wy;
+  int x, y;
+
+  // assumes square pixels (hflen = vflen)
+  for (y = 0; y < dh; y++)
+  {
+    // get central offset adjusted for pixel aspect ratio
+    dy = sc * (y - dy0);
+    for (x = 0; x < dw; x++)
+    {
+      // compute radial offset from center
+      dx = sc * (x - dx0);
+      r2 = norm2 * (dx * dx + dy * dy);
+
+      // determine lens warped coordinates
+      warp = 1.0 + (f2 + (f4 + f6 * r2) * r2) * r2;
       wx = sx0 + warp * dx;
       wy = sy0 + warp * dy;
       SetWarp(x, y, wx, wy);          
