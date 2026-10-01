@@ -1,13 +1,13 @@
 # ALIA
 ## Architecture for Linguistic Interaction and Augmentation
 
-Although there are now now sophisticated deep-learning [frameworks](https://github.com/huggingface/lerobot) for robot control, ALIA provides an alternative interaction style much more like command line scripting. There is no need to cajole the system with carefully  engineered prompts, and no hallucination. Moreover, the system runs locally on-board (except for [speech](https://youtu.be/qWLANb0PmbM) recognition) and can work on inexpensive [platforms](https://github.com/jconnell11/Ganbei) ($450)
+Although there are now sophisticated deep-learning [frameworks](https://github.com/huggingface/lerobot) for robot control, ALIA provides an alternative interaction style much more like command line scripting. There is no need to cajole the system with carefully  engineered prompts, and no hallucination. Moreover, the system runs locally on-board (except for [speech](https://youtu.be/qWLANb0PmbM) recognition) and can work on inexpensive [platforms](https://github.com/jconnell11/Ganbei) ($450)
 
 ALIA starts from the viewpoint that intelligence is all just programming, but the programming is done by other members of your culture. To enable this, the code provides an end-to-end symbolic cognitive system that is able to learn from natural language instructions via text or speech. It can acquire specific likes and dislikes, generic problem solving skills, and socially appropriate reactions, as shown in this [video](https://youtu.be/Yoq7n6lGhYo). 
 
 [![Stealing stuff](red_handed.jpg)](https://youtu.be/Yoq7n6lGhYo)
 
-Building an agent by incrementally uploading (as opposed to DNN batch training) allows many opportunities for debugging so that the final product is not alien, but more like a probabitionary member of society. You can read about the basic system design philosophy [here](https://arxiv.org/abs/1911.09782).
+Building an agent by incrementally uploading (as opposed to DNN batch training) allows many opportunities for debugging so that the final product is not alien, but more like a probationary member of society. You can read about the basic system design philosophy [here](https://arxiv.org/abs/1911.09782).
 
 ## Capabilities
 
@@ -23,7 +23,7 @@ ALIA can also perform visual question answering as shown in the interaction belo
 
 ![Banzai blocks demo](blocks_demo.bmp)
 
-But it is not just about questions, ALIA can also orchestrate moderately sophisticated actions like stacking objects. In this [video](https://youtu.be/9sdTyfvoMPg) the user issues a basic verbal command then the robot automatically coordinates various visual analysis, trajectory planning, and body motion activties to accomplish the task. 
+But it is not just about questions, ALIA can also orchestrate moderately sophisticated actions like stacking objects. In this [video](https://youtu.be/9sdTyfvoMPg) the user issues a basic verbal command then the robot automatically coordinates various visual analysis, trajectory planning, and body motion activities to accomplish the task. 
 
 [![Banzai manipulation](stacking_sm.jpg)](https://youtu.be/9sdTyfvoMPg)
 
@@ -35,7 +35,7 @@ Finally, the system has long term memory so you can tell it something like "Joe'
 
 The main development tool for ALIA is the [Banzai](../robot/Banzai) program, which runs under Windows. It was built to control the [ELI](ELI_construction) class of homebrew robots, yet it can be run standalone as well. It is useful in this capacity since it shows many aspects of the internal state and lets you adjust numerous parameters. The system can be compiled with  [Visual C++ 2022](https://aka.ms/vs/17/release/vs_community.exe) Community (free), but there is also a pre-compiled executable. To run the program, from the project directory download [Banzai.exe](../robot/Banzai/Banzai.exe), all __*.dll__ files, and the various subdirectories like [KB0](../robot/Banzai/KB0). You will also need to install the Visual C++ 2022 [runtime](https://aka.ms/vs/17/release/vc_redist.x64.exe)
 
-To try out the system, start the program and use menu selection "File / Open Video" to load test image [environ/blocks_t512.bmp](../robot/Banzai/environ/blocks_t512.bmp). Then do "Demo / Text File" with [blocks_demo.tst](../robot/Banzai/test/blocks_demo.tst), hitting ENTER to go on to each next sentence. You can also try other tests such as [dont_grab.tst](../robot/Banzai/test/dont_grab.tst) in the same way. For free-form typing instead of canned text, use menu opton "Demo / > Interactive". If ALIA does not understand you, it is likely you need to add some particular word to the [vocabulary.sgm](../robot/Banzai/language/vocabulary.sgm) text file. You can also enable local text-to-speech with the "Demo / Demo Options" menu and setting "Read output always" to 1.
+To try out the system, start the program and use menu selection "File / Open Video" to load test image [environ/blocks_t512.bmp](../robot/Banzai/environ/blocks_t512.bmp). Then do "Demo / Text File" with [blocks_demo.tst](../robot/Banzai/test/blocks_demo.tst), hitting ENTER to go on to each next sentence. You can also try other tests such as [dont_grab.tst](../robot/Banzai/test/dont_grab.tst) in the same way. For free-form typing instead of canned text, use menu option "Demo / > Interactive". If ALIA does not understand you, it is likely you need to add some particular word to the [vocabulary.sgm](../robot/Banzai/language/vocabulary.sgm) text file. You can also enable local text-to-speech with the "Demo / Demo Options" menu and setting "Read output always" to 1.
 
 In addition to text mode, the system is designed to be used with Microsoft's Azure online speech recognition. This is essentially __free__ for low intensity usage, but you will need credentials to access this on-line service. Start by signing up [here](https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices) (possibly making a Microsoft account first) then select "Speech Services" and "+ Create". Finally, click "Manage keys" to find valid "Key" and "Location" strings. For the Windows version of things, these strings should be substituted in the text file [config/sp_reco_web.key](../robot/Banzai/config/sp_reco_web.key). By default speech recognition is off, but you can use "Demo / Demo Options" to set "Speech" to 2 (web). 
 
